@@ -55,7 +55,14 @@ public class CreateModel : PageModel
         _db.ServiceOrders.Add(order);
 
         // Checklist default por tipo
-        var items = DefaultChecklist(Input.Type);
+        var tpl = await _db.ServiceOrderChecklistTemplates
+    .Include(t => t.Items)
+    .Where(t => t.Type == Input.Type && t.IsActive)
+    .OrderByDescending(t => t.UpdatedAt)
+    .FirstOrDefaultAsync();
+
+        var items = tpl?.Items.OrderBy(x => x.SortOrder).ToList() ?? new List<ServiceOrderChecklistTemplateItem>();
+
         var sort = 1;
         foreach (var t in items)
         {
@@ -63,11 +70,14 @@ public class CreateModel : PageModel
             {
                 OrderId = order.Id,
                 SortOrder = sort++,
-                Title = t,
+                Category = t.Category,
+                Title = t.Title,
+                IsRequired = t.IsRequired,
                 IsDone = false,
                 Notes = ""
             });
         }
+
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });

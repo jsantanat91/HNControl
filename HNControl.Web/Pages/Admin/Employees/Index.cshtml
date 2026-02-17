@@ -33,8 +33,9 @@
                         <td>@e.Position</td>
                         <td>@e.SalaryBase.ToString("C")</td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Employees/Details" asp-route-userId="@e.UserId">Ver</a>
-                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Employees/Edit" asp-route-userId="@e.UserId">Editar</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@e.UserId">Ver</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Employees/Edit" asp-route-userId="@e.UserId">Editar</a>
+
                         </td>
                     </tr>
                 }

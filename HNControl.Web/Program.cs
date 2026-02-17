@@ -58,20 +58,24 @@ builder.Services.AddRazorPages(options =>
     // Todo requiere login por default
     options.Conventions.AuthorizeFolder("/");
 
-    options.Conventions.AuthorizeFolder("/Clients", "AdminOnly");     // Clientes: solo admin
-    options.Conventions.AuthorizeFolder("/Projects", "EmployeeOnly"); // Proyectos: admin + empleado
-    options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");// Documentos: admin + empleado
-
-
     // Account libre
     options.Conventions.AllowAnonymousToFolder("/Account");
 
     // Público (links token órdenes)
     options.Conventions.AllowAnonymousToFolder("/Public");
-    options.Conventions.AuthorizeFolder("/Admin/ServiceOrders", "AdminOnly");
 
     // Admin
     options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Admin/ServiceOrders", "AdminOnly");
+
+    // Clientes: solo admin
+    options.Conventions.AuthorizeFolder("/Clients", "AdminOnly");
+
+    // Proyectos: admin + empleado
+    options.Conventions.AuthorizeFolder("/Projects", "EmployeeOnly");
+
+    // Documentos: admin + empleado
+    options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");
 
     // Empleados: admin gestiona, empleado ve su ficha
     options.Conventions.AuthorizeFolder("/Employees", "AdminOnly");
@@ -90,7 +94,7 @@ builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
-// EMAIL: OJO aquí evitamos ambigüedad con Identity.UI IEmailSender
+// EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
 
 // PDF renderer para órdenes de servicio
@@ -112,6 +116,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
+    await SeedServiceOrderTemplates.EnsureAsync(db);
 }
 
 // --------------------

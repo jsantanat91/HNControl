@@ -1,0 +1,80 @@
+﻿@page "{userId}"
+@model HNControl.Web.Pages.Admin.Employees.DetailsModel
+@{
+    Layout = "_Layout";
+}
+
+@if (Model.Employee == null)
+{
+    <div class="alert alert-warning">Empleado no encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">@Model.Employee.FullName</h1>
+        <div class="text-muted small">@Model.Employee.Position · Sueldo base: <b>@Model.Employee.SalaryBase.ToString("C")</b></div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-page="/Performance/Rate" asp-route-userId="@Model.Employee.UserId">Calificar</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Edit" asp-route-userId="@Model.Employee.UserId">Editar</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Index">Volver</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">KPIs</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between"><span>Órdenes completadas (30d)</span><b>@Model.Kpi.CompletedOrders30d</b></div>
+                <div class="d-flex justify-content-between"><span>Órdenes en revisión</span><b>@Model.Kpi.InReviewOrders</b></div>
+                <div class="d-flex justify-content-between"><span>Proyectos activos</span><b>@Model.Kpi.ActiveProjects</b></div>
+                <div class="d-flex justify-content-between"><span>SLA vencidos</span><b>@Model.Kpi.OverdueProjects</b></div>
+                <div class="d-flex justify-content-between"><span>Viáticos (semana actual)</span><b>@Model.Kpi.WeeklyViaticTotal.ToString("C")</b></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-header fw-semibold">Última evaluación</div>
+            <div class="card-body">
+                @if (Model.LastReview == null)
+                {
+                    <div class="text-muted">Sin evaluaciones.</div>
+                }
+                else
+                {
+                    <div class="text-muted small">@Model.LastReviewPeriod</div>
+                    <div class="d-flex justify-content-between mt-2"><span>Variable %</span><b>@((Model.LastReview.VariablePercent * 100m).ToString("0.#"))%</b></div>
+                    <div class="d-flex justify-content-between"><span>80% fijo</span><b>@Model.Pay.Fixed80.ToString("C")</b></div>
+                    <div class="d-flex justify-content-between"><span>Variable $</span><b>@Model.Pay.VariableMoney.ToString("C")</b></div>
+                    <div class="d-flex justify-content-between mt-2"><span>Total quincenal</span><b class="fs-5">@Model.Pay.Total.ToString("C")</b></div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Gráfica (variable % por periodo)</div>
+            <div class="card-body">
+                <canvas id="varChart" height="110"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = @Html.Raw(Model.ChartLabelsJson);
+    const values = @Html.Raw(Model.ChartValuesJson);
+
+    new Chart(document.getElementById('varChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: 'Variable %', data: values, tension: 0.25 }]
+      },
+      options: { scales: { y: { min: 0, max: 1 } } }
+    });
+</script>

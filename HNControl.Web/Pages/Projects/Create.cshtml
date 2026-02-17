@@ -4,68 +4,143 @@
     Layout = "_Layout";
 }
 
-<h1 class="h4 mb-3">Nuevo proyecto</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Nuevo proyecto</h1>
+        <div class="text-muted small">Ligado a cliente · responsable · SLA</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Volver</a>
+</div>
 
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-info">@Model.Info</div>
+}
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-sm">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Cliente</label>
-                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
-            </div>
+<div class="row g-3">
+    <div class="col-lg-7">
+        <form method="post" class="card shadow-sm">
+            <div class="card-header fw-semibold">Proyecto</div>
+            <div class="card-body">
+                <div class="row g-3">
 
-            <div class="col-md-6">
-                <label class="form-label">Responsable</label>
-                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
-            </div>
+                    <div class="col-12">
+                        <label class="form-label">Nombre del proyecto</label>
+                        <input class="form-control" asp-for="Input.Title" />
+                        <span class="text-danger small" asp-validation-for="Input.Title"></span>
+                    </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Título</label>
-                <input class="form-control" asp-for="Input.Title" />
-            </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
+                        <span class="text-danger small" asp-validation-for="Input.ClientId"></span>
+                        <div class="text-muted small mt-1">Si no existe, créalo en el panel derecho.</div>
+                    </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Inicio</label>
-                <input class="form-control" asp-for="Input.StartDate" type="date" />
-            </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Responsable</label>
+                        <select class="form-select" asp-for="Input.ResponsibleUserId" asp-items="Model.EmployeeItems"></select>
+                        <span class="text-danger small" asp-validation-for="Input.ResponsibleUserId"></span>
+                    </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Término estimado (SLA)</label>
-                <input class="form-control" asp-for="Input.EstimatedEndDate" type="date" />
-            </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fecha inicio</label>
+                        <input class="form-control" asp-for="Input.StartDate" type="date" />
+                        <span class="text-danger small" asp-validation-for="Input.StartDate"></span>
+                    </div>
 
-            <div class="col-12">
-                <label class="form-label">Objetivo</label>
-                <textarea class="form-control" asp-for="Input.Objective" rows="2"></textarea>
-            </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Término estimado (SLA)</label>
+                        <input class="form-control" asp-for="Input.EstimatedEndDate" type="date" />
+                        <span class="text-danger small" asp-validation-for="Input.EstimatedEndDate"></span>
+                    </div>
 
-            <div class="col-12">
-                <label class="form-label">Alcance</label>
-                <textarea class="form-control" asp-for="Input.Scope" rows="2"></textarea>
-            </div>
+                    <div class="col-12">
+                        <label class="form-label">Objetivo</label>
+                        <input class="form-control" asp-for="Input.Objective" />
+                    </div>
 
-            <div class="col-12">
-                <label class="form-label">Descripción de actividad</label>
-                <textarea class="form-control" asp-for="Input.ActivityDescription" rows="3"></textarea>
-            </div>
+                    <div class="col-12">
+                        <label class="form-label">Alcance</label>
+                        <textarea class="form-control" asp-for="Input.Scope" rows="2"></textarea>
+                    </div>
 
-            <div class="col-12">
-                <label class="form-label">Comentarios adicionales</label>
-                <textarea class="form-control" asp-for="Input.AdditionalComments" rows="2"></textarea>
+                    <div class="col-12">
+                        <label class="form-label">Descripción de la actividad</label>
+                        <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Accesos del cliente (usuarios/contraseñas)</label>
+                        <textarea class="form-control" asp-for="Input.AccessNotes" rows="4" placeholder="Cámaras / WiFi / DVR / IPs / Credenciales..."></textarea>
+                        <div class="text-muted small mt-1">Tip: esto después se cifra; si no, es un buffet para hackers.</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Comentarios adicionales</label>
+                        <textarea class="form-control" asp-for="Input.Comments" rows="2"></textarea>
+                    </div>
+
+                </div>
             </div>
-        </div>
+            <div class="card-footer d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Crear proyecto</button>
+            </div>
+        </form>
     </div>
 
-    <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Crear</button>
-        <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Cancelar</a>
+    <div class="col-lg-5">
+        <form method="post" asp-page-handler="CreateClient" class="card shadow-sm">
+            <div class="card-header fw-semibold">Nuevo cliente (rápido)</div>
+            <div class="card-body">
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" asp-for="NewClient.Type">
+                            <option value="Moral">Moral</option>
+                            <option value="Fisica">Física</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Razón Social</label>
+                        <input class="form-control" asp-for="NewClient.Name" />
+                        <span class="text-danger small" asp-validation-for="NewClient.Name"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">RFC</label>
+                        <input class="form-control" asp-for="NewClient.Rfc" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Correo</label>
+                        <input class="form-control" asp-for="NewClient.Email" type="email" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Teléfono</label>
+                        <input class="form-control" asp-for="NewClient.Phone" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" asp-for="NewClient.Address" rows="2"></textarea>
+                    </div>
+
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-outline-primary w-100" type="submit">Crear cliente y seleccionarlo</button>
+            </div>
+        </form>
     </div>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +15,9 @@ public class EditModel : PageModel
     private readonly ApplicationDbContext _db;
     public EditModel(ApplicationDbContext db) => _db = db;
 
-    public SelectList KindItems => new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
+    public SelectList KindItems =>
+        new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
+
     public ClientServiceType[] ServiceOptions => Enum.GetValues<ClientServiceType>();
 
     [BindProperty] public InputModel? Input { get; set; }
@@ -24,17 +26,33 @@ public class EditModel : PageModel
     public class InputModel
     {
         [Required] public Guid Id { get; set; }
+
         [Required] public ClientKind Kind { get; set; }
-        [Required, MaxLength(200)] public string Name { get; set; } = "";
-        [EmailAddress, MaxLength(256)] public string Email { get; set; } = "";
-        [MaxLength(40)] public string Phone { get; set; } = "";
-        [MaxLength(400)] public string Address { get; set; } = "";
+
+        [Required, MaxLength(200)]
+        public string Name { get; set; } = "";
+
+        [MaxLength(13)]
+        public string Rfc { get; set; } = "";
+
+        [EmailAddress, MaxLength(256)]
+        public string Email { get; set; } = "";
+
+        [MaxLength(40)]
+        public string Phone { get; set; } = "";
+
+        [MaxLength(400)]
+        public string Address { get; set; } = "";
+
         public List<int> SelectedServices { get; set; } = new();
     }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        var client = await _db.Clients.Include(c => c.Services).FirstOrDefaultAsync(c => c.Id == id);
+        var client = await _db.Clients
+            .Include(c => c.Services)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
         if (client == null) return NotFound();
 
         Input = new InputModel
@@ -42,9 +60,10 @@ public class EditModel : PageModel
             Id = client.Id,
             Kind = client.Kind,
             Name = client.Name,
-            Email = client.Email,
-            Phone = client.Phone,
-            Address = client.Address,
+            Rfc = client.Rfc ?? "",
+            Email = client.Email ?? "",        // ✅ evita CS8601
+            Phone = client.Phone ?? "",        // ✅ evita CS8601
+            Address = client.Address ?? "",    // ✅ evita CS8601
             SelectedServices = client.Services.Select(s => (int)s.ServiceType).ToList()
         };
 
@@ -56,11 +75,17 @@ public class EditModel : PageModel
         if (Input == null) return NotFound();
         if (!ModelState.IsValid) return Page();
 
-        var client = await _db.Clients.Include(c => c.Services).FirstOrDefaultAsync(c => c.Id == Input.Id);
+        var client = await _db.Clients
+            .Include(c => c.Services)
+            .FirstOrDefaultAsync(c => c.Id == Input.Id);
+
         if (client == null) return NotFound();
 
-        client.Kind = Input.Kind;
+        // ✅ Persistimos en Type (lo real en DB)
+        client.Type = (ClientType)Input.Kind;
+
         client.Name = Input.Name.Trim();
+        client.Rfc = (Input.Rfc ?? "").Trim();
         client.Email = (Input.Email ?? "").Trim();
         client.Phone = (Input.Phone ?? "").Trim();
         client.Address = (Input.Address ?? "").Trim();

@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -26,9 +26,12 @@ public class IndexModel : PageModel
             new Row(
                 c.Id,
                 c.Name,
-                c.Kind.ToString(),
-                c.Email,
-                string.Join(", ", c.Services.Select(s => s.ServiceType.ToString()))
+                c.Kind.ToString(),                // UI friendly (alias)
+                c.Email ?? "",                    // ✅ evita CS8604
+                string.Join(", ",
+                    (c.Services ?? new List<ClientService>())
+                        .Select(s => s.ServiceType.ToString())
+                )
             )
         ).ToList();
     }

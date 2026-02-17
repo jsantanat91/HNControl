@@ -1,0 +1,42 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.ServiceOrderTemplates.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Plantillas de Checklist</h1>
+        <div class="text-muted small">Editables por tipo de orden</div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Nombre</th>
+                    <th>Activa</th>
+                    <th>Items</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model.Rows)
+                {
+                    <tr>
+                        <td>@t.Type</td>
+                        <td>@t.Name</td>
+                        <td>@(t.IsActive ? "Sí" : "No")</td>
+                        <td>@t.ItemCount</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrderTemplates/Edit" asp-route-id="@t.Id">Editar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

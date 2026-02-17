@@ -1,67 +1,119 @@
-﻿@using Microsoft.AspNetCore.Identity
+﻿@using HNControl.Web.Models
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
+
+@{
+    var path = Context?.Request?.Path.Value ?? "";
+    string Active(string startsWith)
+        => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HN Control</title>
+    <title>@ViewData["Title"] - HN Control</title>
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <!-- Nuevo skin (solo UI) -->
+    <link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
 </head>
 <body>
-    <header class="border-bottom">
-        <nav class="navbar navbar-expand-lg navbar-light bg-white">
-            <div class="container">
-                <a class="navbar-brand fw-bold" asp-page="/Index">HN Control</a>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm hn-nav">
+            <div class="container-fluid">
+                <a class="navbar-brand hn-brand" asp-page="/Index">
+                    <span class="hn-brand-mark">HN</span><span class="hn-brand-name"> Control</span>
+                </a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Menú">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <div class="collapse navbar-collapse" id="nav">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item"><a class="nav-link" asp-page="/Viaticos/Index">Viáticos</a></li>
-
-                        <li class="nav-item"><a class="nav-link" asp-page="/Projects/Index">Proyectos</a></li>
-                        <li class="nav-item"><a class="nav-link" asp-page="/Knowledge/Index">Documentos</a></li>
-
-                        @if (User.IsInRole(AppRoles.Admin))
-                        {
-                            <li class="nav-item"><a class="nav-link" asp-page="/Clients/Index">Clientes</a></li>
-                            <li class="nav-item"><a class="nav-link" asp-page="/Employees/Index">Empleados</a></li>
-                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Viaticos/Index">Admin Viáticos</a></li>
-                        }
-                        else
-                        {
-                            <li class="nav-item"><a class="nav-link" asp-page="/Employees/MyProfile">Mi ficha</a></li>
-                        }
-                    </ul>
-
-
-                    <div class="d-flex gap-2 align-items-center">
+                <div class="collapse navbar-collapse" id="navMain">
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
                         @if (SignInManager.IsSignedIn(User))
                         {
-                            <span class="text-muted small">@User.Identity?.Name</span>
-                            <form method="post" asp-page="/Account/Logout">
-                                <button class="btn btn-outline-dark btn-sm" type="submit">Salir</button>
-                            </form>
+                            if (User.IsInRole(AppRoles.Admin))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard">Dashboard</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index">Empleados</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Clients")" asp-page="/Clients/Index">Clientes</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Projects")" asp-page="/Projects/Index">Proyectos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Week">Viáticos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index">Órdenes</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/ServiceOrderTemplates")" asp-page="/Admin/ServiceOrderTemplates/Index">Plantillas</a>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Viaticos")" asp-page="/Viaticos/Week">Mis viáticos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Projects")" asp-page="/Projects/Index">Proyectos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link hn-navbtn @Active("/Admin/Employees/MyProfile")" asp-page="/Admin/Employees/MyProfile">Mi ficha</a>
+                                </li>
+                            }
+
+                            <li class="nav-item hn-sep d-none d-lg-block"></li>
+
+                            <li class="nav-item d-none d-lg-flex align-items-center">
+                                <span class="hn-user">@User.Identity?.Name</span>
+                            </li>
+
+                            <li class="nav-item">
+                                <form asp-page="/Account/Logout" method="post" class="d-inline">
+                                    <button class="btn btn-sm hn-navbtn hn-navbtn-danger" type="submit">Salir</button>
+                                </form>
+                            </li>
                         }
                         else
                         {
-                            <a class="btn btn-primary btn-sm" asp-page="/Account/Login">Entrar</a>
+                            <li class="nav-item">
+                                <a class="nav-link hn-navbtn @Active("/Account/Login")" asp-page="/Account/Login">Entrar</a>
+                            </li>
                         }
-                    </div>
+                    </ul>
                 </div>
+
             </div>
         </nav>
     </header>
 
-    <main class="container py-4">
+    <main class="container py-4 hn-main">
         @RenderBody()
     </main>
+
+    <footer class="border-top text-muted hn-footer">
+        <div class="container py-3">
+            &copy; @DateTime.Now.Year - HN Control
+        </div>
+    </footer>
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @RenderSection("Scripts", required: false)

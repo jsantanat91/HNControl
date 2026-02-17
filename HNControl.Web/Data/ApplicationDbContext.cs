@@ -9,6 +9,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
+    public DbSet<ServiceOrderChecklistTemplate> ServiceOrderChecklistTemplates => Set<ServiceOrderChecklistTemplate>();
+    public DbSet<ServiceOrderChecklistTemplateItem> ServiceOrderChecklistTemplateItems => Set<ServiceOrderChecklistTemplateItem>();
+    public DbSet<ServiceOrderAuditLog> ServiceOrderAuditLogs => Set<ServiceOrderAuditLog>();
+
     public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
     public DbSet<ViaticWeek> ViaticWeeks => Set<ViaticWeek>();
     public DbSet<ViaticEntry> ViaticEntries => Set<ViaticEntry>();
@@ -24,8 +28,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
 
     public DbSet<ServiceOrder> ServiceOrders => Set<ServiceOrder>();
-    public DbSet<ServiceOrderChecklistTemplate> ServiceOrderChecklistTemplates => Set<ServiceOrderChecklistTemplate>();
-    public DbSet<ServiceOrderChecklistTemplateItem> ServiceOrderChecklistTemplateItems => Set<ServiceOrderChecklistTemplateItem>();
     public DbSet<ServiceOrderChecklistItem> ServiceOrderChecklistItems => Set<ServiceOrderChecklistItem>();
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
     public DbSet<ServiceOrderSignature> ServiceOrderSignatures => Set<ServiceOrderSignature>();
@@ -33,6 +35,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+
 
         b.Entity<EmployeeProfile>(e =>
         {

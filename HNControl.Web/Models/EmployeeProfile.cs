@@ -1,19 +1,47 @@
-﻿namespace HNControl.Web.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace HNControl.Web.Models;
 
 public class EmployeeProfile
 {
-    // Usamos UserId como PK para 1:1 contra Identity User
+    [Key]
+    [MaxLength(64)]
     public string UserId { get; set; } = default!;
 
+    [MaxLength(200)]
     public string FullName { get; set; } = "";
+
+    [MaxLength(256)]
     public string Email { get; set; } = "";
-    public string Nss { get; set; } = "";
-    public string Gender { get; set; } = "N/A";
-    public string Position { get; set; } = "";
+
+    [MaxLength(40)]
     public string Phone { get; set; } = "";
 
-    // Nómina base (fase 2 usaremos esto para 80/20)
-    public decimal SalaryBase { get; set; }
+    [MaxLength(20)]
+    public string Nss { get; set; } = "";
+
+    // Guardamos "Gender" (pero varias pantallas usan "Sex")
+    [MaxLength(20)]
+    public string Gender { get; set; } = "";
+
+    // ✅ Alias para pantallas/handlers viejos que usan Sex
+    [NotMapped]
+    public string Sex
+    {
+        get => Gender;
+        set => Gender = value ?? "";
+    }
+
+    [MaxLength(120)]
+    public string Position { get; set; } = "";
+
+    // Sueldo base (lo usamos para cálculo 80/20)
+    public decimal SalaryBase { get; set; } = 0m;
+
+    // Extras útiles (no afectan lo actual)
+    public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

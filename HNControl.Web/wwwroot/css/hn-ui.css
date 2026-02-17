@@ -1,0 +1,241 @@
+﻿:root {
+    --hn-bg: #f6f8fc;
+    --hn-card: #ffffff;
+    --hn-text: #0f172a;
+    --hn-muted: #64748b;
+    --hn-border: #e6eaf2;
+    --hn-blue: #2563eb;
+    --hn-blue-2: #1d4ed8;
+    --hn-danger: #ef4444;
+    --hn-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+}
+
+/* Base */
+body {
+    background: var(--hn-bg);
+    color: var(--hn-text);
+}
+
+.hn-main {
+    max-width: 1120px;
+}
+
+.hn-footer {
+    background: transparent;
+    font-size: .875rem;
+}
+
+/* Navbar “pills” como tus referencias */
+.hn-nav {
+    border-bottom: 1px solid var(--hn-border) !important;
+}
+
+.hn-brand {
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.hn-brand-mark {
+    color: var(--hn-text);
+}
+
+.hn-brand-name {
+    color: var(--hn-blue);
+}
+
+.hn-navbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .42rem .72rem !important;
+    border-radius: 999px;
+    border: 1px solid var(--hn-border);
+    background: #fff;
+    color: #334155 !important;
+    font-weight: 600;
+    font-size: .875rem;
+    line-height: 1;
+    transition: all .15s ease-in-out;
+}
+
+    .hn-navbtn:hover {
+        background: #f1f5f9;
+        border-color: #d6dce8;
+        transform: translateY(-1px);
+    }
+
+    .hn-navbtn.active {
+        background: var(--hn-blue);
+        border-color: var(--hn-blue);
+        color: #fff !important;
+    }
+
+.hn-navbtn-danger {
+    border-color: rgba(239,68,68,.35);
+    color: var(--hn-danger) !important;
+}
+
+    .hn-navbtn-danger:hover {
+        background: rgba(239,68,68,.08);
+        border-color: rgba(239,68,68,.55);
+    }
+
+.hn-user {
+    color: var(--hn-muted);
+    font-size: .875rem;
+    font-weight: 600;
+    padding: .25rem .25rem;
+}
+
+.hn-sep {
+    width: 1px;
+    height: 24px;
+    background: var(--hn-border);
+    margin: 0 .25rem;
+}
+
+/* Cards */
+.card {
+    border: 1px solid var(--hn-border);
+    border-radius: 18px;
+    background: var(--hn-card);
+    box-shadow: var(--hn-shadow);
+}
+
+    .card .card-body {
+        padding: 1.25rem;
+    }
+
+/* Módulos tipo “Panel de Control” */
+.hn-hero {
+    text-align: center;
+    margin: 1.25rem 0 1.75rem;
+}
+
+    .hn-hero h1 {
+        font-size: 2.4rem;
+        font-weight: 900;
+        letter-spacing: -.03em;
+        margin: 0;
+    }
+
+    .hn-hero p {
+        color: var(--hn-muted);
+        margin: .35rem 0 0;
+    }
+
+.hn-module {
+    position: relative;
+    overflow: hidden;
+}
+
+    .hn-module::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--a1), var(--a2));
+    }
+
+    .hn-module.accent-blue {
+        --a1: #2563eb;
+        --a2: #60a5fa;
+    }
+
+    .hn-module.accent-green {
+        --a1: #16a34a;
+        --a2: #4ade80;
+    }
+
+    .hn-module.accent-purple {
+        --a1: #7c3aed;
+        --a2: #a78bfa;
+    }
+
+    .hn-module.accent-cyan {
+        --a1: #0891b2;
+        --a2: #67e8f9;
+    }
+
+    .hn-module.accent-orange {
+        --a1: #f97316;
+        --a2: #fdba74;
+    }
+
+    .hn-module.accent-yellow {
+        --a1: #eab308;
+        --a2: #fde047;
+    }
+
+.hn-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: rgba(37, 99, 235, .10);
+    border: 1px solid rgba(37, 99, 235, .18);
+}
+
+    .hn-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+.hn-module-title {
+    font-weight: 800;
+    margin-bottom: .2rem;
+}
+
+.hn-module-desc {
+    color: var(--hn-muted);
+    font-size: .9rem;
+    margin-bottom: .6rem;
+}
+
+.hn-link {
+    font-weight: 800;
+    text-decoration: none;
+    color: var(--hn-blue);
+}
+
+    .hn-link:hover {
+        text-decoration: underline;
+    }
+
+/* Tables más “modernas” (sin romper nada) */
+.table {
+    margin-bottom: 0;
+}
+
+    .table thead th {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--hn-muted);
+        border-bottom: 1px solid var(--hn-border) !important;
+    }
+
+    .table tbody td {
+        border-top: 1px solid rgba(230,234,242,.9);
+    }
+
+    .table tbody tr:hover {
+        background: rgba(15, 23, 42, .03);
+    }
+
+/* Forms */
+.form-control, .form-select {
+    border-radius: 14px;
+    border-color: var(--hn-border);
+    padding: .6rem .8rem;
+}
+
+.btn {
+    border-radius: 999px;
+    font-weight: 700;
+}
