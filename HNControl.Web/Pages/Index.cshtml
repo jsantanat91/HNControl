@@ -1,0 +1,59 @@
+﻿@page
+@model HNControl.Web.Pages.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Dashboard</h1>
+        <div class="text-muted small">Fase 1: Seguridad, Empleados, Viáticos</div>
+    </div>
+</div>
+
+@if (User.IsInRole(AppRoles.Admin))
+{
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Empleados</div>
+                    <div class="display-6">@Model.EmployeeCount</div>
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Employees/Index">Gestionar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Semanas de viáticos</div>
+                    <div class="display-6">@Model.ViaticWeekCount</div>
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Viaticos/Index">Ver panel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h6">Mis viáticos</h2>
+                    <p class="text-muted small mb-2">Captura semanal con desglose por día + PDF si es facturable.</p>
+                    <a class="btn btn-primary" asp-page="/Viaticos/Index">Ir a viáticos</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h6">Mi ficha</h2>
+                    <p class="text-muted small mb-2">Tus datos internos (solo tú lo ves).</p>
+                    <a class="btn btn-outline-primary" asp-page="/Employees/MyProfile">Ver mi ficha</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}

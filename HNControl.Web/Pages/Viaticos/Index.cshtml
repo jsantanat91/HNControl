@@ -1,0 +1,64 @@
+﻿@page
+@model HNControl.Web.Pages.Viaticos.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Mis viáticos</h1>
+        <div class="text-muted small">Semanal (lunes a domingo) con desglose por día</div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="post">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Fecha de la semana (elige cualquier día)</label>
+                    <input class="form-control" asp-for="AnyDayInWeek" type="date" />
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" type="submit">Crear / Abrir semana</button>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">
+                Tip: guardamos la semana por el <b>lunes</b>. Si pones jueves, se corrige solo.
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Semana (lunes)</th>
+                    <th>Status</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Model.Weeks)
+                {
+                    <tr>
+                        <td>@w.WeekStartDate.ToString("yyyy-MM-dd")</td>
+                        <td>@w.Status</td>
+                        <td class="text-end">@w.Total.ToString("C")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Viaticos/Week" asp-route-id="@w.Id">Abrir</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

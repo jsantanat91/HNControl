@@ -1,0 +1,40 @@
+﻿@page
+@model HNControl.Web.Pages.Knowledge.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Documentos</h1>
+        <div class="text-muted small">Base de conocimiento (links a Excel / docs)</div>
+    </div>
+
+    @if (User.IsInRole(AppRoles.Admin))
+    {
+        <a class="btn btn-primary" asp-page="/Knowledge/Create">+ Nuevo link</a>
+    }
+</div>
+
+@foreach (var g in Model.Grouped)
+{
+    <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">@g.Category</div>
+        <div class="card-body">
+            <div class="list-group">
+                @foreach (var l in g.Links)
+                {
+                    <a class="list-group-item list-group-item-action" href="@l.Url" target="_blank">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="fw-semibold">@l.Title</div>
+                                <div class="text-muted small">@l.Description</div>
+                            </div>
+                            <div class="text-muted small">@l.CreatedAt</div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,62 @@
+﻿@page
+@model HNControl.Web.Pages.Viaticos.AddEntryModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Agregar gasto</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" enctype="multipart/form-data" class="card shadow-sm">
+    <div class="card-body">
+        <input type="hidden" asp-for="WeekId" />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Día</label>
+                <input class="form-control" asp-for="DayDate" type="date" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Categoría</label>
+                <select class="form-select" asp-for="Category" asp-items="Model.CategoryItems"></select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Monto</label>
+                <input class="form-control" asp-for="Amount" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <input class="form-control" asp-for="Description" />
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="IsBillable" />
+                    <label class="form-check-label">Facturable</label>
+                </div>
+                <div class="text-muted small">Si es facturable, sube el PDF. Si no, no te deja guardar (porque luego “se nos pierde” la factura 😄).</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">PDF (solo si facturable)</label>
+                <input class="form-control" asp-for="PdfFile" type="file" accept="application/pdf" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@Model.WeekId">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,55 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.Projects.AddAccessModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Agregar acceso</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <input type="hidden" asp-for="ProjectId" />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Etiqueta (ej. DVR, WiFi, Cam 1)</label>
+                <input class="form-control" asp-for="Input.Label" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Host/URL</label>
+                <input class="form-control" asp-for="Input.HostOrUrl" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Usuario</label>
+                <input class="form-control" asp-for="Input.Username" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Password</label>
+                <input class="form-control" asp-for="Input.Password" />
+                <div class="text-muted small">Se guarda cifrado en BD (DataProtection).</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@Model.ProjectId">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,110 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.Projects.DetailsModel
+@{
+    Layout = "_Layout";
+}
+
+@if (Model.Project == null)
+{
+    <div class="alert alert-warning">Proyecto no encontrado o sin permisos.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">@Model.Project.Title</h1>
+        <div class="text-muted small">
+            Cliente: <b>@Model.ClientName</b> · Responsable: <b>@Model.Responsible</b>
+            · Inicio: @Model.Project.StartDate.ToString("yyyy-MM-dd")
+            · Estimado: @Model.Project.EstimatedEndDate.ToString("yyyy-MM-dd")
+            · Status: <b>@Model.Project.Status</b>
+            @if (Model.IsOverdue)
+            {
+                <span class="badge text-bg-warning ms-2">SLA vencido</span>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Volver</a>
+
+        @if (User.IsInRole(AppRoles.Admin) && Model.Project.Status == ProjectStatus.Open)
+        {
+            <a class="btn btn-outline-danger" asp-page="/Projects/Close" asp-route-id="@Model.Project.Id">Cerrar</a>
+        }
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="text-muted small">Objetivo</div>
+                <div class="mb-3">@Model.Project.Objective</div>
+
+                <div class="text-muted small">Alcance</div>
+                <div class="mb-3">@Model.Project.Scope</div>
+
+                <div class="text-muted small">Descripción</div>
+                <div class="mb-3">@Model.Project.ActivityDescription</div>
+
+                <div class="text-muted small">Comentarios</div>
+                <div>@Model.Project.AdditionalComments</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Accesos del cliente</div>
+                @if (User.IsInRole(AppRoles.Admin))
+                {
+                    <a class="btn btn-sm btn-primary" asp-page="/Projects/AddAccess" asp-route-id="@Model.Project.Id">+ Agregar</a>
+                }
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Etiqueta</th>
+                            <th>Host/URL</th>
+                            <th>User</th>
+                            <th>Password</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.AccessRows.Any())
+                        {
+                            <tr><td colspan="4" class="text-muted">Sin accesos</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var a in Model.AccessRows)
+                            {
+                                <tr>
+                                    <td>@a.Label</td>
+                                    <td class="text-muted">@a.HostOrUrl</td>
+                                    <td>@a.Username</td>
+                                    <td>
+                                        @if (a.CanViewPassword)
+                                        {
+                                            <code>@a.PasswordPlain</code>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">••••••</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+                <div class="text-muted small mt-2">
+                    Los passwords están cifrados en DB. Aquí solo se muestran si eres admin (o responsable).
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,44 @@
+﻿@page
+@model HNControl.Web.Pages.Employees.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Empleados</h1>
+        <div class="text-muted small">Admin: alta y gestión</div>
+    </div>
+    <a class="btn btn-primary" asp-page="/Employees/Create">+ Nuevo empleado</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Puesto</th>
+                    <th>Sueldo base</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model.Employees)
+                {
+                    <tr>
+                        <td>@e.FullName</td>
+                        <td>@e.Email</td>
+                        <td>@e.Position</td>
+                        <td>@e.SalaryBase.ToString("C")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Employees/Details" asp-route-userId="@e.UserId">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Employees/Edit" asp-route-userId="@e.UserId">Editar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,50 @@
+﻿@page
+@model HNControl.Web.Pages.Account.LoginModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="h4 mb-3">Ingreso</h1>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Error))
+                {
+                    <div class="alert alert-danger">@Model.Error</div>
+                }
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Correo</label>
+                        <input class="form-control" asp-for="Input.Email" />
+                        <span class="text-danger" asp-validation-for="Input.Email"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <input class="form-control" asp-for="Input.Password" type="password" />
+                        <span class="text-danger" asp-validation-for="Input.Password"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                        <label class="form-check-label">Recordarme</label>
+                    </div>
+
+                    <button class="btn btn-primary w-100" type="submit">Entrar</button>
+
+                    <hr />
+                    <div class="text-muted small">
+                        Solo el admin crea usuarios. Aquí no hay “Regístrate” porque luego se te mete hasta el gato 😄
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

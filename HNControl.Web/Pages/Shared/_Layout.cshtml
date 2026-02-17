@@ -1,0 +1,69 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HN Control</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header class="border-bottom">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white">
+            <div class="container">
+                <a class="navbar-brand fw-bold" asp-page="/Index">HN Control</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="nav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link" asp-page="/Viaticos/Index">Viáticos</a></li>
+
+                        <li class="nav-item"><a class="nav-link" asp-page="/Projects/Index">Proyectos</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-page="/Knowledge/Index">Documentos</a></li>
+
+                        @if (User.IsInRole(AppRoles.Admin))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Clients/Index">Clientes</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Employees/Index">Empleados</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Admin/Viaticos/Index">Admin Viáticos</a></li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Employees/MyProfile">Mi ficha</a></li>
+                        }
+                    </ul>
+
+
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <span class="text-muted small">@User.Identity?.Name</span>
+                            <form method="post" asp-page="/Account/Logout">
+                                <button class="btn btn-outline-dark btn-sm" type="submit">Salir</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btn btn-primary btn-sm" asp-page="/Account/Login">Entrar</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container py-4">
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

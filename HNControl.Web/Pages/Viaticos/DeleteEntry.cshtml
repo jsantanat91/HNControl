@@ -1,0 +1,16 @@
+﻿@page
+@model HNControl.Web.Pages.Viaticos.DeleteEntryModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Eliminar gasto</h1>
+
+<div class="alert alert-warning">
+    Vas a eliminar: <b>@Model.Description</b> por <b>@Model.Amount.ToString("C")</b>.
+</div>
+
+<form method="post" class="d-flex gap-2">
+    <button class="btn btn-danger" type="submit">Sí, eliminar</button>
+    <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@Model.WeekId">Cancelar</a>
+</form>

@@ -1,0 +1,92 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.Viaticos.WeekModel
+@{
+    Layout = "_Layout";
+}
+
+@if (Model.Week == null)
+{
+    <div class="alert alert-danger">Semana no encontrada.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Semana: @Model.Week.WeekStartDate.ToString("yyyy-MM-dd")</h1>
+        <div class="text-muted small">Lunes a domingo</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Viaticos/Index">Volver</a>
+</div>
+
+@foreach (var day in Model.Days)
+{
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">@day.Date.ToString("dddd dd MMM yyyy")</div>
+            <a class="btn btn-sm btn-primary"
+               asp-page="/Viaticos/AddEntry"
+               asp-route-weekId="@Model.Week.Id"
+               asp-route-day="@day.Date.ToString("yyyy-MM-dd")">+ Agregar gasto</a>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Monto</th>
+                        <th>Facturable</th>
+                        <th>PDF</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!day.Entries.Any())
+                    {
+                        <tr><td colspan="6" class="text-muted">Sin gastos</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var e in day.Entries)
+                        {
+                            <tr>
+                                <td>@e.Category</td>
+                                <td>@e.Description</td>
+                                <td class="text-end">@e.Amount.ToString("C")</td>
+                                <td>@(e.IsBillable ? "Sí" : "No")</td>
+                                <td>
+                                    @if (e.AttachmentId != null)
+                                    {
+                                        <a asp-page="/Viaticos/Download" asp-route-attachmentId="@e.AttachmentId">Descargar</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Viaticos/EditEntry" asp-route-entryId="@e.Id">Editar</a>
+                                    <a class="btn btn-sm btn-outline-danger" asp-page="/Viaticos/DeleteEntry" asp-route-entryId="@e.Id">Eliminar</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" class="text-end fw-semibold">Total día</td>
+                        <td class="text-end fw-semibold">@day.Total.ToString("C")</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body d-flex justify-content-between">
+        <div class="text-muted">Total semana</div>
+        <div class="fw-bold">@Model.WeekTotal.ToString("C")</div>
+    </div>
+</div>

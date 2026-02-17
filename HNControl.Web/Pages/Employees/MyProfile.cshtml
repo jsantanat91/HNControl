@@ -1,0 +1,35 @@
+﻿@page
+@model HNControl.Web.Pages.Employees.MyProfileModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Mi ficha</h1>
+
+@if (Model.Profile == null)
+{
+    <div class="alert alert-warning">No hay perfil cargado. Dile al admin que te cree bien 😄</div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Nombre</dt>
+                <dd class="col-sm-9">@Model.Profile.FullName</dd>
+                <dt class="col-sm-3">Correo</dt>
+                <dd class="col-sm-9">@Model.Profile.Email</dd>
+                <dt class="col-sm-3">NSS</dt>
+                <dd class="col-sm-9">@Model.Profile.Nss</dd>
+                <dt class="col-sm-3">Sexo</dt>
+                <dd class="col-sm-9">@Model.Profile.Gender</dd>
+                <dt class="col-sm-3">Puesto</dt>
+                <dd class="col-sm-9">@Model.Profile.Position</dd>
+                <dt class="col-sm-3">Teléfono</dt>
+                <dd class="col-sm-9">@Model.Profile.Phone</dd>
+                <dt class="col-sm-3">Sueldo base</dt>
+                <dd class="col-sm-9">@Model.Profile.SalaryBase.ToString("C")</dd>
+            </dl>
+        </div>
+    </div>
+}

@@ -1,0 +1,65 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.Clients.DetailsModel
+@{
+    Layout = "_Layout";
+}
+
+@if (Model.Client == null)
+{
+    <div class="alert alert-warning">Cliente no encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">@Model.Client.Name</h1>
+        <div class="text-muted small">@Model.Client.Kind · @Model.Client.Email · @Model.Client.Phone</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
+        <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="text-muted small">Dirección</div>
+        <div>@Model.Client.Address</div>
+        <hr />
+        <div class="text-muted small">Servicios</div>
+        <div>@string.Join(", ", Model.Services)</div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header fw-semibold">Proyectos ligados</div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Responsable</th>
+                    <th>Inicio</th>
+                    <th>Estimado fin</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Projects)
+                {
+                    <tr>
+                        <td>@p.Title</td>
+                        <td>@p.Responsible</td>
+                        <td>@p.StartDate</td>
+                        <td>@p.EstEnd</td>
+                        <td>@p.Status</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

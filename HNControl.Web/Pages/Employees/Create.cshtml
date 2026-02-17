@@ -1,0 +1,64 @@
+﻿@page
+@model HNControl.Web.Pages.Employees.CreateModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Nuevo empleado</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Nombre</label>
+                <input class="form-control" asp-for="Input.FullName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Correo (login)</label>
+                <input class="form-control" asp-for="Input.Email" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">NSS</label>
+                <input class="form-control" asp-for="Input.Nss" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Sexo</label>
+                <input class="form-control" asp-for="Input.Gender" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Teléfono</label>
+                <input class="form-control" asp-for="Input.Phone" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Puesto</label>
+                <input class="form-control" asp-for="Input.Position" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Sueldo base</label>
+                <input class="form-control" asp-for="Input.SalaryBase" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Contraseña inicial</label>
+                <input class="form-control" asp-for="Input.Password" type="password" />
+                <div class="text-muted small">El empleado podrá cambiarla después (fase 2/3 agregamos “cambiar contraseña”).</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Crear</button>
+        <a class="btn btn-outline-secondary" asp-page="/Employees/Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

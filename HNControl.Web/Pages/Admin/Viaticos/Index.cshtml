@@ -1,0 +1,37 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.Viaticos.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Admin · Viáticos</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Empleado</th>
+                    <th>Semana</th>
+                    <th class="text-end">Total</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in Model.Rows)
+                {
+                    <tr>
+                        <td>@w.EmployeeName</td>
+                        <td>@w.WeekStart.ToString("yyyy-MM-dd")</td>
+                        <td class="text-end">@w.Total.ToString("C")</td>
+                        <td>@w.Status</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Viaticos/Week" asp-route-id="@w.WeekId">Abrir</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

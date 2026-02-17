@@ -1,0 +1,44 @@
+﻿@page
+@model HNControl.Web.Pages.Clients.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Clientes</h1>
+        <div class="text-muted small">Alta y control interno</div>
+    </div>
+    <a class="btn btn-primary" asp-page="/Clients/Create">+ Nuevo cliente</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Correo</th>
+                    <th>Servicios</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Rows)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                        <td>@c.Kind</td>
+                        <td>@c.Email</td>
+                        <td class="text-muted">@c.Services</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Clients/Details" asp-route-id="@c.Id">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Clients/Edit" asp-route-id="@c.Id">Editar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

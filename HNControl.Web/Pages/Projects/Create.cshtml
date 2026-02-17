@@ -1,0 +1,72 @@
+﻿@page
+@model HNControl.Web.Pages.Projects.CreateModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Nuevo proyecto</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Responsable</label>
+                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Título</label>
+                <input class="form-control" asp-for="Input.Title" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Inicio</label>
+                <input class="form-control" asp-for="Input.StartDate" type="date" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Término estimado (SLA)</label>
+                <input class="form-control" asp-for="Input.EstimatedEndDate" type="date" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Objetivo</label>
+                <textarea class="form-control" asp-for="Input.Objective" rows="2"></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Alcance</label>
+                <textarea class="form-control" asp-for="Input.Scope" rows="2"></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descripción de actividad</label>
+                <textarea class="form-control" asp-for="Input.ActivityDescription" rows="3"></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Comentarios adicionales</label>
+                <textarea class="form-control" asp-for="Input.AdditionalComments" rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Crear</button>
+        <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
