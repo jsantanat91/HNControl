@@ -1,6 +1,7 @@
 using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -60,9 +61,10 @@ public class IndexModel : PageModel
 
     private static (DateTime start, DateTime end) GetCurrentQuincena(DateTime? start)
     {
-        var d = (start ?? DateTime.Today).Date;
+        var d = (start ?? DateTime.Now).Date;
         if (d.Day <= 15)
-            return (new DateTime(d.Year, d.Month, 1), new DateTime(d.Year, d.Month, 15));
-        return (new DateTime(d.Year, d.Month, 16), new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month)));
+            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
+
+        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
     }
 }

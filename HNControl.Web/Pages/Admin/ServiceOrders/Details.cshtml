@@ -1,4 +1,4 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel
 @{
     Layout = "_Layout";
@@ -22,8 +22,8 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Volver</a>
-        <a class="btn btn-outline-primary" href="@Model.PublicUrl" target="_blank">Link público</a>
+        <a class="btn btn-outline-secondary" href="../Index">Volver</a>
+        <a class="btn btn-outline-primary" href="@Model.PublicUrl" target="_blank" rel="noopener">Link público</a>
     </div>
 </div>
 
@@ -73,8 +73,7 @@
                                     <td class="text-muted">@e.Date</td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-primary"
-                                           asp-page="/Admin/ServiceOrders/DownloadEvidence"
-                                           asp-route-evidenceId="@e.Id">Descargar</a>
+                                           href="../DownloadEvidence?evidenceId=@e.Id">Descargar</a>
                                     </td>
                                 </tr>
                             }
@@ -105,9 +104,10 @@
 
                 @if (!string.IsNullOrWhiteSpace(Model.Order.PdfStoragePath))
                 {
-                    <a class="btn btn-outline-secondary w-100"
-                       asp-page="/Admin/ServiceOrders/DownloadPdf"
-                       asp-route-id="@Model.Order.Id">Descargar PDF</a>
+                    <!-- ✅ RELATIVO + handler: no se rompe con /interno -->
+                    <a class="btn btn-outline-secondary w-100" href="?handler=DownloadPdf">
+                        Descargar PDF
+                    </a>
                 }
 
                 <form method="post" asp-page-handler="SendEmail">

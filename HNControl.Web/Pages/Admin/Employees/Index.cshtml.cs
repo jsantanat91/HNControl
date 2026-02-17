@@ -12,10 +12,14 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    public List<EmployeeProfile> Rows { get; set; } = new();
+    public record Row(string UserId, string FullName, string Email, string Position, decimal SalaryBase);
+    public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
     {
-        Rows = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
+        Rows = await _db.EmployeeProfiles
+            .OrderBy(e => e.FullName)
+            .Select(e => new Row(e.UserId, e.FullName, e.Email, e.Position, e.SalaryBase))
+            .ToListAsync();
     }
 }

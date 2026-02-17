@@ -24,6 +24,7 @@ public class CreateModel : PageModel
     {
         [Required] public ClientKind Kind { get; set; } = ClientKind.Moral;
         [Required, MaxLength(200)] public string Name { get; set; } = "";
+        [MaxLength(13)] public string Rfc { get; set; } = "";
         [EmailAddress, MaxLength(256)] public string Email { get; set; } = "";
         [MaxLength(40)] public string Phone { get; set; } = "";
         [MaxLength(400)] public string Address { get; set; } = "";
@@ -42,6 +43,7 @@ public class CreateModel : PageModel
         {
             Kind = Input.Kind,
             Name = Input.Name.Trim(),
+            Rfc = (Input.Rfc ?? "").Trim(),
             Email = (Input.Email ?? "").Trim(),
             Phone = (Input.Phone ?? "").Trim(),
             Address = (Input.Address ?? "").Trim(),

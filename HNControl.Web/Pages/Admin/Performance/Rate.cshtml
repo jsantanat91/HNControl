@@ -1,7 +1,8 @@
 ﻿@page
-@model HNControl.Web.Pages.Performance.RateModel
+@model HNControl.Web.Pages.Admin.Performance.RateModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Calificar";
 }
 
 <h1 class="h4 mb-3">Calificar rendimiento</h1>
@@ -20,7 +21,7 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Inicio (quincena)</label>
+                <label class="form-label">Inicio</label>
                 <input class="form-control" asp-for="Input.PeriodStart" type="date" />
             </div>
 
@@ -45,7 +46,7 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Ejecución de proyectos (1–5)</label>
+                <label class="form-label">Ejecución (1–5)</label>
                 <input class="form-control" asp-for="Input.ProjectExecution" type="number" min="1" max="5" />
             </div>
 
@@ -64,16 +65,11 @@
                 <textarea class="form-control" asp-for="Input.Notes" rows="2"></textarea>
             </div>
         </div>
-
-        <hr />
-        <div class="text-muted small">
-            El sistema calcula el variable % como: <b>promedio / 5</b>. (0.0 a 1.0)
-        </div>
     </div>
 
     <div class="card-footer d-flex gap-2">
         <button class="btn btn-primary" type="submit">Guardar</button>
-        <a class="btn btn-outline-secondary" asp-page="/Performance/Index">Volver</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index">Volver</a>
     </div>
 </form>
 

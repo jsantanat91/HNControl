@@ -1,4 +1,4 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.EditModel
 @{
     Layout = "_Layout";
@@ -30,6 +30,11 @@
             <div class="col-md-8">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.Name" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">RFC</label>
+                <input class="form-control" asp-for="Input.Rfc" />
             </div>
 
             <div class="col-md-6">

@@ -1,13 +1,22 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HNControl.Web.Models;
 
 public enum ServiceOrderType
 {
+    [Display(Name = "Mantenimiento correctivo")]
     Correctivo = 1,
+
+    [Display(Name = "Mantenimiento preventivo")]
     Preventivo = 2,
+
+    [Display(Name = "Nueva instalación")]
     NuevaInstalacion = 3
+
+    // Para agregar más opciones:
+    // , [Display(Name = "Reubicación")] Reubicacion = 4
+    // , [Display(Name = "Levantamiento / Diagnóstico")] Levantamiento = 5
 }
 
 public enum ServiceOrderStatus

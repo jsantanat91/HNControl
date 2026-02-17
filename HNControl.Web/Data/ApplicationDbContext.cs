@@ -146,6 +146,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasOne(x => x.Employee).WithMany()
                 .HasForeignKey(x => x.UserId)
                 .HasPrincipalKey(p => p.UserId);
+
             e.HasIndex(x => new { x.UserId, x.PeriodStart, x.PeriodEnd }).IsUnique();
             e.Property(x => x.VariablePercent).HasColumnType("numeric(5,4)");
         });

@@ -13,7 +13,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">@Model.Client.Name</h1>
-        <div class="text-muted small">@Model.Client.Kind · @Model.Client.Email · @Model.Client.Phone</div>
+        <div class="text-muted small">
+            @Model.Client.Kind · RFC: @Model.Client.Rfc · @Model.Client.Email · @Model.Client.Phone
+        </div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>

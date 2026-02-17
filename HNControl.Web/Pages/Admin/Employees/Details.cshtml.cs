@@ -89,12 +89,13 @@ public class DetailsModel : PageModel
             Pay = new PayVm(0m, 0m, (Employee.SalaryBase / 2m) * 0.80m);
         }
 
-        // Chart (últimos 12 periodos)
         var last12 = await _db.PerformanceReviews
-            .Where(r => r.UserId == userId)
-            .OrderBy(r => r.PeriodStart)
-            .TakeLast(12)
-            .ToListAsync();
+      .Where(r => r.UserId == userId)
+      .OrderByDescending(r => r.PeriodStart)
+      .Take(12)
+      .ToListAsync();
+
+        last12.Reverse(); // ahora queda ascendente para la gráfica
 
         var labels = last12.Select(r => r.PeriodStart.ToString("MM-dd")).ToList();
         var values = last12.Select(r => r.VariablePercent).ToList();

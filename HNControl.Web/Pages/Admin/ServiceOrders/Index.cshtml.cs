@@ -23,7 +23,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").TrimEnd('/');
+        var baseUrl = GetPublicBaseUrl();
 
         var list = await _db.ServiceOrders
             .Include(o => o.Client)
@@ -41,5 +41,16 @@ public class IndexModel : PageModel
             o.AssignedEmployee?.FullName ?? o.AssignedUserId,
             $"{baseUrl}/Public/ServiceOrder/{o.PublicToken}"
         )).ToList();
+    }
+
+    private string GetPublicBaseUrl()
+    {
+        var cfgBase = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(cfgBase))
+            return cfgBase.TrimEnd('/');
+
+        var scheme = Request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? Request.Scheme;
+        var host = Request.Headers["X-Forwarded-Host"].FirstOrDefault() ?? Request.Host.Value;
+        return $"{scheme}://{host}".TrimEnd('/');
     }
 }

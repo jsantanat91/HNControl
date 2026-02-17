@@ -11,6 +11,7 @@
 </div>
 
 <form method="post" class="d-flex gap-2">
+    <input type="hidden" asp-for="ProjectId" />
     <button class="btn btn-danger" type="submit">Sí, cerrar</button>
     <a class="btn btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@Model.ProjectId">Cancelar</a>
 </form>

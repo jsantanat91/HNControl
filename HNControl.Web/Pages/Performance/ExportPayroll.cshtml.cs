@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,8 +17,8 @@ public class ExportPayrollModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(DateTime? start, DateTime? end)
     {
-        var periodStart = (start ?? DateTime.Today.AddDays(-14)).Date;
-        var periodEnd = (end ?? DateTime.Today).Date;
+        var periodStart = TimeUtil.UtcDate(start ?? DateTime.UtcNow.AddDays(-14));
+        var periodEnd = TimeUtil.UtcDate(end ?? DateTime.UtcNow);
 
         var emps = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
 

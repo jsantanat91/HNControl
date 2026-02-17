@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -79,16 +80,19 @@ public class EditModel : PageModel
         Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == Input.UserId);
         if (Employee == null) return NotFound();
 
+        var ps = TimeUtil.UtcDate(Input.PeriodStart);
+        var pe = TimeUtil.UtcDate(Input.PeriodEnd);
+
         var r = await _db.PerformanceReviews
-            .FirstOrDefaultAsync(x => x.UserId == Input.UserId && x.PeriodStart == Input.PeriodStart && x.PeriodEnd == Input.PeriodEnd);
+            .FirstOrDefaultAsync(x => x.UserId == Input.UserId && x.PeriodStart == ps && x.PeriodEnd == pe);
 
         if (r == null)
         {
             r = new PerformanceReview
             {
                 UserId = Input.UserId,
-                PeriodStart = Input.PeriodStart,
-                PeriodEnd = Input.PeriodEnd,
+                PeriodStart = ps,
+                PeriodEnd = pe,
                 CreatedAt = DateTime.UtcNow
             };
             _db.PerformanceReviews.Add(r);
@@ -110,8 +114,10 @@ public class EditModel : PageModel
 
     private static (DateTime start, DateTime end) GetQuincena(DateTime? start)
     {
-        var d = (start ?? DateTime.Today).Date;
-        if (d.Day <= 15) return (new DateTime(d.Year, d.Month, 1), new DateTime(d.Year, d.Month, 15));
-        return (new DateTime(d.Year, d.Month, 16), new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month)));
+        var d = (start ?? DateTime.Now).Date;
+        if (d.Day <= 15)
+            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
+
+        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
     }
 }

@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,8 +22,8 @@ public class WeekModel : PageModel
     }
 
     public ViaticWeek? Week { get; set; }
-    public string? Error { get; set; }
-    public string? Info { get; set; }
+    [TempData] public string? Error { get; set; }
+    [TempData] public string? Info { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {

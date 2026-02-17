@@ -15,9 +15,9 @@ public class DetailsModel : PageModel
     private readonly IConfiguration _cfg;
     private readonly IServiceOrderPdfRenderer _pdf;
     private readonly IFileStorage _storage;
-    private readonly HNControl.Web.Services.IEmailSender _email;
+    private readonly IEmailSender _email;
 
-    public DetailsModel(ApplicationDbContext db, IConfiguration cfg, IServiceOrderPdfRenderer pdf, IFileStorage storage, HNControl.Web.Services.IEmailSender email)
+    public DetailsModel(ApplicationDbContext db, IConfiguration cfg, IServiceOrderPdfRenderer pdf, IFileStorage storage, IEmailSender email)
     {
         _db = db;
         _cfg = cfg;
@@ -37,8 +37,8 @@ public class DetailsModel : PageModel
     public record EvidenceRow(Guid Id, string Name, string Date);
     public List<EvidenceRow> Evidences { get; set; } = new();
 
-    public string TechSignature { get; set; } = "—";
-    public string ClientSignature { get; set; } = "—";
+    public string TechSignature { get; set; } = "â€”";
+    public string ClientSignature { get; set; } = "â€”";
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
@@ -46,16 +46,46 @@ public class DetailsModel : PageModel
         return Order == null ? NotFound() : Page();
     }
 
+    // âœ… DESCARGA DIRECTO DESDE DETAILS (evita rutas /Admin/ServiceOrders/DownloadPdf)
+    // URL: /Admin/ServiceOrders/Details/{id}?handler=DownloadPdf
+    public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)
+    {
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound("Orden no encontrada.");
+
+        if (string.IsNullOrWhiteSpace(o.PdfStoragePath))
+            return NotFound("La orden no tiene PDF generado aÃºn.");
+
+        try
+        {
+            var (stream, contentType, downloadName) =
+                await _storage.OpenAsync(o.PdfStoragePath, $"OrdenServicio_{id:N}.pdf");
+
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            // Fuerza descarga con nombre correcto
+            return File(ms.ToArray(), contentType ?? "application/pdf", downloadName);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound("El archivo PDF no existe en el storage (ruta guardada invÃ¡lida).");
+        }
+    }
+
     public async Task<IActionResult> OnPostGeneratePdfAsync(Guid id)
     {
         await LoadAsync(id);
         if (Order == null) return NotFound();
 
-        // Generar bytes PDF (renderer)
         var pdfBytes = await _pdf.RenderAsync(Order);
 
-        // Guardar PDF
-        var (path, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"serviceorders/{Order.Id}", $"order_{Order.Id:N}.pdf", "application/pdf");
+        var (path, _, _) = await _storage.SaveBytesAsync(
+            pdfBytes,
+            $"serviceorders/{Order.Id}",
+            $"order_{Order.Id:N}.pdf",
+            "application/pdf");
+
         Order.PdfStoragePath = path;
         Order.PdfGeneratedAt = DateTime.UtcNow;
 
@@ -83,20 +113,25 @@ public class DetailsModel : PageModel
             return Page();
         }
 
-        // Abrir PDF para adjuntarlo
-        var (stream, contentType, downloadName) = await _storage.OpenAsync(Order.PdfStoragePath, "OrdenServicio.pdf");
+        var (stream, contentType, _) = await _storage.OpenAsync(Order.PdfStoragePath, "OrdenServicio.pdf");
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
 
         var html = $@"
-            <div style='font-family:Arial'>
-              <h2>Orden de Servicio</h2>
-              <p><b>Cliente:</b> {Order.Client.Name}</p>
-              <p><b>Título:</b> {Order.Title}</p>
-              <p>Adjunto PDF de cierre.</p>
-            </div>";
+<div style='font-family:Arial'>
+  <h2>Orden de Servicio</h2>
+  <p><b>Cliente:</b> {Order.Client.Name}</p>
+  <p><b>TÃ­tulo:</b> {Order.Title}</p>
+  <p>Adjunto PDF de cierre.</p>
+</div>";
 
-        await _email.SendAsync(Order.Client.Email, $"Orden de Servicio - {Order.Title}", html, ms.ToArray(), "OrdenServicio.pdf", contentType);
+        await _email.SendAsync(
+            Order.Client.Email,
+            $"Orden de Servicio - {Order.Title}",
+            html,
+            ms.ToArray(),
+            "OrdenServicio.pdf",
+            contentType);
 
         Info = $"Correo enviado a {Order.Client.Email}.";
         return Page();
@@ -104,7 +139,11 @@ public class DetailsModel : PageModel
 
     private async Task LoadAsync(Guid id)
     {
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").TrimEnd('/');
+        // âœ… BaseUrl con fallback al host actual (soporta /interno si usas PathBase)
+        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+        baseUrl = baseUrl.TrimEnd('/');
 
         Order = await _db.ServiceOrders
             .Include(o => o.Client)
@@ -131,7 +170,7 @@ public class DetailsModel : PageModel
         var tech = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var client = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
-        TechSignature = tech == null ? "—" : $"{tech.SignedByName} ({tech.SignedAt.ToLocalTime():yyyy-MM-dd HH:mm})";
-        ClientSignature = client == null ? "—" : $"{client.SignedByName} ({client.SignedAt.ToLocalTime():yyyy-MM-dd HH:mm})";
+        TechSignature = tech == null ? "â€”" : $"{tech.SignedByName} ({tech.SignedAt.ToLocalTime():yyyy-MM-dd HH:mm})";
+        ClientSignature = client == null ? "â€”" : $"{client.SignedByName} ({client.SignedAt.ToLocalTime():yyyy-MM-dd HH:mm})";
     }
 }

@@ -1,0 +1,155 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.Performance.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard · Evaluaciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Evaluaciones / KPI</h1>
+        <div class="text-muted small">Quincena: @Model.PeriodStart:dd/MM/yyyy – @Model.PeriodEnd:dd/MM/yyyy</div>
+    </div>
+
+    <form method="get" class="d-flex gap-2">
+        <input class="form-control form-control-sm" style="width:100px" name="year" value="@Model.Year" />
+        <input class="form-control form-control-sm" style="width:80px" name="month" value="@Model.Month" />
+        <select class="form-select form-select-sm" style="width:120px" asp-for="Half">
+            <option value="1">1–15</option>
+            <option value="2">16–Fin</option>
+        </select>
+        <button class="btn btn-sm btn-primary">Aplicar</button>
+
+        <a class="btn btn-sm btn-outline-success"
+           href="/Performance/ExportPayroll?start=@Model.PeriodStart.ToString("yyyy-MM-dd")&end=@Model.PeriodEnd.ToString("yyyy-MM-dd")">
+            Export Nómina (CSV)
+        </a>
+    </form>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Empleados</div>
+                <div class="h4 m-0">@Model.EmployeesTotal</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Evaluados</div>
+                <div class="h4 m-0">@Model.EmployeesRated</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Promedio (si existe)</div>
+                <div class="h4 m-0">@((Model.AvgScoreAll ?? 0).ToString("0.00"))</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Total nómina (80/20)</div>
+                <div class="h4 m-0">@Model.TotalPayrollPay.ToString("C")</div>
+                <div class="text-muted small">Fijo 80: @Model.TotalPayroll80.ToString("C") · Variable: @Model.TotalPayroll20.ToString("C")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="fw-semibold mb-2">Total a pagar por empleado</div>
+                <canvas id="payChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="fw-semibold mb-2">% variable (20%) por empleado</div>
+                <canvas id="varChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Empleado</th>
+                        <th class="text-end">Sueldo base</th>
+                        <th class="text-center">Evaluado</th>
+                        <th class="text-center">Prom</th>
+                        <th class="text-end">% Var</th>
+                        <th class="text-end">Var $</th>
+                        <th class="text-end">Total a pagar</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@r.FullName</td>
+                            <td class="text-end">@r.SalaryBase.ToString("C")</td>
+                            <td class="text-center">
+                                @if (r.HasReview)
+                                {
+                                    <span class="badge bg-success">Sí</span>
+                                }
+                                else
+                                {
+
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td class="text-center">@((r.AvgScore ?? 0).ToString("0.00"))</td>
+                            <td class="text-end">@((r.VariablePercent * 100m).ToString("0.##"))%</td>
+                            <td class="text-end">@r.VariableAmount.ToString("C")</td>
+                            <td class="text-end fw-semibold">@r.TotalPay.ToString("C")</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   href="/Admin/Performance/Edit?userId=@r.UserId&start=@Model.PeriodStart.ToString("yyyy-MM-dd")"
+                                   )">
+                                     Calificar
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        const labels = @Html.Raw(Model.LabelsJson);
+        const totalPay = @Html.Raw(Model.TotalPayJson);
+        const varPct = @Html.Raw(Model.VarPercentJson);
+
+        new Chart(document.getElementById('payChart'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: 'Total a pagar', data: totalPay }] },
+          options: { responsive: true, plugins: { legend: { display: true } } }
+        });
+
+        new Chart(document.getElementById('varChart'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: '% Variable', data: varPct }] },
+          options: { responsive: true, plugins: { legend: { display: true } } }
+        });
+    </script>
+}

@@ -1,3 +1,4 @@
+
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +14,9 @@ public class CloseModel : PageModel
     private readonly ApplicationDbContext _db;
     public CloseModel(ApplicationDbContext db) => _db = db;
 
-    [BindProperty(SupportsGet = true)] public Guid ProjectId { get; set; }
+    [BindProperty(SupportsGet = true)]
+    public Guid ProjectId { get; set; }
+
     public string Title { get; set; } = "";
 
     public async Task<IActionResult> OnGetAsync(Guid id)
@@ -21,6 +24,7 @@ public class CloseModel : PageModel
         ProjectId = id;
         var p = await _db.Projects.FirstOrDefaultAsync(x => x.Id == id);
         if (p == null) return NotFound();
+
         Title = p.Title;
         return Page();
     }
@@ -32,6 +36,8 @@ public class CloseModel : PageModel
 
         p.Status = ProjectStatus.Closed;
         p.ClosedAt = DateTime.UtcNow;
+        p.ClosedByUserId = User?.Identity?.Name;
+        p.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Projects/Details", new { id = ProjectId });

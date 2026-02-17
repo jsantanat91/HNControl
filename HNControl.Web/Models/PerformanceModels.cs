@@ -10,7 +10,7 @@ public class PerformanceReview
     [MaxLength(64)]
     public string UserId { get; set; } = default!;
 
-    // ✅ navegación opcional (para Include / DbContext config viejo)
+    // Navegación opcional (para Include)
     [ForeignKey(nameof(UserId))]
     public EmployeeProfile? Employee { get; set; }
 
@@ -31,7 +31,6 @@ public class PerformanceReview
     [MaxLength(1200)]
     public string Notes { get; set; } = "";
 
-    // ✅ compat con tu página Rate (si la tienes)
     [MaxLength(64)]
     public string? RatedByUserId { get; set; }
 
@@ -42,7 +41,9 @@ public class PerformanceReview
 
     public void Recalc()
     {
-        var avg = (PersonalPerformance + Teamwork + PunctualityAttendance + ProjectExecution + OrderCleanliness + TechnicalSkills) / 6m;
+        var avg = (PersonalPerformance + Teamwork + PunctualityAttendance +
+                   ProjectExecution + OrderCleanliness + TechnicalSkills) / 6m;
+
         VariablePercent = Math.Round(avg / 5m, 4); // 0..1
         UpdatedAt = DateTime.UtcNow;
     }

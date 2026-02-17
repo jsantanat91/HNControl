@@ -13,9 +13,9 @@ namespace HNControl.Web.Pages.Admin.Employees;
 public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    private readonly UserManager<IdentityUser> _userManager;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public EditModel(ApplicationDbContext db, UserManager<IdentityUser> userManager)
+    public EditModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
     {
         _db = db;
         _userManager = userManager;
@@ -34,7 +34,7 @@ public class EditModel : PageModel
         [MaxLength(80)] public string Position { get; set; } = "";
 
         [MaxLength(40)] public string? Phone { get; set; }
-        [MaxLength(1)] public string? Sex { get; set; }
+        [MaxLength(20)] public string? Sex { get; set; }
         [MaxLength(20)] public string? Nss { get; set; }
 
         [Required, EmailAddress] public string Email { get; set; } = "";
@@ -47,7 +47,7 @@ public class EditModel : PageModel
         if (Employee == null) return NotFound();
 
         var user = await _userManager.FindByIdAsync(userId);
-        var email = user?.Email ?? "";
+        var email = user?.Email ?? Employee.Email ?? "";
 
         Input = new InputModel
         {
@@ -78,22 +78,26 @@ public class EditModel : PageModel
         Employee.Sex = (Input.Sex ?? "").Trim();
         Employee.Nss = (Input.Nss ?? "").Trim();
         Employee.SalaryBase = Input.SalaryBase;
+        Employee.Email = Input.Email.Trim();
+        Employee.UpdatedAt = DateTime.UtcNow;
 
-        // Update Identity email
+        // Update Identity email/username
         var user = await _userManager.FindByIdAsync(Input.UserId);
         if (user != null)
         {
-            if (!string.Equals(user.Email, Input.Email, StringComparison.OrdinalIgnoreCase))
+            var newEmail = Input.Email.Trim();
+
+            if (!string.Equals(user.Email, newEmail, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(user.UserName, newEmail, StringComparison.OrdinalIgnoreCase))
             {
-                user.Email = Input.Email.Trim();
-                user.UserName = Input.Email.Trim();
+                user.Email = newEmail;
+                user.UserName = newEmail;
                 await _userManager.UpdateAsync(user);
             }
         }
 
         await _db.SaveChangesAsync();
 
-        Info = "Empleado actualizado.";
-        return RedirectToPage("/Admin/Employees/Details", new { userId = Input.UserId });
+        return RedirectToPage("./Details", new { userId = Input.UserId });
     }
 }

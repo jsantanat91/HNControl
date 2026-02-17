@@ -2,19 +2,24 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace HNControl.Web.Pages.Performance;
+namespace HNControl.Web.Pages.Admin.Performance;
 
 [Authorize(Roles = AppRoles.Admin)]
 public class RateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public RateModel(ApplicationDbContext db) => _db = db;
+
+    public RateModel(ApplicationDbContext db)
+    {
+        _db = db;
+    }
 
     public SelectList EmployeeItems { get; set; } = default!;
     public string? Error { get; set; }
@@ -25,8 +30,9 @@ public class RateModel : PageModel
     {
         [Required] public string UserId { get; set; } = "";
 
-        [DataType(DataType.Date)] public DateTime PeriodStart { get; set; } = DateTime.Today.AddDays(-14);
-        [DataType(DataType.Date)] public DateTime PeriodEnd { get; set; } = DateTime.Today;
+        // Date-only, pero SIEMPRE en UTC para Postgres timestamptz.
+        [DataType(DataType.Date)] public DateTime PeriodStart { get; set; } = TimeUtil.UtcDate(DateTime.UtcNow.AddDays(-14));
+        [DataType(DataType.Date)] public DateTime PeriodEnd { get; set; } = TimeUtil.UtcDate(DateTime.UtcNow);
 
         [Range(1, 5)] public int PersonalPerformance { get; set; } = 3;
         [Range(1, 5)] public int Teamwork { get; set; } = 3;
@@ -38,12 +44,15 @@ public class RateModel : PageModel
         [MaxLength(600)] public string Notes { get; set; } = "";
     }
 
-    public async Task OnGetAsync(string? userId)
+    public async Task OnGetAsync(string? userId, DateTime? start = null, DateTime? end = null)
     {
         await LoadEmployeesAsync();
 
         if (!string.IsNullOrWhiteSpace(userId))
             Input.UserId = userId;
+
+        if (start.HasValue) Input.PeriodStart = TimeUtil.UtcDate(start.Value);
+        if (end.HasValue) Input.PeriodEnd = TimeUtil.UtcDate(end.Value);
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -51,24 +60,25 @@ public class RateModel : PageModel
         await LoadEmployeesAsync();
         if (!ModelState.IsValid) return Page();
 
-        if (Input.PeriodEnd.Date < Input.PeriodStart.Date)
+        var ps = TimeUtil.UtcDate(Input.PeriodStart);
+        var pe = TimeUtil.UtcDate(Input.PeriodEnd);
+
+        if (pe < ps)
         {
             Error = "La fecha fin no puede ser menor al inicio.";
             return Page();
         }
 
-        // Upsert por periodo
         var existing = await _db.PerformanceReviews
             .FirstOrDefaultAsync(r =>
                 r.UserId == Input.UserId &&
-                r.PeriodStart.Date == Input.PeriodStart.Date &&
-                r.PeriodEnd.Date == Input.PeriodEnd.Date);
+                r.PeriodStart == ps &&
+                r.PeriodEnd == pe);
 
         var avg = (Input.PersonalPerformance + Input.Teamwork + Input.PunctualityAttendance +
                    Input.ProjectExecution + Input.OrderCleanliness + Input.TechnicalSkills) / 6m;
 
         var variablePercent = Math.Round(avg / 5m, 4); // 0..1
-
         var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 
         if (existing == null)
@@ -76,8 +86,8 @@ public class RateModel : PageModel
             _db.PerformanceReviews.Add(new PerformanceReview
             {
                 UserId = Input.UserId,
-                PeriodStart = Input.PeriodStart.Date,
-                PeriodEnd = Input.PeriodEnd.Date,
+                PeriodStart = ps,
+                PeriodEnd = pe,
 
                 PersonalPerformance = Input.PersonalPerformance,
                 Teamwork = Input.Teamwork,
@@ -108,7 +118,9 @@ public class RateModel : PageModel
         }
 
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Performance/Index");
+
+        // regresa al índice admin, apuntando a la misma quincena
+        return RedirectToPage("/Admin/Performance/Index", new { start = ps });
     }
 
     private async Task LoadEmployeesAsync()

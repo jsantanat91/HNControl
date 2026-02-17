@@ -39,46 +39,21 @@
                         {
                             if (User.IsInRole(AppRoles.Admin))
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard">Dashboard</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index">Empleados</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Clients")" asp-page="/Clients/Index">Clientes</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Projects")" asp-page="/Projects/Index">Proyectos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Week">Viáticos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index">Órdenes</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/ServiceOrderTemplates")" asp-page="/Admin/ServiceOrderTemplates/Index">Plantillas</a>
-                                </li>
+                                <li class="nav-item"><a class="nav-link" href="/Admin/Dashboard">Dashboard</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Admin/Employees/Index">Empleados</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Clients/Index">Clientes</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Projects/Index">Proyectos</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Admin/ServiceOrders/Index">Órdenes</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Admin/Viaticos/Index">Viáticos</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Admin/Performance/Dashboard">Evaluaciones / KPI</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/Knowledge/Index">Documentos</a></li>
                             }
-                            else
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Viaticos")" asp-page="/Viaticos/Week">Mis viáticos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Projects")" asp-page="/Projects/Index">Proyectos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link hn-navbtn @Active("/Admin/Employees/MyProfile")" asp-page="/Admin/Employees/MyProfile">Mi ficha</a>
-                                </li>
-                            }
+                             else
+    {
+      <li class="nav-item"><a class="nav-link" href="/Employees/MyProfile">Mi ficha</a></li>
+      <li class="nav-item"><a class="nav-link" href="/Viaticos/Index">Mis viáticos</a></li>
+    }
+  }
 
                             <li class="nav-item hn-sep d-none d-lg-block"></li>
 

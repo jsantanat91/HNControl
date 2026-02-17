@@ -1,44 +1,45 @@
 ﻿@page
 @model HNControl.Web.Pages.Admin.Employees.IndexModel
 @{
-    Layout = "_Layout";
     ViewData["Title"] = "Empleados";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Empleados</h1>
-        <div class="text-muted small">Ver / editar fichas internas</div>
+        <div class="text-muted small">Alta, edición y ficha.</div>
     </div>
+    <a class="btn btn-primary" href="/Admin/Employees/Create">+ Nuevo</a>
 </div>
 
-<div class="card shadow-sm">
-    <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Puesto</th>
-                    <th>Email</th>
-                    <th class="text-end">Sueldo mensual</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var e in Model.Rows)
-                {
+<div class="card shadow-soft">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
                     <tr>
-                        <td>@e.FullName</td>
-                        <td>@e.Position</td>
-                        <td>@e.Email</td>
-                        <td class="text-end">@e.SalaryBase.ToString("0.00")</td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@e.UserId">Ver</a>
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Employees/Edit" asp-route-userId="@e.UserId">Editar</a>
-                        </td>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Puesto</th>
+                        <th class="text-end">Sueldo</th>
+                        <th></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@r.FullName</td>
+                            <td>@r.Email</td>
+                            <td>@r.Position</td>
+                            <td class="text-end">@r.SalaryBase.ToString("C")</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

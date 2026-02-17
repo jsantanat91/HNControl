@@ -12,7 +12,7 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    public record Row(Guid Id, string Name, string Kind, string Email, string Services);
+    public record Row(Guid Id, string Name, string Rfc, string Kind, string Email, string Services);
     public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -26,6 +26,7 @@ public class IndexModel : PageModel
             new Row(
                 c.Id,
                 c.Name,
+                c.Rfc ?? "",
                 c.Kind.ToString(),                // UI friendly (alias)
                 c.Email ?? "",                    // ✅ evita CS8604
                 string.Join(", ",

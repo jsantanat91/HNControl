@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -17,7 +18,7 @@ public class CreateModel : PageModel
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
-    public SelectList TypeItems => new(Enum.GetValues<ServiceOrderType>().Select(x => new { Id = x, Name = x.ToString() }), "Id", "Name");
+    public SelectList TypeItems => new(Enum.GetValues<ServiceOrderType>().Select(x => new { Id = x, Name = ((Enum)x).GetDisplayName() }), "Id", "Name");
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public string? Error { get; set; }
@@ -27,7 +28,7 @@ public class CreateModel : PageModel
         [Required] public Guid ClientId { get; set; }
         [Required] public string AssignedUserId { get; set; } = "";
         [Required] public ServiceOrderType Type { get; set; } = ServiceOrderType.NuevaInstalacion;
-        [DataType(DataType.Date)] public DateTime? EstimatedEndDate { get; set; } = DateTime.Today.AddDays(7);
+        [DataType(DataType.Date)] public DateTime? EstimatedEndDate { get; set; } = TimeUtil.UtcDate(DateTime.UtcNow.AddDays(7));
         [Required, MaxLength(200)] public string Title { get; set; } = "";
         [MaxLength(2000)] public string Description { get; set; } = "";
     }
@@ -46,7 +47,7 @@ public class CreateModel : PageModel
             Type = Input.Type,
             Title = Input.Title.Trim(),
             Description = (Input.Description ?? "").Trim(),
-            EstimatedEndDate = Input.EstimatedEndDate?.Date,
+            EstimatedEndDate = TimeUtil.UtcDate(Input.EstimatedEndDate),
             Status = ServiceOrderStatus.Created,
             CreatedAt = DateTime.UtcNow,
             PublicToken = Guid.NewGuid().ToString("N")
@@ -98,33 +99,33 @@ public class CreateModel : PageModel
         {
             ServiceOrderType.NuevaInstalacion => new List<string>
             {
-                "Levantamiento t閏nico",
+                "Levantamiento t茅cnico",
                 "Cableado (rutas, etiquetas, terminaciones)",
                 "Registros / Canalizaciones",
-                "Tuber韆 / Charola / Canaleta",
-                "C醡aras (montaje y enfoque)",
-                "DVR/NVR (configuraci髇 y almacenamiento)",
+                "Tuber铆a / Charola / Canaleta",
+                "C谩maras (montaje y enfoque)",
+                "DVR/NVR (configuraci贸n y almacenamiento)",
                 "Accesorios (fuentes, conectores, protecciones)",
                 "Red/WiFi (SSID, VLAN, pruebas)",
-                "Pruebas (grabaci髇, playback, acceso remoto)",
-                "Entrega y capacitaci髇 al cliente"
+                "Pruebas (grabaci贸n, playback, acceso remoto)",
+                "Entrega y capacitaci贸n al cliente"
             },
             ServiceOrderType.Preventivo => new List<string>
             {
-                "Levantamiento / diagn髎tico preventivo",
+                "Levantamiento / diagn贸stico preventivo",
                 "Limpieza de equipo / racks",
-                "Revisi髇 cableado / conectores",
-                "Revisi髇 energ韆 / tierras / protecciones",
-                "Actualizaci髇 firmware (si aplica)",
-                "Pruebas de operaci髇 y rendimiento",
+                "Revisi贸n cableado / conectores",
+                "Revisi贸n energ铆a / tierras / protecciones",
+                "Actualizaci贸n firmware (si aplica)",
+                "Pruebas de operaci贸n y rendimiento",
                 "Recomendaciones"
             },
             _ => new List<string>
             {
-                "Diagn髎tico",
-                "Acci髇 correctiva / reparaci髇",
-                "Pruebas de verificaci髇",
-                "Validaci髇 con cliente",
+                "Diagn贸stico",
+                "Acci贸n correctiva / reparaci贸n",
+                "Pruebas de verificaci贸n",
+                "Validaci贸n con cliente",
                 "Cierre"
             }
         };

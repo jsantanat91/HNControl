@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Projects.CreateModel
 @{
     Layout = "_Layout";
@@ -22,10 +22,18 @@
 }
 
 <div class="row g-3">
-    <div class="col-lg-7">
+    <div class="col-lg-9">
         <form method="post" class="card shadow-sm">
-            <div class="card-header fw-semibold">Proyecto</div>
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>Proyecto</span>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#clientModal">
+                    + Nuevo cliente
+                </button>
+            </div>
             <div class="card-body">
+
+                <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+
                 <div class="row g-3">
 
                     <div class="col-12">
@@ -38,7 +46,7 @@
                         <label class="form-label">Cliente</label>
                         <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
                         <span class="text-danger small" asp-validation-for="Input.ClientId"></span>
-                        <div class="text-muted small mt-1">Si no existe, créalo en el panel derecho.</div>
+                        <div class="text-muted small mt-1">Si no existe, usa <b>+ Nuevo cliente</b>.</div>
                     </div>
 
                     <div class="col-md-4">
@@ -60,28 +68,28 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Objetivo</label>
+                        <label class="form-label">Objetivo (opcional)</label>
                         <input class="form-control" asp-for="Input.Objective" />
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Alcance</label>
+                        <label class="form-label">Alcance (opcional)</label>
                         <textarea class="form-control" asp-for="Input.Scope" rows="2"></textarea>
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Descripción de la actividad</label>
+                        <label class="form-label">Descripción de la actividad (opcional)</label>
                         <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Accesos del cliente (usuarios/contraseñas)</label>
+                        <label class="form-label">Accesos del cliente (opcional)</label>
                         <textarea class="form-control" asp-for="Input.AccessNotes" rows="4" placeholder="Cámaras / WiFi / DVR / IPs / Credenciales..."></textarea>
-                        <div class="text-muted small mt-1">Tip: esto después se cifra; si no, es un buffet para hackers.</div>
+                        <div class="text-muted small mt-1">Tip: si esto no se cifra, es un buffet para hackers.</div>
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Comentarios adicionales</label>
+                        <label class="form-label">Comentarios adicionales (opcional)</label>
                         <textarea class="form-control" asp-for="Input.Comments" rows="2"></textarea>
                     </div>
 
@@ -92,56 +100,133 @@
             </div>
         </form>
     </div>
+</div>
 
-    <div class="col-lg-5">
-        <form method="post" asp-page-handler="CreateClient" class="card shadow-sm">
-            <div class="card-header fw-semibold">Nuevo cliente (rápido)</div>
-            <div class="card-body">
-                <div class="row g-3">
+<!-- Modal: Crear cliente -->
+<div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-                    <div class="col-12">
-                        <label class="form-label">Tipo</label>
-                        <select class="form-select" asp-for="NewClient.Type">
-                            <option value="Moral">Moral</option>
-                            <option value="Fisica">Física</option>
-                        </select>
+            <form id="clientModalForm" method="post" asp-page-handler="CreateClientAjax">
+                @Html.AntiForgeryToken()
+
+                <div class="modal-body">
+
+                    <div id="clientModalErrors" class="alert alert-danger d-none"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" asp-for="NewClient.Type">
+                                <option value="Moral">Moral</option>
+                                <option value="Fisica">Física</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Razón Social / Nombre</label>
+                            <input class="form-control" asp-for="NewClient.Name" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RFC</label>
+                            <input class="form-control" asp-for="NewClient.Rfc" maxlength="13" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Correo</label>
+                            <input class="form-control" asp-for="NewClient.Email" type="email" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <input class="form-control" asp-for="NewClient.Phone" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Dirección</label>
+                            <textarea class="form-control" asp-for="NewClient.Address" rows="2"></textarea>
+                        </div>
                     </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Razón Social</label>
-                        <input class="form-control" asp-for="NewClient.Name" />
-                        <span class="text-danger small" asp-validation-for="NewClient.Name"></span>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">RFC</label>
-                        <input class="form-control" asp-for="NewClient.Rfc" />
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Correo</label>
-                        <input class="form-control" asp-for="NewClient.Email" type="email" />
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Teléfono</label>
-                        <input class="form-control" asp-for="NewClient.Phone" />
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">Dirección</label>
-                        <textarea class="form-control" asp-for="NewClient.Address" rows="2"></textarea>
-                    </div>
-
                 </div>
-            </div>
-            <div class="card-footer">
-                <button class="btn btn-outline-primary w-100" type="submit">Crear cliente y seleccionarlo</button>
-            </div>
-        </form>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="clientModalSubmit">Crear y seleccionar</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            const form = document.getElementById('clientModalForm');
+            const errorsBox = document.getElementById('clientModalErrors');
+            const submitBtn = document.getElementById('clientModalSubmit');
+            const clientSelect = document.getElementById('Input_ClientId');
+
+            if (!form || !clientSelect) return;
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                errorsBox.classList.add('d-none');
+                errorsBox.innerHTML = '';
+
+                submitBtn.disabled = true;
+
+                try {
+                    const fd = new FormData(form);
+
+                    const res = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    });
+
+                    const data = await res.json();
+
+                    if (!data.ok) {
+                        const msgs = [];
+                        if (data.errors) {
+                            for (const k in data.errors) {
+                                for (const m of data.errors[k]) msgs.push(m);
+                            }
+                        }
+                        errorsBox.innerHTML = msgs.length ? msgs.map(m => `<div>• ${m}</div>`).join('') : 'Revisa los campos.';
+                        errorsBox.classList.remove('d-none');
+                        return;
+                    }
+
+                    // Agrega opción y selecciónala
+                    const opt = new Option(data.name, data.id, true, true);
+                    clientSelect.add(opt);
+                    clientSelect.value = data.id;
+
+                    // Cierra modal
+                    const modalEl = document.getElementById('clientModal');
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.hide();
+
+                    // Limpia form
+                    form.reset();
+                }
+                catch (err) {
+                    errorsBox.innerHTML = 'No se pudo crear el cliente. ' + (err?.message ?? '');
+                    errorsBox.classList.remove('d-none');
+                }
+                finally {
+                    submitBtn.disabled = false;
+                }
+            });
+        })();
+    </script>
 }

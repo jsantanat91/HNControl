@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +24,15 @@ public class DownloadPdfModel : PageModel
         var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
         if (o == null || string.IsNullOrWhiteSpace(o.PdfStoragePath)) return NotFound();
 
-        var (stream, contentType, downloadName) = await _storage.OpenAsync(o.PdfStoragePath, $"OrdenServicio_{id:N}.pdf");
-        return File(stream, contentType, downloadName);
+        var downloadName = $"OrdenServicio_{id:N}.pdf";
+        var (stream, _, _) = await _storage.OpenAsync(o.PdfStoragePath, downloadName);
+
+        // En algunos entornos (proxy/cPanel) el streaming puede ser raro; devolver bytes es más robusto.
+        await using (stream)
+        {
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            return File(ms.ToArray(), "application/pdf", downloadName);
+        }
     }
 }
