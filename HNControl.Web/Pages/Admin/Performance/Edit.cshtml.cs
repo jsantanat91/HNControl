@@ -42,7 +42,7 @@ public class EditModel : PageModel
         Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == userId);
         if (Employee == null) return NotFound();
 
-        (PeriodStart, PeriodEnd) = GetQuincena(start);
+        (PeriodStart, PeriodEnd) = GetQuincenaUtc(start);
 
         var existing = await _db.PerformanceReviews
             .FirstOrDefaultAsync(r => r.UserId == userId && r.PeriodStart == PeriodStart && r.PeriodEnd == PeriodEnd);
@@ -97,6 +97,11 @@ public class EditModel : PageModel
             };
             _db.PerformanceReviews.Add(r);
         }
+        else
+        {
+            r.PeriodStart = ps;
+            r.PeriodEnd = pe;
+        }
 
         r.PersonalPerformance = Input.PersonalPerformance;
         r.Teamwork = Input.Teamwork;
@@ -109,15 +114,17 @@ public class EditModel : PageModel
         r.Recalc();
         await _db.SaveChangesAsync();
 
-        return RedirectToPage("/Admin/Performance/Index", new { start = Input.PeriodStart.ToString("yyyy-MM-dd") });
+        return RedirectToPage("/Admin/Performance/Index", new { start = ps.ToString("yyyy-MM-dd") });
     }
 
-    private static (DateTime start, DateTime end) GetQuincena(DateTime? start)
+    private static (DateTime start, DateTime end) GetQuincenaUtc(DateTime? start)
     {
         var d = (start ?? DateTime.Now).Date;
         if (d.Day <= 15)
-            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
+            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)),
+                    TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
 
-        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
+        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)),
+                TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
     }
 }

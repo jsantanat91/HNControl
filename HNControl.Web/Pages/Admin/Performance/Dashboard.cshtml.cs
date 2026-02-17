@@ -1,6 +1,7 @@
 using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,6 @@ public class DashboardModel : PageModel
 
     public List<Row> Rows { get; set; } = new();
 
-    // filtros quincena
     public int Year { get; set; }
     public int Month { get; set; }
     public int Half { get; set; } // 1=1-15, 2=16-fin
@@ -34,7 +34,6 @@ public class DashboardModel : PageModel
     public DateTime PeriodStart { get; set; }
     public DateTime PeriodEnd { get; set; }
 
-    // KPI
     public int EmployeesTotal { get; set; }
     public int EmployeesRated { get; set; }
     public double? AvgScoreAll { get; set; }
@@ -42,137 +41,111 @@ public class DashboardModel : PageModel
     public decimal TotalPayroll20 { get; set; }
     public decimal TotalPayrollPay { get; set; }
 
-    // JSON para charts
     public string LabelsJson { get; set; } = "[]";
     public string TotalPayJson { get; set; } = "[]";
     public string VarPercentJson { get; set; } = "[]";
 
     public async Task OnGetAsync(int? year, int? month, int? half)
     {
-        var now = DateTime.Today;
+        var now = DateTime.Now;
         Year = year ?? now.Year;
         Month = month ?? now.Month;
+        Half = half ?? (now.Day <= 15 ? 1 : 2);
+        if (Half is not (1 or 2)) Half = (now.Day <= 15 ? 1 : 2);
 
-        var suggestedHalf = now.Day <= 15 ? 1 : 2;
-        Half = half ?? suggestedHalf;
-        if (Half is not (1 or 2)) Half = suggestedHalf;
+        (PeriodStart, PeriodEnd) = GetQuincenaUtc(Year, Month, Half);
 
-        (PeriodStart, PeriodEnd) = GetQuincena(Year, Month, Half);
-
+        // ✅ SIN filtro IsActive (porque tus filas viejas quedaron false)
         var employees = await _db.EmployeeProfiles
+            .AsNoTracking()
             .OrderBy(e => e.FullName)
             .ToListAsync();
 
         EmployeesTotal = employees.Count;
 
         var reviews = await _db.PerformanceReviews
+            .AsNoTracking()
             .Where(r => r.PeriodStart == PeriodStart && r.PeriodEnd == PeriodEnd)
             .ToListAsync();
 
-        // ✅ FIX: antes era r.EmployeeUserId, ahora es r.UserId
         var byUser = reviews.ToDictionary(r => r.UserId, r => r);
 
         var labels = new List<string>();
         var totalPays = new List<decimal>();
         var varPercents = new List<decimal>();
 
+        TotalPayroll80 = 0m;
+        TotalPayroll20 = 0m;
+        TotalPayrollPay = 0m;
+
         foreach (var e in employees)
         {
             byUser.TryGetValue(e.UserId, out var r);
             var hasReview = r != null;
 
+            // SalaryBase lo tratamos como MENSUAL (quincena = /2)
+            var baseQuincena = e.SalaryBase / 2m;
+            var fijo80 = baseQuincena * 0.80m;
+            var max20 = baseQuincena * 0.20m;
+
             var variablePercent = r?.VariablePercent ?? 0m;
             if (variablePercent < 0m) variablePercent = 0m;
             if (variablePercent > 1m) variablePercent = 1m;
 
-            var salaryBase = e.SalaryBase;
-
-            // 80/20 real: 80% fijo + (20% * VariablePercent)
-            var fixed80 = salaryBase * 0.80m;
-            var var20 = salaryBase * 0.20m * variablePercent;
-            var totalPay = fixed80 + var20;
+            var variableMoney = max20 * variablePercent;
+            var totalPay = fijo80 + variableMoney;
 
             var avgScore = hasReview ? TryGetAverageScore(r!) : null;
 
             Rows.Add(new Row(
                 e.UserId,
                 e.FullName,
-                salaryBase,
+                e.SalaryBase,
                 hasReview,
                 variablePercent,
-                var20,
+                variableMoney,
                 totalPay,
                 avgScore
             ));
 
             labels.Add(e.FullName);
-            totalPays.Add(totalPay);
-            varPercents.Add(variablePercent * 100m); // 0..100
+            totalPays.Add(decimal.Round(totalPay, 2));
+            varPercents.Add(decimal.Round(variablePercent * 100m, 2));
+
+            TotalPayroll80 += fijo80;
+            TotalPayroll20 += variableMoney;
+            TotalPayrollPay += totalPay;
         }
 
         EmployeesRated = Rows.Count(x => x.HasReview);
-        AvgScoreAll = Rows
-            .Where(x => x.AvgScore.HasValue)
-            .Select(x => x.AvgScore!.Value)
-            .DefaultIfEmpty()
-            .Average();
-
-        TotalPayroll80 = Rows.Sum(x => x.SalaryBase * 0.80m);
-        TotalPayroll20 = Rows.Sum(x => x.VariableAmount);
-        TotalPayrollPay = Rows.Sum(x => x.TotalPay);
+        AvgScoreAll = Rows.Where(x => x.AvgScore.HasValue).Select(x => x.AvgScore!.Value).DefaultIfEmpty().Average();
 
         LabelsJson = JsonSerializer.Serialize(labels);
         TotalPayJson = JsonSerializer.Serialize(totalPays);
         VarPercentJson = JsonSerializer.Serialize(varPercents);
     }
 
-    private static (DateTime start, DateTime end) GetQuincena(int year, int month, int half)
+    private static (DateTime start, DateTime end) GetQuincenaUtc(int year, int month, int half)
     {
         if (half == 1)
-        {
-            var start = new DateTime(year, month, 1);
-            var end = new DateTime(year, month, 15);
-            return (start, end);
-        }
-        else
-        {
-            var start = new DateTime(year, month, 16);
-            var end = new DateTime(year, month, DateTime.DaysInMonth(year, month));
-            return (start, end);
-        }
+            return (TimeUtil.UtcDate(new DateTime(year, month, 1)),
+                    TimeUtil.UtcDate(new DateTime(year, month, 15)));
+
+        return (TimeUtil.UtcDate(new DateTime(year, month, 16)),
+                TimeUtil.UtcDate(new DateTime(year, month, DateTime.DaysInMonth(year, month))));
     }
 
-    // Soporta nombres viejos/nuevos sin reventar compilación
     private static double? TryGetAverageScore(PerformanceReview r)
     {
-        var groups = new[]
+        var values = new[]
         {
-            new []{ "PersonalPerformance", "PersonalPerformanceScore" },
-            new []{ "Teamwork" },
-            new []{ "Punctuality", "PunctualityAttendance" },
-            new []{ "ProjectExecution" },
-            new []{ "OrderAndCleanliness", "OrderCleanliness", "OrderCleanlinessScore" },
-            new []{ "TechnicalSkills" },
+            r.PersonalPerformance,
+            r.Teamwork,
+            r.PunctualityAttendance,
+            r.ProjectExecution,
+            r.OrderCleanliness,
+            r.TechnicalSkills
         };
-
-        var values = new List<int>();
-
-        foreach (var names in groups)
-        {
-            int? val = null;
-            foreach (var name in names)
-            {
-                var p = r.GetType().GetProperty(name);
-                if (p is null) continue;
-                if (p.PropertyType != typeof(int)) continue;
-
-                val = (int)p.GetValue(r)!;
-                break;
-            }
-
-            if (!val.HasValue) return null;
-            values.Add(val.Value);
-        }
 
         return values.Average();
     }

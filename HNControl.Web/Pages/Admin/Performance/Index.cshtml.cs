@@ -36,7 +36,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync(DateTime? start = null)
     {
-        (PeriodStart, PeriodEnd) = GetCurrentQuincena(start);
+        (PeriodStart, PeriodEnd) = GetCurrentQuincenaUtc(start);
 
         var emps = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
 
@@ -59,12 +59,14 @@ public class IndexModel : PageModel
         ValuesJson = JsonSerializer.Serialize(Rows.Select(r => Math.Round(r.VariablePercent * 100m, 2)).ToList());
     }
 
-    private static (DateTime start, DateTime end) GetCurrentQuincena(DateTime? start)
+    private static (DateTime start, DateTime end) GetCurrentQuincenaUtc(DateTime? start)
     {
         var d = (start ?? DateTime.Now).Date;
         if (d.Day <= 15)
-            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
+            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)),
+                    TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
 
-        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)), TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
+        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)),
+                TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
     }
 }
