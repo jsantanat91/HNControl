@@ -89,6 +89,7 @@ public class ServiceOrderSignature
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid OrderId { get; set; }
     public ServiceOrder? Order { get; set; }
+    public DateTime? SubmittedForReviewAt { get; set; }
 
     public SignatureRole Role { get; set; }
     public string SignedByName { get; set; } = "";

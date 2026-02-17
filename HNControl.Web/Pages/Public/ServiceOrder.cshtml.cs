@@ -1,5 +1,5 @@
-using System.ComponentModel.DataAnnotations;
-using System.Text.RegularExpressions;
+ï»¿using System.Text.RegularExpressions;
+using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -13,11 +13,13 @@ public class ServiceOrderModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly IConfiguration _cfg;
 
-    public ServiceOrderModel(ApplicationDbContext db, IFileStorage storage)
+    public ServiceOrderModel(ApplicationDbContext db, IFileStorage storage, IConfiguration cfg)
     {
         _db = db;
         _storage = storage;
+        _cfg = cfg;
     }
 
     public string Token { get; set; } = "";
@@ -30,6 +32,9 @@ public class ServiceOrderModel : PageModel
 
     public string TechName { get; set; } = "";
     public string ClientSignerName { get; set; } = "";
+
+    public string ChecklistCompletionPercent { get; set; } = "0%";
+    public string MinChecklistRequiredPercent { get; set; } = "100%";
 
     public class ItemVm
     {
@@ -60,6 +65,7 @@ public class ServiceOrderModel : PageModel
         {
             var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
             if (it == null) continue;
+
             it.IsDone = vm.IsDone;
             it.Notes = (vm.Notes ?? "").Trim();
         }
@@ -90,6 +96,7 @@ public class ServiceOrderModel : PageModel
         }
 
         var allowed = new[] { ".png", ".jpg", ".jpeg", ".pdf" };
+
         var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
             EvidenceFile,
             $"serviceorders/{Order.Id}/evidence",
@@ -143,15 +150,27 @@ public class ServiceOrderModel : PageModel
 
         if (!tech || !client)
         {
-            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
+            Info = "Para enviar a revisiÃ³n se requieren ambas firmas (tÃ©cnico y cliente).";
+            await LoadAsync(token);
+            return Page();
+        }
+
+        // âœ… BLOQUEO: checklist mÃ­nimo requerido
+        var completion = GetChecklistCompletion(Order);
+        var minRequired = GetMinCompletionRequired();
+
+        if (completion < minRequired)
+        {
+            Info = $"Checklist incompleto: {(completion * 100m):0.#}% (mÃ­nimo requerido: {(minRequired * 100m):0.#}%).";
             await LoadAsync(token);
             return Page();
         }
 
         Order.Status = ServiceOrderStatus.InReview;
+  
         await _db.SaveChangesAsync();
 
-        Info = "Enviado a revisión. El admin generará el PDF y lo enviará por correo.";
+        Info = "Enviado a revisiÃ³n. El admin generarÃ¡ el PDF y lo enviarÃ¡ por correo.";
         await LoadAsync(token);
         return Page();
     }
@@ -176,19 +195,57 @@ public class ServiceOrderModel : PageModel
 
         Items = Order.Checklist
             .OrderBy(i => i.SortOrder)
-            .Select(i => new ItemVm { Id = i.Id, Title = i.Title, IsDone = i.IsDone, Notes = i.Notes })
+            .Select(i => new ItemVm
+            {
+                Id = i.Id,
+                Title = i.Title,
+                IsDone = i.IsDone,
+                Notes = i.Notes
+            })
             .ToList();
 
-        // Para el POST binder
-        ItemsPost = Items.Select(x => new ItemVm { Id = x.Id, Title = x.Title, IsDone = x.IsDone, Notes = x.Notes }).ToList();
+        // binder post
+        ItemsPost = Items.Select(x => new ItemVm
+        {
+            Id = x.Id,
+            Title = x.Title,
+            IsDone = x.IsDone,
+            Notes = x.Notes
+        }).ToList();
 
-        EvidenceNames = Order.Evidences.OrderByDescending(e => e.UploadedAt).Select(e => e.OriginalFileName).ToList();
+        EvidenceNames = Order.Evidences
+            .OrderByDescending(e => e.UploadedAt)
+            .Select(e => e.OriginalFileName)
+            .ToList();
 
         var tech = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var cli = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
         TechName = tech?.SignedByName ?? "";
         ClientSignerName = cli?.SignedByName ?? "";
+
+        // % checklist y mÃ­nimo
+        var completion = GetChecklistCompletion(Order);
+        ChecklistCompletionPercent = $"{(completion * 100m):0.#}%";
+
+        var minRequired = GetMinCompletionRequired();
+        MinChecklistRequiredPercent = $"{(minRequired * 100m):0.#}%";
+    }
+
+    private decimal GetChecklistCompletion(ServiceOrder order)
+    {
+        if (order.Checklist == null || order.Checklist.Count == 0) return 0m;
+        var done = order.Checklist.Count(x => x.IsDone);
+        return (decimal)done / order.Checklist.Count;
+    }
+
+    private decimal GetMinCompletionRequired()
+    {
+        var raw = _cfg["ServiceOrders:MinChecklistCompletionToReview"];
+        if (decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var v))
+            return v;
+
+        return 1.0m; // default 100%
     }
 
     private async Task SaveSignatureIfPresent(ServiceOrder order, SignatureRole role, string? name, string? dataUrl)
@@ -204,7 +261,7 @@ public class ServiceOrderModel : PageModel
         var fileName = $"{role.ToString().ToLower()}_{Guid.NewGuid():N}.png";
         var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{order.Id}/signatures", fileName, "image/png");
 
-        // reemplaza firma si ya existía (última gana)
+        // reemplaza si ya existÃ­a
         var existing = order.Signatures.FirstOrDefault(s => s.Role == role);
         if (existing != null)
         {
