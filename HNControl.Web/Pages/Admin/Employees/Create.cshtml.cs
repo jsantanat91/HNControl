@@ -78,6 +78,6 @@ public class CreateModel : PageModel
         });
 
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Employees/Index");
+        return RedirectToPage("/Admin/Employees/Index");
     }
 }

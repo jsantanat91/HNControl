@@ -61,7 +61,7 @@ builder.Services.AddRazorPages(options =>
     // Account libre
     options.Conventions.AllowAnonymousToFolder("/Account");
 
-    // P˙blico (links token Ûrdenes)
+    // P√∫blico (links token √≥rdenes)
     options.Conventions.AllowAnonymousToFolder("/Public");
 
     // Admin
@@ -77,11 +77,14 @@ builder.Services.AddRazorPages(options =>
     // Documentos: admin + empleado
     options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");
 
-    // Empleados: admin gestiona, empleado ve su ficha
-    options.Conventions.AuthorizeFolder("/Employees", "AdminOnly");
+    // Empleados: admin gestiona bajo /Admin/Employees
+    // (Ya cae por /Admin => AdminOnly, pero lo dejamos expl√≠cito para que no haya dudas)
+    options.Conventions.AuthorizeFolder("/Admin/Employees", "AdminOnly");
+
+    // Empleado: su propia ficha
     options.Conventions.AuthorizePage("/Employees/MyProfile", "EmployeeOnly");
 
-    // Vi·ticos: empleados y admin
+    // Vi√°ticos: empleados y admin
     options.Conventions.AuthorizeFolder("/Viaticos", "EmployeeOnly");
 });
 
@@ -94,10 +97,10 @@ builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
-// EMAIL: evitamos ambig¸edad con Identity.UI IEmailSender
+// EMAIL: evitamos ambig√ºedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
 
-// PDF renderer para Ûrdenes de servicio
+// PDF renderer para √≥rdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
 
 // QuestPDF licencia community
