@@ -1,0 +1,58 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.Performance.EditModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Calificar";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Calificar: @Model.Employee?.FullName</h1>
+        <div class="text-muted small">Periodo: @Model.Input.PeriodStart:yyyy-MM-dd → @Model.Input.PeriodEnd:yyyy-MM-dd</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index" asp-route-start="@Model.Input.PeriodStart.ToString("yyyy-MM-dd")">Volver</a>
+</div>
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <input type="hidden" asp-for="Input.UserId" />
+        <input type="hidden" asp-for="Input.PeriodStart" />
+        <input type="hidden" asp-for="Input.PeriodEnd" />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Rendimiento personal (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.PersonalPerformance" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Trabajo en equipo (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.Teamwork" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Puntualidad/asistencia (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.PunctualityAttendance" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Ejecución de proyectos (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.ProjectExecution" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Orden y limpieza (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.OrderCleanliness" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Habilidades técnicas (1-5)</label>
+                <input class="form-control" type="number" min="1" max="5" asp-for="Input.TechnicalSkills" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas del admin</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button class="btn btn-primary" type="submit">Guardar evaluación</button>
+    </div>
+</form>

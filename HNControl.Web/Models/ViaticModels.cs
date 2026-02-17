@@ -26,12 +26,6 @@ public class ViaticWeek
     [MaxLength(64)]
     public string UserId { get; set; } = default!;
 
-    public DateTime? ApprovedAt { get; set; }
-
-    [MaxLength(64)]
-    public string? ApprovedByUserId { get; set; }
-
-    // Guardamos la semana por lunes (00:00)
     public DateTime WeekStartDate { get; set; }
 
     [NotMapped]
@@ -43,17 +37,25 @@ public class ViaticWeek
 
     public ViaticWeekStatus Status { get; set; } = ViaticWeekStatus.Draft;
 
-    // ✅ ESTO arregla tu error en Admin/Employees/Details
+    // ✅ Totales “congelables”
     public decimal TotalAmount { get; set; } = 0m;
-
-    // ✅ útil para lo facturable/reembolsable
     public decimal BillableAmount { get; set; } = 0m;
+
+    // ✅ Flujo
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+
+    [MaxLength(64)]
+    public string? ApprovedByUserId { get; set; }
+
+    // ✅ Nota admin al rechazar
+    [MaxLength(1200)]
+    public string? AdminNotes { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public EmployeeProfile? EmployeeProfile { get; set; }
-
     public List<ViaticEntry> Entries { get; set; } = new();
 }
 
@@ -63,7 +65,6 @@ public class ViaticEntry
 
     public Guid WeekId { get; set; }
 
-    // date-only lógico
     public DateTime DayDate { get; set; }
 
     [NotMapped]
