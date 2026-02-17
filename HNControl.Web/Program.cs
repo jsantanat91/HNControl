@@ -68,6 +68,7 @@ builder.Services.AddRazorPages(options =>
 
     // Público (links token órdenes)
     options.Conventions.AllowAnonymousToFolder("/Public");
+    options.Conventions.AuthorizeFolder("/Admin/ServiceOrders", "AdminOnly");
 
     // Admin
     options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");

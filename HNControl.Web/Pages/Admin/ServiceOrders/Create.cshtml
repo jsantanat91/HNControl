@@ -1,0 +1,58 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.ServiceOrders.CreateModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Nueva orden</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Técnico asignado</label>
+                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">SLA (fin estimado)</label>
+                <input class="form-control" asp-for="Input.EstimatedEndDate" type="date" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Título</label>
+                <input class="form-control" asp-for="Input.Title" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
+            </div>
+        </div>
+
+        <hr />
+        <div class="text-muted small">
+            Al crear, se genera checklist automático según tipo (instalación trae CCTV/cableado/tubería/etc).
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Crear</button>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Cancelar</a>
+    </div>
+</form>

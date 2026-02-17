@@ -1,0 +1,82 @@
+﻿@page
+@model HNControl.Web.Pages.Performance.RateModel
+@{
+    Layout = "_Layout";
+}
+
+<h1 class="h4 mb-3">Calificar rendimiento</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Empleado</label>
+                <select class="form-select" asp-for="Input.UserId" asp-items="Model.EmployeeItems"></select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Inicio (quincena)</label>
+                <input class="form-control" asp-for="Input.PeriodStart" type="date" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Fin</label>
+                <input class="form-control" asp-for="Input.PeriodEnd" type="date" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Rendimiento personal (1–5)</label>
+                <input class="form-control" asp-for="Input.PersonalPerformance" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Trabajo en equipo (1–5)</label>
+                <input class="form-control" asp-for="Input.Teamwork" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Puntualidad/asistencia (1–5)</label>
+                <input class="form-control" asp-for="Input.PunctualityAttendance" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Ejecución de proyectos (1–5)</label>
+                <input class="form-control" asp-for="Input.ProjectExecution" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Orden/limpieza (1–5)</label>
+                <input class="form-control" asp-for="Input.OrderCleanliness" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Habilidades técnicas (1–5)</label>
+                <input class="form-control" asp-for="Input.TechnicalSkills" type="number" min="1" max="5" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="2"></textarea>
+            </div>
+        </div>
+
+        <hr />
+        <div class="text-muted small">
+            El sistema calcula el variable % como: <b>promedio / 5</b>. (0.0 a 1.0)
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Performance/Index">Volver</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
