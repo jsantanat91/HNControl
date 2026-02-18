@@ -45,9 +45,10 @@ public class MyModel : PageModel
 
         Reviews = reviews.Select(r =>
         {
-            var base80 = SalaryBase * 0.80m;
-            var var20 = (SalaryBase * 0.20m) * r.VariablePercent;
-            var total = base80 + var20;
+            var baseQuincena = SalaryBase / 2m;
+            var fijo80 = baseQuincena * 0.80m;
+            var max20 = baseQuincena * 0.20m;
+            var total = fijo80 + (max20 * r.VariablePercent);
 
             return new ReviewRow(
                 $"{r.PeriodStart:yyyy-MM-dd} a {r.PeriodEnd:yyyy-MM-dd}",

@@ -40,16 +40,17 @@ public class IndexModel : PageModel
             var lr = latestReviews.FirstOrDefault(x => x.UserId == e.UserId);
 
             var variablePct = lr?.VariablePercent ?? 0m;
-            var base80 = e.SalaryBase * 0.80m;
-            var var20 = (e.SalaryBase * 0.20m) * variablePct;
-            var total = base80 + var20;
+            var baseQuincena = e.SalaryBase / 2m;
+            var fijo80 = baseQuincena * 0.80m;
+            var max20 = baseQuincena * 0.20m;
+            var total = fijo80 + (max20 * variablePct);
 
             AdminRows.Add(new AdminRow(
                 e.UserId,
                 e.FullName,
                 e.Position,
                 e.SalaryBase,
-                lr == null ? "—" : $"{lr.PeriodStart:yyyy-MM-dd} a {lr.PeriodEnd:yyyy-MM-dd}",
+                lr == null ? "-" : $"{lr.PeriodStart:yyyy-MM-dd} a {lr.PeriodEnd:yyyy-MM-dd}",
                 variablePct,
                 total
             ));

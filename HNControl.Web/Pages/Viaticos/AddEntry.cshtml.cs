@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Viaticos;
 
+[Authorize(Roles = AppRoles.Employee + "," + AppRoles.Admin)]
 public class AddEntryModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -58,13 +60,13 @@ public class AddEntryModel : PageModel
         if (week == null) return Forbid();
 
         // Solo Draft es editable
-        if (week.Status != ViaticWeekStatus.Draft)
+        if (week.Status is not ViaticWeekStatus.Draft and not ViaticWeekStatus.Rejected)
         {
             Error = "La semana ya fue enviada/validada. No se puede agregar gastos.";
             return Page();
         }
 
-        // Asegura que el día caiga dentro de la semana
+        // Asegura que el dÃ­a caiga dentro de la semana
         var start = week.WeekStartDate.Date;
         var end = start.AddDays(6);
         if (DayDate.Date < start || DayDate.Date > end)
@@ -83,22 +85,22 @@ public class AddEntryModel : PageModel
         if (week == null) return Forbid();
 
         // Solo Draft es editable
-        if (week.Status != ViaticWeekStatus.Draft)
+        if (week.Status is not ViaticWeekStatus.Draft and not ViaticWeekStatus.Rejected)
         {
             Error = "La semana ya fue enviada/validada. No se puede agregar gastos.";
             return Page();
         }
 
-        // Validación: el día debe estar dentro de la semana
+        // ValidaciÃ³n: el dÃ­a debe estar dentro de la semana
         var start = week.WeekStartDate.Date;
         var end = start.AddDays(6);
         if (DayDate.Date < start || DayDate.Date > end)
         {
-            Error = "Ese día no cae dentro de la semana.";
+            Error = "Ese dÃ­a no cae dentro de la semana.";
             return Page();
         }
 
-        // Validación: si es facturable, PDF obligatorio
+        // ValidaciÃ³n: si es facturable, PDF obligatorio
         if (IsBillable && (PdfFile == null || PdfFile.Length == 0))
         {
             Error = "Si es facturable, el PDF es obligatorio.";
@@ -131,7 +133,7 @@ public class AddEntryModel : PageModel
                 UploadedAt = DateTime.UtcNow
             };
 
-            // guardamos con ID único
+            // guardamos con ID Ãºnico
             var (path, size) = await _storage.SavePdfAsync(PdfFile, $"viaticos/{week.Id}", attachment.Id.ToString("N"));
             attachment.StoragePath = path;
             attachment.SizeBytes = size;

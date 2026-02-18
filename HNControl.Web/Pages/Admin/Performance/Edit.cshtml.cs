@@ -45,7 +45,11 @@ public class EditModel : PageModel
         (PeriodStart, PeriodEnd) = GetQuincenaUtc(start);
 
         var existing = await _db.PerformanceReviews
-            .FirstOrDefaultAsync(r => r.UserId == userId && r.PeriodStart == PeriodStart && r.PeriodEnd == PeriodEnd);
+            .Where(r => r.UserId == userId
+                        && r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)
+                        && r.PeriodEnd >= PeriodEnd && r.PeriodEnd < PeriodEnd.AddDays(1))
+            .OrderByDescending(r => r.UpdatedAt)
+            .FirstOrDefaultAsync();
 
         if (existing != null)
         {
@@ -84,7 +88,11 @@ public class EditModel : PageModel
         var pe = TimeUtil.UtcDate(Input.PeriodEnd);
 
         var r = await _db.PerformanceReviews
-            .FirstOrDefaultAsync(x => x.UserId == Input.UserId && x.PeriodStart == ps && x.PeriodEnd == pe);
+            .Where(x => x.UserId == Input.UserId
+                        && x.PeriodStart >= ps && x.PeriodStart < ps.AddDays(1)
+                        && x.PeriodEnd >= pe && x.PeriodEnd < pe.AddDays(1))
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
 
         if (r == null)
         {

@@ -41,12 +41,18 @@ public class IndexModel : PageModel
         var emps = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
 
         var reviews = await _db.PerformanceReviews
-            .Where(r => r.PeriodStart == PeriodStart && r.PeriodEnd == PeriodEnd)
+            .Where(r => r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)
+                     && r.PeriodEnd >= PeriodEnd && r.PeriodEnd < PeriodEnd.AddDays(1))
+            .OrderByDescending(r => r.UpdatedAt)
             .ToListAsync();
+
+        var byUser = reviews
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
 
         Rows = emps.Select(e =>
         {
-            var r = reviews.FirstOrDefault(x => x.UserId == e.UserId);
+            byUser.TryGetValue(e.UserId, out var r);
             var baseQ = e.SalaryBase / 2m;
             var fixed80 = baseQ * 0.80m;
             var varMax = baseQ * 0.20m;

@@ -65,7 +65,8 @@ public class DashboardModel : PageModel
 
         var reviews = await _db.PerformanceReviews
             .AsNoTracking()
-            .Where(r => r.PeriodStart == PeriodStart && r.PeriodEnd == PeriodEnd)
+            .Where(r => r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)
+                     && r.PeriodEnd >= PeriodEnd && r.PeriodEnd < PeriodEnd.AddDays(1))
             .ToListAsync();
 
         var byUser = reviews.ToDictionary(r => r.UserId, r => r);

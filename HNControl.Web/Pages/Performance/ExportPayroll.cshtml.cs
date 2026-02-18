@@ -21,34 +21,41 @@ public class ExportPayrollModel : PageModel
         var (periodStart, periodEnd) = ResolvePeriodUtc(start, end);
 
         var emps = await _db.EmployeeProfiles
-            .Where(e => e.IsActive)
             .OrderBy(e => e.FullName)
             .ToListAsync();
 
-        // Reviews exactas del periodo (si no hay, variable=0)
+        // Reviews del periodo (robusto contra timestamps con hora distinta)
         var reviews = await _db.PerformanceReviews
-            .Where(r => r.PeriodStart == periodStart && r.PeriodEnd == periodEnd)
+            .Where(r => r.PeriodStart >= periodStart && r.PeriodStart < periodStart.AddDays(1)
+                     && r.PeriodEnd >= periodEnd && r.PeriodEnd < periodEnd.AddDays(1))
+            .OrderByDescending(r => r.UpdatedAt)
             .ToListAsync();
+
+        var byUser = reviews
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Nomina");
 
         ws.Cell(1, 1).Value = "Empleado";
-        ws.Cell(1, 2).Value = "Puesto";
-        ws.Cell(1, 3).Value = "Periodo";
-        ws.Cell(1, 4).Value = "Sueldo Mensual";
-        ws.Cell(1, 5).Value = "Base Quincenal";
-        ws.Cell(1, 6).Value = "80% Fijo";
-        ws.Cell(1, 7).Value = "20% Max";
-        ws.Cell(1, 8).Value = "Variable %";
-        ws.Cell(1, 9).Value = "Variable $";
-        ws.Cell(1, 10).Value = "Total Quincenal";
+        ws.Cell(1, 2).Value = "Correo";
+        ws.Cell(1, 3).Value = "NSS";
+        ws.Cell(1, 4).Value = "Puesto";
+        ws.Cell(1, 5).Value = "Periodo";
+        ws.Cell(1, 6).Value = "Sueldo Mensual";
+        ws.Cell(1, 7).Value = "Base Quincenal";
+        ws.Cell(1, 8).Value = "80% Fijo";
+        ws.Cell(1, 9).Value = "20% Max";
+        ws.Cell(1, 10).Value = "Variable %";
+        ws.Cell(1, 11).Value = "Variable $";
+        ws.Cell(1, 12).Value = "Total Quincenal";
 
         var row = 2;
 
         foreach (var e in emps)
         {
-            var r = reviews.FirstOrDefault(x => x.UserId == e.UserId);
+            byUser.TryGetValue(e.UserId, out var r);
             var variablePct = r?.VariablePercent ?? 0m;
 
             var baseQ = e.SalaryBase / 2m;
@@ -58,18 +65,32 @@ public class ExportPayrollModel : PageModel
             var total = fixed80 + varMoney;
 
             ws.Cell(row, 1).Value = e.FullName;
-            ws.Cell(row, 2).Value = e.Position;
-            ws.Cell(row, 3).Value = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
-            ws.Cell(row, 4).Value = e.SalaryBase;
-            ws.Cell(row, 5).Value = baseQ;
-            ws.Cell(row, 6).Value = fixed80;
-            ws.Cell(row, 7).Value = max20;
-            ws.Cell(row, 8).Value = variablePct; // 0..1
-            ws.Cell(row, 9).Value = varMoney;
-            ws.Cell(row, 10).Value = total;
+            ws.Cell(row, 2).Value = e.Email;
+            ws.Cell(row, 3).Value = e.Nss;
+            ws.Cell(row, 4).Value = e.Position;
+            ws.Cell(row, 5).Value = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+            ws.Cell(row, 6).Value = e.SalaryBase;
+            ws.Cell(row, 7).Value = baseQ;
+            ws.Cell(row, 8).Value = fixed80;
+            ws.Cell(row, 9).Value = max20;
+            ws.Cell(row, 10).Value = variablePct; // 0..1
+            ws.Cell(row, 11).Value = varMoney;
+            ws.Cell(row, 12).Value = total;
 
             row++;
         }
+
+        ws.Range(1, 1, 1, 12).Style.Font.Bold = true;
+        ws.SheetView.FreezeRows(1);
+
+        // formatos
+        ws.Column(6).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(7).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(8).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(9).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(10).Style.NumberFormat.Format = "0.00%";
+        ws.Column(11).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(12).Style.NumberFormat.Format = "#,##0.00";
 
         ws.Columns().AdjustToContents();
 

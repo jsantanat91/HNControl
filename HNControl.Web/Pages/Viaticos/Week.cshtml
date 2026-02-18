@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Viaticos.WeekModel
 @{
     Layout = "_Layout";
@@ -8,6 +8,10 @@
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
   <div class="alert alert-warning">@Model.Error</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+  <div class="alert alert-success">@Model.Info</div>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -22,7 +26,9 @@
     </div>
   </div>
 
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" asp-page="/Viaticos/Index">Volver</a>
+
     @if (Model.Week != null && Model.Week.Status is not HNControl.Web.Models.ViaticWeekStatus.Submitted and not HNControl.Web.Models.ViaticWeekStatus.Approved)
     {
       <a class="btn btn-outline-primary"
@@ -30,6 +36,14 @@
          asp-route-weekId="@Model.Week.Id">
         + Agregar gasto
       </a>
+
+      @if (Model.Week.Entries.Any())
+      {
+        <form method="post" asp-page-handler="ClearWeek" class="d-inline" onsubmit="return confirm('¿Limpiar TODOS los gastos de la semana?');">
+          <input type="hidden" name="weekId" value="@Model.Week.Id" />
+          <button class="btn btn-outline-danger" type="submit">Limpiar semana</button>
+        </form>
+      }
 
       <form method="post" asp-page-handler="SubmitWeek" class="d-inline">
         <input type="hidden" name="weekId" value="@Model.Week.Id" />
@@ -66,9 +80,9 @@ else
     <div class="col-md-4">
       <div class="card shadow-sm hn-hover hn-hover">
         <div class="card-body">
-          <div class="text-muted small">Enviado</div>
+          <div class="text-muted small">Flujo</div>
           <div class="fw-semibold">
-            @(Model.Week.SubmittedAt.HasValue ? Model.Week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "—")
+            Enviado: @(Model.Week.SubmittedAt.HasValue ? Model.Week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "—")
           </div>
           <div class="text-muted small">Aprobado: @(Model.Week.ApprovedAt.HasValue ? Model.Week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "—")</div>
         </div>
@@ -96,7 +110,7 @@ else
             <th class="text-end">Monto</th>
             <th class="text-center">Facturable</th>
             <th>PDF</th>
-            <th></th>
+            <th class="text-end"></th>
           </tr>
         </thead>
         <tbody>
@@ -107,11 +121,31 @@ else
             <td>@e.Category</td>
             <td>@e.Description</td>
             <td class="text-end">@e.Amount.ToString("0.00")</td>
-            <td class="text-center">@((e.IsBillable) ? "Sí" : "No")</td>
-            <td>@(e.Attachment?.OriginalFileName ?? "—")</td>
+            <td class="text-center">
+              <span class="badge @(e.IsBillable ? "text-bg-success" : "text-bg-secondary")">@(e.IsBillable ? "Sí" : "No")</span>
+            </td>
+            <td>
+              @if (e.Attachment != null)
+              {
+                <a asp-page="/Viaticos/Download" asp-route-attachmentId="@e.Attachment.Id">@e.Attachment.OriginalFileName</a>
+              }
+              else
+              {
+                <span class="text-muted">—</span>
+              }
+            </td>
             <td class="text-end">
               @if (Model.Week.Status is not HNControl.Web.Models.ViaticWeekStatus.Submitted and not HNControl.Web.Models.ViaticWeekStatus.Approved)
               {
+                <a class="btn btn-sm btn-outline-secondary" asp-page="/Viaticos/EditEntry" asp-route-entryId="@e.Id">Editar</a>
+
+                <form method="post" asp-page-handler="ToggleBillable" class="d-inline">
+                  <input type="hidden" name="entryId" value="@e.Id" />
+                  <button class="btn btn-sm btn-outline-primary" type="submit">
+                    @(e.IsBillable ? "No facturable" : "Facturable")
+                  </button>
+                </form>
+
                 <form method="post" asp-page-handler="DeleteEntry" class="d-inline" onsubmit="return confirm('¿Eliminar gasto?');">
                   <input type="hidden" name="entryId" value="@e.Id" />
                   <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>

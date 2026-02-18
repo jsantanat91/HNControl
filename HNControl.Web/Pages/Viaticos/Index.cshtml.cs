@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Viaticos;
 
+[Authorize(Roles = AppRoles.Employee + "," + AppRoles.Admin)]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;

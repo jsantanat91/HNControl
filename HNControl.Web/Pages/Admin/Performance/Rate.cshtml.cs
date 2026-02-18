@@ -85,7 +85,11 @@ public class RateModel : PageModel
         // 4) Precargar evaluación existente (para que se vea que sí guardó)
         var existing = await _db.PerformanceReviews
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.UserId == Input.UserId && r.PeriodStart == ps && r.PeriodEnd == pe);
+            .Where(r => r.UserId == Input.UserId
+                        && r.PeriodStart >= ps && r.PeriodStart < ps.AddDays(1)
+                        && r.PeriodEnd >= pe && r.PeriodEnd < pe.AddDays(1))
+            .OrderByDescending(r => r.UpdatedAt)
+            .FirstOrDefaultAsync();
 
         if (existing != null)
         {
@@ -140,7 +144,11 @@ public class RateModel : PageModel
         var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 
         var r = await _db.PerformanceReviews
-            .FirstOrDefaultAsync(x => x.UserId == Input.UserId && x.PeriodStart == ps && x.PeriodEnd == pe);
+            .Where(x => x.UserId == Input.UserId
+                        && x.PeriodStart >= ps && x.PeriodStart < ps.AddDays(1)
+                        && x.PeriodEnd >= pe && x.PeriodEnd < pe.AddDays(1))
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
 
         if (r == null)
         {
@@ -154,6 +162,9 @@ public class RateModel : PageModel
             };
             _db.PerformanceReviews.Add(r);
         }
+
+        r.PeriodStart = ps;
+        r.PeriodEnd = pe;
 
         r.PersonalPerformance = Input.PersonalPerformance;
         r.Teamwork = Input.Teamwork;
@@ -172,9 +183,8 @@ public class RateModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        // regresa al Dashboard de esa quincena
-        var half = ps.Day <= 15 ? 1 : 2;
-        return RedirectToPage("/Admin/Performance/Dashboard", new { year = ps.Year, month = ps.Month, half });
+        // ✅ regresa a la misma pantalla para que se vea que sí guardó
+        return RedirectToPage("/Admin/Performance/Rate", new { userId = Input.UserId, start = ps.ToString("yyyy-MM-dd"), end = pe.ToString("yyyy-MM-dd") });
     }
 
     private async Task<List<EmployeeProfile>> LoadEmployeesAsync()
