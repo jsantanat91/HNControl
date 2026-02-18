@@ -27,6 +27,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
 
+    public DbSet<Eval360Competency> Eval360Competencies => Set<Eval360Competency>();
+    public DbSet<Eval360Question> Eval360Questions => Set<Eval360Question>();
+    public DbSet<Eval360Campaign> Eval360Campaigns => Set<Eval360Campaign>();
+    public DbSet<Eval360Assignment> Eval360Assignments => Set<Eval360Assignment>();
+    public DbSet<Eval360Answer> Eval360Answers => Set<Eval360Answer>();
+    public DbSet<Eval360Comment> Eval360Comments => Set<Eval360Comment>();
+
     public DbSet<ServiceOrder> ServiceOrders => Set<ServiceOrder>();
     public DbSet<ServiceOrderChecklistItem> ServiceOrderChecklistItems => Set<ServiceOrderChecklistItem>();
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
@@ -151,7 +158,79 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.VariablePercent).HasColumnType("numeric(5,4)");
         });
 
-        b.Entity<ServiceOrder>(e =>
+        
+
+        // --------------------
+        // Eval 360
+        // --------------------
+        b.Entity<Eval360Competency>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(120);
+            e.HasIndex(x => x.SortOrder);
+
+            e.HasMany(x => x.Questions)
+             .WithOne(q => q.Competency!)
+             .HasForeignKey(q => q.CompetencyId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Eval360Question>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Text).HasMaxLength(600);
+            e.HasIndex(x => new { x.CompetencyId, x.SortOrder });
+        });
+
+        b.Entity<Eval360Campaign>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(800);
+            e.Property(x => x.PeriodStart).HasColumnType("date");
+            e.Property(x => x.PeriodEnd).HasColumnType("date");
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+        });
+
+        b.Entity<Eval360Assignment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EvaluatorUserId).HasMaxLength(64);
+            e.Property(x => x.SubjectUserId).HasMaxLength(64);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.StartedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.SubmittedAt).HasColumnType("timestamp with time zone");
+
+            e.HasIndex(x => new { x.CampaignId, x.EvaluatorUserId, x.SubjectUserId }).IsUnique();
+
+            e.HasMany(x => x.Answers)
+             .WithOne(a => a.Assignment!)
+             .HasForeignKey(a => a.AssignmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Comments)
+             .WithOne(c => c.Assignment!)
+             .HasForeignKey(c => c.AssignmentId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Eval360Answer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.AssignmentId, x.QuestionId }).IsUnique();
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+        });
+
+        b.Entity<Eval360Comment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.AssignmentId, x.CompetencyId }).IsUnique();
+            e.Property(x => x.CommentText).HasMaxLength(2000);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+        });
+
+b.Entity<ServiceOrder>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Title).HasMaxLength(200);

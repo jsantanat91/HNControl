@@ -5,74 +5,267 @@
     ViewData["Title"] = "Calificar";
 }
 
-<h1 class="h4 mb-3">Calificar rendimiento</h1>
+<style>
+    /* UI específico de evaluación (solo diseño) */
+    .hn-metric{
+        border: 1px solid rgba(15,23,42,.08);
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: #fff;
+    }
+    .hn-metric-title{
+        font-weight: 700;
+        letter-spacing: -.01em;
+        margin-bottom: 10px;
+    }
+    .hn-pill{
+        min-width: 84px;
+        text-align: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(var(--bs-primary-rgb), .10);
+        color: var(--bs-primary);
+        font-weight: 800;
+        line-height: 1;
+        display: inline-flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 3px;
+        white-space: nowrap;
+    }
+    .hn-pill .den{ font-weight: 700; opacity: .65; }
+    .hn-pill .word{ font-weight: 800; opacity: .85; margin-left: 6px; }
+
+    .hn-scale{
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-size: .75rem;
+        color: var(--bs-secondary-color);
+        user-select: none;
+    }
+    .hn-help{
+        font-size: .78rem;
+        color: var(--bs-secondary-color);
+        margin-top: 6px;
+    }
+
+    .hn-overall{
+        border-radius: 16px;
+        background: rgba(2,6,23,.03);
+        border: 1px solid rgba(15,23,42,.06);
+        padding: 14px 16px;
+    }
+    .hn-overall .score{
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -.03em;
+    }
+    .hn-overall .progress{
+        height: 10px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(2,6,23,.06);
+    }
+    .hn-overall .progress-bar{
+        border-radius: 999px;
+    }
+</style>
+
+<div class="hn-pagehead d-flex justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+    <div>
+        <h1 class="h3 m-0">Calificar rendimiento</h1>
+        <div class="hn-muted small">Escala 1–5 · se guarda por periodo · actualización en vivo del promedio.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index">Volver</a>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-success">@Model.Info</div>
+}
 
-<form method="post" class="card shadow-sm">
+<form method="post" class="card shadow-sm hn-hover">
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Empleado</label>
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-6">
+                <label class="form-label fw-semibold">Empleado</label>
                 <select class="form-select" asp-for="Input.UserId" asp-items="Model.EmployeeItems"></select>
+                <div class="hn-help">Tip: usa este selector para calificar a alguien distinto sin salirte del periodo.</div>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Inicio</label>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label fw-semibold">Inicio</label>
                 <input class="form-control" asp-for="Input.PeriodStart" type="date" />
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Fin</label>
+            <div class="col-sm-6 col-lg-3">
+                <label class="form-label fw-semibold">Fin</label>
                 <input class="form-control" asp-for="Input.PeriodEnd" type="date" />
             </div>
+        </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Rendimiento personal (1–5)</label>
-                <input class="form-control" asp-for="Input.PersonalPerformance" type="number" min="1" max="5" />
+        <div class="hn-overall mt-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <div class="hn-muted small">Promedio actual</div>
+                    <div class="score"><span id="overallScore">-</span><span class="fs-5 hn-muted">/5</span></div>
+                </div>
+                <div style="min-width:min(420px, 100%);">
+                    <div class="progress">
+                        <div id="overallBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+                    </div>
+                    <div class="hn-help mb-0">Esto es visual: el cálculo real lo hace el servidor al guardar.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Rendimiento personal</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.PersonalPerformance" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Trabajo en equipo (1–5)</label>
-                <input class="form-control" asp-for="Input.Teamwork" type="number" min="1" max="5" />
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Trabajo en equipo</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.Teamwork" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Puntualidad/asistencia (1–5)</label>
-                <input class="form-control" asp-for="Input.PunctualityAttendance" type="number" min="1" max="5" />
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Puntualidad / asistencia</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.PunctualityAttendance" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Ejecución (1–5)</label>
-                <input class="form-control" asp-for="Input.ProjectExecution" type="number" min="1" max="5" />
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Ejecución de proyectos</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.ProjectExecution" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Orden/limpieza (1–5)</label>
-                <input class="form-control" asp-for="Input.OrderCleanliness" type="number" min="1" max="5" />
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Orden y limpieza</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.OrderCleanliness" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Habilidades técnicas (1–5)</label>
-                <input class="form-control" asp-for="Input.TechnicalSkills" type="number" min="1" max="5" />
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Habilidades técnicas</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.TechnicalSkills" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
             </div>
+        </div>
 
-            <div class="col-12">
-                <label class="form-label">Notas</label>
-                <textarea class="form-control" asp-for="Input.Notes" rows="2"></textarea>
-            </div>
+        <div class="mt-4">
+            <label class="form-label fw-semibold">Notas del admin</label>
+            <textarea class="form-control" asp-for="Input.Notes" rows="3" placeholder="Contexto, fortalezas, áreas de mejora, acuerdos..."></textarea>
+            <div class="hn-help">Evita “todo bien”. Mejor: qué estuvo bien y qué se mejora la próxima quincena 😉</div>
         </div>
     </div>
 
-    <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index">Volver</a>
+    <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary px-4" type="submit">Guardar evaluación</button>
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index">Volver</a>
+        </div>
+        <div class="hn-muted small">Los sliders siguen siendo valores 1–5 (solo que ya no se ven feos).</div>
     </div>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function(){
+            const words = {
+                1: "Crítico",
+                2: "Bajo",
+                3: "Bien",
+                4: "Muy bien",
+                5: "Excelente"
+            };
+
+            const ranges = Array.from(document.querySelectorAll('.hn-range'));
+            const overallScore = document.getElementById('overallScore');
+            const overallBar = document.getElementById('overallBar');
+
+            function clamp(v){ return Math.max(1, Math.min(5, v)); }
+
+            function setMetricUI(range){
+                const metric = range.closest('.hn-metric');
+                if(!metric) return;
+
+                const pill = metric.querySelector('.hn-pill');
+                const valEl = pill?.querySelector('.val');
+                const wordEl = pill?.querySelector('.word');
+
+                let v = parseInt(range.value || '3', 10);
+                if (isNaN(v)) v = 3;
+                v = clamp(v);
+
+                if(valEl) valEl.textContent = v;
+                if(wordEl) wordEl.textContent = words[v] || "";
+            }
+
+            function setOverall(){
+                if(ranges.length === 0) return;
+
+                let sum = 0;
+                ranges.forEach(r=>{
+                    let v = parseInt(r.value || '3', 10);
+                    if (isNaN(v)) v = 3;
+                    sum += clamp(v);
+                });
+
+                const avg = sum / ranges.length;
+                const pct = ((avg - 1) / 4) * 100;
+
+                if(overallScore) overallScore.textContent = avg.toFixed(1);
+                if(overallBar) overallBar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+            }
+
+            ranges.forEach(r=>{
+                setMetricUI(r);
+                r.addEventListener('input', ()=>{ setMetricUI(r); setOverall(); });
+            });
+
+            setOverall();
+        })();
+    </script>
 }

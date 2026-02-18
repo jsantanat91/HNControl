@@ -1,0 +1,68 @@
+@page
+@model HNControl.Web.Pages.Admin.Eval360.Campaigns.CreateModel
+@{
+    ViewData["Title"] = "Nueva campaña · 360";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Nueva campaña 360</h1>
+        <div class="text-muted small">Crea la campaña; luego generamos asignaciones.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
+</div>
+
+<div class="card shadow-soft">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            <div class="col-12">
+                <label class="form-label">Título</label>
+                <input class="form-control" asp-for="Input.Title" />
+                <span class="text-danger small" asp-validation-for="Input.Title"></span>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descripción (opcional)</label>
+                <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Inicio (opcional)</label>
+                <input class="form-control" asp-for="Input.PeriodStart" type="date" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Fin (opcional)</label>
+                <input class="form-control" asp-for="Input.PeriodEnd" type="date" />
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.AllowSelf" />
+                    <label class="form-check-label" asp-for="Input.AllowSelf">
+                        Incluir autoevaluación
+                    </label>
+                </div>
+                <div class="text-muted small">Crea también la evaluación “yo me evalúo”.</div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.ResultsVisibleToEmployee" />
+                    <label class="form-check-label" asp-for="Input.ResultsVisibleToEmployee">
+                        Empleado puede ver resultados
+                    </label>
+                </div>
+                <div class="text-muted small">Si lo apagas, solo admin ve resultados.</div>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Crear campaña</button>
+                <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+}

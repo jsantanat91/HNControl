@@ -3,56 +3,362 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Calificar";
+
+    var ps = Model?.Input?.PeriodStart.ToString("yyyy-MM-dd") ?? "";
+    var pe = Model?.Input?.PeriodEnd.ToString("yyyy-MM-dd") ?? "";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<style>
+    /* --- HN UI: limpio, pro, hover suave --- */
+    .hn-page-title {
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .hn-subtle {
+        color: rgba(33, 37, 41, .65);
+        font-size: .9rem;
+    }
+
+    .hn-card {
+        border: 1px solid rgba(0,0,0,.08) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,.05) !important;
+        overflow: hidden;
+        background: #fff;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+        .hn-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 46px rgba(0,0,0,.08) !important;
+            border-color: rgba(13,110,253,.25) !important;
+        }
+
+    .hn-headerbar {
+        background: linear-gradient(180deg, rgba(13,110,253,.06), rgba(13,110,253,0));
+        border-bottom: 1px solid rgba(0,0,0,.06);
+        padding: 14px 18px;
+    }
+
+        .hn-headerbar .badge {
+            font-weight: 700;
+            border-radius: 999px;
+            padding: .5rem .65rem;
+        }
+
+    .hn-metric {
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 16px;
+        padding: 14px 14px 12px 14px;
+        background: #fff;
+        box-shadow: 0 1px 0 rgba(0,0,0,.03);
+    }
+
+        .hn-metric label {
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.01em;
+        }
+
+    .hn-pill {
+        min-width: 76px;
+        text-align: center;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(var(--bs-primary-rgb), .10);
+        color: var(--bs-primary);
+        font-weight: 900;
+        line-height: 1;
+    }
+
+        .hn-pill small {
+            opacity: .65;
+            font-weight: 800;
+            margin-left: 2px;
+        }
+
+    .hn-scale {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: .76rem;
+        color: rgba(33, 37, 41, .55);
+        user-select: none;
+    }
+
+    /* Range “pintado” */
+    .hn-range {
+        --fill: 50%;
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(to right, rgba(var(--bs-primary-rgb), 1) 0%, rgba(var(--bs-primary-rgb), 1) var(--fill), rgba(var(--bs-primary-rgb), .15) var(--fill), rgba(var(--bs-primary-rgb), .15) 100%);
+    }
+
+        .hn-range:focus {
+            box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .18);
+            border-radius: 999px;
+            outline: none;
+        }
+
+        /* WebKit thumb */
+        .hn-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid rgba(var(--bs-primary-rgb), 1);
+            box-shadow: 0 6px 14px rgba(0,0,0,.12);
+            cursor: pointer;
+            margin-top: -4px;
+        }
+
+        .hn-range::-webkit-slider-runnable-track {
+            height: 10px;
+            border-radius: 999px;
+            background: transparent;
+        }
+
+        /* Firefox thumb */
+        .hn-range::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid rgba(var(--bs-primary-rgb), 1);
+            box-shadow: 0 6px 14px rgba(0,0,0,.12);
+            cursor: pointer;
+        }
+
+        .hn-range::-moz-range-track {
+            height: 10px;
+            border-radius: 999px;
+            background: transparent;
+        }
+
+    .hn-notes textarea.form-control {
+        border-radius: 16px;
+        padding: 12px 12px;
+    }
+
+    .hn-actions .btn {
+        border-radius: 12px;
+        font-weight: 700;
+        padding: .65rem 1.0rem;
+    }
+
+    .hn-actions .btn-primary {
+        box-shadow: 0 10px 24px rgba(var(--bs-primary-rgb), .20);
+    }
+
+    .hn-overall {
+        min-width: min(460px, 100%);
+    }
+
+        .hn-overall .progress {
+            border-radius: 999px;
+            height: 10px;
+            background: rgba(var(--bs-primary-rgb), .10);
+        }
+
+        .hn-overall .progress-bar {
+            border-radius: 999px;
+        }
+</style>
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 m-0">Calificar: @Model.Employee?.FullName</h1>
-        <div class="text-muted small">Periodo: @Model.Input.PeriodStart:yyyy-MM-dd → @Model.Input.PeriodEnd:yyyy-MM-dd</div>
+        <h1 class="h4 m-0 hn-page-title">Calificar: @Model.Employee?.FullName</h1>
+        <div class="hn-subtle">Periodo: <span class="fw-semibold">@ps</span> <span class="mx-1">→</span> <span class="fw-semibold">@pe</span></div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="/Admin/Performance/Index" asp-route-start="@Model.Input.PeriodStart.ToString("yyyy-MM-dd")">Volver</a>
+
+    <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-outline-secondary btn-sm" asp-page="/Admin/Performance/Index" asp-route-start="@ps">
+            ← Volver
+        </a>
+    </div>
 </div>
 
-<form method="post" class="card shadow-sm">
-    <div class="card-body">
+<!-- Resumen / Promedio -->
+<div class="hn-card mb-3">
+    <div class="hn-headerbar d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <div class="text-muted small">Promedio</div>
+            <div class="display-6 fw-bold m-0">
+                <span id="hnOverallScore">-</span><span class="fs-5 text-muted">/5</span>
+            </div>
+        </div>
+
+        <div class="hn-overall">
+            <div class="progress" aria-label="Progreso promedio">
+                <div id="hnOverallBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+            <div class="text-muted small mt-1">Se actualiza en vivo mientras mueves las barras.</div>
+        </div>
+    </div>
+</div>
+
+<form method="post" class="hn-card">
+    <div class="card-body p-0">
         <input type="hidden" asp-for="Input.UserId" />
         <input type="hidden" asp-for="Input.PeriodStart" />
         <input type="hidden" asp-for="Input.PeriodEnd" />
 
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Rendimiento personal (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.PersonalPerformance" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Trabajo en equipo (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.Teamwork" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Puntualidad/asistencia (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.PunctualityAttendance" />
-            </div>
+        <div class="p-3 p-md-4">
+            <div class="row g-3">
+                <!-- 1 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Rendimiento personal</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.PersonalPerformance" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Ejecución de proyectos (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.ProjectExecution" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Orden y limpieza (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.OrderCleanliness" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Habilidades técnicas (1-5)</label>
-                <input class="form-control" type="number" min="1" max="5" asp-for="Input.TechnicalSkills" />
-            </div>
+                <!-- 2 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Trabajo en equipo</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.Teamwork" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
 
-            <div class="col-12">
-                <label class="form-label">Notas del admin</label>
-                <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
+                <!-- 3 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Puntualidad / asistencia</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.PunctualityAttendance" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
+
+                <!-- 4 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Ejecución de proyectos</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.ProjectExecution" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
+
+                <!-- 5 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Orden y limpieza</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.OrderCleanliness" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
+
+                <!-- 6 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
+                        <label class="form-label">Habilidades técnicas</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.TechnicalSkills" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="col-12 hn-notes">
+                    <label class="form-label fw-bold">Notas del admin</label>
+                    <textarea class="form-control" asp-for="Input.Notes" rows="4" placeholder="Ej. Buen desempeño, mejorar tiempos de respuesta, etc."></textarea>
+                </div>
             </div>
         </div>
     </div>
-    <div class="card-footer">
+
+    <div class="card-footer bg-white border-0 px-3 px-md-4 pb-4 hn-actions">
         <button class="btn btn-primary" type="submit">Guardar evaluación</button>
+        <span class="text-muted small ms-2">Se guarda tal cual (1–5). Sin trucos.</span>
     </div>
 </form>
+
+@section Scripts {
+    <script>
+        (function () {
+            const ranges = Array.from(document.querySelectorAll('.hn-kpi'));
+            const overallScore = document.getElementById('hnOverallScore');
+            const overallBar = document.getElementById('hnOverallBar');
+
+            function fillPct(v) {
+                // v: 1..5 => 0..100
+                return ((v - 1) / 4) * 100;
+            }
+
+            function updateMetricUI(range) {
+                const metric = range.closest('.hn-metric');
+                if (!metric) return;
+
+                const valEl = metric.querySelector('.hn-val');
+                const v = parseInt(range.value || '0', 10);
+
+                if (valEl) valEl.textContent = isNaN(v) ? '-' : v;
+
+                const pct = isNaN(v) ? 0 : fillPct(v);
+                range.style.setProperty('--fill', pct + '%');
+            }
+
+            function updateOverall() {
+                let sum = 0, count = 0;
+
+                ranges.forEach(r => {
+                    const v = parseInt(r.value || '0', 10);
+                    if (!isNaN(v) && v >= 1 && v <= 5) {
+                        sum += v;
+                        count++;
+                    }
+                });
+
+                if (!count) {
+                    overallScore.textContent = '-';
+                    overallBar.style.width = '0%';
+                    return;
+                }
+
+                const avg = sum / count;
+                overallScore.textContent = avg.toFixed(1);
+
+                const pct = Math.max(0, Math.min(100, fillPct(avg)));
+                overallBar.style.width = pct + '%';
+            }
+
+            ranges.forEach(r => {
+                updateMetricUI(r);
+                r.addEventListener('input', () => {
+                    updateMetricUI(r);
+                    updateOverall();
+                });
+            });
+
+            updateOverall();
+        })();
+    </script>
+}

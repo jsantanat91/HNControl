@@ -1,0 +1,106 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Eval360.MyResultsModel
+@{
+    ViewData["Title"] = "Mis resultados · 360";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Mis resultados · Evaluación 360</h1>
+        <div class="text-muted small">
+            <span class="fw-semibold">@Model.Me.FullName</span> · Campaña: <span class="fw-semibold">@Model.Campaign.Title</span>
+        </div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Eval360/Index">Volver</a>
+</div>
+
+@if (TempData["Msg"] is string msg)
+{
+    <div class="alert alert-info">@msg</div>
+}
+
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-warning">Sin datos para graficar todavía.</div>
+    return;
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-soft">
+            <div class="card-header fw-semibold">Autoevaluación vs Evaluadores</div>
+            <div class="card-body">
+                <canvas id="cmpChart" height="140"></canvas>
+                <div class="text-muted small mt-2">
+                    Escala 1–5 convertida a porcentaje.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-soft">
+            <div class="card-header fw-semibold">Lectura rápida</div>
+            <div class="card-body">
+                <div class="small text-muted mb-2">
+                    Diferencia = Auto - Evaluadores. Si es negativa, tus evaluadores te ven más bajo en esa competencia.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Competencia</th>
+                                <th class="text-end">Auto</th>
+                                <th class="text-end">Eval.</th>
+                                <th class="text-end">Dif.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr>
+                                <td>@r.Competency</td>
+                                <td class="text-end">@r.AutoPct%</td>
+                                <td class="text-end">@r.OthersPct%</td>
+                                <td class="text-end">@((r.DiffPct >= 0 ? "+" : ""))@r.DiffPct%</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr />
+                <div class="small text-muted">
+                    Tip pro: enfócate primero en las competencias con diferencia negativa grande.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const labels = @Html.Raw(Model.LabelsJson);
+        const autoValues = @Html.Raw(Model.AutoJson);
+        const otherValues = @Html.Raw(Model.OthersJson);
+
+        new Chart(document.getElementById('cmpChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Autoevaluación', data: autoValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+              { label: 'Evaluadores', data: otherValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true, max: 100 }
+            }
+          }
+        });
+    </script>
+}

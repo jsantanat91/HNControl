@@ -1,0 +1,94 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Eval360.DoModel
+@{
+    ViewData["Title"] = "Calificar · 360";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Calificar · Evaluación 360</h1>
+        <div class="text-muted small">
+            Campaña: <span class="fw-semibold">@Model.Campaign.Title</span> ·
+            Persona: <span class="fw-semibold">@Model.Subject.FullName</span>
+            @if (Model.Assignment.IsSelf)
+            {
+                <span class="badge bg-light text-dark ms-2">Autoevaluación</span>
+            }
+        </div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Eval360/Index">Volver</a>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-warning">
+        Hay preguntas sin contestar. Revisa arriba (marcadas en rojo).
+    </div>
+}
+
+<form method="post">
+    <input type="hidden" name="id" value="@RouteData.Values["id"]" />
+
+    @foreach (var comp in Model.Competencies)
+    {
+        <div class="card shadow-soft mb-3">
+            <div class="card-body">
+                <h2 class="h5 mb-1">@comp.Name</h2>
+                <div class="text-muted small mb-3">
+                    Califica a <span class="fw-semibold">@Model.Subject.FullName</span> en cuanto a <span class="fw-semibold">@comp.Name</span>, en comparación con sus compañeros:
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr class="text-center text-muted small">
+                                <th class="text-start" style="min-width:320px"> </th>
+                                <th style="min-width:120px">@Model.ScaleLeft</th>
+                                <th style="min-width:120px">@Model.ScaleLeftMid</th>
+                                <th style="min-width:120px">@Model.ScaleMid</th>
+                                <th style="min-width:120px">@Model.ScaleRightMid</th>
+                                <th style="min-width:120px">@Model.ScaleRight</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var q in comp.Questions)
+                            {
+                                var key = q.Id;
+                                var val = Model.ExistingScores.ContainsKey(key) ? Model.ExistingScores[key] : 0;
+                                <tr>
+                                    <td class="text-start">@q.Text</td>
+                                    @for (var s = 1; s <= 5; s++)
+                                    {
+                                        <td class="text-center">
+                                            <input type="radio"
+                                                   class="form-check-input"
+                                                   name="q_@q.Id"
+                                                   value="@s"
+                                                   @(val == s ? "checked" : "") />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-2">
+                    <label class="form-label small text-muted">Comentario adicional sobre esta competencia (opcional)</label>
+                    <textarea class="form-control" name="c_@comp.Id" rows="2">@((Model.ExistingComments.ContainsKey(comp.Id) ? Model.ExistingComments[comp.Id] : ""))</textarea>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar evaluación</button>
+        <a class="btn btn-outline-secondary" asp-page="/Eval360/Index">Cancelar</a>
+    </div>
+</form>
+
+<style>
+    /* mini polishing para que se sienta "Qualtrics vibes" sin ser Qualtrics */
+    .table td { vertical-align: middle; }
+    .table input[type="radio"] { transform: scale(1.1); }
+</style>

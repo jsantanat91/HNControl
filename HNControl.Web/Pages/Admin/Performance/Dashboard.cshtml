@@ -28,7 +28,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Empleados</div>
                 <div class="h4 m-0">@Model.EmployeesTotal</div>
@@ -36,7 +36,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Evaluados</div>
                 <div class="h4 m-0">@Model.EmployeesRated</div>
@@ -44,7 +44,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Promedio (si existe)</div>
                 <div class="h4 m-0">@((Model.AvgScoreAll ?? 0).ToString("0.00"))</div>
@@ -52,7 +52,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Total nómina (80/20)</div>
                 <div class="h4 m-0">@Model.TotalPayrollPay.ToString("C")</div>
@@ -64,7 +64,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-lg-7">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="fw-semibold mb-2">Total a pagar por empleado</div>
                 <canvas id="payChart" height="120"></canvas>
@@ -72,7 +72,7 @@
         </div>
     </div>
     <div class="col-lg-5">
-        <div class="card shadow-soft">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="fw-semibold mb-2">% variable (20%) por empleado</div>
                 <canvas id="varChart" height="120"></canvas>
@@ -81,7 +81,7 @@
     </div>
 </div>
 
-<div class="card shadow-soft">
+<div class="card shadow-soft hn-hover">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-sm align-middle">

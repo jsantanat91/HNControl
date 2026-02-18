@@ -68,6 +68,11 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");
     options.Conventions.AuthorizeFolder("/Admin/ServiceOrders", "AdminOnly");
 
+    // Evaluación 360
+    options.Conventions.AuthorizeFolder("/Admin/Eval360", "AdminOnly");
+    options.Conventions.AuthorizeFolder("/Eval360", "EmployeeOnly");
+
+
     // Clientes: solo admin
     options.Conventions.AuthorizeFolder("/Clients", "AdminOnly");
 
@@ -77,11 +82,8 @@ builder.Services.AddRazorPages(options =>
     // Documentos: admin + empleado
     options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");
 
-    // Empleados: admin gestiona bajo /Admin/Employees
-    // (Ya cae por /Admin => AdminOnly, pero lo dejamos explícito para que no haya dudas)
-    options.Conventions.AuthorizeFolder("/Admin/Employees", "AdminOnly");
-
-    // Empleado: su propia ficha
+    // Empleados: admin gestiona, empleado ve su ficha
+    options.Conventions.AuthorizeFolder("/Employees", "AdminOnly");
     options.Conventions.AuthorizePage("/Employees/MyProfile", "EmployeeOnly");
 
     // Viáticos: empleados y admin
@@ -120,6 +122,17 @@ using (var scope = app.Services.CreateScope())
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
+
+    // Eval360: si aún no ejecutaste el script de tablas, no tronamos el arranque.
+    try
+    {
+        await SeedEval360.EnsureAsync(db);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "SeedEval360: tablas aún no existen o no accesibles (se omite).");
+    }
+
 }
 
 // --------------------

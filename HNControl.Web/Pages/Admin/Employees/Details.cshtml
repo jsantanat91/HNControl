@@ -24,7 +24,7 @@
 
 <div class="row g-3">
     <div class="col-lg-4">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm hn-hover hn-hover">
             <div class="card-header fw-semibold">KPIs</div>
             <div class="card-body">
                 <div class="d-flex justify-content-between"><span>Órdenes completadas (30d)</span><b>@Model.Kpi.CompletedOrders30d</b></div>
@@ -35,7 +35,7 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mt-3">
+        <div class="card shadow-sm hn-hover mt-3">
             <div class="card-header fw-semibold">Última evaluación</div>
             <div class="card-body">
                 @if (Model.LastReview == null)
@@ -55,7 +55,7 @@
     </div>
 
     <div class="col-lg-8">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm hn-hover hn-hover">
             <div class="card-header fw-semibold">Gráfica (variable % por periodo)</div>
             <div class="card-body">
                 <canvas id="varChart" height="110"></canvas>
