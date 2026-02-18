@@ -22,7 +22,7 @@ public class AssignmentsModel : PageModel
     public int SubmittedAssignments { get; set; }
 
     [BindProperty]
-    public bool IncludeAdminLocal { get; set; } = false;
+    public bool IncludeAdmins { get; set; } = false;
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
@@ -34,12 +34,32 @@ public class AssignmentsModel : PageModel
         return Page();
     }
 
+    private async Task<HashSet<string>> GetAdminUserIdsAsync()
+    {
+        var adminRoleId = await _db.Roles.AsNoTracking()
+            .Where(r => r.Name == AppRoles.Admin)
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(adminRoleId))
+            return new HashSet<string>();
+
+        var ids = await _db.UserRoles.AsNoTracking()
+            .Where(ur => ur.RoleId == adminRoleId)
+            .Select(ur => ur.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        return ids.ToHashSet();
+    }
+
     private async Task LoadAsync(Guid id)
     {
-        // Participantes: por default excluimos el admin seed (admin@hn.local)
+        var adminIds = await GetAdminUserIdsAsync();
+
         var q = _db.EmployeeProfiles.AsNoTracking().OrderBy(e => e.FullName).AsQueryable();
-        if (!IncludeAdminLocal)
-            q = q.Where(e => !e.Email.ToLower().EndsWith("@hn.local"));
+        if (!IncludeAdmins)
+            q = q.Where(e => !adminIds.Contains(e.UserId));
 
         Participants = await q.Select(e => new Person(e.UserId, e.FullName, e.Email)).ToListAsync();
 
@@ -53,15 +73,17 @@ public class AssignmentsModel : PageModel
         if (c == null) return RedirectToPage("/Admin/Eval360/Campaigns/Index");
         Campaign = c;
 
-        // participants
+        var adminIds = await GetAdminUserIdsAsync();
+
         var participants = await _db.EmployeeProfiles
             .AsNoTracking()
-            .Where(e => IncludeAdminLocal || !e.Email.ToLower().EndsWith("@hn.local"))
+            .Where(e => IncludeAdmins || !adminIds.Contains(e.UserId))
             .OrderBy(e => e.FullName)
             .Select(e => new { e.UserId })
             .ToListAsync();
 
         var ids = participants.Select(x => x.UserId).ToList();
+
         if (ids.Count < 2 && !c.AllowSelf)
         {
             TempData["Msg"] = "Necesitas al menos 2 participantes (o habilitar autoevaluación).";
@@ -123,7 +145,6 @@ public class AssignmentsModel : PageModel
         if (c == null) return RedirectToPage("/Admin/Eval360/Campaigns/Index");
         Campaign = c;
 
-        // Borra todo lo relacionado (FK cascade en answers/comments si el schema se creó como el script)
         var ass = await _db.Eval360Assignments.Where(a => a.CampaignId == id).ToListAsync();
         _db.Eval360Assignments.RemoveRange(ass);
 

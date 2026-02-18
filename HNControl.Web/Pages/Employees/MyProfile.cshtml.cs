@@ -1,11 +1,13 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Employees;
 
+[Authorize(Policy = "EmployeeOnly")]
 public class MyProfileModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userMgr;
@@ -22,8 +24,9 @@ public class MyProfileModel : PageModel
     public async Task OnGetAsync()
     {
         var userId = _userMgr.GetUserId(User);
-        if (userId == null) return;
+        if (string.IsNullOrWhiteSpace(userId)) return;
 
-        Profile = await _db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == userId);
+        Profile = await _db.EmployeeProfiles.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == userId);
     }
 }

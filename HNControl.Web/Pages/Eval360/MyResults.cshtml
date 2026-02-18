@@ -19,6 +19,14 @@
     <div class="alert alert-info">@msg</div>
 }
 
+@if (!Model.HasOtherResponses)
+{
+    <div class="alert alert-warning">
+        Por ahora solo tienes tu <strong>autoevaluación</strong>. Cuando tus compañeros completen sus pendientes,
+        aparecerá la barra de <strong>Evaluadores</strong> (y dejará de verse en 0%).
+    </div>
+}
+
 @if (!Model.Rows.Any())
 {
     <div class="alert alert-warning">Sin datos para graficar todavía.</div>

@@ -82,8 +82,9 @@ builder.Services.AddRazorPages(options =>
     // Documentos: admin + empleado
     options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");
 
-    // Empleados: admin gestiona, empleado ve su ficha
-    options.Conventions.AuthorizeFolder("/Employees", "AdminOnly");
+    // Empleados: admin gestiona en /Admin/Employees, el empleado ve su ficha en /Employees/MyProfile
+    // Importante: NO autorizar toda la carpeta /Employees como AdminOnly.
+    // En Razor Pages las convenciones se acumulan y terminarías exigiendo Admin + Employee a la vez.
     options.Conventions.AuthorizePage("/Employees/MyProfile", "EmployeeOnly");
 
     // Viáticos: empleados y admin

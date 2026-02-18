@@ -20,6 +20,8 @@ public class MyResultsModel : PageModel
     public record Row(string Competency, decimal AutoPct, decimal OthersPct, decimal DiffPct);
     public List<Row> Rows { get; set; } = new();
 
+    public bool HasOtherResponses { get; set; }
+
     public string LabelsJson { get; set; } = "[]";
     public string AutoJson { get; set; } = "[]";
     public string OthersJson { get; set; } = "[]";
@@ -69,6 +71,9 @@ public class MyResultsModel : PageModel
             .ToListAsync();
 
         if (!answers.Any()) return;
+
+        // Útil para UX: si todavía no hay evaluaciones de otros, evitamos confusión (0% no es “malo”, es “sin datos”).
+        HasOtherResponses = answers.Any(x => !x.IsSelf);
 
         var comps = await _db.Eval360Competencies.AsNoTracking()
             .Where(c => c.IsActive)

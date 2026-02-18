@@ -6,95 +6,78 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Asignaciones · 360</h1>
+        <h1 class="h4 m-0">Asignaciones · Evaluación 360</h1>
         <div class="text-muted small">
-            <span class="fw-semibold">@Model.Campaign.Title</span>
-            · Estado: <span class="badge bg-light text-dark">@Model.Campaign.Status</span>
+            Campaña: <span class="fw-semibold">@Model.Campaign.Title</span>
         </div>
     </div>
-
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
-    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
 </div>
 
-@if (TempData["Msg"] is string msg)
+@if (TempData["Msg"] is string msg && !string.IsNullOrWhiteSpace(msg))
 {
     <div class="alert alert-info">@msg</div>
 }
 
-<div class="row g-3">
-    <div class="col-lg-5">
-        <div class="card shadow-soft">
-            <div class="card-header fw-semibold">Participantes</div>
-            <div class="card-body">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" asp-for="IncludeAdminLocal" form="frmGenerate" />
-                    <label class="form-check-label" asp-for="IncludeAdminLocal">
-                        Incluir admin seed (admin@hn.local)
-                    </label>
+<div class="card shadow-soft mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Participantes</label>
+                <div class="text-muted small">
+                    Total: <span class="fw-semibold">@Model.Participants.Count</span>
+                    · Asignaciones: <span class="fw-semibold">@Model.TotalAssignments</span>
+                    · Contestadas: <span class="fw-semibold">@Model.SubmittedAssignments</span>
                 </div>
-
-                <div class="text-muted small mb-2">Total: @Model.Participants.Count</div>
-
-                <ul class="list-group list-group-flush small">
-                    @foreach (var p in Model.Participants)
-                    {
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>@p.FullName</span>
-                            <span class="text-muted">@p.Email</span>
-                        </li>
-                    }
-                </ul>
             </div>
-        </div>
-    </div>
 
-    <div class="col-lg-7">
-        <div class="card shadow-soft">
-            <div class="card-header fw-semibold">Generar asignaciones</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="text-muted small">Asignaciones</div>
-                        <div class="h4 m-0">@Model.TotalAssignments</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Enviadas</div>
-                        <div class="h4 m-0">@Model.SubmittedAssignments</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Autoevaluación</div>
-                        <div class="h4 m-0">@((Model.Campaign.AllowSelf) ? "Sí" : "No")</div>
-                    </div>
-                </div>
+            <div class="col-md-6 text-md-end">
+                <form method="post" class="d-inline-block">
+                    <input type="hidden" name="id" value="@RouteData.Values["id"]" />
 
-                <hr />
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" asp-for="IncludeAdmins" />
+                        <label class="form-check-label" asp-for="IncludeAdmins">Incluir admins</label>
+                    </div>
 
-                <form id="frmGenerate" method="post" asp-page-handler="Generate" asp-route-id="@Model.Campaign.Id" class="d-flex gap-2">
-                    <button class="btn btn-primary" type="submit">Generar (todos evalúan a todos)</button>
-                    <button class="btn btn-outline-danger" type="submit" formaction="?handler=Reset&id=@Model.Campaign.Id"
-                            onclick="return confirm('Esto borra asignaciones y respuestas de esta campaña. ¿Seguro?');">
+                    <button class="btn btn-primary ms-2" type="submit" asp-page-handler="Generate">
+                        Generar (todos evalúan a todos)
+                    </button>
+
+                    <button class="btn btn-outline-danger ms-2" type="submit" asp-page-handler="Reset"
+                            onclick="return confirm('Esto borrará asignaciones y respuestas. ¿Continuar?');">
                         Reset
                     </button>
                 </form>
-
-                <div class="text-muted small mt-2">
-                    Nota: si ya existían asignaciones, solo se crean las faltantes.
-                </div>
-
-                <hr />
-
-                <div class="d-flex gap-2">
-                    <form method="post" asp-page-handler="Open" asp-route-id="@Model.Campaign.Id" class="d-inline">
-                        <!-- status se cambia desde el index; aquí solo informativo -->
-                    </form>
-
-                    <a class="btn btn-outline-dark" asp-page="/Admin/Eval360/Results/Index" asp-route-id="@Model.Campaign.Id">
-                        Ver resultados
-                    </a>
-                </div>
             </div>
+        </div>
+
+        <hr />
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var i = 1;
+                    }
+                    @foreach (var p in Model.Participants)
+                    {
+                        <tr>
+                            <td>@i</td>
+                            <td>@p.FullName</td>
+                            <td class="text-muted">@p.Email</td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
