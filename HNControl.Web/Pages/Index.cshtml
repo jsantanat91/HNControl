@@ -2,7 +2,123 @@
 @model HNControl.Web.Pages.IndexModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Inicio";
 }
+
+<style>
+    /* ====== Home cards: mismo tamaño + click en toda la card ====== */
+    .hn-home-grid .col {
+        display: flex;
+    }
+
+    .hn-home-grid .hn-module {
+        width: 100%;
+        height: 100%;
+        position: relative; /* requerido para stretched-link */
+    }
+
+    .hn-module-body {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hn-module-top {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .hn-module-content {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .hn-cta-row {
+        margin-top: auto;
+        padding-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    /* badge del icono más “bonito” */
+    .hn-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(0,0,0,.06);
+        box-shadow: 0 12px 26px rgba(0,0,0,.08);
+        background: rgba(13,110,253,.08); /* default */
+        color: rgb(13,110,253);
+        flex: 0 0 auto;
+    }
+
+        .hn-icon svg {
+            width: 26px;
+            height: 26px;
+        }
+
+    /* gradientes por acento (suave, pro) */
+    .accent-blue .hn-icon {
+        background: linear-gradient(135deg, rgba(13,110,253,.18), rgba(13,110,253,.06));
+        color: rgb(13,110,253);
+    }
+
+    .accent-green .hn-icon {
+        background: linear-gradient(135deg, rgba(22,163,74,.18), rgba(22,163,74,.06));
+        color: rgb(22,163,74);
+    }
+
+    .accent-purple .hn-icon {
+        background: linear-gradient(135deg, rgba(124,58,237,.18), rgba(124,58,237,.06));
+        color: rgb(124,58,237);
+    }
+
+    .accent-cyan .hn-icon {
+        background: linear-gradient(135deg, rgba(8,145,178,.18), rgba(8,145,178,.06));
+        color: rgb(8,145,178);
+    }
+
+    .accent-orange .hn-icon {
+        background: linear-gradient(135deg, rgba(249,115,22,.18), rgba(249,115,22,.06));
+        color: rgb(249,115,22);
+    }
+
+    .accent-yellow .hn-icon {
+        background: linear-gradient(135deg, rgba(234,179,8,.18), rgba(234,179,8,.06));
+        color: rgb(234,179,8);
+    }
+
+    /* CTA más limpio */
+    .hn-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: rgb(13,110,253);
+        text-decoration: none;
+    }
+
+    .hn-module:hover .hn-cta {
+        text-decoration: underline;
+    }
+
+    /* El link se estira pero no “ensucia” el layout */
+    .hn-stretched {
+        color: inherit;
+        text-decoration: none;
+    }
+
+        .hn-stretched:focus {
+            outline: none;
+            box-shadow: none;
+        }
+</style>
 
 <div class="hn-hero">
     <h1>Panel de Control</h1>
@@ -11,122 +127,148 @@
 
 @if (User.IsInRole(AppRoles.Admin))
 {
-    <div class="row row-cols-1 row-cols-lg-2 g-4">
+    <div class="row row-cols-1 row-cols-lg-2 g-4 hn-home-grid">
+        <!-- DASHBOARD -->
         <div class="col">
             <div class="card hn-module accent-blue">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
                         <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M4 4h16v14H4V4Z" stroke="currentColor" stroke-width="2" />
                                 <path d="M8 22h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Dashboard</div>
                             <div class="hn-module-desc">KPIs, evaluaciones y operación.</div>
-                            <a class="hn-link" asp-page="/Admin/Dashboard">Ver dashboard →</a>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Admin/Dashboard">Ver dashboard →</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- EMPLEADOS -->
         <div class="col">
             <div class="card hn-module accent-green">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="hn-icon" style="background:rgba(22,163,74,.10);border-color:rgba(22,163,74,.18);">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2" />
                                 <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Empleados</div>
                             <div class="hn-module-desc">Alta, ficha interna y datos de nómina.</div>
-                            <div class="text-muted small mb-2">Total: <strong>@Model.EmployeeCount</strong></div>
-                            <a class="hn-link" asp-page="/Admin/Employees/Index">Gestionar →</a>
+                            <div class="text-muted small mt-1">Total: <strong>@Model.EmployeeCount</strong></div>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Admin/Employees/Index">Gestionar →</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- DOCUMENTOS -->
         <div class="col">
             <div class="card hn-module accent-purple">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="hn-icon" style="background:rgba(124,58,237,.10);border-color:rgba(124,58,237,.18);">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                                 <path d="M5 3h14v18H5V3Z" stroke="currentColor" stroke-width="2" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Documentos</div>
                             <div class="hn-module-desc">Archivos internos y referencias ligadas.</div>
-                            <a class="hn-link" asp-page="/Knowledge/Index">Ver documentos →</a>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Knowledge/Index">Ver documentos →</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- PROYECTOS -->
         <div class="col">
             <div class="card hn-module accent-cyan">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="hn-icon" style="background:rgba(8,145,178,.10);border-color:rgba(8,145,178,.18);">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
-                                <path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"
+                                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Proyectos</div>
                             <div class="hn-module-desc">Control interno de proyectos y accesos.</div>
-                            <a class="hn-link" asp-page="/Projects/Index">Ir a proyectos →</a>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Projects/Index">Ir a proyectos →</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- VIÁTICOS -->
         <div class="col">
             <div class="card hn-module accent-orange">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="hn-icon" style="background:rgba(249,115,22,.10);border-color:rgba(249,115,22,.18);">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <path d="M4 7h16M6 7l1 15h10l1-15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M4 7h16M6 7l1 15h10l1-15"
+                                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Viáticos</div>
                             <div class="hn-module-desc">Captura semanal con desglose por día.</div>
-                            <div class="text-muted small mb-2">Semanas: <strong>@Model.ViaticWeekCount</strong></div>
-                            <a class="hn-link" asp-page="/Admin/Viaticos/Index">Ver panel →</a>
+                            <div class="text-muted small mt-1">Semanas: <strong>@Model.ViaticWeekCount</strong></div>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Admin/Viaticos/Index">Ver panel →</a>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- ÓRDENES -->
         <div class="col">
             <div class="card hn-module accent-yellow">
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="hn-icon" style="background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.22);">
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
                             <svg viewBox="0 0 24 24" fill="none">
                                 <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
+                        <div class="hn-module-content">
                             <div class="hn-module-title">Órdenes</div>
                             <div class="hn-module-desc">Correctivo, preventivo, nuevas instalaciones.</div>
-                            <a class="hn-link" asp-page="/Admin/ServiceOrders/Index">Ver órdenes →</a>
                         </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Admin/ServiceOrders/Index">Ver órdenes →</a>
                     </div>
                 </div>
             </div>
@@ -135,23 +277,50 @@
 }
 else
 {
-    <div class="row row-cols-1 row-cols-lg-2 g-4">
+    <div class="row row-cols-1 row-cols-lg-2 g-4 hn-home-grid">
         <div class="col">
             <div class="card hn-module accent-orange">
-                <div class="card-body">
-                    <div class="hn-module-title">Mis viáticos</div>
-                    <div class="hn-module-desc">Captura semanal con desglose por día + facturable/no facturable.</div>
-                    <a class="hn-link" asp-page="/Viaticos/Index">Ir a viáticos →</a>
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M4 7h16M6 7l1 15h10l1-15"
+                                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <div class="hn-module-content">
+                            <div class="hn-module-title">Mis viáticos</div>
+                            <div class="hn-module-desc">Captura semanal con desglose por día + facturable/no facturable.</div>
+                        </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Viaticos/Index">Ir a viáticos →</a>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col">
             <div class="card hn-module accent-green">
-                <div class="card-body">
-                    <div class="hn-module-title">Mi ficha</div>
-                    <div class="hn-module-desc">Tus datos internos (solo tú lo ves).</div>
-                    <a class="hn-link" asp-page="/Employees/MyProfile">Ver mi ficha →</a>
+                <div class="card-body hn-module-body">
+                    <div class="hn-module-top">
+                        <div class="hn-icon">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2" />
+                                <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="hn-module-content">
+                            <div class="hn-module-title">Mi ficha</div>
+                            <div class="hn-module-desc">Tus datos internos (solo tú lo ves).</div>
+                        </div>
+                    </div>
+
+                    <div class="hn-cta-row">
+                        <a class="stretched-link hn-stretched hn-cta" asp-page="/Employees/MyProfile">Ver mi ficha →</a>
+                    </div>
                 </div>
             </div>
         </div>
