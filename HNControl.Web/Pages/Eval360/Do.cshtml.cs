@@ -25,11 +25,12 @@ public class DoModel : PageModel
     public Dictionary<Guid, int> ExistingScores { get; set; } = new();
     public Dictionary<Guid, string> ExistingComments { get; set; } = new();
 
-    public string ScaleLeft { get; set; } = "Entre el 10% más bajo";
-    public string ScaleLeftMid { get; set; } = "Entre el tercio más bajo";
-    public string ScaleMid { get; set; } = "Normal";
-    public string ScaleRightMid { get; set; } = "Entre el tercio superior";
-    public string ScaleRight { get; set; } = "Entre el 10% superior";
+    public string ScaleLeft { get; set; } = "Crítico (muy por debajo)";
+    public string ScaleLeftMid { get; set; } = "Necesita mejorar";
+    public string ScaleMid { get; set; } = "Cumple";
+    public string ScaleRightMid { get; set; } = "Bueno";
+    public string ScaleRight { get; set; } = "Excelente";
+
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {

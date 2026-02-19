@@ -1,7 +1,8 @@
-﻿@page "{userId}"
+@page "{userId}"
 @model HNControl.Web.Pages.Admin.Employees.EditModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Editar empleado";
 }
 
 @if (Model.Employee == null)
@@ -17,7 +18,7 @@
     <div class="alert alert-info">@Model.Info</div>
 }
 
-<form method="post" class="card shadow-sm hn-hover hn-hover">
+<form method="post" class="card shadow-sm hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.UserId" />
 
@@ -33,22 +34,42 @@
             </div>
 
             <div class="col-md-4">
+                <label class="form-label">Sexo</label>
+                <select class="form-select" asp-for="Input.Sex">
+                    <option value="">—</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Mujer">Mujer</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
                 <label class="form-label">Teléfono</label>
                 <input class="form-control" asp-for="Input.Phone" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Sexo</label>
-                <select class="form-select" asp-for="Input.Sex">
-                    <option value="">—</option>
-                    <option value="M">M</option>
-                    <option value="F">F</option>
-                </select>
+                <label class="form-label">NSS</label>
+                <input class="form-control" asp-for="Input.Nss" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">NSS</label>
-                <input class="form-control" asp-for="Input.Nss" />
+                <label class="form-label">CURP</label>
+                <input class="form-control text-uppercase" asp-for="Input.Curp" maxlength="18" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Fecha de nacimiento</label>
+                <input class="form-control" asp-for="Input.BirthDate" type="date" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Fecha de ingreso (antigüedad)</label>
+                <input class="form-control" asp-for="Input.HireDate" type="date" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Dirección</label>
+                <input class="form-control" asp-for="Input.Address" />
             </div>
 
             <div class="col-md-6">
@@ -57,7 +78,7 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Sueldo base</label>
+                <label class="form-label">Sueldo base mensual</label>
                 <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
             </div>
         </div>

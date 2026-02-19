@@ -53,6 +53,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Gender).HasMaxLength(20);
             e.Property(x => x.Position).HasMaxLength(120);
             e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.Curp).HasMaxLength(18);
+            e.Property(x => x.Address).HasMaxLength(400);
+            e.Property(x => x.HireDate).HasColumnType("date");
+            e.Property(x => x.BirthDate).HasColumnType("date");
             e.Property(x => x.SalaryBase).HasColumnType("numeric(12,2)");
         });
 

@@ -17,26 +17,35 @@
 </div>
 
 <div class="card shadow-soft mb-3">
-    <div class="card-body d-flex flex-wrap gap-2 align-items-end">
-        <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+    <div class="card-body">
+        <form method="get">
             <input type="hidden" name="id" value="@RouteData.Values["id"]" />
-            <div>
-                <label class="form-label small text-muted mb-1">Empleado</label>
-                <select class="form-select" name="UserId" style="min-width:320px">
-                    @foreach (var e in Model.Employees)
-                    {
-                        <option value="@e.UserId" selected="@(e.UserId == Model.UserId)">
-                            @e.FullName (@e.Email)
-                        </option>
-                    }
-                </select>
-            </div>
-            <button class="btn btn-primary">Ver</button>
-        </form>
 
-        <a class="btn btn-outline-dark ms-auto"
-           asp-page="/Admin/Eval360/Campaigns/Assignments"
-           asp-route-id="@Model.Campaign.Id">Asignaciones</a>
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-lg-7">
+                    <div class="form-floating">
+                        <select class="form-select" id="userSelect" name="UserId">
+                            @foreach (var e in Model.Employees)
+                            {
+                                <option value="@e.UserId" selected="@(e.UserId == Model.UserId)">@e.FullName (@e.Email)</option>
+                            }
+                        </select>
+                        <label for="userSelect">Empleado</label>
+                    </div>
+                    <div class="form-text">Tip: abre el combo y escribe para buscar rápido.</div>
+                </div>
+
+                <div class="col-auto">
+                    <button class="btn btn-primary px-4">Ver</button>
+                </div>
+
+                <div class="col-auto ms-lg-auto">
+                    <a class="btn btn-outline-dark"
+                       asp-page="/Admin/Eval360/Campaigns/Assignments"
+                       asp-route-id="@Model.Campaign.Id">Asignaciones</a>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 

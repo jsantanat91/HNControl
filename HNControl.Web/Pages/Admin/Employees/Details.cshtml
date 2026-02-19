@@ -24,6 +24,49 @@
 
 <div class="row g-3">
     <div class="col-lg-4">
+        <div class="card shadow-sm hn-hover">
+            <div class="card-header fw-semibold">Datos del empleado</div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between"><span class="text-muted">Correo</span><span>@Model.Employee.Email</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Teléfono</span><span>@Model.Employee.Phone</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">NSS</span><span>@Model.Employee.Nss</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Sexo</span><span>@Model.Employee.Gender</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">CURP</span><span>@Model.Employee.Curp</span></div>
+
+                <hr class="my-2" />
+
+                <div class="d-flex justify-content-between"><span class="text-muted">Nacimiento</span><span>@(Model.Employee.BirthDate?.ToString("yyyy-MM-dd") ?? "—")</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Ingreso</span><span>@(Model.Employee.HireDate?.ToString("yyyy-MM-dd") ?? "—")</span></div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Antigüedad</span>
+                    <span>
+                        @if (Model.Employee.HireDate.HasValue)
+                        {
+                            var hd = Model.Employee.HireDate.Value.Date;
+                            var now = DateTime.UtcNow.Date;
+                            var months = (now.Year - hd.Year) * 12 + (now.Month - hd.Month);
+                            if (now.Day < hd.Day) months -= 1;
+                            if (months < 0) months = 0;
+                            var years = months / 12;
+                            var rem = months % 12;
+                            @($"{years}a {rem}m")
+                        }
+                        else
+                        {
+                            @("—")
+                        }
+                    </span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Employee.Address))
+                {
+                    <hr class="my-2" />
+                    <div class="text-muted">Dirección</div>
+                    <div>@Model.Employee.Address</div>
+                }
+            </div>
+        </div>
+
         <div class="card shadow-sm hn-hover hn-hover">
             <div class="card-header fw-semibold">KPIs</div>
             <div class="card-body">

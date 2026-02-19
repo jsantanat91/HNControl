@@ -31,9 +31,35 @@ public class LocalFileStorage : IFileStorage
         if (file.Length > maxBytes)
             throw new InvalidOperationException($"Archivo demasiado grande (max {maxBytes / (1024 * 1024)}MB).");
 
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowedExtensions.Contains(ext))
-            throw new InvalidOperationException("Tipo de archivo no permitido.");
+        // Normaliza lista permitida (case-insensitive y con punto)
+        var allowed = new HashSet<string>(
+            allowedExtensions.Select(e =>
+            {
+                var x = (e ?? "").Trim().ToLowerInvariant();
+                if (!x.StartsWith(".")) x = "." + x;
+                return x;
+            }),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        var ext = (Path.GetExtension(file.FileName) ?? "").Trim().ToLowerInvariant();
+
+        // Si viene sin extensión, intentamos derivarla por ContentType
+        if (string.IsNullOrWhiteSpace(ext))
+        {
+            ext = (file.ContentType ?? "").ToLowerInvariant() switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                "image/heic" => ".heic",
+                "application/pdf" => ".pdf",
+                _ => ""
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(ext) || !allowed.Contains(ext))
+            throw new InvalidOperationException($"Tipo de archivo no permitido ({ext}).");
 
         var safeName = fileNameNoExt + ext;
 
@@ -46,7 +72,7 @@ public class LocalFileStorage : IFileStorage
         await file.CopyToAsync(fs);
 
         var storagePath = Path.Combine(subFolder, safeName).Replace("\\", "/");
-        return (storagePath, file.Length, file.ContentType ?? "application/octet-stream", Path.GetFileName(file.FileName));
+        return (storagePath, file.Length, file.ContentType ?? GuessContentType(fullPath), Path.GetFileName(file.FileName));
     }
 
     public async Task<(string storagePath, long sizeBytes, string contentType)> SaveBytesAsync(
@@ -87,7 +113,9 @@ public class LocalFileStorage : IFileStorage
         {
             ".pdf" => "application/pdf",
             ".png" => "image/png",
-            ".jpg" or ".jpeg" => "image/jpeg",
+            ".jpg" or ".jpeg" or ".jfif" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".heic" => "image/heic",
             _ => "application/octet-stream"
         };
     }

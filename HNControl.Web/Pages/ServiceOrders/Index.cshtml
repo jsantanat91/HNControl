@@ -1,0 +1,62 @@
+﻿@page
+@model HNControl.Web.Pages.ServiceOrders.IndexModel
+@{
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Mis órdenes de servicio</h1>
+        <div class="text-muted small">Solo ves las órdenes asignadas a ti.</div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-info">@Model.Info</div>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-secondary">No tienes órdenes asignadas todavía.</div>
+}
+else
+{
+    <div class="card shadow-sm hn-hover">
+        <div class="card-body table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Creada</th>
+                        <th>Entrega</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="text-muted">@r.Client</td>
+                            <td class="fw-semibold">@r.Title</td>
+                            <td>@r.Type</td>
+                            <td><span class="badge bg-light text-dark border">@r.Status</span></td>
+                            <td class="text-muted">@r.Created</td>
+                            <td class="text-muted">@r.Due</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="@r.PublicUrl" target="_blank">Link cliente</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="text-muted small mt-2">
+                “Link cliente” abre la vista pública para firma del cliente (token).
+            </div>
+        </div>
+    </div>
+}

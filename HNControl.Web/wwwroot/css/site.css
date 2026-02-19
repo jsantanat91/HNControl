@@ -1,22 +1,26 @@
-html {
-  font-size: 14px;
+/* Checklist UI */
+.hn-checklist-card {
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 16px;
+    transition: transform .15s ease, box-shadow .15s ease;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    .hn-checklist-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(0,0,0,.06);
+    }
+
+.hn-checklist-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.hn-muted {
+    color: rgba(0,0,0,.55);
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
-
-body {
-  margin-bottom: 60px;
+.hn-note {
+    min-height: 44px;
 }

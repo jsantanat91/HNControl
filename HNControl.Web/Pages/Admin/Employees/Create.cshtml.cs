@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace HNControl.Web.Pages.Employees;
+namespace HNControl.Web.Pages.Admin.Employees;
 
+[Authorize(Roles = AppRoles.Admin)]
 public class CreateModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userMgr;
@@ -28,9 +30,16 @@ public class CreateModel : PageModel
         [Required] public string FullName { get; set; } = "";
         [Required, EmailAddress] public string Email { get; set; } = "";
         public string Nss { get; set; } = "";
-        public string Gender { get; set; } = "N/A";
+        [Required] public string Gender { get; set; } = "Hombre";
         public string Position { get; set; } = "";
         public string Phone { get; set; } = "";
+
+        [MaxLength(18)] public string Curp { get; set; } = "";
+        [MaxLength(400)] public string Address { get; set; } = "";
+
+        [DataType(DataType.Date)] public DateTime? BirthDate { get; set; }
+        [DataType(DataType.Date)] public DateTime? HireDate { get; set; }
+
         [Range(0, 9999999)] public decimal SalaryBase { get; set; }
         [Required] public string Password { get; set; } = "";
     }
@@ -73,6 +82,10 @@ public class CreateModel : PageModel
             Gender = Input.Gender,
             Position = Input.Position,
             Phone = Input.Phone,
+            Curp = (Input.Curp ?? "").Trim().ToUpperInvariant(),
+            Address = (Input.Address ?? "").Trim(),
+            BirthDate = Input.BirthDate,
+            HireDate = Input.HireDate,
             SalaryBase = Input.SalaryBase,
             CreatedAt = DateTime.UtcNow
         });

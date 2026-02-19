@@ -11,16 +11,17 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
 {
     private readonly IConfiguration _cfg;
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
 
-    public ServiceOrderPdfRenderer(IConfiguration cfg, ApplicationDbContext db)
+    public ServiceOrderPdfRenderer(IConfiguration cfg, ApplicationDbContext db, IFileStorage storage)
     {
         _cfg = cfg;
         _db = db;
+        _storage = storage;
     }
 
     public async Task<byte[]> RenderAsync(ServiceOrder order)
     {
-        // Recargar completo para PDF
         var o = await _db.ServiceOrders
             .Include(x => x.Client)
             .Include(x => x.Checklist)
@@ -28,56 +29,68 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.Signatures)
             .FirstAsync(x => x.Id == order.Id);
 
-        var logoPath = _cfg["Branding:LogoPath"] ?? "wwwroot/images/hn-logo.png";
+        // Logo
+        var logoPath = (_cfg["Branding:LogoPath"] ?? "wwwroot/images/hn-logo.png").Trim();
+        if (!Path.IsPathRooted(logoPath))
+            logoPath = Path.Combine(Directory.GetCurrentDirectory(), logoPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        byte[]? logoBytes = File.Exists(logoPath) ? File.ReadAllBytes(logoPath) : null;
 
+        // Firmas (leer desde storage, no “a mano” con basePath)
         var techSig = o.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var cliSig = o.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
-        var basePath = _cfg["Storage:BasePath"] ?? "App_Data/uploads";
+        byte[]? techBytes = await TryReadStorageBytesAsync(techSig?.StoragePath);
+        byte[]? cliBytes = await TryReadStorageBytesAsync(cliSig?.StoragePath);
 
-        byte[]? techBytes = TryReadFile(basePath, techSig?.StoragePath);
-        byte[]? cliBytes = TryReadFile(basePath, cliSig?.StoragePath);
-        byte[]? logoBytes = File.Exists(logoPath) ? File.ReadAllBytes(logoPath) : null;
+        var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
 
         var doc = Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(25);
+                page.Margin(26);
                 page.DefaultTextStyle(x => x.FontSize(10));
 
+                // HEADER
                 page.Header().Row(r =>
                 {
                     r.RelativeItem().Column(c =>
                     {
-                        c.Item().Text(_cfg["Branding:CompanyName"] ?? "HN Solutions").FontSize(14).SemiBold();
-                        c.Item().Text("Orden de Servicio").FontSize(12);
-                        c.Item().Text($"{o.Title}").FontSize(11).SemiBold();
+                        c.Item().Text(company).FontSize(16).SemiBold();
+                        c.Item().Text("Orden de Servicio").FontSize(12).FontColor(Colors.Grey.Darken2);
+                        c.Item().Text(o.Title).FontSize(12).SemiBold();
                     });
 
-                    r.ConstantItem(120).AlignRight().AlignMiddle().Element(el =>
+                    r.ConstantItem(140).AlignRight().AlignMiddle().Element(el =>
                     {
-                        if (logoBytes != null)
-                            el.Height(48).Image(logoBytes);
+                        if (logoBytes != null && logoBytes.Length > 0)
+                            el.Height(46).Image(logoBytes).FitHeight();
                         else
-                            el.Text("LOGO").FontSize(16).Light();
+                            el.Text("LOGO").FontSize(14).FontColor(Colors.Grey.Darken2);
                     });
                 });
 
-                page.Content().Column(c =>
+                // CONTENT
+                page.Content().PaddingTop(12).Column(c =>
                 {
-                    c.Item().PaddingTop(10).Row(r =>
+                    c.Spacing(10);
+
+                    // Cliente + Datos
+                    c.Item().Row(r =>
                     {
-                        r.RelativeItem().Border(1).Padding(8).Column(cc =>
+                        r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                         {
                             cc.Item().Text("Cliente").SemiBold();
-                            cc.Item().Text(o.Client?.Name ?? "");
-                            cc.Item().Text(o.Client?.Email ?? "").FontColor(Colors.Grey.Darken2);
-                            cc.Item().Text(o.Client?.Phone ?? "").FontColor(Colors.Grey.Darken2);
+                            cc.Item().Text(o.Client?.Name ?? "—");
+                            if (!string.IsNullOrWhiteSpace(o.Client?.Email))
+                                cc.Item().Text(o.Client!.Email).FontColor(Colors.Grey.Darken2);
+                            if (!string.IsNullOrWhiteSpace(o.Client?.Phone))
+                                cc.Item().Text(o.Client!.Phone).FontColor(Colors.Grey.Darken2);
                         });
 
-                        r.ConstantItem(220).Border(1).Padding(8).Column(cc =>
+                        r.ConstantItem(255).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                         {
                             cc.Item().Text("Datos de la orden").SemiBold();
                             cc.Item().Text($"Tipo: {o.Type}");
@@ -88,77 +101,130 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         });
                     });
 
-                    c.Item().PaddingTop(10).Text("Descripción").SemiBold();
-                    c.Item().Border(1).Padding(8).Text(o.Description ?? "");
-
-                    c.Item().PaddingTop(10).Text("Checklist").SemiBold();
-                    c.Item().Table(t =>
+                    // Descripción
+                    c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
-                        t.ColumnsDefinition(cols =>
-                        {
-                            cols.ConstantColumn(30);
-                            cols.RelativeColumn();
-                            cols.ConstantColumn(60);
-                            cols.RelativeColumn();
-                        });
+                        cc.Item().Text("Descripción").SemiBold();
+                        cc.Item().PaddingTop(6).Text(string.IsNullOrWhiteSpace(o.Description) ? "—" : o.Description);
+                    });
 
-                        t.Header(h =>
+                    // Checklist limpio
+                    c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
+                    {
+                        cc.Item().Text("Checklist").SemiBold();
+                        cc.Item().PaddingTop(6).Table(t =>
                         {
-                            h.Cell().Element(CellHead).Text("#");
-                            h.Cell().Element(CellHead).Text("Item");
-                            h.Cell().Element(CellHead).AlignCenter().Text("Hecho");
-                            h.Cell().Element(CellHead).Text("Notas");
-                        });
+                            t.ColumnsDefinition(cols =>
+                            {
+                                cols.ConstantColumn(26);
+                                cols.RelativeColumn();
+                                cols.ConstantColumn(34);
+                                cols.RelativeColumn();
+                            });
 
-                        foreach (var it in o.Checklist.OrderBy(x => x.SortOrder))
+                            t.Header(h =>
+                            {
+                                h.Cell().Element(CellHead).Text("#");
+                                h.Cell().Element(CellHead).Text("Item");
+                                h.Cell().Element(CellHead).AlignCenter().Text("OK");
+                                h.Cell().Element(CellHead).Text("Notas");
+                            });
+
+                            var list = o.Checklist.OrderBy(x => x.SortOrder).ToList();
+                            for (int i = 0; i < list.Count; i++)
+                            {
+                                var it = list[i];
+                                bool zebra = i % 2 == 1;
+
+                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.SortOrder.ToString()).FontColor(Colors.Grey.Darken2);
+                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Title);
+                                t.Cell().Element(cel => CellBody(cel, zebra)).AlignCenter().Text(it.IsDone ? "✓" : "");
+                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Notes ?? "").FontColor(Colors.Grey.Darken2);
+                            }
+                        });
+                    });
+
+                    // Evidencias
+                    c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
+                    {
+                        cc.Item().Text("Evidencias").SemiBold();
+                        cc.Item().PaddingTop(6);
+
+                        if (!o.Evidences.Any())
                         {
-                            t.Cell().Element(CellBody).Text(it.SortOrder.ToString());
-                            t.Cell().Element(CellBody).Text(it.Title);
-                            t.Cell().Element(CellBody).AlignCenter().Text(it.IsDone ? "Sí" : "No");
-                            t.Cell().Element(CellBody).Text(it.Notes ?? "");
+                            cc.Item().Text("Sin evidencias.").FontColor(Colors.Grey.Darken2);
+                        }
+                        else
+                        {
+                            foreach (var ev in o.Evidences.OrderByDescending(x => x.UploadedAt))
+                                cc.Item().Text($"• {ev.OriginalFileName} — {ev.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm}")
+                                    .FontColor(Colors.Grey.Darken2);
                         }
                     });
 
-                    c.Item().PaddingTop(10).Text("Evidencias").SemiBold();
-                    if (!o.Evidences.Any())
+                    // Firmas (FIX layout)
+                    c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
-                        c.Item().Text("Sin evidencias.");
-                    }
-                    else
-                    {
-                        foreach (var ev in o.Evidences.OrderByDescending(x => x.UploadedAt))
-                            c.Item().Text($"• {ev.OriginalFileName} ({ev.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm})");
-                    }
-
-                    c.Item().PaddingTop(15).Row(r =>
-                    {
-                        r.RelativeItem().Border(1).Padding(8).Column(cc =>
+                        cc.Item().Text("Firmas").SemiBold();
+                        cc.Item().PaddingTop(6).Row(r =>
                         {
-                            cc.Item().Text("Firma técnico").SemiBold();
-                            cc.Item().Text(techSig?.SignedByName ?? "—").FontColor(Colors.Grey.Darken2);
-                            cc.Item().Text(techSig?.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "").FontColor(Colors.Grey.Darken2);
-                            cc.Item().PaddingTop(5).Height(80).Element(el =>
+                            r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                             {
-                                if (techBytes != null) el.Image(techBytes);
-                                else el.Text("Sin firma");
+                                x.Item().Text("Técnico").SemiBold();
+                                x.Item().Text(string.IsNullOrWhiteSpace(techSig?.SignedByName) ? "—" : techSig!.SignedByName).FontColor(Colors.Grey.Darken2);
+                                if (techSig?.SignedAt != null)
+                                    x.Item().Text(techSig.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).FontSize(9).FontColor(Colors.Grey.Darken2);
+
+                                x.Item().PaddingTop(6)
+                                    .Height(90)
+                                    .Border(1).BorderColor(Colors.Grey.Lighten2)
+                                    .Background(Colors.Grey.Lighten5)
+                                    .AlignCenter().AlignMiddle()
+                                    .Element(el =>
+                                    {
+                                        if (techBytes != null && techBytes.Length > 0)
+                                            el.Image(techBytes).FitArea();
+                                        else
+                                            el.Text("Sin firma").FontColor(Colors.Grey.Darken2);
+                                    });
                             });
-                        });
 
-                        r.RelativeItem().Border(1).Padding(8).Column(cc =>
-                        {
-                            cc.Item().Text("Firma cliente").SemiBold();
-                            cc.Item().Text(cliSig?.SignedByName ?? "—").FontColor(Colors.Grey.Darken2);
-                            cc.Item().Text(cliSig?.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "").FontColor(Colors.Grey.Darken2);
-                            cc.Item().PaddingTop(5).Height(80).Element(el =>
+                            r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                             {
-                                if (cliBytes != null) el.Image(cliBytes);
-                                else el.Text("Sin firma");
+                                x.Item().Text("Cliente").SemiBold();
+                                x.Item().Text(string.IsNullOrWhiteSpace(cliSig?.SignedByName) ? "—" : cliSig!.SignedByName).FontColor(Colors.Grey.Darken2);
+                                if (cliSig?.SignedAt != null)
+                                    x.Item().Text(cliSig.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).FontSize(9).FontColor(Colors.Grey.Darken2);
+
+                                x.Item().PaddingTop(6)
+                                    .Height(90)
+                                    .Border(1).BorderColor(Colors.Grey.Lighten2)
+                                    .Background(Colors.Grey.Lighten5)
+                                    .AlignCenter().AlignMiddle()
+                                    .Element(el =>
+                                    {
+                                        if (cliBytes != null && cliBytes.Length > 0)
+                                            el.Image(cliBytes).FitArea();
+                                        else
+                                            el.Text("Sin firma").FontColor(Colors.Grey.Darken2);
+                                    });
                             });
                         });
                     });
+
+                    if (!string.IsNullOrWhiteSpace(o.AdminReviewNotes))
+                    {
+                        c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
+                        {
+                            cc.Item().Text("Notas de revisión").SemiBold();
+                            cc.Item().PaddingTop(6).Text(o.AdminReviewNotes!).FontColor(Colors.Grey.Darken2);
+                        });
+                    }
                 });
 
-                page.Footer().AlignCenter().Text(_cfg["Branding:ReportFooter"] ?? "HN Control").FontSize(9).FontColor(Colors.Grey.Darken2);
+                // FOOTER
+                page.Footer().AlignCenter().Text($"{footer} · {DateTime.Now:yyyy-MM-dd HH:mm}")
+                    .FontSize(9).FontColor(Colors.Grey.Darken2);
             });
         });
 
@@ -166,15 +232,30 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
     }
 
     private static IContainer CellHead(IContainer c) =>
-        c.DefaultTextStyle(x => x.SemiBold()).Background(Colors.Grey.Lighten3).Padding(4).Border(1);
+        c.Background(Colors.Grey.Lighten4)
+         .Border(1).BorderColor(Colors.Grey.Lighten2)
+         .PaddingVertical(4).PaddingHorizontal(6)
+         .DefaultTextStyle(x => x.SemiBold().FontSize(9).FontColor(Colors.Grey.Darken2));
 
-    private static IContainer CellBody(IContainer c) =>
-        c.Padding(4).Border(1);
+    private static IContainer CellBody(IContainer c, bool zebra) =>
+        c.Background(zebra ? Colors.Grey.Lighten5 : Colors.White)
+         .Border(1).BorderColor(Colors.Grey.Lighten3)
+         .PaddingVertical(5).PaddingHorizontal(6);
 
-    private static byte[]? TryReadFile(string basePath, string? storagePath)
+    private async Task<byte[]?> TryReadStorageBytesAsync(string? storagePath)
     {
         if (string.IsNullOrWhiteSpace(storagePath)) return null;
-        var full = Path.Combine(basePath, storagePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-        return File.Exists(full) ? File.ReadAllBytes(full) : null;
+
+        try
+        {
+            var (stream, _, _) = await _storage.OpenAsync(storagePath, "file.bin");
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

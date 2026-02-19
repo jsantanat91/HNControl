@@ -36,6 +36,22 @@ public class EmployeeProfile
     [MaxLength(120)]
     public string Position { get; set; } = "";
 
+    // --- Datos adicionales (RH) ---
+
+    // Fecha de ingreso (para calcular antigüedad)
+    public DateTime? HireDate { get; set; }
+
+    // Fecha de nacimiento
+    public DateTime? BirthDate { get; set; }
+
+    // CURP (MX)
+    [MaxLength(18)]
+    public string Curp { get; set; } = "";
+
+    // Dirección
+    [MaxLength(400)]
+    public string Address { get; set; } = "";
+
     // Sueldo base (lo usamos para cálculo 80/20)
     public decimal SalaryBase { get; set; } = 0m;
 

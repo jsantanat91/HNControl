@@ -37,6 +37,12 @@ public class EditModel : PageModel
         [MaxLength(20)] public string? Sex { get; set; }
         [MaxLength(20)] public string? Nss { get; set; }
 
+        [MaxLength(18)] public string? Curp { get; set; }
+        [MaxLength(400)] public string? Address { get; set; }
+
+        [DataType(DataType.Date)] public DateTime? BirthDate { get; set; }
+        [DataType(DataType.Date)] public DateTime? HireDate { get; set; }
+
         [Required, EmailAddress] public string Email { get; set; } = "";
         [Range(0, 99999999)] public decimal SalaryBase { get; set; }
     }
@@ -57,6 +63,10 @@ public class EditModel : PageModel
             Phone = Employee.Phone,
             Sex = Employee.Sex,
             Nss = Employee.Nss,
+            Curp = Employee.Curp,
+            Address = Employee.Address,
+            BirthDate = Employee.BirthDate,
+            HireDate = Employee.HireDate,
             SalaryBase = Employee.SalaryBase,
             Email = email
         };
@@ -77,6 +87,10 @@ public class EditModel : PageModel
         Employee.Phone = (Input.Phone ?? "").Trim();
         Employee.Sex = (Input.Sex ?? "").Trim();
         Employee.Nss = (Input.Nss ?? "").Trim();
+        Employee.Curp = (Input.Curp ?? "").Trim().ToUpperInvariant();
+        Employee.Address = (Input.Address ?? "").Trim();
+        Employee.BirthDate = Input.BirthDate;
+        Employee.HireDate = Input.HireDate;
         Employee.SalaryBase = Input.SalaryBase;
         Employee.Email = Input.Email.Trim();
         Employee.UpdatedAt = DateTime.UtcNow;

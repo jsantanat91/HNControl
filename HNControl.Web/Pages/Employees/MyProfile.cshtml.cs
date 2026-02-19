@@ -30,8 +30,10 @@ public class MyProfileModel : PageModel
     public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal);
     public PerfMini? CurrentPay { get; set; }
 
-    public record Eval360Mini(Guid CampaignId, string Title, DateTime Start, DateTime End, decimal AutoPct, decimal OthersPct, int OthersCount);
+    public record Eval360Mini(Guid CampaignId, string Title, DateTime Start, DateTime End, decimal AutoPct, decimal OthersPct, int OthersCount, bool VisibleToEmployee);
     public Eval360Mini? LastEval360 { get; set; }
+
+    public string SeniorityText { get; set; } = "";
 
     public async Task OnGetAsync()
     {
@@ -42,6 +44,8 @@ public class MyProfileModel : PageModel
             .FirstOrDefaultAsync(x => x.UserId == userId);
 
         if (Profile == null) return;
+
+        SeniorityText = CalcSeniority(Profile.HireDate);
 
         await LoadViaticosAsync(userId);
         await LoadPayrollAsync(userId);
@@ -118,14 +122,19 @@ public class MyProfileModel : PageModel
     {
         var isAdmin = User.IsInRole(AppRoles.Admin);
 
-        var q = _db.Eval360Campaigns.AsNoTracking().Where(c => c.Status == Eval360CampaignStatus.Closed);
-        if (!isAdmin) q = q.Where(c => c.ResultsVisibleToEmployee);
-
-        var campaign = await q
+        // ✅ Tomar la última campaña CERRADA donde este empleado sí tenga respuestas (si no, cae en "no hay resultados")
+        var campaign = await _db.Eval360Campaigns
+            .AsNoTracking()
+            .Where(c => c.Status == Eval360CampaignStatus.Closed)
+            .Where(c => _db.Eval360Assignments.Any(a => a.CampaignId == c.Id
+                                                       && a.SubjectUserId == userId
+                                                       && a.Status == Eval360AssignmentStatus.Submitted))
             .OrderByDescending(c => c.PeriodEnd ?? c.CreatedAt)
             .FirstOrDefaultAsync();
 
         if (campaign == null) return;
+
+        var visibleToEmployee = isAdmin || campaign.ResultsVisibleToEmployee;
 
         // Promedio global auto vs otros
         var answers = await _db.Eval360Answers
@@ -165,8 +174,25 @@ public class MyProfileModel : PageModel
             (campaign.PeriodEnd ?? campaign.CreatedAt),
             autoPct,
             othPct,
-            othersCount
+            othersCount,
+            visibleToEmployee
         );
+    }
+
+    private static string CalcSeniority(DateTime? hireDate)
+    {
+        if (!hireDate.HasValue) return "";
+
+        var hd = hireDate.Value.Date;
+        var now = DateTime.UtcNow.Date;
+
+        var months = (now.Year - hd.Year) * 12 + (now.Month - hd.Month);
+        if (now.Day < hd.Day) months -= 1;
+        if (months < 0) months = 0;
+
+        var years = months / 12;
+        var rem = months % 12;
+        return $"{years} año(s) {rem} mes(es)";
     }
 
     private static DateTime ToMonday(DateTime d)

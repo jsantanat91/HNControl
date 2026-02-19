@@ -40,6 +40,27 @@ else
                         <dt class="col-4 text-muted">Sexo</dt>
                         <dd class="col-8">@Model.Profile.Gender</dd>
 
+                        <dt class="col-4 text-muted">CURP</dt>
+                        <dd class="col-8">@Model.Profile.Curp</dd>
+
+                        <dt class="col-4 text-muted">Nacimiento</dt>
+                        <dd class="col-8">@(Model.Profile.BirthDate?.ToString("yyyy-MM-dd") ?? "—")</dd>
+
+                        <dt class="col-4 text-muted">Ingreso</dt>
+                        <dd class="col-8">
+                            @(Model.Profile.HireDate?.ToString("yyyy-MM-dd") ?? "—")
+                            @if (!string.IsNullOrWhiteSpace(Model.SeniorityText))
+                            {
+                                <span class="text-muted">· @Model.SeniorityText</span>
+                            }
+                        </dd>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.Profile.Address))
+                        {
+                            <dt class="col-4 text-muted">Dirección</dt>
+                            <dd class="col-8">@Model.Profile.Address</dd>
+                        }
+
                         <dt class="col-4 text-muted">Sueldo mensual</dt>
                         <dd class="col-8 fw-semibold">@Model.Profile.SalaryBase.ToString("C")</dd>
                     </dl>
@@ -62,7 +83,14 @@ else
 
                             @if (Model.LastEval360 == null)
                             {
-                                <div class="text-muted small mt-2">Aún no hay resultados publicados.</div>
+                                <div class="text-muted small mt-2">Aún no hay campañas con resultados para ti.</div>
+                            }
+                            else if (!Model.LastEval360.VisibleToEmployee)
+                            {
+                                <div class="mt-2 small text-muted">@Model.LastEval360.Title · @Model.LastEval360.Start.ToString("yyyy-MM-dd") – @Model.LastEval360.End.ToString("yyyy-MM-dd")</div>
+                                <div class="alert alert-warning py-2 mt-3 mb-0 small">
+                                    Ya estás evaluado, pero <b>los resultados aún no están publicados</b> para empleados.
+                                </div>
                             }
                             else
                             {

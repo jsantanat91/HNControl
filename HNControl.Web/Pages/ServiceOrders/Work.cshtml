@@ -1,0 +1,316 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.ServiceOrders.WorkModel
+@{
+    ViewData["Title"] = "Orden de Servicio";
+}
+
+@if (Model.Order == null)
+{
+    <div class="alert alert-danger">Orden no encontrada.</div>
+    return;
+}
+
+<div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+    <div>
+        <h2 class="mb-1">Orden de Servicio</h2>
+        <div class="text-muted">
+            Cliente: <strong>@(Model.Order.Client?.Name ?? "-")</strong>
+            · Título: <strong>@Model.Order.Title</strong>
+            · Tipo: <strong>@Model.Order.Type</strong>
+            · Status: <strong>@Model.Order.Status</strong>
+            · Progreso checklist: <strong>@Model.ChecklistCompletionPercent</strong>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="javascript:history.back()">Volver</a>
+        @if (!string.IsNullOrWhiteSpace(Model.ClientDownloadUrl))
+        {
+            <a class="btn btn-primary" target="_blank" href="@Model.ClientDownloadUrl">Link cliente</a>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-info">@Model.Info</div>
+}
+
+<div class="row g-3">
+    <!-- IZQUIERDA: Checklist + Evidencias -->
+    <div class="col-lg-7">
+        <!-- Checklist -->
+        <form method="post" class="card shadow-sm border-0 mb-3">
+            <input type="hidden" name="id" value="@Model.Order.Id" />
+
+            <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="fw-semibold">Checklist</div>
+                    <div class="text-muted small">Progreso: @Model.ChecklistCompletionPercent</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
+                    <button type="submit" class="btn btn-primary btn-sm" formaction="?handler=SaveChecklist">Guardar</button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="progress mb-3" style="height:10px;">
+                    <div class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+                </div>
+
+                <div class="row g-3">
+                    @for (var i = 0; i < Model.ItemsPost.Count; i++)
+                    {
+                        <div class="col-md-6">
+                            <div class="border rounded-4 p-3 h-100 bg-white">
+                                <input type="hidden" asp-for="ItemsPost[i].Id" />
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-semibold">@Model.ItemsPost[i].Title</div>
+                                        <div class="text-muted small">Marca cuando esté completado. Agrega notas si aplica.</div>
+                                    </div>
+
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[i].IsDone" />
+                                    </div>
+                                </div>
+
+                                <label class="form-label small mt-3 mb-1 text-muted">Notas</label>
+                                <textarea class="form-control" rows="2" asp-for="ItemsPost[i].Notes" placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </form>
+
+        <!-- Evidencias -->
+        <form method="post" enctype="multipart/form-data" class="card shadow-sm border-0">
+            <input type="hidden" name="id" value="@Model.Order.Id" />
+
+            <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                <div class="fw-semibold">Evidencias</div>
+                <button type="submit" class="btn btn-outline-primary btn-sm" formaction="?handler=UploadEvidence">Subir evidencia</button>
+            </div>
+
+            <div class="card-body">
+                <div class="mb-2 text-muted small">
+                    Permitidos: JPG/JPEG/PNG/WEBP/PDF/HEIC/HEIF
+                </div>
+
+                <input class="form-control" type="file" name="EvidenceFile" accept=".jpg,.jpeg,.png,.webp,.pdf,.heic,.heif" />
+
+                <hr />
+
+                @if (Model.Evidences.Count == 0)
+                {
+                    <div class="text-muted">Sin evidencias.</div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var ev in Model.Evidences)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-semibold">@ev.OriginalFileName</div>
+                                    <div class="text-muted small">@ev.UploadedAtLocal</div>
+                                </div>
+                                <a class="btn btn-outline-secondary btn-sm" href="?handler=DownloadEvidence&evidenceId=@ev.Id">Descargar</a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </form>
+    </div>
+
+    <!-- DERECHA: Firmas + Acciones -->
+    <div class="col-lg-5">
+        <form method="post" class="card shadow-sm border-0">
+            <input type="hidden" name="id" value="@Model.Order.Id" />
+            <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
+            <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
+
+            <div class="card-header bg-white border-0">
+                <div class="fw-semibold">Firmas</div>
+                <div class="text-muted small">
+                    Firma aquí mismo. Un botón guarda ambas.
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="fw-semibold mb-2">Técnico</div>
+                        <label class="form-label small text-muted">Nombre</label>
+                        <input class="form-control mb-2" name="TechName" value="@Model.TechName" placeholder="Nombre del técnico" />
+
+                        <div class="border rounded-4 bg-light p-2">
+                            <canvas id="hnTechCanvas" class="w-100" style="height:170px; touch-action:none;"></canvas>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
+                        </div>
+
+                        @if (Model.HasTechSignature)
+                        {
+                            <div class="mt-2">
+                                <div class="text-muted small mb-1">Guardada:</div>
+                                <img class="img-fluid border rounded-3 bg-white" style="max-height:90px"
+                                     src="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" />
+                            </div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="fw-semibold mb-2">Cliente</div>
+                        <label class="form-label small text-muted">Nombre</label>
+                        <input class="form-control mb-2" name="ClientName" value="@Model.ClientSignerName" placeholder="Nombre del cliente" />
+
+                        <div class="border rounded-4 bg-light p-2">
+                            <canvas id="hnClientCanvas" class="w-100" style="height:170px; touch-action:none;"></canvas>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnClientCanvas')">Limpiar</button>
+                        </div>
+
+                        @if (Model.HasClientSignature)
+                        {
+                            <div class="mt-2">
+                                <div class="text-muted small mb-1">Guardada:</div>
+                                <img class="img-fluid border rounded-3 bg-white" style="max-height:90px"
+                                     src="?handler=SignatureImage&id=@Model.Order.Id&role=Client" />
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <hr class="my-3" />
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-outline-primary" formaction="?handler=SaveSignatures" onclick="hnCaptureSigs()">
+                        Guardar firmas
+                    </button>
+
+                    <button type="submit" class="btn btn-success" formaction="?handler=SubmitForReview" onclick="hnCaptureSigs()">
+                        Enviar a revisión
+                    </button>
+                </div>
+
+                <div class="text-muted small mt-2">
+                    “Enviar a revisión” requiere: firma técnico + firma cliente.
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        // ===== Checklist helpers =====
+        function hnChecklistMarkAll(flag) {
+            document.querySelectorAll('.hn-check-item').forEach(cb => cb.checked = flag);
+        }
+
+        // ===== Signature pad simple (canvas + mouse/touch) =====
+        const hnPads = {};
+
+        function hnInitPad(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#111';
+
+            function resize() {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+
+                canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+                canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+                // dibuja usando coordenadas en "CSS px"
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#111';
+            }
+
+            let drawing = false;
+
+            function pos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+                const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            function start(e) {
+                e.preventDefault();
+                drawing = true;
+                const p = pos(e);
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+            }
+
+            function move(e) {
+                if (!drawing) return;
+                e.preventDefault();
+                const p = pos(e);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+
+            function end(e) {
+                if (!drawing) return;
+                e.preventDefault();
+                drawing = false;
+            }
+
+            resize();
+            window.addEventListener('resize', resize);
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mouseleave', end);
+
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', end, { passive: false });
+
+            hnPads[canvasId] = { canvas, ctx, resize };
+        }
+
+        function hnSigClear(canvasId) {
+            const pad = hnPads[canvasId];
+            if (!pad) return;
+            const { canvas, ctx } = pad;
+            ctx.save();
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            pad.resize();
+        }
+
+        function hnCaptureSigs() {
+            const tech = hnPads['hnTechCanvas']?.canvas;
+            const client = hnPads['hnClientCanvas']?.canvas;
+
+            document.getElementById('hnTechSigDataUrl').value = tech ? tech.toDataURL('image/png') : '';
+            document.getElementById('hnClientSigDataUrl').value = client ? client.toDataURL('image/png') : '';
+        }
+
+        // init
+        hnInitPad('hnTechCanvas');
+        hnInitPad('hnClientCanvas');
+    </script>
+}

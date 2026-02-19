@@ -1,7 +1,8 @@
-﻿@page
-@model HNControl.Web.Pages.Employees.CreateModel
+@page
+@model HNControl.Web.Pages.Admin.Employees.CreateModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Nuevo empleado";
 }
 
 <h1 class="h4 mb-3">Nuevo empleado</h1>
@@ -11,7 +12,7 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-sm hn-hover hn-hover">
+<form method="post" class="card shadow-sm hn-hover">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
@@ -20,20 +21,42 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label">Correo (login)</label>
-                <input class="form-control" asp-for="Input.Email" />
+                <input class="form-control" asp-for="Input.Email" type="email" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">NSS</label>
-                <input class="form-control" asp-for="Input.Nss" />
-            </div>
-            <div class="col-md-4">
                 <label class="form-label">Sexo</label>
-                <input class="form-control" asp-for="Input.Gender" />
+                <select class="form-select" asp-for="Input.Gender">
+                    <option value="Hombre">Hombre</option>
+                    <option value="Mujer">Mujer</option>
+                </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Teléfono</label>
                 <input class="form-control" asp-for="Input.Phone" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">NSS</label>
+                <input class="form-control" asp-for="Input.Nss" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">CURP</label>
+                <input class="form-control text-uppercase" asp-for="Input.Curp" maxlength="18" />
+                <div class="form-text">18 caracteres. Se guarda en mayúsculas.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Fecha de nacimiento</label>
+                <input class="form-control" asp-for="Input.BirthDate" type="date" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Fecha de ingreso (antigüedad)</label>
+                <input class="form-control" asp-for="Input.HireDate" type="date" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Dirección</label>
+                <input class="form-control" asp-for="Input.Address" />
             </div>
 
             <div class="col-md-6">
@@ -41,14 +64,14 @@
                 <input class="form-control" asp-for="Input.Position" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Sueldo base</label>
-                <input class="form-control" asp-for="Input.SalaryBase" />
+                <label class="form-label">Sueldo base mensual</label>
+                <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Contraseña inicial</label>
                 <input class="form-control" asp-for="Input.Password" type="password" />
-                <div class="text-muted small">El empleado podrá cambiarla después (fase 2/3 agregamos “cambiar contraseña”).</div>
+                <div class="text-muted small">El empleado podrá cambiarla después (cuando metamos módulo de cuenta).</div>
             </div>
         </div>
     </div>
