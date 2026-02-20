@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --hn-bg: #f6f8fc;
     --hn-card: #ffffff;
     --hn-text: #0f172a;
@@ -238,4 +238,19 @@ body {
 .btn {
     border-radius: 999px;
     font-weight: 700;
+}
+
+
+/* Utilidades */
+.shadow-soft{
+    box-shadow: var(--hn-shadow) !important;
+}
+
+.hn-hover{
+    transition: transform .15s ease-in-out, box-shadow .15s ease-in-out, border-color .15s ease-in-out;
+}
+.hn-hover:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 18px 55px rgba(2,6,23,.14) !important;
+    border-color: rgba(37,99,235,.18);
 }

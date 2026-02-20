@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -60,20 +60,33 @@ public class CreateModel : PageModel
         [MaxLength(400)] public string? Address { get; set; }
     }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(Guid? clientId = null)
     {
         await LoadListsAsync();
+        if (clientId.HasValue) Input.ClientId = clientId.Value;
     }
 
+    // ✅ Guardar proyecto
     public async Task<IActionResult> OnPostAsync()
     {
         await LoadListsAsync();
 
-        // ✅ CLAVE: al guardar el proyecto NO debes validar el form de "Nuevo cliente".
-        var keys = ModelState.Keys
-            .Where(k => k.StartsWith("NewClient.", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        foreach (var k in keys) ModelState.Remove(k);
+        // ✅ El modal de “Nuevo cliente” comparte PageModel. Si llega vacío, NO debe bloquear el post del proyecto.
+        //    (La validación real del cliente la hace el handler AJAX.)
+        foreach (var k in ModelState.Keys
+                     .Where(k => k.Equals("NewClient", StringComparison.OrdinalIgnoreCase)
+                              || k.StartsWith("NewClient.", StringComparison.OrdinalIgnoreCase))
+                     .ToList())
+        {
+            ModelState.Remove(k);
+        }
+
+        // Revalida solo Input para evitar “fantasmas” del modal.
+        ModelState.ClearValidationState(nameof(Input));
+        TryValidateModel(Input, nameof(Input));
+
+        if (string.IsNullOrWhiteSpace(Input.Title))
+            ModelState.AddModelError("Input.Title", "El nombre del proyecto es requerido.");
 
         if (!ModelState.IsValid)
             return Page();
@@ -100,6 +113,7 @@ public class CreateModel : PageModel
 
             Objective = (Input.Objective ?? "").Trim(),
             Scope = (Input.Scope ?? "").Trim(),
+
             ActivityDescription = (Input.Description ?? "").Trim(),
             AdditionalComments = (Input.Comments ?? "").Trim(),
             AccessNotes = (Input.AccessNotes ?? "").Trim(),
@@ -115,14 +129,21 @@ public class CreateModel : PageModel
         return RedirectToPage("/Projects/Details", new { id = p.Id });
     }
 
-    public async Task<IActionResult> OnPostCreateClientAsync()
+    // ✅ Handler AJAX que tu Create.cshtml ya está llamando: asp-page-handler="CreateClientAjax"
+    public async Task<IActionResult> OnPostCreateClientAjaxAsync()
     {
-        // Este handler sí valida NewClient
+        // valida solo el modelo NewClient
+        ModelState.Clear();
         if (!TryValidateModel(NewClient, nameof(NewClient)))
         {
-            await LoadListsAsync();
-            Error = "Revisa los campos del nuevo cliente.";
-            return Page();
+            var errors = ModelState
+                .Where(k => k.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    k => k.Key,
+                    k => k.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
+
+            return new JsonResult(new { ok = false, errors });
         }
 
         var client = new Client
@@ -139,11 +160,7 @@ public class CreateModel : PageModel
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
-        Input.ClientId = client.Id;
-        Info = $"Cliente creado: {client.Name}";
-
-        await LoadListsAsync(selectedClientId: client.Id);
-        return Page();
+        return new JsonResult(new { ok = true, id = client.Id, name = client.Name });
     }
 
     private async Task LoadListsAsync(Guid? selectedClientId = null)

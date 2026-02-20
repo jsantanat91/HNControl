@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.RegularExpressions;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -103,7 +102,6 @@ public class WorkModel : PageModel
             return Page();
         }
 
-        // más permisivo (para que no te troleé el técnico con HEIC)
         var allowed = new[] { ".png", ".jpg", ".jpeg", ".webp", ".pdf", ".heic", ".heif" };
         var maxBytes = (_cfg.GetValue<int?>("Storage:MaxEvidenceMb") ?? 25) * 1024L * 1024L;
 
@@ -134,7 +132,6 @@ public class WorkModel : PageModel
 
     public async Task<IActionResult> OnGetDownloadEvidenceAsync(Guid evidenceId)
     {
-        // busca evidencia + orden
         var ev = await _db.ServiceOrderEvidences.FirstOrDefaultAsync(x => x.Id == evidenceId);
         if (ev == null) return NotFound();
 
@@ -148,18 +145,58 @@ public class WorkModel : PageModel
         return File(stream, contentType, originalName);
     }
 
+    // ✅ Un botón: firma y envía
+    public async Task<IActionResult> OnPostSignAndSubmitAsync(
+        Guid id,
+        string? TechName,
+        string? ClientName,
+        string? TechSigDataUrl,
+        string? ClientSigDataUrl)
+    {
+        var ok = await LoadAsync(id);
+        if (!ok || Order == null) return Forbid();
+
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
+
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
+
+        if (Order == null) return NotFound();
+
+        if (!HasTechSignature || !HasClientSignature)
+        {
+            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
+            return Page();
+        }
+
+        await _db.Database.ExecuteSqlInterpolatedAsync($@"
+UPDATE ""ServiceOrders""
+SET ""Status"" = {ServiceOrderStatus.InReview},
+    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
+WHERE ""Id"" = {id};
+");
+
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
+
+        Info = "✅ Firmas guardadas y enviado a revisión.";
+        return Page();
+    }
+
+    // Compatibilidad: handlers viejos (ya sin EF SaveChanges para firmas)
     public async Task<IActionResult> OnPostSaveSignaturesAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
     {
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
-        await SaveSignatureIfPresent(Order, SignatureRole.Technician, TechName, TechSigDataUrl);
-        await SaveSignatureIfPresent(Order, SignatureRole.Client, ClientName, ClientSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
-        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
 
         Info = "Firmas guardadas.";
-        await LoadAsync(id);
         return Page();
     }
 
@@ -168,26 +205,31 @@ public class WorkModel : PageModel
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
-        await SaveSignatureIfPresent(Order, SignatureRole.Technician, TechName, TechSigDataUrl);
-        await SaveSignatureIfPresent(Order, SignatureRole.Client, ClientName, ClientSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
-        var tech = Order.Signatures.Any(s => s.Role == SignatureRole.Technician);
-        var client = Order.Signatures.Any(s => s.Role == SignatureRole.Client);
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
 
-        if (!tech || !client)
+        if (Order == null) return NotFound();
+
+        if (!HasTechSignature || !HasClientSignature)
         {
             Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
-            await LoadAsync(id);
             return Page();
         }
 
-        Order.Status = ServiceOrderStatus.InReview;
-        Order.SubmittedForReviewAt = DateTime.UtcNow;
+        await _db.Database.ExecuteSqlInterpolatedAsync($@"
+UPDATE ""ServiceOrders""
+SET ""Status"" = {ServiceOrderStatus.InReview},
+    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
+WHERE ""Id"" = {id};
+");
 
-        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
 
         Info = "Enviado a revisión. El admin podrá aprobar/rechazar y generar el PDF.";
-        await LoadAsync(id);
         return Page();
     }
 
@@ -220,17 +262,15 @@ public class WorkModel : PageModel
             .Include(o => o.Signatures)
             .FirstOrDefaultAsync(o => o.Id == id);
 
-        if (Order == null) return true; // para que muestre "no encontrada"
+        if (Order == null) return true;
 
         if (!IsAdmin() && GetUserId() != Order.AssignedUserId)
             return false;
 
-        // Link cliente = descarga PDF (pública) cuando exista
         var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
         if (!string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))
             ClientDownloadUrl = $"{baseUrl}/Public/ServiceOrder/{Order.PublicToken}";
 
-        // Checklist
         ItemsPost = Order.Checklist
             .OrderBy(i => i.SortOrder)
             .Select(i => new ItemVm
@@ -243,7 +283,6 @@ public class WorkModel : PageModel
 
         ChecklistCompletionPercent = $"{(GetChecklistCompletion(Order) * 100m):0.#}%";
 
-        // Evidencias
         Evidences = Order.Evidences
             .OrderByDescending(e => e.UploadedAt)
             .Select(e => new EvidenceVm
@@ -253,7 +292,6 @@ public class WorkModel : PageModel
                 UploadedAtLocal = e.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
             }).ToList();
 
-        // Firmas
         var tech = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var cli = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
@@ -273,42 +311,35 @@ public class WorkModel : PageModel
         return (decimal)done / order.Checklist.Count;
     }
 
-    private async Task SaveSignatureIfPresent(ServiceOrder order, SignatureRole role, string? name, string? dataUrl)
+    // ✅ SQL delete+insert = cero drama con concurrencia
+    private async Task<bool> UpsertSignatureIfPresentAsync(Guid orderId, SignatureRole role, string? name, string? dataUrl)
     {
         name = (name ?? "").Trim();
 
         if (string.IsNullOrWhiteSpace(dataUrl) || !dataUrl.StartsWith("data:image/png;base64,"))
-            return;
+            return false;
 
         var base64 = Regex.Replace(dataUrl, "^data:image\\/png;base64,", "");
         byte[] bytes;
         try { bytes = Convert.FromBase64String(base64); }
-        catch { return; }
+        catch { return false; }
 
-        // evita “firmas vacías” (canvas en blanco suele ser muy pequeño)
-        if (bytes.Length < 1200) return;
+        if (bytes.Length < 1200) return false;
 
         var fileName = $"{role.ToString().ToLower()}_{Guid.NewGuid():N}.png";
-        var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{order.Id}/signatures", fileName, "image/png");
+        var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{orderId}/signatures", fileName, "image/png");
 
-        var existing = order.Signatures.FirstOrDefault(s => s.Role == role);
-        if (existing != null)
-        {
-            existing.SignedByName = name;
-            existing.StoragePath = path;
-            existing.SignedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            order.Signatures.Add(new ServiceOrderSignature
-            {
-                OrderId = order.Id,
-                Role = role,
-                SignedByName = name,
-                StoragePath = path,
-                SignedAt = DateTime.UtcNow
-            });
-        }
+        await _db.Database.ExecuteSqlInterpolatedAsync($@"
+DELETE FROM ""ServiceOrderSignatures""
+WHERE ""OrderId"" = {orderId} AND ""Role"" = {role};
+
+INSERT INTO ""ServiceOrderSignatures""
+    (""Id"", ""OrderId"", ""Role"", ""SignedByName"", ""StoragePath"", ""SignedAt"")
+VALUES
+    ({Guid.NewGuid()}, {orderId}, {role}, {name}, {path}, {DateTime.UtcNow});
+");
+
+        return true;
     }
 
     private bool IsAdmin() => User.IsInRole(AppRoles.Admin);

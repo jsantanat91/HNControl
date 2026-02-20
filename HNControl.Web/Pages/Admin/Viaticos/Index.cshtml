@@ -4,7 +4,20 @@
     Layout = "_Layout";
 }
 
-<h1 class="h4 mb-3">Admin · Viáticos</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Admin · Viáticos</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.UserId))
+        {
+            <div class="text-muted small">Filtrado por empleado.</div>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.UserId))
+    {
+        <a class="btn btn-outline-secondary btn-sm" asp-page="/Admin/Employees/Details" asp-route-userId="@Model.UserId">Volver al empleado</a>
+    }
+</div>
 
 <div class="card shadow-sm hn-hover hn-hover">
     <div class="card-body table-responsive">

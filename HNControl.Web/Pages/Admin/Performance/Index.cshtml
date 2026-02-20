@@ -48,9 +48,9 @@
                         <td class="text-end fw-semibold">@r.TotalQuincena.ToString("0.00")</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary"
-                               asp-page="/Admin/Performance/Edit"
-                               asp-route-userId="@r.UserId"
-                               asp-route-start="@Model.PeriodStart.ToString("yyyy-MM-dd")">
+                               asp-page="/Admin/Performance/Rate"
+                               asp-route-employeeId="@r.UserId"
+                               asp-route-ym="@Model.PeriodStart.ToString("yyyy-MM")" asp-route-half="@(Model.PeriodStart.Day <= 15 ? 1 : 2)">
                                 Calificar
                             </a>
                         </td>

@@ -1,6 +1,25 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Account.DeniedModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Sin permisos";
+}
 
-<div class="alert alert-warning">
-    No tienes permisos para ver esto. Solicitalo al administrador.
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card hn-auth-card">
+            <div class="card-body p-4 p-lg-5">
+                <div class="text-muted small">Acceso</div>
+                <h1 class="h3 mb-2">Sin permisos</h1>
+                <p class="text-muted mb-4">
+                    No tienes permisos para ver esta sección. Si crees que es un error, pídeselo al administrador.
+                </p>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-outline-secondary" asp-page="/Index">Ir al inicio</a>
+                    <a class="btn btn-primary" asp-page="/Account/Login">Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

@@ -1,0 +1,98 @@
+@page
+@model HNControl.Web.Pages.Clients.Services.CreateModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Agregar contrato";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Agregar contrato</h1>
+        <div class="text-muted small">@Model.ClientName</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Volver</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" enctype="multipart/form-data" class="card shadow-sm hn-hover">
+    <div class="card-body">
+        <input type="hidden" asp-for="ClientId" />
+
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Categoría</label>
+                <select class="form-select" asp-for="Input.ServiceType" asp-items="Model.ServiceTypeItems"></select>
+            </div>
+
+            <div class="col-md-8">
+                <label class="form-label">Nombre del contrato</label>
+                <input class="form-control" asp-for="Input.Label" placeholder="Ej: Internet corporativo / CCTV Matamoros" />
+                <div class="form-text">Este será el texto que verás en Órdenes de Servicio y reportes.</div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Proveedor</label>
+                <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay / Metrocarrier" />
+                <datalist id="providers">
+                    <option value="Telmex"></option>
+                    <option value="Totalplay"></option>
+                    <option value="Metrocarrier"></option>
+                    <option value="Axtel"></option>
+                    <option value="Megacable"></option>
+                </datalist>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Número de cuenta</label>
+                <input class="form-control" asp-for="Input.AccountNumber" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Número de contrato</label>
+                <input class="form-control" asp-for="Input.ContractNumber" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Inicio</label>
+                <input class="form-control" type="date" asp-for="Input.ContractStartDate" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Vencimiento</label>
+                <input class="form-control" type="date" asp-for="Input.ContractEndDate" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Proyecto ligado (opcional)</label>
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
+                    <option value="">— Sin proyecto —</option>
+                </select>
+                <div class="form-text">Si lo ligas a un proyecto, las Órdenes de Servicio se podrán filtrar por sitio/implementación.</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Contrato firmado (PDF)</label>
+                <input class="form-control" type="file" asp-for="Input.SignedContract" accept="application/pdf,.pdf" />
+                <div class="form-text">Recomendado: PDF. Máx 20 MB.</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" rows="3" asp-for="Input.Notes" placeholder="Ej: observaciones, SLA, plan contratado, ancho de banda, IPs, etc."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

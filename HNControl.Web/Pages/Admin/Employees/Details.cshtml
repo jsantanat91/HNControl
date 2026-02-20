@@ -1,123 +1,164 @@
-﻿@page "{userId}"
+@page
 @model HNControl.Web.Pages.Admin.Employees.DetailsModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Detalle empleado";
+}
+@{
+    var __now = DateTime.Today; var __ym = __now.ToString("yyyy-MM"); var __half = __now.Day <= 15 ? 1 : 2;
 }
 
-@if (Model.Employee == null)
-{
-    <div class="alert alert-warning">Empleado no encontrado.</div>
-    return;
-}
-
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 m-0">@Model.Employee.FullName</h1>
-        <div class="text-muted small">@Model.Employee.Position · Sueldo base: <b>@Model.Employee.SalaryBase.ToString("C")</b></div>
+        <h3 class="mb-0">@Model.Employee.FullName</h3>
+        <div class="text-muted small">
+            @Model.Employee.Position · @Model.Employee.Email · @Model.Employee.Phone
+        </div>
     </div>
+
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-primary" asp-page="/Performance/Rate" asp-route-userId="@Model.Employee.UserId">Calificar</a>
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Edit" asp-route-userId="@Model.Employee.UserId">Editar</a>
         <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Index">Volver</a>
+
+        <a class="btn btn-outline-primary"
+           asp-page="/Admin/Viaticos/Index"
+           asp-route-UserId="@Model.Employee.UserId">
+            Viáticos
+        </a>
+
+        <a class="btn btn-primary"
+           asp-page="/Admin/Performance/Rate"
+           asp-route-employeeId="@Model.Employee.UserId"
+           asp-route-ym="@__ym"
+           asp-route-half="@__half">
+            Calificar KPI
+        </a>
     </div>
 </div>
 
 <div class="row g-3">
-    <div class="col-lg-4">
-        <div class="card shadow-sm hn-hover">
-            <div class="card-header fw-semibold">Datos del empleado</div>
-            <div class="card-body small">
-                <div class="d-flex justify-content-between"><span class="text-muted">Correo</span><span>@Model.Employee.Email</span></div>
-                <div class="d-flex justify-content-between"><span class="text-muted">Teléfono</span><span>@Model.Employee.Phone</span></div>
-                <div class="d-flex justify-content-between"><span class="text-muted">NSS</span><span>@Model.Employee.Nss</span></div>
-                <div class="d-flex justify-content-between"><span class="text-muted">Sexo</span><span>@Model.Employee.Gender</span></div>
-                <div class="d-flex justify-content-between"><span class="text-muted">CURP</span><span>@Model.Employee.Curp</span></div>
-
-                <hr class="my-2" />
-
-                <div class="d-flex justify-content-between"><span class="text-muted">Nacimiento</span><span>@(Model.Employee.BirthDate?.ToString("yyyy-MM-dd") ?? "—")</span></div>
-                <div class="d-flex justify-content-between"><span class="text-muted">Ingreso</span><span>@(Model.Employee.HireDate?.ToString("yyyy-MM-dd") ?? "—")</span></div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">Antigüedad</span>
-                    <span>
-                        @if (Model.Employee.HireDate.HasValue)
-                        {
-                            var hd = Model.Employee.HireDate.Value.Date;
-                            var now = DateTime.UtcNow.Date;
-                            var months = (now.Year - hd.Year) * 12 + (now.Month - hd.Month);
-                            if (now.Day < hd.Day) months -= 1;
-                            if (months < 0) months = 0;
-                            var years = months / 12;
-                            var rem = months % 12;
-                            @($"{years}a {rem}m")
-                        }
-                        else
-                        {
-                            @("—")
-                        }
-                    </span>
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(Model.Employee.Address))
-                {
-                    <hr class="my-2" />
-                    <div class="text-muted">Dirección</div>
-                    <div>@Model.Employee.Address</div>
-                }
-            </div>
-        </div>
-
-        <div class="card shadow-sm hn-hover hn-hover">
-            <div class="card-header fw-semibold">KPIs</div>
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <div class="d-flex justify-content-between"><span>Órdenes completadas (30d)</span><b>@Model.Kpi.CompletedOrders30d</b></div>
-                <div class="d-flex justify-content-between"><span>Órdenes en revisión</span><b>@Model.Kpi.InReviewOrders</b></div>
-                <div class="d-flex justify-content-between"><span>Proyectos activos</span><b>@Model.Kpi.ActiveProjects</b></div>
-                <div class="d-flex justify-content-between"><span>SLA vencidos</span><b>@Model.Kpi.OverdueProjects</b></div>
-                <div class="d-flex justify-content-between"><span>Viáticos (semana actual)</span><b>@Model.Kpi.WeeklyViaticTotal.ToString("C")</b></div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm hn-hover mt-3">
-            <div class="card-header fw-semibold">Última evaluación</div>
-            <div class="card-body">
-                @if (Model.LastReview == null)
-                {
-                    <div class="text-muted">Sin evaluaciones.</div>
-                }
-                else
-                {
-                    <div class="text-muted small">@Model.LastReviewPeriod</div>
-                    <div class="d-flex justify-content-between mt-2"><span>Variable %</span><b>@((Model.LastReview.VariablePercent * 100m).ToString("0.#"))%</b></div>
-                    <div class="d-flex justify-content-between"><span>80% fijo</span><b>@Model.Pay.Fixed80.ToString("C")</b></div>
-                    <div class="d-flex justify-content-between"><span>Variable $</span><b>@Model.Pay.VariableMoney.ToString("C")</b></div>
-                    <div class="d-flex justify-content-between mt-2"><span>Total quincenal</span><b class="fs-5">@Model.Pay.Total.ToString("C")</b></div>
-                }
+                <div class="text-muted small">KPI promedio (90 días)</div>
+                <div class="fs-3 fw-bold">@Model.KPIAvgScore.ToString("0.0")</div>
+                <div class="text-muted small">Escala 1–5</div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-8">
-        <div class="card shadow-sm hn-hover hn-hover">
-            <div class="card-header fw-semibold">Gráfica (variable % por periodo)</div>
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <canvas id="varChart" height="110"></canvas>
+                <div class="text-muted small">Variable promedio (6 meses)</div>
+                <div class="fs-3 fw-bold">@((Model.VariableAvgPercent * 100m).ToString("0.##"))%</div>
+                <div class="text-muted small">Promedio de periodos</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Viáticos mes actual</div>
+                <div class="fs-3 fw-bold">@Model.CurrentMonthViaticTotal.ToString("C")</div>
+                <div class="text-muted small">Suma de semanas del mes</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">KPIs del mes</div>
+                    <form method="get" class="d-flex gap-2 align-items-center">
+                        <input type="hidden" name="userId" value="@Model.Employee.UserId" />
+                        <select class="form-select form-select-sm" name="ym" onchange="this.form.submit()">
+                            @foreach (var it in Model.MonthItems)
+                            {
+                                <option value="@it.Value" selected="@it.Selected">@it.Text</option>
+                            }
+                        </select>
+                    </form>
+                </div>
+                <canvas id="kpiMonthChart" height="160"></canvas>
+                <div class="text-muted small mt-2">Promedio por categoría del mes seleccionado (@Model.SelectedYm).</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">Variable (historial)</div>
+                    <div class="text-muted small">Últimos 12 periodos</div>
+                </div>
+                <canvas id="varHistChart" height="160"></canvas>
+                <div class="text-muted small mt-2">Línea en porcentaje por periodo evaluado.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Viáticos del mes (semanas)</div>
+                    <div class="text-muted small">4–5 semanas (según el mes)</div>
+                </div>
+
+                <div class="row g-3">
+                    @foreach (var w in Model.CurrentMonthWeeks)
+                    {
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="border rounded-4 p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">@w.WeekLabel</div>
+                                        <div class="text-muted small">
+                                            @w.WeekStart.ToString("yyyy-MM-dd") → @w.WeekEnd.ToString("yyyy-MM-dd")
+                                        </div>
+                                        <div class="text-muted small">
+                                            Facturable: @w.Billable.ToString("C") · No facturable: @w.NonBillable.ToString("C")
+                                        </div>
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                       asp-page="/Admin/Viaticos/Week"
+                                       asp-route-weekId="@w.WeekId">
+                                        Abrir
+                                    </a>
+                                </div>
+                                <div class="mt-2 fw-bold">Total: @w.Total.ToString("C")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    const labels = @Html.Raw(Model.ChartLabelsJson);
-    const values = @Html.Raw(Model.ChartValuesJson);
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const kpiLabels = @Html.Raw(Model.KpiMonthLabelsJson);
+        const kpiValues = @Html.Raw(Model.KpiMonthValuesJson);
 
-    new Chart(document.getElementById('varChart'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{ label: 'Variable %', data: values, tension: 0.25 }]
-      },
-      options: { scales: { y: { min: 0, max: 1 } } }
-    });
-</script>
+        new Chart(document.getElementById('kpiMonthChart'), {
+            type: 'bar',
+            data: { labels: kpiLabels, datasets: [{ label: 'KPI', data: kpiValues }] },
+            options: { responsive: true }
+        });
+
+        const varLabels = @Html.Raw(Model.VarHistLabelsJson);
+        const varValues = @Html.Raw(Model.VarHistValuesJson);
+
+        new Chart(document.getElementById('varHistChart'), {
+            type: 'line',
+            data: { labels: varLabels, datasets: [{ label: '% Variable', data: varValues }] },
+            options: { responsive: true }
+        });
+    </script>
+}

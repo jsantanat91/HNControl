@@ -12,29 +12,32 @@ using Microsoft.EntityFrameworkCore;
 namespace HNControl.Web.Pages.Admin.ServiceOrders;
 
 [Authorize(Roles = AppRoles.Admin)]
-public class CreateModel : PageModel
+public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    public EditModel(ApplicationDbContext db) => _db = db;
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
     public SelectList TypeItems { get; set; } = default!;
-
-    // cargadas dinámicamente por JS (pero las dejamos para fallback)
+    public SelectList StatusItems { get; set; } = default!;
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ContractItems { get; set; } = default!;
 
-    [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty] public InputModel? Input { get; set; }
 
     public string? Error { get; set; }
 
     public class InputModel
     {
+        [Required] public Guid Id { get; set; }
+
         [Required, MaxLength(200)]
         public string Title { get; set; } = "";
 
-        [Required] public ServiceOrderType Type { get; set; } = ServiceOrderType.Preventivo;
+        [Required] public ServiceOrderType Type { get; set; }
+
+        [Required] public ServiceOrderStatus Status { get; set; }
 
         [Required] public Guid ClientId { get; set; }
 
@@ -45,33 +48,47 @@ public class CreateModel : PageModel
         [Required] public string AssignedUserId { get; set; } = "";
 
         [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; } = DateTime.Today;
+        public DateTime StartDate { get; set; }
 
         [DataType(DataType.Date)]
-        public DateTime ExpectedEndDate { get; set; } = DateTime.Today.AddDays(2);
+        public DateTime ExpectedEndDate { get; set; }
 
         public string Description { get; set; } = "";
     }
 
-    public async Task OnGetAsync()
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
         await LoadListsAsync();
 
-        // defaults pro: si hay clientes, preselecciona el primero para que JS cargue proyectos/contratos
-        if (Input.ClientId == Guid.Empty)
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+
+        Input = new InputModel
         {
-            var firstClient = await _db.Clients.OrderBy(c => c.Name).Select(c => c.Id).FirstOrDefaultAsync();
-            if (firstClient != Guid.Empty) Input.ClientId = firstClient;
-        }
+            Id = order.Id,
+            Title = order.Title,
+            Type = order.Type,
+            Status = order.Status,
+            ClientId = order.ClientId,
+            ProjectId = order.ProjectId,
+            ClientServiceContractId = order.ClientServiceContractId,
+            AssignedUserId = order.AssignedUserId,
+            StartDate = (order.StartedAt ?? order.CreatedAt).ToLocalTime().Date,
+            ExpectedEndDate = (order.EstimatedEndDate ?? (order.StartedAt ?? order.CreatedAt).AddDays(2)).ToLocalTime().Date,
+            Description = order.Description ?? ""
+        };
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
         await LoadListsAsync();
 
+        if (Input == null) return NotFound();
         if (!ModelState.IsValid) return Page();
 
-        // Validación de consistencia: contrato pertenece al cliente (y opcionalmente al proyecto)
+        // Validación de consistencia
         if (Input.ClientServiceContractId.HasValue)
         {
             var ok = await _db.ClientServiceContracts.AnyAsync(c =>
@@ -81,47 +98,34 @@ public class CreateModel : PageModel
 
             if (!ok)
             {
-                Error = "El contrato seleccionado no pertenece al cliente/proyecto. (Eso sí es trampa, no trazabilidad 😅)";
+                Error = "El contrato seleccionado no pertenece al cliente/proyecto.";
                 return Page();
             }
         }
 
-        var order = new ServiceOrder
-        {
-            Title = (Input.Title ?? "").Trim(),
-            Type = Input.Type,
-            Status = ServiceOrderStatus.Created,
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == Input.Id);
+        if (order == null) return NotFound();
 
-            ClientId = Input.ClientId,
-            ProjectId = Input.ProjectId,
-            ClientServiceContractId = Input.ClientServiceContractId,
+        order.Title = (Input.Title ?? "").Trim();
+        order.Type = Input.Type;
+        order.Status = Input.Status;
 
-            AssignedUserId = Input.AssignedUserId,
+        order.ClientId = Input.ClientId;
+        order.ProjectId = Input.ProjectId;
+        order.ClientServiceContractId = Input.ClientServiceContractId;
 
-            StartedAt = TimeUtil.UtcDate(Input.StartDate),
-            EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate),
+        order.AssignedUserId = Input.AssignedUserId;
 
-            Description = (Input.Description ?? "").Trim(),
-
-            PublicToken = Guid.NewGuid().ToString("N"),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.ServiceOrders.Add(order);
-
-        order.ClientServiceContractId = Input.ClientServiceContractId == Guid.Empty
-    ? null
-    : Input.ClientServiceContractId;
+        order.StartedAt = TimeUtil.UtcDate(Input.StartDate);
+        order.EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate);
+        order.Description = (Input.Description ?? "").Trim();
+        
 
         await _db.SaveChangesAsync();
-
-        // ✅ Checklist inicial vacío (se agrega con plantilla en la pantalla de edición/detalle)
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
-    // -------------------------
-    // Handlers JSON para UI
-    // -------------------------
+    // Handlers JSON
     public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
     {
         var items = await _db.Projects
@@ -164,6 +168,9 @@ public class CreateModel : PageModel
 
         TypeItems = new SelectList(Enum.GetValues<ServiceOrderType>()
             .Select(t => new { Id = t, Name = t.ToString() }), "Id", "Name");
+
+        StatusItems = new SelectList(Enum.GetValues<ServiceOrderStatus>()
+            .Select(s => new { Id = s, Name = s.ToString() }), "Id", "Name");
 
         ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
         ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");

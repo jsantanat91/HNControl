@@ -22,8 +22,8 @@
 @if (!Model.HasOtherResponses)
 {
     <div class="alert alert-warning">
-        Por ahora solo tienes tu <strong>autoevaluación</strong>. Cuando tus compañeros completen sus pendientes,
-        aparecerá la barra de <strong>Evaluadores</strong> (y dejará de verse en 0%).
+        Por ahora solo tienes tu <strong>Esperado</strong>. Cuando tus compañeros completen sus pendientes,
+        aparecerá la barra de <strong>Evaluación</strong> (y dejará de verse en 0%).
     </div>
 }
 
@@ -36,7 +36,7 @@
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card shadow-soft">
-            <div class="card-header fw-semibold">Autoevaluación vs Evaluadores</div>
+            <div class="card-header fw-semibold">Esperado vs Evaluación</div>
             <div class="card-body">
                 <canvas id="cmpChart" height="140"></canvas>
                 <div class="text-muted small mt-2">
@@ -51,7 +51,9 @@
             <div class="card-header fw-semibold">Lectura rápida</div>
             <div class="card-body">
                 <div class="small text-muted mb-2">
-                    Diferencia = Auto - Evaluadores. Si es negativa, tus evaluadores te ven más bajo en esa competencia.
+                    <b>Diferencia</b> = Esperado - Evaluación. <br />
+                    <span class="text-muted">Positiva:</span> te estás poniendo más alto que lo que ve el equipo. <br />
+                    <span class="text-muted">Negativa:</span> el equipo te ve más alto (bien ahí).
                 </div>
 
                 <div class="table-responsive">
@@ -59,19 +61,21 @@
                         <thead>
                             <tr>
                                 <th>Competencia</th>
-                                <th class="text-end">Auto</th>
-                                <th class="text-end">Eval.</th>
-                                <th class="text-end">Dif.</th>
+                                <th class="text-end">Esperado</th>
+                                <th class="text-end">Evaluación</th>
+                                <th class="text-end">Diferencia</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var r in Model.Rows)
                         {
+                            var diff = r.DiffPct;
+                            var badge = diff >= 10 ? "text-bg-danger" : (diff <= -10 ? "text-bg-success" : "text-bg-secondary");
                             <tr>
-                                <td>@r.Competency</td>
+                                <td class="fw-semibold">@r.Competency</td>
                                 <td class="text-end">@r.AutoPct%</td>
                                 <td class="text-end">@r.OthersPct%</td>
-                                <td class="text-end">@((r.DiffPct >= 0 ? "+" : ""))@r.DiffPct%</td>
+                                <td class="text-end"><span class="badge @badge">@((diff >= 0 ? "+" : ""))@diff%</span></td>
                             </tr>
                         }
                         </tbody>
@@ -79,8 +83,8 @@
                 </div>
 
                 <hr />
-                <div class="small text-muted">
-                    Tip pro: enfócate primero en las competencias con diferencia negativa grande.
+                <div class="small text-muted mb-0">
+                    Tip pro: empieza por las competencias con diferencia positiva grande (ahí se te está “colando” el ego 😄).
                 </div>
             </div>
         </div>
@@ -91,16 +95,16 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const labels = @Html.Raw(Model.LabelsJson);
-        const autoValues = @Html.Raw(Model.AutoJson);
-        const otherValues = @Html.Raw(Model.OthersJson);
+        const expectedValues = @Html.Raw(Model.AutoJson);
+        const evalValues = @Html.Raw(Model.OthersJson);
 
         new Chart(document.getElementById('cmpChart'), {
           type: 'bar',
           data: {
             labels,
             datasets: [
-              { label: 'Autoevaluación', data: autoValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-              { label: 'Evaluadores', data: otherValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+              { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+              { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
             ]
           },
           options: {

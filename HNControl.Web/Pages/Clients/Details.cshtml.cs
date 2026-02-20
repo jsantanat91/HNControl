@@ -13,20 +13,83 @@ public class DetailsModel : PageModel
     public DetailsModel(ApplicationDbContext db) => _db = db;
 
     public Client? Client { get; set; }
-    public List<string> Services { get; set; } = new();
 
-    public record ProjectRow(Guid Id, string Title, string Responsible, string StartDate, string EstEnd, string Status);
+    public record ContractRow(
+        Guid Id,
+        string ServiceType,
+        string Label,
+        string Provider,
+        string AccountNumber,
+        string ContractNumber,
+        string ContractEndDateText,
+        string StatusText,
+        string StatusBadgeClass,
+        bool HasContractFile,
+        string ProjectTitle
+    );
+
+    public List<ContractRow> Contracts { get; set; } = new();
+
+    public record ProjectRow(Guid Id, string Title, string StartDate, string EstEnd, string Status);
     public List<ProjectRow> Projects { get; set; } = new();
 
     public async Task OnGetAsync(Guid id)
     {
         Client = await _db.Clients
-            .Include(c => c.Services)
+            .Include(c => c.Contracts)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (Client == null) return;
 
-        Services = Client.Services.Select(s => s.ServiceType.ToString()).ToList();
+        var projMap = await _db.Projects
+            .Where(p => p.ClientId == id)
+            .Select(p => new { p.Id, p.Title })
+            .ToDictionaryAsync(x => x.Id, x => x.Title);
+
+        var today = DateTime.Today;
+        var soon = today.AddDays(30);
+
+        Contracts = Client.Contracts
+            .OrderBy(x => x.ServiceType)
+            .ThenBy(x => x.Label)
+            .Select(x =>
+            {
+                var end = x.ContractEndDate?.Date;
+                var status = "Activo";
+                var badge = "text-bg-success";
+
+                if (end.HasValue && end.Value < today)
+                {
+                    status = "Vencido";
+                    badge = "text-bg-danger";
+                }
+                else if (end.HasValue && end.Value <= soon)
+                {
+                    status = "Por vencer";
+                    badge = "text-bg-warning";
+                }
+
+                var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "—";
+
+                var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
+                    ? t
+                    : "—";
+
+                return new ContractRow(
+                    x.Id,
+                    x.ServiceType.ToString(),
+                    x.Label,
+                    x.Provider,
+                    x.AccountNumber,
+                    x.ContractNumber,
+                    endText,
+                    status,
+                    badge,
+                    !string.IsNullOrWhiteSpace(x.SignedContractStoragePath),
+                    projTitle
+                );
+            })
+            .ToList();
 
         var projs = await _db.Projects
             .Include(p => p.AssignedEmployee)
@@ -37,7 +100,6 @@ public class DetailsModel : PageModel
         Projects = projs.Select(p => new ProjectRow(
             p.Id,
             p.Title,
-            p.AssignedEmployee?.FullName ?? p.AssignedUserId,
             p.StartDate.ToString("yyyy-MM-dd"),
             p.EstimatedEndDate.ToString("yyyy-MM-dd"),
             p.Status.ToString()

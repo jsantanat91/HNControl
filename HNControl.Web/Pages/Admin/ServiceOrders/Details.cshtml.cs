@@ -158,6 +158,8 @@ public class DetailsModel : PageModel
     {
         Order = await _db.ServiceOrders
             .Include(o => o.Client)
+            .Include(o => o.Project)
+            .Include(o => o.ClientServiceContract)
             .Include(o => o.Checklist)
             .Include(o => o.Evidences)
             .Include(o => o.Signatures)

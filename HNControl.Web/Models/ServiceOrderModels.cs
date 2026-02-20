@@ -49,6 +49,10 @@ public class ServiceOrder
     public Guid? ProjectId { get; set; }
     public Project? Project { get; set; }
 
+    // Servicio/contrato específico del cliente (para trazabilidad)
+    public Guid? ClientServiceContractId { get; set; }
+    public ClientServiceContract? ClientServiceContract { get; set; }
+
     public string AssignedUserId { get; set; } = default!;
     public EmployeeProfile? AssignedEmployee { get; set; }
 

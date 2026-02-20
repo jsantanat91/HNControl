@@ -1,0 +1,75 @@
+@using HNControl.Web.Models
+@using Microsoft.AspNetCore.Identity
+
+@{
+    // Layout sin navbar, pensado para Login / Denied / etc.
+    var title = (ViewData["Title"] as string) ?? "HN Control";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - HN Control</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
+
+    <style>
+        body{
+            min-height:100vh;
+            background:
+              radial-gradient(1200px 600px at 20% 10%, rgba(37,99,235,.16), transparent 60%),
+              radial-gradient(900px 500px at 80% 20%, rgba(16,185,129,.14), transparent 55%),
+              radial-gradient(900px 600px at 50% 90%, rgba(124,58,237,.10), transparent 60%),
+              var(--hn-bg);
+        }
+        .hn-auth-wrap{
+            min-height:100vh;
+            display:flex;
+            align-items:center;
+        }
+        .hn-auth-card{
+            border-radius: 22px;
+            border: 1px solid rgba(230,234,242,.95);
+            box-shadow: 0 20px 60px rgba(2,6,23,.12);
+        }
+        .hn-auth-brand{
+            font-weight: 900;
+            letter-spacing: -.03em;
+        }
+        .hn-auth-sub{
+            color: var(--hn-muted);
+        }
+        .hn-auth-kicker{
+            display:inline-flex;
+            gap:.5rem;
+            align-items:center;
+            padding:.35rem .65rem;
+            border-radius:999px;
+            border:1px solid rgba(37,99,235,.18);
+            background: rgba(37,99,235,.08);
+            color: var(--hn-blue);
+            font-weight: 800;
+            font-size: .78rem;
+        }
+        .hn-auth-divider{
+            height:1px;
+            background: rgba(230,234,242,.95);
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="hn-auth-wrap">
+        <main class="container py-4">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

@@ -1,15 +1,23 @@
-@page
-@model HNControl.Web.Pages.Admin.ServiceOrders.CreateModel
+@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.ServiceOrders.EditModel
 @{
     Layout = "_Layout";
 }
 
+@if (Model.Input == null)
+{
+    <div class="alert alert-warning">Orden no encontrada.</div>
+    return;
+}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Nueva orden de servicio</h1>
-        <div class="text-muted small">Crea la orden y (sí) luego la puedes editar. Fin del drama 😄</div>
+        <h1 class="h4 m-0">Editar orden</h1>
+        <div class="text-muted small">Ajusta lo necesario (cliente, contrato, fechas, técnico, etc.) sin romper trazabilidad.</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Volver</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Volver</a>
+    </div>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -19,10 +27,17 @@
 
 <form method="post" class="card shadow-sm hn-hover">
     <div class="card-body">
+        <input type="hidden" asp-for="Input.Id" />
+
         <div class="row g-3">
             <div class="col-md-8">
                 <label class="form-label">Título</label>
-                <input class="form-control" asp-for="Input.Title" placeholder="Ej: Mantenimiento preventivo CCTV Matamoros" />
+                <input class="form-control" asp-for="Input.Title" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select class="form-select" asp-for="Input.Status" asp-items="Model.StatusItems"></select>
             </div>
 
             <div class="col-md-4">
@@ -30,30 +45,28 @@
                 <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
             </div>
 
+            <div class="col-md-8">
+                <label class="form-label">Técnico / Responsable</label>
+                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+            </div>
+
             <div class="col-md-6">
                 <label class="form-label">Cliente</label>
                 <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="clientSelect"></select>
-                <div class="form-text">Primero selecciona cliente; luego proyecto y/o contrato.</div>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Proyecto (opcional)</label>
-                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect">
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect" data-selected="@Model.Input.ProjectId">
                     <option value="">— Sin proyecto —</option>
                 </select>
             </div>
 
-            <div class="col-md-8">
+            <div class="col-12">
                 <label class="form-label">Servicio contratado (opcional)</label>
-                <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems">
+                <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems" id="contractSelect" data-selected="@Model.Input.ClientServiceContractId">
                     <option value="">— Sin contrato ligado —</option>
                 </select>
-                <div class="form-text">Si lo ligas a un contrato, tendrás trazabilidad de mantenimientos por servicio.</div>
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Técnico / Responsable</label>
-                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
             </div>
 
             <div class="col-md-6">
@@ -68,14 +81,14 @@
 
             <div class="col-12">
                 <label class="form-label">Descripción</label>
-                <textarea class="form-control" rows="3" asp-for="Input.Description" placeholder="Contexto, alcance, observaciones..."></textarea>
+                <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
             </div>
         </div>
     </div>
 
     <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Crear orden</button>
-        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Cancelar</a>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>
 </form>
 
@@ -94,7 +107,8 @@
                 const r = await fetch(`?handler=Projects&clientId=${clientId}`);
                 const items = await r.json();
 
-                const current = projectSelect.value;
+                // Si el servidor ya tenía valor (por ejemplo al recargar la página), lo guardamos en data-selected.
+                const desired = projectSelect.value || projectSelect.dataset.selected;
                 projectSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
                 items.forEach(x => {
                     const opt = document.createElement('option');
@@ -102,10 +116,10 @@
                     opt.textContent = x.text;
                     projectSelect.appendChild(opt);
                 });
-                if (current) projectSelect.value = current;
+                if (desired) projectSelect.value = desired;
+                projectSelect.dataset.selected = projectSelect.value;
             } catch { }
 
-            // Contracts (filtered by project)
             await refreshContracts();
         }
 
@@ -123,7 +137,7 @@
                 const r = await fetch(url);
                 const items = await r.json();
 
-                const current = contractSelect.value;
+                const desired = contractSelect.value || contractSelect.dataset.selected;
                 contractSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
                 items.forEach(x => {
                     const opt = document.createElement('option');
@@ -131,14 +145,32 @@
                     opt.textContent = x.text;
                     contractSelect.appendChild(opt);
                 });
-                if (current) contractSelect.value = current;
+                if (desired) contractSelect.value = desired;
+                contractSelect.dataset.selected = contractSelect.value;
             } catch { }
         }
 
-        document.getElementById('clientSelect')?.addEventListener('change', refreshProjectsAndContracts);
-        document.getElementById('projectSelect')?.addEventListener('change', refreshContracts);
+        document.getElementById('clientSelect')?.addEventListener('change', () => {
+            // Cambió cliente: la selección previa puede dejar de ser válida.
+            const projectSelect = document.getElementById('projectSelect');
+            const contractSelect = document.getElementById('contractSelect');
+            if (projectSelect) projectSelect.dataset.selected = '';
+            if (contractSelect) contractSelect.dataset.selected = '';
+            refreshProjectsAndContracts();
+        });
+        document.getElementById('projectSelect')?.addEventListener('change', () => {
+            const projectSelect = document.getElementById('projectSelect');
+            const contractSelect = document.getElementById('contractSelect');
+            if (projectSelect) projectSelect.dataset.selected = projectSelect.value;
+            if (contractSelect) contractSelect.dataset.selected = '';
+            refreshContracts();
+        });
 
-        // Initial load
+        document.getElementById('contractSelect')?.addEventListener('change', () => {
+            const contractSelect = document.getElementById('contractSelect');
+            if (contractSelect) contractSelect.dataset.selected = contractSelect.value;
+        });
+
         refreshProjectsAndContracts();
     </script>
 }

@@ -1,17 +1,23 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Clients.CreateModel
 @{
     Layout = "_Layout";
 }
 
-<h1 class="h4 mb-3">Nuevo cliente</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Nuevo cliente</h1>
+        <div class="text-muted small">Primero creas el cliente; luego agregas sus contratos/servicios.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-sm hn-hover hn-hover">
+<form method="post" class="card shadow-sm hn-hover">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-4">
@@ -24,7 +30,7 @@
                 <input class="form-control" asp-for="Input.Name" />
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">RFC</label>
                 <input class="form-control" asp-for="Input.Rfc" />
             </div>
@@ -43,30 +49,11 @@
                 <label class="form-label">Dirección</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
-
-            <div class="col-12">
-                <label class="form-label">Servicios contratados</label>
-                <div class="row">
-                    @foreach (var s in Model.ServiceOptions)
-                    {
-                        <div class="col-md-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox"
-                                       name="Input.SelectedServices"
-                                       value="@((int)s)"
-                                       @(Model.Input.SelectedServices.Contains((int)s) ? "checked" : "") />
-                                <label class="form-check-label">@s</label>
-                            </div>
-                        </div>
-                    }
-                </div>
-                <div class="text-muted small mt-1">Puedes marcar varios.</div>
-            </div>
         </div>
     </div>
 
     <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-primary" type="submit">Crear</button>
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Cancelar</a>
     </div>
 </form>

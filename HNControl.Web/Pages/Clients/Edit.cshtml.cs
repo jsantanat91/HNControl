@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -17,8 +17,6 @@ public class EditModel : PageModel
 
     public SelectList KindItems =>
         new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
-
-    public ClientServiceType[] ServiceOptions => Enum.GetValues<ClientServiceType>();
 
     [BindProperty] public InputModel? Input { get; set; }
     public string? Error { get; set; }
@@ -43,16 +41,11 @@ public class EditModel : PageModel
 
         [MaxLength(400)]
         public string Address { get; set; } = "";
-
-        public List<int> SelectedServices { get; set; } = new();
     }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        var client = await _db.Clients
-            .Include(c => c.Services)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
+        var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == id);
         if (client == null) return NotFound();
 
         Input = new InputModel
@@ -61,10 +54,9 @@ public class EditModel : PageModel
             Kind = client.Kind,
             Name = client.Name,
             Rfc = client.Rfc ?? "",
-            Email = client.Email ?? "",        // ✅ evita CS8601
-            Phone = client.Phone ?? "",        // ✅ evita CS8601
-            Address = client.Address ?? "",    // ✅ evita CS8601
-            SelectedServices = client.Services.Select(s => (int)s.ServiceType).ToList()
+            Email = client.Email ?? "",
+            Phone = client.Phone ?? "",
+            Address = client.Address ?? ""
         };
 
         return Page();
@@ -75,35 +67,17 @@ public class EditModel : PageModel
         if (Input == null) return NotFound();
         if (!ModelState.IsValid) return Page();
 
-        var client = await _db.Clients
-            .Include(c => c.Services)
-            .FirstOrDefaultAsync(c => c.Id == Input.Id);
-
+        var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == Input.Id);
         if (client == null) return NotFound();
 
-        // ✅ Persistimos en Type (lo real en DB)
         client.Type = (ClientType)Input.Kind;
-
         client.Name = Input.Name.Trim();
         client.Rfc = (Input.Rfc ?? "").Trim();
         client.Email = (Input.Email ?? "").Trim();
         client.Phone = (Input.Phone ?? "").Trim();
         client.Address = (Input.Address ?? "").Trim();
 
-        // Replace services
-        _db.ClientServices.RemoveRange(client.Services);
-        client.Services.Clear();
-
-        foreach (var s in Input.SelectedServices.Distinct())
-        {
-            client.Services.Add(new ClientService
-            {
-                ClientId = client.Id,
-                ServiceType = (ClientServiceType)s
-            });
-        }
-
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Clients/Index");
+        return RedirectToPage("/Clients/Details", new { id = client.Id });
     }
 }

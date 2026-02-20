@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -44,10 +45,16 @@ public class EditModel : PageModel
 
         (PeriodStart, PeriodEnd) = GetQuincenaUtc(start);
 
+        var psMin = PeriodStart.AddDays(-1);
+        var psMax = PeriodStart.AddDays(2);
+        var peMin = PeriodEnd.AddDays(-1);
+        var peMax = PeriodEnd.AddDays(2);
+
         var existing = await _db.PerformanceReviews
+            .AsNoTracking()
             .Where(r => r.UserId == userId
-                        && r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)
-                        && r.PeriodEnd >= PeriodEnd && r.PeriodEnd < PeriodEnd.AddDays(1))
+                     && r.PeriodStart >= psMin && r.PeriodStart < psMax
+                     && r.PeriodEnd >= peMin && r.PeriodEnd < peMax)
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
@@ -87,42 +94,42 @@ public class EditModel : PageModel
         var ps = TimeUtil.UtcDate(Input.PeriodStart);
         var pe = TimeUtil.UtcDate(Input.PeriodEnd);
 
-        var r = await _db.PerformanceReviews
-            .Where(x => x.UserId == Input.UserId
-                        && x.PeriodStart >= ps && x.PeriodStart < ps.AddDays(1)
-                        && x.PeriodEnd >= pe && x.PeriodEnd < pe.AddDays(1))
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
+        var notes = (Input.Notes ?? "").Trim();
+        var sum = (decimal)(Input.PersonalPerformance + Input.Teamwork + Input.PunctualityAttendance +
+                            Input.ProjectExecution + Input.OrderCleanliness + Input.TechnicalSkills);
 
-        if (r == null)
-        {
-            r = new PerformanceReview
-            {
-                UserId = Input.UserId,
-                PeriodStart = ps,
-                PeriodEnd = pe,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.PerformanceReviews.Add(r);
-        }
-        else
-        {
-            r.PeriodStart = ps;
-            r.PeriodEnd = pe;
-        }
+        var variablePercent = Math.Round(sum / 30m, 4);
+        variablePercent = Math.Clamp(variablePercent, 0m, 1m);
 
-        r.PersonalPerformance = Input.PersonalPerformance;
-        r.Teamwork = Input.Teamwork;
-        r.PunctualityAttendance = Input.PunctualityAttendance;
-        r.ProjectExecution = Input.ProjectExecution;
-        r.OrderCleanliness = Input.OrderCleanliness;
-        r.TechnicalSkills = Input.TechnicalSkills;
-        r.Notes = (Input.Notes ?? "").Trim();
+        var adminId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? "";
+        var now = DateTime.UtcNow;
 
-        r.Recalc();
-        await _db.SaveChangesAsync();
+        await _db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO ""PerformanceReviews"" (
+    ""Id"", ""UserId"", ""PeriodStart"", ""PeriodEnd"",
+    ""PersonalPerformance"", ""Teamwork"", ""PunctualityAttendance"", ""ProjectExecution"", ""OrderCleanliness"", ""TechnicalSkills"",
+    ""VariablePercent"", ""Notes"", ""RatedByUserId"", ""RatedAt"", ""CreatedAt"", ""UpdatedAt""
+) VALUES (
+    {Guid.NewGuid()}, {Input.UserId}, {ps}, {pe},
+    {Input.PersonalPerformance}, {Input.Teamwork}, {Input.PunctualityAttendance}, {Input.ProjectExecution}, {Input.OrderCleanliness}, {Input.TechnicalSkills},
+    {variablePercent}, {notes}, {adminId}, {now}, {now}, {now}
+)
+ON CONFLICT (""UserId"", ""PeriodStart"", ""PeriodEnd"")
+DO UPDATE SET
+    ""PersonalPerformance"" = EXCLUDED.""PersonalPerformance"",
+    ""Teamwork"" = EXCLUDED.""Teamwork"",
+    ""PunctualityAttendance"" = EXCLUDED.""PunctualityAttendance"",
+    ""ProjectExecution"" = EXCLUDED.""ProjectExecution"",
+    ""OrderCleanliness"" = EXCLUDED.""OrderCleanliness"",
+    ""TechnicalSkills"" = EXCLUDED.""TechnicalSkills"",
+    ""VariablePercent"" = EXCLUDED.""VariablePercent"",
+    ""Notes"" = EXCLUDED.""Notes"",
+    ""RatedByUserId"" = EXCLUDED.""RatedByUserId"",
+    ""RatedAt"" = EXCLUDED.""RatedAt"",
+    ""UpdatedAt"" = EXCLUDED.""UpdatedAt"";
+");
 
-        return RedirectToPage("/Admin/Performance/Index", new { start = ps.ToString("yyyy-MM-dd") });
+        return RedirectToPage("/Admin/Performance/Dashboard", new { year = ps.Year, month = ps.Month, half = (ps.Day <= 15 ? 1 : 2) });
     }
 
     private static (DateTime start, DateTime end) GetQuincenaUtc(DateTime? start)

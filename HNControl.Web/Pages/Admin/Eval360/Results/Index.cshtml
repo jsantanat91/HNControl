@@ -16,13 +16,24 @@
     <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
 </div>
 
+@if (TempData["Msg"] is string msg)
+{
+    <div class="alert alert-info">@msg</div>
+}
+
 <div class="card shadow-soft mb-3">
     <div class="card-body">
         <form method="get">
-            <input type="hidden" name="id" value="@RouteData.Values["id"]" />
-
             <div class="row g-2 align-items-end">
-                <div class="col-12 col-lg-7">
+                <div class="col-12 col-lg-5">
+                    <div class="form-floating">
+                        <select class="form-select" id="campaignSelect" asp-items="Model.CampaignItems"></select>
+                        <label for="campaignSelect">Periodo (mes)</label>
+                    </div>
+                    <div class="form-text">Cambia el mes y recarga resultados.</div>
+                </div>
+
+                <div class="col-12 col-lg-6">
                     <div class="form-floating">
                         <select class="form-select" id="userSelect" name="UserId">
                             @foreach (var e in Model.Employees)
@@ -51,75 +62,139 @@
 
 @if (!Model.Rows.Any())
 {
-    <div class="alert alert-info">Aún no hay respuestas para este empleado en esta campaña.</div>
-    return;
+    <div class="alert alert-info">Aún no hay respuestas para este empleado en este periodo.</div>
 }
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card shadow-soft">
+                <div class="card-header fw-semibold">Comparativo por competencia (Esperado vs Evaluación)</div>
+                <div class="card-body">
+                    <canvas id="cmpChart" height="140"></canvas>
+                    <div class="text-muted small mt-2">
+                        Escala 1–5 convertida a porcentaje.
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="row g-3">
-    <div class="col-lg-7">
-        <div class="card shadow-soft">
-            <div class="card-header fw-semibold">Comparativo por competencia (Auto vs Evaluadores)</div>
-            <div class="card-body">
-                <canvas id="cmpChart" height="140"></canvas>
-                <div class="text-muted small mt-2">
-                    Escala 1–5 convertida a porcentaje.
+        <div class="col-lg-5">
+            <div class="card shadow-soft">
+                <div class="card-header fw-semibold">Detalle</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Competencia</th>
+                                <th class="text-end">Esperado</th>
+                                <th class="text-end">Evaluación</th>
+                                <th class="text-end">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.Rows)
+                        {
+                            var diff = r.DiffPct;
+                            var badge = diff >= 10 ? "text-bg-danger" : (diff <= -10 ? "text-bg-success" : "text-bg-secondary");
+                            <tr>
+                                <td class="fw-semibold">@r.Competency</td>
+                                <td class="text-end">
+                                    <span class="badge text-bg-light border">@r.AutoPct%</span>
+                                    <span class="text-muted small ms-1">(@r.LevelAuto)</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge text-bg-light border">@r.OthersPct%</span>
+                                    <span class="text-muted small ms-1">(@r.LevelOthers)</span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge @badge">@((diff >= 0 ? "+" : ""))@diff%</span>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer text-muted small">
+                    Diferencia = Esperado - Evaluación. Positiva = se está sobreestimando. Negativa = el equipo lo ve mejor.
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-soft">
+                <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                    <span>Cumulativo del equipo</span>
+                    <span class="text-muted small">@Model.TeamEmployeesCount empleados</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="teamChart" height="120"></canvas>
+                    <div class="text-muted small mt-2">
+                        Promedio por competencia en todo el equipo (ponderado por empleado, no por número de evaluadores).
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-lg-5">
-        <div class="card shadow-soft">
-            <div class="card-header fw-semibold">Detalle</div>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Competencia</th>
-                            <th class="text-end">Auto</th>
-                            <th class="text-end">Eval.</th>
-                            <th class="text-end">Dif.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var r in Model.Rows)
-                    {
-                        <tr>
-                            <td>@r.Competency</td>
-                            <td class="text-end">@r.AutoPct% <span class="text-muted small">(@r.LevelAuto)</span></td>
-                            <td class="text-end">@r.OthersPct% <span class="text-muted small">(@r.LevelOthers)</span></td>
-                            <td class="text-end">@((r.DiffPct >= 0 ? "+" : ""))@r.DiffPct%</td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+}
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const labels = @Html.Raw(Model.LabelsJson);
-        const autoValues = @Html.Raw(Model.AutoJson);
-        const otherValues = @Html.Raw(Model.OthersJson);
+        // Cambio de periodo: navega al mismo folder con nuevo GUID (relativo, respeta PathBase).
+        (function(){
+            const camp = document.getElementById('campaignSelect');
+            const user = document.getElementById('userSelect');
+            if(!camp) return;
+            camp.addEventListener('change', function(){
+                const cid = camp.value;
+                const uid = user ? user.value : '';
+                const qs = uid ? ('?UserId=' + encodeURIComponent(uid)) : '';
+                window.location = cid + qs;
+            });
+        })();
 
-        new Chart(document.getElementById('cmpChart'), {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              { label: 'Autoevaluación', data: autoValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-              { label: 'Evaluadores', data: otherValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
-            ]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: { beginAtZero: true, max: 100 }
-            }
-          }
-        });
+        const labels = @Html.Raw(Model.LabelsJson);
+        const expectedValues = @Html.Raw(Model.AutoJson);
+        const evalValues = @Html.Raw(Model.OthersJson);
+
+        if (labels && labels.length) {
+            new Chart(document.getElementById('cmpChart'), {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                  { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+                ]
+              },
+              options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 100 } }
+              }
+            });
+        }
+
+        const tLabels = @Html.Raw(Model.TeamLabelsJson);
+        const tExpected = @Html.Raw(Model.TeamExpectedJson);
+        const tEval = @Html.Raw(Model.TeamEvalJson);
+
+        if (tLabels && tLabels.length) {
+            new Chart(document.getElementById('teamChart'), {
+              type: 'bar',
+              data: {
+                labels: tLabels,
+                datasets: [
+                  { label: 'Esperado (promedio)', data: tExpected, backgroundColor: 'rgba(16, 185, 129, 0.35)' },
+                  { label: 'Evaluación (promedio)', data: tEval, backgroundColor: 'rgba(59, 130, 246, 0.35)' }
+                ]
+              },
+              options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 100 } }
+              }
+            });
+        }
     </script>
 }

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Performance.RateModel
 @{
     Layout = "_Layout";
@@ -7,18 +7,20 @@
 
 <style>
     /* UI específico de evaluación (solo diseño) */
-    .hn-metric{
+    .hn-metric {
         border: 1px solid rgba(15,23,42,.08);
         border-radius: 16px;
         padding: 14px 16px;
         background: #fff;
     }
-    .hn-metric-title{
+
+    .hn-metric-title {
         font-weight: 700;
         letter-spacing: -.01em;
         margin-bottom: 10px;
     }
-    .hn-pill{
+
+    .hn-pill {
         min-width: 84px;
         text-align: center;
         padding: 6px 10px;
@@ -33,10 +35,19 @@
         gap: 3px;
         white-space: nowrap;
     }
-    .hn-pill .den{ font-weight: 700; opacity: .65; }
-    .hn-pill .word{ font-weight: 800; opacity: .85; margin-left: 6px; }
 
-    .hn-scale{
+        .hn-pill .den {
+            font-weight: 700;
+            opacity: .65;
+        }
+
+        .hn-pill .word {
+            font-weight: 800;
+            opacity: .85;
+            margin-left: 6px;
+        }
+
+    .hn-scale {
         display: flex;
         justify-content: space-between;
         margin-top: 6px;
@@ -44,32 +55,36 @@
         color: var(--bs-secondary-color);
         user-select: none;
     }
-    .hn-help{
+
+    .hn-help {
         font-size: .78rem;
         color: var(--bs-secondary-color);
         margin-top: 6px;
     }
 
-    .hn-overall{
+    .hn-overall {
         border-radius: 16px;
         background: rgba(2,6,23,.03);
         border: 1px solid rgba(15,23,42,.06);
         padding: 14px 16px;
     }
-    .hn-overall .score{
-        font-size: 1.75rem;
-        font-weight: 800;
-        letter-spacing: -.03em;
-    }
-    .hn-overall .progress{
-        height: 10px;
-        border-radius: 999px;
-        overflow: hidden;
-        background: rgba(2,6,23,.06);
-    }
-    .hn-overall .progress-bar{
-        border-radius: 999px;
-    }
+
+        .hn-overall .score {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -.03em;
+        }
+
+        .hn-overall .progress {
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(2,6,23,.06);
+        }
+
+        .hn-overall .progress-bar {
+            border-radius: 999px;
+        }
 </style>
 
 <div class="hn-pagehead d-flex justify-content-between align-items-start align-items-md-center gap-3 mb-3">
@@ -94,18 +109,23 @@
         <div class="row g-3 align-items-end">
             <div class="col-lg-6">
                 <label class="form-label fw-semibold">Empleado</label>
-                <select class="form-select" asp-for="Input.UserId" asp-items="Model.EmployeeItems"></select>
+                <select class="form-select" asp-for="Input.EmployeeId" asp-items="Model.EmployeeItems"></select>
                 <div class="hn-help">Tip: usa este selector para calificar a alguien distinto sin salirte del periodo.</div>
             </div>
 
             <div class="col-sm-6 col-lg-3">
-                <label class="form-label fw-semibold">Inicio</label>
-                <input class="form-control" asp-for="Input.PeriodStart" type="date" />
+                <label class="form-label fw-semibold">Mes</label>
+                <select class="form-select" asp-for="Input.Ym" asp-items="Model.MonthItems" id="ymSelect"></select>
             </div>
 
             <div class="col-sm-6 col-lg-3">
-                <label class="form-label fw-semibold">Fin</label>
-                <input class="form-control" asp-for="Input.PeriodEnd" type="date" />
+                <label class="form-label fw-semibold">Periodo</label>
+                <select class="form-select" asp-for="Input.Half" asp-items="Model.HalfItems" id="halfSelect"></select>
+                <div class="hn-help mb-0">
+                    Rango:
+                    <span id="rangeStart">@Model.PeriodStart.ToString("yyyy-MM-dd")</span>
+                    → <span id="rangeEnd">@Model.PeriodEnd.ToString("yyyy-MM-dd")</span>
+                </div>
             </div>
         </div>
 
@@ -213,14 +233,30 @@
 
     <script>
         (function(){
-            const words = {
-                1: "Crítico",
-                2: "Bajo",
-                3: "Bien",
-                4: "Muy bien",
-                5: "Excelente"
-            };
+            function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
+            function updateRange(){
+                const ym = document.getElementById('ymSelect')?.value || '';
+                const half = parseInt(document.getElementById('halfSelect')?.value || '1', 10);
+                const parts = ym.split('-');
+                if(parts.length !== 2) return;
+                const y = parseInt(parts[0],10); const m = parseInt(parts[1],10);
+                if(!y || !m) return;
+                const last = daysInMonth(y,m);
+                const startDay = (half === 2) ? Math.min(16,last) : 1;
+                const endDay = (half === 2) ? last : Math.min(15,last);
+                const pad = (n) => (n<10?('0'+n):(''+n));
+                const s = `${y}-${pad(m)}-${pad(startDay)}`;
+                const e = `${y}-${pad(m)}-${pad(endDay)}`;
+                const sEl = document.getElementById('rangeStart');
+                const eEl = document.getElementById('rangeEnd');
+                if(sEl) sEl.textContent = s;
+                if(eEl) eEl.textContent = e;
+            }
+            document.getElementById('ymSelect')?.addEventListener('change', updateRange);
+            document.getElementById('halfSelect')?.addEventListener('change', updateRange);
+            updateRange();
 
+            const words = { 1:"Crítico", 2:"Bajo", 3:"Bien", 4:"Muy bien", 5:"Excelente" };
             const ranges = Array.from(document.querySelectorAll('.hn-range'));
             const overallScore = document.getElementById('overallScore');
             const overallBar = document.getElementById('overallBar');

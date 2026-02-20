@@ -1,7 +1,8 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.DetailsModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Cliente";
 }
 
 @if (Model.Client == null)
@@ -10,58 +11,144 @@
     return;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">@Model.Client.Name</h1>
         <div class="text-muted small">
-            @Model.Client.Kind · RFC: @Model.Client.Rfc · @Model.Client.Email · @Model.Client.Phone
+            @(Model.Client.Kind.ToString()) · RFC: <b>@(Model.Client.Rfc ?? "—")</b>
+            · <span class="text-muted">@(Model.Client.Email ?? "—")</span>
         </div>
     </div>
+
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
         <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
+        <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
     </div>
 </div>
 
-<div class="card shadow-sm hn-hover mb-3">
-    <div class="card-body">
-        <div class="text-muted small">Dirección</div>
-        <div>@Model.Client.Address</div>
-        <hr />
-        <div class="text-muted small">Servicios</div>
-        <div>@string.Join(", ", Model.Services)</div>
-    </div>
-</div>
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm hn-hover">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Servicios contratados</div>
+                <div class="text-muted small">@Model.Contracts.Count contrato(s)</div>
+            </div>
 
-<div class="card shadow-sm hn-hover hn-hover">
-    <div class="card-header fw-semibold">Proyectos ligados</div>
-    <div class="card-body table-responsive">
-        <table class="table table-sm align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Título</th>
-                    <th>Responsable</th>
-                    <th>Inicio</th>
-                    <th>Estimado fin</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in Model.Projects)
-                {
-                    <tr>
-                        <td>@p.Title</td>
-                        <td>@p.Responsible</td>
-                        <td>@p.StartDate</td>
-                        <td>@p.EstEnd</td>
-                        <td>@p.Status</td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Categoría</th>
+                            <th>Contrato</th>
+                            <th>Proveedor</th>
+                            <th class="text-nowrap">Vence</th>
+                            <th>Proyecto</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!Model.Contracts.Any())
+                    {
+                        <tr><td colspan="6" class="text-muted">Aún no hay contratos. Dale al botón “Agregar contrato” (sí, ese de arriba 😄).</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var c in Model.Contracts)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge text-bg-light border">@c.ServiceType</span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">@c.Label</div>
+                                    <div class="text-muted small">
+                                        Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "—" : c.AccountNumber)
+                                        · #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "—" : c.ContractNumber)
+                                    </div>
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "—" : c.Provider)</td>
+                                <td class="text-nowrap">
+                                    <div>@(c.ContractEndDateText)</div>
+                                    <div>
+                                        <span class="badge @c.StatusBadgeClass">@c.StatusText</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted small">@c.ProjectTitle</td>
+                                <td class="text-end text-nowrap">
+                                    @if (c.HasContractFile)
+                                    {
+                                        <a class="btn btn-sm btn-outline-secondary"
+                                           asp-page="/Clients/Services/Download"
+                                           asp-route-id="@c.Id">Contrato</a>
+                                    }
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       asp-page="/Clients/Services/Edit"
+                                       asp-route-id="@c.Id">Editar</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer text-muted small">
+                Tip pro: liga el contrato a un <b>Proyecto</b> para que las Órdenes de Servicio queden trazables (mantenimientos vs servicio específico).
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm hn-hover mb-3">
+            <div class="card-body">
+                <div class="fw-semibold mb-1">Contacto</div>
+                <div class="text-muted small">
+                    Tel: <b>@(Model.Client.Phone ?? "—")</b><br />
+                    Dirección: @(Model.Client.Address ?? "—")
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm hn-hover">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Proyectos</div>
+                <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo</a>
+            </div>
+
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Proyecto</th>
+                            <th>Status</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!Model.Projects.Any())
+                    {
+                        <tr><td colspan="3" class="text-muted">Sin proyectos todavía.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var p in Model.Projects)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@p.Title</div>
+                                    <div class="text-muted small">@p.StartDate · Est: @p.EstEnd</div>
+                                </td>
+                                <td><span class="badge text-bg-light border">@p.Status</span></td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>

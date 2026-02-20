@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.ServiceOrders.IndexModel
 @{
     Layout = "_Layout";
@@ -18,6 +18,8 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
+                    <th>Proyecto</th>
+                    <th>Servicio</th>
                     <th>Título</th>
                     <th>Tipo</th>
                     <th>Status</th>
@@ -31,6 +33,8 @@
                 {
                     <tr>
                         <td>@o.ClientName</td>
+                        <td class="text-muted">@o.ProjectTitle</td>
+                        <td class="text-muted">@o.ContractLabel</td>
                         <td>@o.Title</td>
                         <td>@o.Type</td>
                         <td><span class="fw-semibold">@o.Status</span></td>

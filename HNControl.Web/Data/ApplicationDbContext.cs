@@ -18,7 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ViaticEntry> ViaticEntries => Set<ViaticEntry>();
     public DbSet<ViaticAttachment> ViaticAttachments => Set<ViaticAttachment>();
     public DbSet<Client> Clients => Set<Client>();
-    public DbSet<ClientService> ClientServices => Set<ClientService>();
+    public DbSet<ClientServiceContract> ClientServiceContracts => Set<ClientServiceContract>();
 
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAccess> ProjectAccesses => Set<ProjectAccess>();
@@ -108,15 +108,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.Address).HasMaxLength(400);
-            e.HasMany(x => x.Services).WithOne(s => s.Client!).HasForeignKey(s => s.ClientId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Contracts)
+             .WithOne(s => s.Client!)
+             .HasForeignKey(s => s.ClientId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
-        b.Entity<ClientService>(e =>
+        b.Entity<ClientServiceContract>(e =>
         {
-            e.HasKey(x => new { x.ClientId, x.ServiceType });
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Label).HasMaxLength(200);
+            e.Property(x => x.Provider).HasMaxLength(120);
+            e.Property(x => x.AccountNumber).HasMaxLength(120);
+            e.Property(x => x.ContractNumber).HasMaxLength(120);
+
+            e.Property(x => x.ContractStartDate).HasColumnType("date");
+            e.Property(x => x.ContractEndDate).HasColumnType("date");
+
+            e.Property(x => x.Notes).HasMaxLength(2000);
+
+            e.Property(x => x.SignedContractStoragePath).HasMaxLength(500);
+            e.Property(x => x.SignedContractOriginalFileName).HasMaxLength(255);
+            e.Property(x => x.SignedContractContentType).HasMaxLength(100);
+
+            e.HasIndex(x => new { x.ClientId, x.ServiceType, x.Label });
+
+            e.HasOne(x => x.Project)
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-        b.Entity<Project>(e =>
+b.Entity<Project>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Title).HasMaxLength(200);
@@ -243,6 +267,7 @@ b.Entity<ServiceOrder>(e =>
 
             e.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId);
             e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
+            e.HasOne(x => x.ClientServiceContract).WithMany().HasForeignKey(x => x.ClientServiceContractId).OnDelete(DeleteBehavior.SetNull);
 
             e.HasOne(x => x.AssignedEmployee).WithMany()
                 .HasForeignKey(x => x.AssignedUserId)

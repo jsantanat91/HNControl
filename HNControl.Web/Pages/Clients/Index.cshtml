@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Clients.IndexModel
 @{
     Layout = "_Layout";
@@ -21,7 +21,7 @@
                     <th>RFC</th>
                     <th>Tipo</th>
                     <th>Correo</th>
-                    <th>Servicios</th>
+                    <th>Contratos</th>
                     <th></th>
                 </tr>
             </thead>
@@ -33,7 +33,7 @@
                         <td class="text-muted">@c.Rfc</td>
                         <td>@c.Kind</td>
                         <td>@c.Email</td>
-                        <td class="text-muted">@c.Services</td>
+                        <td class="text-muted">@c.ContractsSummary</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Clients/Details" asp-route-id="@c.Id">Ver</a>
                             <a class="btn btn-sm btn-outline-secondary" asp-page="/Clients/Edit" asp-route-id="@c.Id">Editar</a>

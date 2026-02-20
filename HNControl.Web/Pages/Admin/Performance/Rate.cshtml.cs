@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -16,33 +15,26 @@ namespace HNControl.Web.Pages.Admin.Performance;
 public class RateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    public RateModel(ApplicationDbContext db) => _db = db;
+    public DateTime PeriodStart { get; private set; }
+    public DateTime PeriodEnd { get; private set; }
 
-    public RateModel(ApplicationDbContext db)
-    {
-        _db = db;
-    }
-
-    public SelectList EmployeeItems { get; set; } = new(Array.Empty<object>(), "Value", "Text");
-
-    public string? Info { get; set; }
-    public string? Error { get; set; }
-
-    // Preview pago quincenal 80/20 (asume SalaryBase mensual)
-    public decimal SalaryBase { get; set; }
-    public decimal BaseQuincenal => SalaryBase / 2m;
-    public decimal VariableMax20 => BaseQuincenal * 0.20m;
-    public decimal Fixed80 => BaseQuincenal * 0.80m;
-    public decimal VariableMoney => VariableMax20 * (Input.VariablePercentPreview ?? 0m);
-    public decimal TotalQuincena => Fixed80 + VariableMoney;
+    public SelectList EmployeeItems { get; set; } = default!;
+    public SelectList MonthItems { get; set; } = default!;
+    public SelectList HalfItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
+    public string? EmployeeName { get; set; }
+
+    public string? Error { get; set; }
+    public string? Info { get; set; }
+
     public class InputModel
     {
-        [Required] public string UserId { get; set; } = "";
-
-        [DataType(DataType.Date)] public DateTime PeriodStart { get; set; }
-        [DataType(DataType.Date)] public DateTime PeriodEnd { get; set; }
+        [Required] public string EmployeeId { get; set; } = "";
+        [Required] public string Ym { get; set; } = ""; // yyyy-MM
+        [Range(1, 2)] public int Half { get; set; } = 1;
 
         [Range(1, 5)] public int PersonalPerformance { get; set; } = 3;
         [Range(1, 5)] public int Teamwork { get; set; } = 3;
@@ -51,43 +43,42 @@ public class RateModel : PageModel
         [Range(1, 5)] public int OrderCleanliness { get; set; } = 3;
         [Range(1, 5)] public int TechnicalSkills { get; set; } = 3;
 
-        [MaxLength(600)] public string Notes { get; set; } = "";
-
-        // Solo UI
-        public decimal? VariablePercentPreview { get; set; }
+        [MaxLength(1200)] public string Notes { get; set; } = "";
     }
 
-    public async Task<IActionResult> OnGetAsync(string? userId, DateTime? start = null, DateTime? end = null)
+    public async Task<IActionResult> OnGetAsync(string employeeId, string? ym = null, int? half = null, DateTime? start = null, DateTime? end = null)
     {
-        // 1) Periodo (quincena UTC)
-        (var ps, var pe) = ResolvePeriodUtc(start, end);
-        Input.PeriodStart = ps;
-        Input.PeriodEnd = pe;
+        await LoadListsAsync();
 
-        // 2) Empleado seleccionado (si viene por query)
-        if (!string.IsNullOrWhiteSpace(userId))
-            Input.UserId = userId;
+        Input.EmployeeId = employeeId;
 
-        // 3) Cargar empleados + asegurar selección
-        var emps = await LoadEmployeesAsync();
-        if (emps.Count == 0)
-        {
-            Error = "No hay empleados (perfiles) registrados. Crea al menos un empleado con su ficha.";
-            return Page();
-        }
+        var (ps, pe, selectedYm, selectedHalf) = ResolvePeriod(ym, half, start, end);
+        PeriodStart = ps;
+        PeriodEnd = pe;
+        Input.Ym = selectedYm;
+        Input.Half = selectedHalf;
 
-        if (string.IsNullOrWhiteSpace(Input.UserId))
-            Input.UserId = emps[0].UserId;
+        MonthItems = BuildMonthItems(selectedYm);
+        HalfItems = BuildHalfItems(selectedHalf);
 
-        // reconstruye SelectList con selected correcto
-        BuildEmployeeSelect(emps);
+        EmployeeName = await _db.EmployeeProfiles
+            .Where(e => e.UserId == employeeId)
+            .Select(e => e.FullName)
+            .FirstOrDefaultAsync();
 
-        // 4) Precargar evaluación existente (para que se vea que sí guardó)
+        var psUtc = TimeUtil.UtcDate(ps);
+        var peUtc = TimeUtil.UtcDate(pe);
+
+        var psMin = psUtc.AddDays(-1);
+        var psMax = psUtc.AddDays(2);
+        var peMin = peUtc.AddDays(-1);
+        var peMax = peUtc.AddDays(2);
+
         var existing = await _db.PerformanceReviews
             .AsNoTracking()
-            .Where(r => r.UserId == Input.UserId
-                        && r.PeriodStart >= ps && r.PeriodStart < ps.AddDays(1)
-                        && r.PeriodEnd >= pe && r.PeriodEnd < pe.AddDays(1))
+            .Where(r => r.UserId == employeeId
+                     && r.PeriodStart >= psMin && r.PeriodStart < psMax
+                     && r.PeriodEnd >= peMin && r.PeriodEnd < peMax)
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
@@ -99,147 +90,185 @@ public class RateModel : PageModel
             Input.ProjectExecution = existing.ProjectExecution;
             Input.OrderCleanliness = existing.OrderCleanliness;
             Input.TechnicalSkills = existing.TechnicalSkills;
-            Input.Notes = existing.Notes;
-            Info = "Ya existe evaluación en este periodo: se cargó para editar.";
+            Input.Notes = existing.Notes ?? "";
         }
-
-        // 5) Salary + preview
-        await LoadSalaryAsync();
-        Input.VariablePercentPreview = CalcVariablePercent(Input);
 
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        var emps = await LoadEmployeesAsync();
-        BuildEmployeeSelect(emps);
-
-        if (emps.Count == 0)
-        {
-            Error = "No hay empleados (perfiles) registrados.";
-            return Page();
-        }
-
-        if (string.IsNullOrWhiteSpace(Input.UserId))
-        {
-            Error = "Selecciona un empleado.";
-            await LoadSalaryAsync();
-            Input.VariablePercentPreview = CalcVariablePercent(Input);
-            return Page();
-        }
-
-        // Snap a quincena UTC (para que Dashboard la encuentre)
-        (var ps, var pe) = NormalizeToQuincenaUtc(Input.PeriodStart);
-        Input.PeriodStart = ps;
-        Input.PeriodEnd = pe;
+        await LoadListsAsync();
+        MonthItems = BuildMonthItems(Input.Ym);
+        HalfItems = BuildHalfItems(Input.Half);
 
         if (!ModelState.IsValid)
         {
-            await LoadSalaryAsync();
-            Input.VariablePercentPreview = CalcVariablePercent(Input);
+            try
+            {
+                var (ps, pe) = ResolvePeriodFromUi(Input.Ym, Input.Half);
+                PeriodStart = ps;
+                PeriodEnd = pe;
+            }
+            catch
+            {
+                PeriodStart = DateTime.Today;
+                PeriodEnd = DateTime.Today;
+            }
+
+            Error = "Revisa los campos. Hay datos inválidos.";
             return Page();
         }
 
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-
-        var r = await _db.PerformanceReviews
-            .Where(x => x.UserId == Input.UserId
-                        && x.PeriodStart >= ps && x.PeriodStart < ps.AddDays(1)
-                        && x.PeriodEnd >= pe && x.PeriodEnd < pe.AddDays(1))
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
-
-        if (r == null)
+        try
         {
-            r = new PerformanceReview
+            var (ps, pe) = ResolvePeriodFromUi(Input.Ym, Input.Half);
+            PeriodStart = ps;
+            PeriodEnd = pe;
+            var psUtc = TimeUtil.UtcDate(ps);
+            var peUtc = TimeUtil.UtcDate(pe);
+
+            // Si existe evaluación "corrida", usamos su key exacta para actualizar y no insertar duplicado.
+            var psMin = psUtc.AddDays(-1);
+            var psMax = psUtc.AddDays(2);
+            var peMin = peUtc.AddDays(-1);
+            var peMax = peUtc.AddDays(2);
+
+            var existing = await _db.PerformanceReviews
+                .AsNoTracking()
+                .Where(r => r.UserId == Input.EmployeeId
+                         && r.PeriodStart >= psMin && r.PeriodStart < psMax
+                         && r.PeriodEnd >= peMin && r.PeriodEnd < peMax)
+                .OrderByDescending(r => r.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            if (existing != null)
             {
-                UserId = Input.UserId,
-                PeriodStart = ps,
-                PeriodEnd = pe,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _db.PerformanceReviews.Add(r);
+                // 🔥 Npgsql (timestamptz) exige DateTimeKind.Utc. Si hay data vieja con Kind=Unspecified, la normalizamos.
+                psUtc = TimeUtil.UtcDate(existing.PeriodStart);
+                peUtc = TimeUtil.UtcDate(existing.PeriodEnd);
+            }
+
+            var notes = (Input.Notes ?? "").Trim();
+            var sum = (decimal)(Input.PersonalPerformance + Input.Teamwork + Input.PunctualityAttendance +
+                                Input.ProjectExecution + Input.OrderCleanliness + Input.TechnicalSkills);
+
+            var variablePercent = Math.Round(sum / 30m, 4);
+            variablePercent = Math.Clamp(variablePercent, 0m, 1m);
+
+            var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+            var now = DateTime.UtcNow;
+
+            await _db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO ""PerformanceReviews"" (
+    ""Id"", ""UserId"", ""PeriodStart"", ""PeriodEnd"",
+    ""PersonalPerformance"", ""Teamwork"", ""PunctualityAttendance"", ""ProjectExecution"", ""OrderCleanliness"", ""TechnicalSkills"",
+    ""VariablePercent"", ""Notes"", ""RatedByUserId"", ""RatedAt"", ""CreatedAt"", ""UpdatedAt""
+) VALUES (
+    {Guid.NewGuid()}, {Input.EmployeeId}, {psUtc}, {peUtc},
+    {Input.PersonalPerformance}, {Input.Teamwork}, {Input.PunctualityAttendance}, {Input.ProjectExecution}, {Input.OrderCleanliness}, {Input.TechnicalSkills},
+    {variablePercent}, {notes}, {adminId}, {now}, {now}, {now}
+)
+ON CONFLICT (""UserId"", ""PeriodStart"", ""PeriodEnd"")
+DO UPDATE SET
+    ""PersonalPerformance"" = EXCLUDED.""PersonalPerformance"",
+    ""Teamwork"" = EXCLUDED.""Teamwork"",
+    ""PunctualityAttendance"" = EXCLUDED.""PunctualityAttendance"",
+    ""ProjectExecution"" = EXCLUDED.""ProjectExecution"",
+    ""OrderCleanliness"" = EXCLUDED.""OrderCleanliness"",
+    ""TechnicalSkills"" = EXCLUDED.""TechnicalSkills"",
+    ""VariablePercent"" = EXCLUDED.""VariablePercent"",
+    ""Notes"" = EXCLUDED.""Notes"",
+    ""RatedByUserId"" = EXCLUDED.""RatedByUserId"",
+    ""RatedAt"" = EXCLUDED.""RatedAt"",
+    ""UpdatedAt"" = EXCLUDED.""UpdatedAt"";
+");
+
+            Info = "✅ Evaluación guardada.";
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var (ps, pe) = ResolvePeriodFromUi(Input.Ym, Input.Half);
+                PeriodStart = ps;
+                PeriodEnd = pe;
+            }
+            catch
+            {
+                PeriodStart = DateTime.Today;
+                PeriodEnd = DateTime.Today;
+            }
+
+            Error = ex.Message;
         }
 
-        r.PeriodStart = ps;
-        r.PeriodEnd = pe;
-
-        r.PersonalPerformance = Input.PersonalPerformance;
-        r.Teamwork = Input.Teamwork;
-        r.PunctualityAttendance = Input.PunctualityAttendance;
-        r.ProjectExecution = Input.ProjectExecution;
-        r.OrderCleanliness = Input.OrderCleanliness;
-        r.TechnicalSkills = Input.TechnicalSkills;
-        r.Notes = (Input.Notes ?? "").Trim();
-
-        r.RatedByUserId = adminId;
-        r.RatedAt = DateTime.UtcNow;
-        r.UpdatedAt = DateTime.UtcNow;
-
-        // ✅ Esto alimenta el 20%
-        r.Recalc();
-
-        await _db.SaveChangesAsync();
-
-        // ✅ regresa a la misma pantalla para que se vea que sí guardó
-        return RedirectToPage("/Admin/Performance/Rate", new { userId = Input.UserId, start = ps.ToString("yyyy-MM-dd"), end = pe.ToString("yyyy-MM-dd") });
+        return Page();
     }
 
-    private async Task<List<EmployeeProfile>> LoadEmployeesAsync()
+    private async Task LoadListsAsync()
     {
-        return await _db.EmployeeProfiles
-            .AsNoTracking()
-            .OrderBy(e => e.FullName)
-            .ToListAsync();
+        var employees = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
+        EmployeeItems = new SelectList(employees, "UserId", "FullName");
     }
 
-    private void BuildEmployeeSelect(List<EmployeeProfile> emps)
+    private static SelectList BuildMonthItems(string selectedYm)
     {
-        var items = emps.Select(e => new
+        var now = DateTime.Today;
+        var list = Enumerable.Range(0, 18)
+            .Select(i => new DateTime(now.Year, now.Month, 1).AddMonths(-i))
+            .Select(d => new { Id = d.ToString("yyyy-MM"), Name = d.ToString("MMMM yyyy") })
+            .ToList();
+        return new SelectList(list, "Id", "Name", selectedYm);
+    }
+
+    private static SelectList BuildHalfItems(int selected)
+    {
+        var list = new[]
         {
-            e.UserId,
-            Display = string.IsNullOrWhiteSpace(e.Position)
-                ? e.FullName
-                : $"{e.FullName} · {e.Position}"
-        }).ToList();
-
-        EmployeeItems = new SelectList(items, "UserId", "Display", Input.UserId);
+            new { Id = 1, Name = "1ª quincena (1–15)" },
+            new { Id = 2, Name = "2ª quincena (16–fin)" }
+        };
+        return new SelectList(list, "Id", "Name", selected);
     }
 
-    private async Task LoadSalaryAsync()
+    private static (DateTime ps, DateTime pe, string ym, int half) ResolvePeriod(string? ym, int? half, DateTime? start, DateTime? end)
     {
-        SalaryBase = 0m;
-        if (string.IsNullOrWhiteSpace(Input.UserId)) return;
+        if (!string.IsNullOrWhiteSpace(ym) && half is 1 or 2)
+        {
+            var (ps, pe) = ResolvePeriodFromUi(ym, half.Value);
+            return (ps, pe, ym, half.Value);
+        }
 
-        var emp = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == Input.UserId);
-        if (emp != null) SalaryBase = emp.SalaryBase;
-    }
-
-    private static (DateTime ps, DateTime pe) ResolvePeriodUtc(DateTime? start, DateTime? end)
-    {
         if (start.HasValue && end.HasValue)
-            return (TimeUtil.UtcDate(start.Value), TimeUtil.UtcDate(end.Value));
+        {
+            var s = start.Value.Date;
+            var e = end.Value.Date;
+            var ym2 = s.ToString("yyyy-MM");
+            var h2 = s.Day <= 15 ? 1 : 2;
+            return (s, e, ym2, h2);
+        }
 
-        return NormalizeToQuincenaUtc(DateTime.Now);
+        var today = DateTime.Today;
+        var defYm = new DateTime(today.Year, today.Month, 1).ToString("yyyy-MM");
+        var defHalf = today.Day <= 15 ? 1 : 2;
+        var (dps, dpe) = ResolvePeriodFromUi(defYm, defHalf);
+        return (dps, dpe, defYm, defHalf);
     }
 
-    private static (DateTime ps, DateTime pe) NormalizeToQuincenaUtc(DateTime anyDate)
+    private static (DateTime ps, DateTime pe) ResolvePeriodFromUi(string ym, int half)
     {
-        var d = anyDate.Date;
-        if (d.Day <= 15)
-            return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 1)),
-                    TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 15)));
+        var parts = ym.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var y) || !int.TryParse(parts[1], out var m))
+            throw new InvalidOperationException("Mes inválido.");
 
-        return (TimeUtil.UtcDate(new DateTime(d.Year, d.Month, 16)),
-                TimeUtil.UtcDate(new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month))));
-    }
+        var monthStart = new DateTime(y, m, 1);
+        var lastDay = DateTime.DaysInMonth(y, m);
 
-    private static decimal CalcVariablePercent(InputModel input)
-    {
-        var avg = (input.PersonalPerformance + input.Teamwork + input.PunctualityAttendance +
-                   input.ProjectExecution + input.OrderCleanliness + input.TechnicalSkills) / 6m;
-        return Math.Round(avg / 5m, 4);
+        if (half == 1)
+            return (monthStart, new DateTime(y, m, Math.Min(15, lastDay)));
+
+        var start = new DateTime(y, m, Math.Min(16, lastDay));
+        return (start, new DateTime(y, m, lastDay));
     }
 }

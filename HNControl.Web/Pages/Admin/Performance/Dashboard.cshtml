@@ -1,107 +1,124 @@
 ﻿@page
 @model HNControl.Web.Pages.Admin.Performance.DashboardModel
 @{
-    ViewData["Title"] = "Dashboard · Evaluaciones";
+    Layout = "_Layout";
+    ViewData["Title"] = "KPI / 80-20";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 m-0">Evaluaciones / KPI</h1>
-        <div class="text-muted small">Quincena: @($"{Model.PeriodStart:dd/MM/yyyy} – {Model.PeriodEnd:dd/MM/yyyy}")</div>
+        <h3 class="mb-0">KPI / 80-20</h3>
+        <div class="text-muted small">Quincena: @Model.PeriodStart.ToString("yyyy-MM-dd") → @Model.PeriodEnd.ToString("yyyy-MM-dd")</div>
     </div>
 
-    <form method="get" class="d-flex gap-2">
-        <input class="form-control form-control-sm" style="width:100px" name="year" value="@Model.Year" />
-        <input class="form-control form-control-sm" style="width:80px" name="month" value="@Model.Month" />
-        <select class="form-select form-select-sm" style="width:120px" asp-for="Half">
-            <option value="1">1–15</option>
-            <option value="2">16–Fin</option>
-        </select>
-        <button class="btn btn-sm btn-primary">Aplicar</button>
-
-        <a class="btn btn-sm btn-outline-success"
-           href="/Performance/ExportPayroll?start=@Model.PeriodStart.ToString("yyyy-MM-dd")&end=@Model.PeriodEnd.ToString("yyyy-MM-dd")">
-            Export Nómina (CSV)
+    <div class="d-flex gap-2 align-items-center">
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Dashboard/Index">Dashboard</a>
+        <a class="btn btn-outline-primary" asp-page="/Admin/Performance/ExportPayroll"
+           asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-half="@Model.Half">
+            Exportar nómina (CSV)
         </a>
-    </form>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-2">
+                <label class="form-label">Año</label>
+                <input class="form-control" name="year" value="@Model.Year" />
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label">Mes</label>
+                <input class="form-control" name="month" value="@Model.Month" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Periodo</label>
+                <select class="form-select" name="half">
+                    <option value="1" selected="@(Model.Half == 1)">1ª quincena (1–15)</option>
+                    <option value="2" selected="@(Model.Half == 2)">2ª quincena (16–fin)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <button class="btn btn-primary w-100">Aplicar</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="row g-3 mb-3">
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-sm">
             <div class="card-body">
                 <div class="text-muted small">Empleados</div>
-                <div class="h4 m-0">@Model.EmployeesTotal</div>
+                <div class="fs-4 fw-bold">@Model.EmployeesTotal</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-sm">
             <div class="card-body">
                 <div class="text-muted small">Evaluados</div>
-                <div class="h4 m-0">@Model.EmployeesRated</div>
+                <div class="fs-4 fw-bold">@Model.EmployeesRated</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <div class="text-muted small">Promedio (si existe)</div>
-                <div class="h4 m-0">@((Model.AvgScoreAll ?? 0).ToString("0.00"))</div>
+                <div class="text-muted small">Promedio general</div>
+                <div class="fs-4 fw-bold">@((Model.AvgScoreAll ?? 0).ToString("0.0"))</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <div class="text-muted small">Total nómina (80/20)</div>
-                <div class="h4 m-0">@Model.TotalPayrollPay.ToString("C")</div>
-                <div class="text-muted small">Fijo 80: @Model.TotalPayroll80.ToString("C") · Variable: @Model.TotalPayroll20.ToString("C")</div>
+                <div class="text-muted small">Total a pagar</div>
+                <div class="fs-4 fw-bold">@Model.TotalPayrollPay.ToString("C")</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-lg-7">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="fw-semibold mb-2">Total a pagar por empleado</div>
-                <canvas id="payChart" height="120"></canvas>
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12 col-lg-6">
+                <h6 class="mb-2">Total a pagar por empleado</h6>
+                <canvas id="payChart" height="180"></canvas>
             </div>
-        </div>
-    </div>
-    <div class="col-lg-5">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="fw-semibold mb-2">% variable (20%) por empleado</div>
-                <canvas id="varChart" height="120"></canvas>
+            <div class="col-12 col-lg-6">
+                <h6 class="mb-2">% variable por empleado</h6>
+                <canvas id="varChart" height="180"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card shadow-soft hn-hover">
+<div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-sm align-middle">
-                <thead>
+            <table class="table align-middle">
+                <thead class="table-light">
                     <tr>
                         <th>Empleado</th>
                         <th class="text-end">Sueldo base</th>
                         <th class="text-center">Evaluado</th>
-                        <th class="text-center">Prom</th>
+                        <th class="text-end">Prom</th>
                         <th class="text-end">% Var</th>
                         <th class="text-end">Var $</th>
                         <th class="text-end">Total a pagar</th>
-                        <th></th>
+                        <th class="text-end"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var r in Model.Rows)
                     {
                         <tr>
-                            <td class="fw-semibold">@r.FullName</td>
+                            <td>
+                                <div class="fw-semibold">@r.FullName</div>
+                                <div class="text-muted small">@r.UserId</div>
+                            </td>
                             <td class="text-end">@r.SalaryBase.ToString("C")</td>
                             <td class="text-center">
                                 @if (r.HasReview)
@@ -110,19 +127,20 @@
                                 }
                                 else
                                 {
-
                                     <span class="badge bg-secondary">No</span>
                                 }
                             </td>
-                            <td class="text-center">@((r.AvgScore ?? 0).ToString("0.00"))</td>
+                            <td class="text-end">@((r.AvgScore ?? 0).ToString("0.0"))</td>
                             <td class="text-end">@((r.VariablePercent * 100m).ToString("0.##"))%</td>
                             <td class="text-end">@r.VariableAmount.ToString("C")</td>
-                            <td class="text-end fw-semibold">@r.TotalPay.ToString("C")</td>
+                            <td class="text-end fw-bold">@r.TotalPay.ToString("C")</td>
                             <td class="text-end">
                                 <a class="btn btn-sm btn-outline-primary"
-                                   href="/Admin/Performance/Edit?userId=@r.UserId&start=@Model.PeriodStart.ToString("yyyy-MM-dd")"
-                                   )">
-                                     Calificar
+                                   asp-page="/Admin/Performance/Rate"
+                                   asp-route-employeeId="@r.UserId"
+                                   asp-route-ym="@($"{Model.Year:D4}-{Model.Month:D2}")"
+                                   asp-route-half="@Model.Half">
+                                    Calificar
                                 </a>
                             </td>
                         </tr>
@@ -134,22 +152,24 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const labels = @Html.Raw(Model.LabelsJson);
         const totalPay = @Html.Raw(Model.TotalPayJson);
         const varPct = @Html.Raw(Model.VarPercentJson);
 
-        new Chart(document.getElementById('payChart'), {
-          type: 'bar',
-          data: { labels, datasets: [{ label: 'Total a pagar', data: totalPay }] },
-          options: { responsive: true, plugins: { legend: { display: true } } }
+        const payCtx = document.getElementById('payChart');
+        new Chart(payCtx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Total a pagar', data: totalPay }] },
+            options: { responsive: true }
         });
 
-        new Chart(document.getElementById('varChart'), {
-          type: 'bar',
-          data: { labels, datasets: [{ label: '% Variable', data: varPct }] },
-          options: { responsive: true, plugins: { legend: { display: true } } }
+        const varCtx = document.getElementById('varChart');
+        new Chart(varCtx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: '% variable', data: varPct }] },
+            options: { responsive: true }
         });
     </script>
 }

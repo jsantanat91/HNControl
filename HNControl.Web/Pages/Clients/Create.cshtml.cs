@@ -14,8 +14,8 @@ public class CreateModel : PageModel
     private readonly ApplicationDbContext _db;
     public CreateModel(ApplicationDbContext db) => _db = db;
 
-    public SelectList KindItems => new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
-    public ClientServiceType[] ServiceOptions => Enum.GetValues<ClientServiceType>();
+    public SelectList KindItems =>
+        new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public string? Error { get; set; }
@@ -23,14 +23,21 @@ public class CreateModel : PageModel
     public class InputModel
     {
         [Required] public ClientKind Kind { get; set; } = ClientKind.Moral;
-        [Required, MaxLength(200)] public string Name { get; set; } = "";
-        [MaxLength(13)] public string Rfc { get; set; } = "";
-        [EmailAddress, MaxLength(256)] public string Email { get; set; } = "";
-        [MaxLength(40)] public string Phone { get; set; } = "";
-        [MaxLength(400)] public string Address { get; set; } = "";
 
-        // checkboxes
-        public List<int> SelectedServices { get; set; } = new();
+        [Required, MaxLength(200)]
+        public string Name { get; set; } = "";
+
+        [MaxLength(13)]
+        public string Rfc { get; set; } = "";
+
+        [EmailAddress, MaxLength(256)]
+        public string Email { get; set; } = "";
+
+        [MaxLength(40)]
+        public string Phone { get; set; } = "";
+
+        [MaxLength(400)]
+        public string Address { get; set; } = "";
     }
 
     public void OnGet() { }
@@ -50,18 +57,10 @@ public class CreateModel : PageModel
             CreatedAt = DateTime.UtcNow
         };
 
-        foreach (var s in Input.SelectedServices.Distinct())
-        {
-            client.Services.Add(new ClientService
-            {
-                ClientId = client.Id,
-                ServiceType = (ClientServiceType)s
-            });
-        }
-
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
-        return RedirectToPage("/Clients/Index");
+        // ✅ Pro: al crear, te llevo a Detalles para que agregues contratos/servicios ya con el Id.
+        return RedirectToPage("/Clients/Details", new { id = client.Id });
     }
 }

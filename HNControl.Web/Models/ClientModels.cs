@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HNControl.Web.Models;
@@ -48,9 +48,16 @@ public class Client
         set => Type = (ClientType)value;
     }
 
-    // Si no la tienes en DB todavía, esto te pedirá migración (y está bien)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // ✅ Relación que tu DbContext espera
-    public List<ClientService> Services { get; set; } = new();
+    // ✅ Contratos/servicios del cliente (múltiples por categoría)
+    public List<ClientServiceContract> Contracts { get; set; } = new();
+
+    // ✅ Alias por compatibilidad (si algún Page viejo aún usa Client.Services)
+    [NotMapped]
+    public List<ClientServiceContract> Services
+    {
+        get => Contracts;
+        set => Contracts = value ?? new();
+    }
 }

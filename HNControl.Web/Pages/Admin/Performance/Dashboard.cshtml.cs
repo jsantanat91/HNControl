@@ -47,6 +47,8 @@ public class DashboardModel : PageModel
 
     public async Task OnGetAsync(int? year, int? month, int? half)
     {
+        Rows = new List<Row>();
+
         var now = DateTime.Now;
         Year = year ?? now.Year;
         Month = month ?? now.Month;
@@ -55,7 +57,7 @@ public class DashboardModel : PageModel
 
         (PeriodStart, PeriodEnd) = GetQuincenaUtc(Year, Month, Half);
 
-        // ✅ SIN filtro IsActive (porque tus filas viejas quedaron false)
+        // OJO: sin filtro IsActive (por tu data vieja)
         var employees = await _db.EmployeeProfiles
             .AsNoTracking()
             .OrderBy(e => e.FullName)
@@ -63,13 +65,23 @@ public class DashboardModel : PageModel
 
         EmployeesTotal = employees.Count;
 
+        // ✅ tolerancia ±1 día (periodos viejos guardados corridos)
+        var psMin = PeriodStart.AddDays(-1);
+        var psMax = PeriodStart.AddDays(2);
+        var peMin = PeriodEnd.AddDays(-1);
+        var peMax = PeriodEnd.AddDays(2);
+
         var reviews = await _db.PerformanceReviews
             .AsNoTracking()
-            .Where(r => r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)
-                     && r.PeriodEnd >= PeriodEnd && r.PeriodEnd < PeriodEnd.AddDays(1))
+            .Where(r => r.PeriodStart >= psMin && r.PeriodStart < psMax
+                     && r.PeriodEnd >= peMin && r.PeriodEnd < peMax)
+            .OrderByDescending(r => r.UpdatedAt)
             .ToListAsync();
 
-        var byUser = reviews.ToDictionary(r => r.UserId, r => r);
+        // Si hay más de 1 por usuario (datos viejos), tomamos el más reciente
+        var byUser = reviews
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
 
         var labels = new List<string>();
         var totalPays = new List<decimal>();
@@ -84,7 +96,7 @@ public class DashboardModel : PageModel
             byUser.TryGetValue(e.UserId, out var r);
             var hasReview = r != null;
 
-            // SalaryBase lo tratamos como MENSUAL (quincena = /2)
+            // SalaryBase mensual → quincena /2
             var baseQuincena = e.SalaryBase / 2m;
             var fijo80 = baseQuincena * 0.80m;
             var max20 = baseQuincena * 0.20m;
@@ -119,7 +131,10 @@ public class DashboardModel : PageModel
         }
 
         EmployeesRated = Rows.Count(x => x.HasReview);
-        AvgScoreAll = Rows.Where(x => x.AvgScore.HasValue).Select(x => x.AvgScore!.Value).DefaultIfEmpty().Average();
+        AvgScoreAll = Rows.Where(x => x.AvgScore.HasValue)
+            .Select(x => x.AvgScore!.Value)
+            .DefaultIfEmpty()
+            .Average();
 
         LabelsJson = JsonSerializer.Serialize(labels);
         TotalPayJson = JsonSerializer.Serialize(totalPays);
@@ -147,7 +162,6 @@ public class DashboardModel : PageModel
             r.OrderCleanliness,
             r.TechnicalSkills
         };
-
         return values.Average();
     }
 }

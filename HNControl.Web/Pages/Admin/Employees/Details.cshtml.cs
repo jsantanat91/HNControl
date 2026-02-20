@@ -1,9 +1,11 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Employees;
@@ -12,107 +14,254 @@ namespace HNControl.Web.Pages.Admin.Employees;
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public DetailsModel(ApplicationDbContext db) => _db = db;
 
-    public EmployeeProfile? Employee { get; set; }
+    public DetailsModel(ApplicationDbContext db)
+    {
+        _db = db;
+    }
 
-    public record KpiVm(int CompletedOrders30d, int InReviewOrders, int ActiveProjects, int OverdueProjects, decimal WeeklyViaticTotal);
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0m);
+    public string UserId { get; set; } = default!;
+    public EmployeeProfile? Profile { get; set; }
+    public EmployeeProfile Employee => Profile!;  // ✅ para que compile Details.cshtml
+    public EmployeeProfile? EmployeeOrNull => Profile;
 
-    public PerformanceReview? LastReview { get; set; }
-    public string LastReviewPeriod { get; set; } = "";
+    // ====== Mes seleccionado (soporta ?ym=YYYY-MM o ?month=YYYY-MM) ======
+    [BindProperty(SupportsGet = true)]
+    public string? ym { get; set; }
 
-    public record PayVm(decimal Fixed80, decimal VariableMoney, decimal Total);
-    public PayVm Pay { get; set; } = new(0m, 0m, 0m);
+    [BindProperty(SupportsGet = true)]
+    public string? month { get; set; }
 
-    public string ChartLabelsJson { get; set; } = "[]";
-    public string ChartValuesJson { get; set; } = "[]";
+    public List<SelectListItem> MonthItems { get; set; } = new();
+
+    public string SelectedMonthText { get; set; } = "";
+    public string SelectedYm => SelectedMonthText;
+    public string SelectedMonth => SelectedMonthText;
+
+    public DateTime MonthStartUtc { get; set; }
+    public DateTime MonthEndUtc { get; set; }
+
+    // ====== KPI ======
+    public decimal KPIAvgScore { get; set; }
+
+    public string KpiLabelsJson { get; set; } = "[]";
+    public string KpiValuesJson { get; set; } = "[]";
+
+    public string KpiMonthLabelsJson => KpiLabelsJson;
+    public string KpiMonthValuesJson => KpiValuesJson;
+
+    // ====== Variable ======
+    public decimal VariablePercentAvg { get; set; }
+    public decimal VariableAvgPercent => VariablePercentAvg;
+
+    public string VariableHistoryLabelsJson { get; set; } = "[]";
+    public string VariableHistoryValuesJson { get; set; } = "[]";
+
+    public string VarHistLabelsJson => VariableHistoryLabelsJson;
+    public string VarHistValuesJson => VariableHistoryValuesJson;
+
+    // ====== Viáticos ======
+    public decimal WeeklyViaticTotal { get; set; }
+    public decimal CurrentMonthViaticTotal => WeeklyViaticTotal;
+
+    public List<WeekSummary> CurrentMonthWeeks { get; set; } = new();
+
+    public record WeekSummary(
+        Guid? WeekId,
+        string Label,
+        string Range,
+        DateTime WeekStart,
+        DateTime WeekEnd,
+        decimal Total,
+        decimal Billable,
+        decimal NonBillable
+    )
+    {
+        public string WeekLabel => Label;
+    }
 
     public async Task<IActionResult> OnGetAsync(string userId)
     {
-        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == userId);
-        if (Employee == null) return Page();
+        if (string.IsNullOrWhiteSpace(userId))
+            return RedirectToPage("/Admin/Employees/Index");
 
-        var today = DateTime.UtcNow.Date;
-        var start30 = today.AddDays(-29);
+        UserId = userId;
 
-        // Orders KPIs (30d)
-        var completedOrders30d = await _db.ServiceOrders
-            .Where(o => o.AssignedUserId == userId
-                        && (o.Status == ServiceOrderStatus.Finalized || o.Status == ServiceOrderStatus.Completed)
-                        && o.FinalizedAt.HasValue
-                        && o.FinalizedAt.Value.Date >= start30)
-            .CountAsync();
+        Profile = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        var inReviewOrders = await _db.ServiceOrders
-            .Where(o => o.AssignedUserId == userId && o.Status == ServiceOrderStatus.InReview)
-            .CountAsync();
+        if (Profile == null)
+            return NotFound();
 
-        // Projects KPIs
-        var activeProjects = await _db.Projects
-            .Where(p => p.AssignedUserId == userId && p.Status == ProjectStatus.Active)
-            .CountAsync();
+        var key = !string.IsNullOrWhiteSpace(ym) ? ym : month;
+        (MonthStartUtc, MonthEndUtc, SelectedMonthText) = ParseMonthOrDefault(key);
 
-        // ✅ EstimatedEndDate NO es nullable => no compares con null
-        var overdueProjects = await _db.Projects
-            .Where(p => p.AssignedUserId == userId && p.Status == ProjectStatus.Active && p.EstimatedEndDate < today)
-            .CountAsync();
+        BuildMonthItems(SelectedMonthText);
 
-        // Viáticos semana actual
-        var weekStart = GetWeekStartUtc(today);
-        var weeklyViaticTotal = await _db.ViaticWeeks
-            .Where(w => w.UserId == userId && w.WeekStartDate == weekStart)
-            .Select(w => w.TotalAmount)
-            .FirstOrDefaultAsync();
-
-        Kpi = new KpiVm(completedOrders30d, inReviewOrders, activeProjects, overdueProjects, weeklyViaticTotal);
-
-        // Última evaluación (para 80/20)
-        LastReview = await _db.PerformanceReviews
-            .Where(r => r.UserId == userId)
-            .OrderByDescending(r => r.PeriodStart)
-            .FirstOrDefaultAsync();
-
-        if (LastReview != null)
-        {
-            LastReviewPeriod = $"{LastReview.PeriodStart:yyyy-MM-dd} → {LastReview.PeriodEnd:yyyy-MM-dd}";
-
-            var baseQuincenal = Employee.SalaryBase / 2m;            // suponiendo SalaryBase mensual
-            var fixed80 = baseQuincenal * 0.80m;
-            var varMax20 = baseQuincenal * 0.20m;
-            var varMoney = varMax20 * LastReview.VariablePercent;
-
-            Pay = new PayVm(fixed80, varMoney, fixed80 + varMoney);
-        }
-        else
-        {
-            Pay = new PayVm(0m, 0m, (Employee.SalaryBase / 2m) * 0.80m);
-        }
-
-        var last12 = await _db.PerformanceReviews
-      .Where(r => r.UserId == userId)
-      .OrderByDescending(r => r.PeriodStart)
-      .Take(12)
-      .ToListAsync();
-
-        last12.Reverse(); // ahora queda ascendente para la gráfica
-
-        var labels = last12.Select(r => r.PeriodStart.ToString("MM-dd")).ToList();
-        var values = last12.Select(r => r.VariablePercent).ToList();
-
-        ChartLabelsJson = JsonSerializer.Serialize(labels);
-        ChartValuesJson = JsonSerializer.Serialize(values);
+        await LoadKpiMonthAsync(userId);
+        await LoadKpiAvg90Async(userId);
+        await LoadVariableHistoryAsync(userId);
+        await LoadViaticWeeksAsync(userId);
 
         return Page();
     }
 
-    private static DateTime GetWeekStartUtc(DateTime utcDate)
+    private void BuildMonthItems(string selected)
     {
-        // Lunes como inicio de semana
-        var d = utcDate;
-        while (d.DayOfWeek != DayOfWeek.Monday)
-            d = d.AddDays(-1);
+        var today = DateTime.UtcNow.Date;
+        var first = new DateTime(today.Year, today.Month, 1);
 
-        return d.Date;
+        MonthItems = Enumerable.Range(0, 12)
+            .Select(i =>
+            {
+                var dt = first.AddMonths(-i);
+                var value = $"{dt:yyyy-MM}";
+                var text = dt.ToString("MMMM yyyy");
+                return new SelectListItem(text, value, value == selected);
+            })
+            .ToList();
+    }
+
+    private static (DateTime startUtc, DateTime endUtc, string textKey) ParseMonthOrDefault(string? key)
+    {
+        DateTime monthStart;
+        string textKey;
+
+        if (!string.IsNullOrWhiteSpace(key) &&
+            DateTime.TryParse($"{key}-01", out var parsed))
+        {
+            monthStart = new DateTime(parsed.Year, parsed.Month, 1);
+            textKey = $"{monthStart:yyyy-MM}";
+        }
+        else
+        {
+            var now = DateTime.UtcNow;
+            monthStart = new DateTime(now.Year, now.Month, 1);
+            textKey = $"{monthStart:yyyy-MM}";
+        }
+
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        var startUtc = TimeUtil.UtcDate(monthStart);
+        var endUtc = TimeUtil.UtcDate(monthEnd);
+
+        return (startUtc, endUtc, textKey);
+    }
+
+    private async Task LoadKpiMonthAsync(string employeeId)
+    {
+        var list = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == employeeId && r.PeriodStart >= MonthStartUtc && r.PeriodStart <= MonthEndUtc)
+            .OrderBy(r => r.PeriodStart)
+            .Select(r => new
+            {
+                Label = $"{r.PeriodStart:dd MMM}",
+                Score = (decimal)(r.PersonalPerformance + r.Teamwork + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 6m
+            })
+            .ToListAsync();
+
+        KpiLabelsJson = JsonSerializer.Serialize(list.Select(x => x.Label));
+        KpiValuesJson = JsonSerializer.Serialize(list.Select(x => x.Score));
+    }
+
+    private async Task LoadKpiAvg90Async(string employeeId)
+    {
+        var since = TimeUtil.UtcDate(DateTime.UtcNow.Date.AddDays(-90));
+
+        var scores = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == employeeId && r.CreatedAt >= since)
+            .Select(r => (decimal)(r.PersonalPerformance + r.Teamwork + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 6m)
+            .ToListAsync();
+
+        KPIAvgScore = scores.Count == 0 ? 0m : Math.Round(scores.Average(), 2);
+    }
+
+    private async Task LoadVariableHistoryAsync(string employeeId)
+    {
+        var list = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == employeeId)
+            .OrderByDescending(r => r.PeriodStart)
+            .Take(12)
+            .OrderBy(r => r.PeriodStart)
+            .Select(r => new
+            {
+                Label = $"{r.PeriodStart:yyyy-MM}",
+                Var = r.VariablePercent
+            })
+            .ToListAsync();
+
+        VariableHistoryLabelsJson = JsonSerializer.Serialize(list.Select(x => x.Label));
+        VariableHistoryValuesJson = JsonSerializer.Serialize(list.Select(x => x.Var));
+
+        VariablePercentAvg = list.Count == 0 ? 0m : Math.Round(list.Average(x => x.Var), 4);
+    }
+
+    private async Task LoadViaticWeeksAsync(string employeeId)
+    {
+        var monthStartLocal = new DateTime(MonthStartUtc.Year, MonthStartUtc.Month, 1);
+        var monthEndLocal = monthStartLocal.AddMonths(1).AddDays(-1);
+
+        var min = StartOfWeek(monthStartLocal, DayOfWeek.Monday);
+        var max = monthEndLocal;
+
+        var minUtc = TimeUtil.UtcDate(min);
+        var maxUtc = TimeUtil.UtcDate(max);
+
+        var weeks = await _db.ViaticWeeks
+            .AsNoTracking()
+            .Where(w => w.UserId == employeeId && w.WeekStartDate >= minUtc && w.WeekStartDate <= maxUtc)
+            .OrderBy(w => w.WeekStartDate)
+            .ToListAsync();
+
+        CurrentMonthWeeks = new();
+
+        decimal total = 0m;
+
+        foreach (var w in weeks)
+        {
+            var ws = w.WeekStartDate.Date;
+            var we = ws.AddDays(6);
+
+            var label = $"Semana {GetWeekOfMonth(ws)}";
+            var range = $"{ws:yyyy-MM-dd} - {we:yyyy-MM-dd}";
+
+            var sum = w.TotalAmount;
+
+            var bill = w.BillableAmount;
+            var nonBill = w.TotalAmount - w.BillableAmount;
+            if (nonBill < 0) nonBill = 0;
+
+            CurrentMonthWeeks.Add(new WeekSummary(
+                w.Id,
+                label,
+                range,
+                ws,
+                we,
+                sum,
+                bill,
+                nonBill
+            ));
+
+            total += sum;
+        }
+
+        WeeklyViaticTotal = total;
+    }
+
+    private static DateTime StartOfWeek(DateTime dt, DayOfWeek startOfWeek)
+    {
+        int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+        return dt.AddDays(-1 * diff).Date;
+    }
+
+    private static int GetWeekOfMonth(DateTime date)
+    {
+        var first = new DateTime(date.Year, date.Month, 1);
+        var firstMonday = StartOfWeek(first, DayOfWeek.Monday);
+        return (int)Math.Floor((date.Date - firstMonday).TotalDays / 7) + 1;
     }
 }

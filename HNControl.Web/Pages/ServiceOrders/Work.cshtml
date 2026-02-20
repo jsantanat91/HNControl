@@ -37,10 +37,9 @@
 }
 
 <div class="row g-3">
-    <!-- IZQUIERDA: Checklist + Evidencias -->
-    <div class="col-lg-7">
-        <!-- Checklist -->
-        <form method="post" class="card shadow-sm border-0 mb-3">
+    <!-- Checklist -->
+    <div class="col-12">
+        <form method="post" class="card shadow-sm border-0">
             <input type="hidden" name="id" value="@Model.Order.Id" />
 
             <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
@@ -85,8 +84,10 @@
                 </div>
             </div>
         </form>
+    </div>
 
-        <!-- Evidencias -->
+    <!-- Evidencias -->
+    <div class="col-12">
         <form method="post" enctype="multipart/form-data" class="card shadow-sm border-0">
             <input type="hidden" name="id" value="@Model.Order.Id" />
 
@@ -127,84 +128,93 @@
         </form>
     </div>
 
-    <!-- DERECHA: Firmas + Acciones -->
-    <div class="col-lg-5">
+    <!-- Firmas (abajo, grandes) -->
+    <div class="col-12">
         <form method="post" class="card shadow-sm border-0">
             <input type="hidden" name="id" value="@Model.Order.Id" />
             <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
             <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
 
             <div class="card-header bg-white border-0">
-                <div class="fw-semibold">Firmas</div>
-                <div class="text-muted small">
-                    Firma aquí mismo. Un botón guarda ambas.
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <div class="fw-semibold">Firmas</div>
+                        <div class="text-muted small">
+                            Dibuja ambas firmas y listo: un botón <strong>firma y envía</strong> a revisión.
+                        </div>
+                    </div>
+
+                    <div class="text-muted small">
+                        Requisito: firma técnico + firma cliente.
+                    </div>
                 </div>
             </div>
 
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-lg-6">
                         <div class="fw-semibold mb-2">Técnico</div>
                         <label class="form-label small text-muted">Nombre</label>
                         <input class="form-control mb-2" name="TechName" value="@Model.TechName" placeholder="Nombre del técnico" />
 
-                        <div class="border rounded-4 bg-light p-2">
-                            <canvas id="hnTechCanvas" class="w-100" style="height:170px; touch-action:none;"></canvas>
+                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
+                            <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
                         </div>
 
-                        <div class="d-flex gap-2 mt-2">
+                        <div class="d-flex gap-2 mt-2 align-items-center">
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
+                            @if (Model.HasTechSignature)
+                            {
+                                <span class="text-muted small">Firma guardada ✅</span>
+                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" target="_blank">Ver</a>
+                            }
                         </div>
-
-                        @if (Model.HasTechSignature)
-                        {
-                            <div class="mt-2">
-                                <div class="text-muted small mb-1">Guardada:</div>
-                                <img class="img-fluid border rounded-3 bg-white" style="max-height:90px"
-                                     src="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" />
-                            </div>
-                        }
                     </div>
 
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-lg-6">
                         <div class="fw-semibold mb-2">Cliente</div>
                         <label class="form-label small text-muted">Nombre</label>
                         <input class="form-control mb-2" name="ClientName" value="@Model.ClientSignerName" placeholder="Nombre del cliente" />
 
-                        <div class="border rounded-4 bg-light p-2">
-                            <canvas id="hnClientCanvas" class="w-100" style="height:170px; touch-action:none;"></canvas>
+                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
+                            <canvas id="hnClientCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
                         </div>
 
-                        <div class="d-flex gap-2 mt-2">
+                        <div class="d-flex gap-2 mt-2 align-items-center">
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnClientCanvas')">Limpiar</button>
+                            @if (Model.HasClientSignature)
+                            {
+                                <span class="text-muted small">Firma guardada ✅</span>
+                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Client" target="_blank">Ver</a>
+                            }
                         </div>
-
-                        @if (Model.HasClientSignature)
-                        {
-                            <div class="mt-2">
-                                <div class="text-muted small mb-1">Guardada:</div>
-                                <img class="img-fluid border rounded-3 bg-white" style="max-height:90px"
-                                     src="?handler=SignatureImage&id=@Model.Order.Id&role=Client" />
-                            </div>
-                        }
                     </div>
                 </div>
 
                 <hr class="my-3" />
 
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-outline-primary" formaction="?handler=SaveSignatures" onclick="hnCaptureSigs()">
-                        Guardar firmas
-                    </button>
+                @{
+                    var disabled = Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview
+                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Finalized
+                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Completed;
+                }
 
-                    <button type="submit" class="btn btn-success" formaction="?handler=SubmitForReview" onclick="hnCaptureSigs()">
-                        Enviar a revisión
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <button type="submit"
+                            class="btn btn-success px-4"
+                            formaction="?handler=SignAndSubmit"
+                            onclick="hnCaptureSigs()"
+                            @(disabled ? "disabled" : "")>
+                        Firmar y enviar
                     </button>
                 </div>
 
-                <div class="text-muted small mt-2">
-                    “Enviar a revisión” requiere: firma técnico + firma cliente.
-                </div>
+                @if (disabled)
+                {
+                    <div class="text-muted small mt-2">
+                        Esta orden ya está en revisión/finalizada. Si necesitas re-firmar, pídele al admin que la regrese a “En proceso”.
+                    </div>
+                }
             </div>
         </form>
     </div>
@@ -213,12 +223,10 @@
 @section Scripts
 {
     <script>
-        // ===== Checklist helpers =====
         function hnChecklistMarkAll(flag) {
             document.querySelectorAll('.hn-check-item').forEach(cb => cb.checked = flag);
         }
 
-        // ===== Signature pad simple (canvas + mouse/touch) =====
         const hnPads = {};
 
         function hnInitPad(canvasId) {
@@ -226,7 +234,7 @@
             if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.strokeStyle = '#111';
 
@@ -237,55 +245,56 @@
                 canvas.width = Math.max(1, Math.floor(rect.width * dpr));
                 canvas.height = Math.max(1, Math.floor(rect.height * dpr));
 
-                // dibuja usando coordenadas en "CSS px"
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = '#111';
-            }
-
-            let drawing = false;
-
-            function pos(e) {
-                const rect = canvas.getBoundingClientRect();
-                const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-                const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
-                return { x: clientX - rect.left, y: clientY - rect.top };
-            }
-
-            function start(e) {
-                e.preventDefault();
-                drawing = true;
-                const p = pos(e);
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-            }
-
-            function move(e) {
-                if (!drawing) return;
-                e.preventDefault();
-                const p = pos(e);
-                ctx.lineTo(p.x, p.y);
-                ctx.stroke();
-            }
-
-            function end(e) {
-                if (!drawing) return;
-                e.preventDefault();
-                drawing = false;
+                ctx.lineWidth = 3;
             }
 
             resize();
             window.addEventListener('resize', resize);
 
+            let drawing = false;
+            let lastX = 0, lastY = 0;
+
+            function getPos(ev) {
+                const rect = canvas.getBoundingClientRect();
+                if (ev.touches && ev.touches.length) {
+                    return { x: ev.touches[0].clientX - rect.left, y: ev.touches[0].clientY - rect.top };
+                }
+                return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+            }
+
+            function start(ev) {
+                drawing = true;
+                const p = getPos(ev);
+                lastX = p.x; lastY = p.y;
+                ev.preventDefault();
+            }
+
+            function move(ev) {
+                if (!drawing) return;
+                const p = getPos(ev);
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+
+                lastX = p.x; lastY = p.y;
+                ev.preventDefault();
+            }
+
+            function end(ev) {
+                drawing = false;
+                ev.preventDefault();
+            }
+
             canvas.addEventListener('mousedown', start);
             canvas.addEventListener('mousemove', move);
-            canvas.addEventListener('mouseup', end);
-            canvas.addEventListener('mouseleave', end);
+            window.addEventListener('mouseup', end);
 
             canvas.addEventListener('touchstart', start, { passive: false });
             canvas.addEventListener('touchmove', move, { passive: false });
-            canvas.addEventListener('touchend', end, { passive: false });
+            window.addEventListener('touchend', end, { passive: false });
 
             hnPads[canvasId] = { canvas, ctx, resize };
         }
@@ -293,24 +302,29 @@
         function hnSigClear(canvasId) {
             const pad = hnPads[canvasId];
             if (!pad) return;
-            const { canvas, ctx } = pad;
-            ctx.save();
-            ctx.setTransform(1,0,0,1,0,0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
-            pad.resize();
+            const c = pad.canvas;
+            const ctx = pad.ctx;
+            ctx.clearRect(0, 0, c.width, c.height);
         }
 
         function hnCaptureSigs() {
-            const tech = hnPads['hnTechCanvas']?.canvas;
-            const client = hnPads['hnClientCanvas']?.canvas;
+            const tech = document.getElementById('hnTechCanvas');
+            const client = document.getElementById('hnClientCanvas');
 
             document.getElementById('hnTechSigDataUrl').value = tech ? tech.toDataURL('image/png') : '';
             document.getElementById('hnClientSigDataUrl').value = client ? client.toDataURL('image/png') : '';
         }
 
-        // init
         hnInitPad('hnTechCanvas');
         hnInitPad('hnClientCanvas');
     </script>
+    <style>
+        .hn-sig-box {
+            min-height: 300px;
+        }
+
+        .hn-sig-canvas {
+            border-radius: 12px;
+        }
+    </style>
 }
