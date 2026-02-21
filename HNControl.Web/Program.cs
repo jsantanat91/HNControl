@@ -51,6 +51,13 @@ builder.Services.AddAuthorization(options =>
 });
 
 // --------------------
+// Permisos por módulo (Employee)
+// --------------------
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IModuleAccessService, ModuleAccessService>();
+builder.Services.AddScoped<ModulePermissionPageFilter>();
+
+// --------------------
 // Razor Pages routing / auth conventions
 // --------------------
 builder.Services.AddRazorPages(options =>
@@ -89,7 +96,17 @@ builder.Services.AddRazorPages(options =>
 
     // Viáticos: empleados y admin
     options.Conventions.AuthorizeFolder("/Viaticos", "EmployeeOnly");
-});
+
+    // Carriers (Internet): empleados ven + notas, admin administra
+    options.Conventions.AuthorizeFolder("/Carriers", "EmployeeOnly");
+
+    // Inventarios: empleado solicita entrada/salida, admin aprueba
+    options.Conventions.AuthorizeFolder("/Inventory", "EmployeeOnly");
+
+    // Seguridad / permisos (Admin)
+    options.Conventions.AuthorizeFolder("/Admin/Security", "AdminOnly");
+})
+.AddMvcOptions(o => o.Filters.AddService<ModulePermissionPageFilter>());
 
 // --------------------
 // Servicios (Storage / Secrets / Email / PDF)
@@ -216,4 +233,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
 
         await db.SaveChangesAsync();
     }
+
+    // Permisos de módulos (rol default + asignación automática)
+    await SeedModulePermissions.EnsureAsync(db, userMgr);
 }

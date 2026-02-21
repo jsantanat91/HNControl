@@ -1,0 +1,116 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.Inventory.Approvals.DetailsModel
+@using HNControl.Web.Models
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Aprobar movimiento";
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Revisar solicitud</h1>
+        <div class="text-muted small">Aprueba o rechaza. Si apruebas, impacta stock.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+</div>
+
+@if (Model.Movement == null)
+{
+    <div class="alert alert-danger">No encontrado.</div>
+}
+else
+{
+    var m = Model.Movement;
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Tipo</div>
+                    <div class="fw-semibold">@(m.Type == InventoryMovementType.In ? "Entrada" : "Salida")</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Status</div>
+                    <div class="fw-semibold">@m.Status</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Item</div>
+                    <div class="fw-semibold">@m.Item?.Name</div>
+                    <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "—" : m.Item?.Sku)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Cantidad</div>
+                    <div class="fw-semibold">@m.Quantity @m.Item?.Unit</div>
+                    <div class="text-muted small">OnHand actual: @m.Item?.QuantityOnHand @m.Item?.Unit</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Proyecto</div>
+                    <div class="fw-semibold">@(m.Project?.Title ?? "—")</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Responsable</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "—" : m.ResponsibleName)</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Cliente (HW)</div>
+                    <div class="fw-semibold">@(m.AssignedClient?.Name ?? "—")</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Serie</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "—" : m.SerialNumber)</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Solicitó</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(m.RequestedByName) ? "—" : m.RequestedByName)</div>
+                    <div class="text-muted small">@m.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Referencia</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(m.Reference) ? "—" : m.Reference)</div>
+                </div>
+
+                <div class="col-12">
+                    <div class="text-muted small">Notas</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(m.Notes) ? "—" : m.Notes)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger">
+            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <div>@err.ErrorMessage</div>
+            }
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" asp-route-id="@m.Id" class="mb-2">
+                <label class="form-label">Nota admin (opcional)</label>
+                <textarea class="form-control" asp-for="Input.AdminNote" rows="3" placeholder="Comentario de aprobación/rechazo..."></textarea>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-success" type="submit" asp-page-handler="Approve" disabled="@(m.Status != InventoryMovementStatus.Pending)">
+                        Aprobar
+                    </button>
+                    <button class="btn btn-outline-danger" type="submit" asp-page-handler="Reject" disabled="@(m.Status != InventoryMovementStatus.Pending)">
+                        Rechazar
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+                </div>
+            </form>
+
+            <div class="text-muted small mt-2">Tip: si no hay stock suficiente en salida, te va a decir “no se puede” (y sí, es intencional).</div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

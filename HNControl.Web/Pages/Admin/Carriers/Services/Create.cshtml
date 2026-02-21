@@ -1,0 +1,83 @@
+@page
+@model HNControl.Web.Pages.Admin.Carriers.Services.CreateModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Nuevo servicio";
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <h1 class="h4 mb-0">Nuevo servicio</h1>
+    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+</div>
+
+<form method="post" class="card">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientOptions"></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Carrier</label>
+                <select class="form-select" asp-for="Input.CarrierId" asp-items="Model.CarrierOptions"></select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Nombre del servicio</label>
+                <input class="form-control" asp-for="Input.ServiceLabel" placeholder="Internet corporativo, Enlace dedicado, Respaldo..." />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Plan</label>
+                <input class="form-control" asp-for="Input.Plan" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Dirección del servicio</label>
+                <input class="form-control" asp-for="Input.ServiceAddress" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label"># Cuenta</label>
+                <input class="form-control" asp-for="Input.AccountNumber" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"># Contrato</label>
+                <input class="form-control" asp-for="Input.ContractNumber" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Circuit ID</label>
+                <input class="form-control" asp-for="Input.CircuitId" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">IP info</label>
+                <input class="form-control" asp-for="Input.IpInfo" placeholder="/30, gateway, IP pública, etc." />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Tel soporte override (opcional)</label>
+                <input class="form-control" asp-for="Input.SupportPhoneOverride" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="4"></textarea>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.IsActive" />
+                    <label class="form-check-label" asp-for="Input.IsActive">Activo</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

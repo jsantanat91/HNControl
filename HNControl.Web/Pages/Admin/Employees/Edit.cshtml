@@ -81,6 +81,21 @@
                 <label class="form-label">Sueldo base mensual</label>
                 <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
             </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Rol (acceso global)</label>
+                <select class="form-select" asp-for="Input.AppRole">
+                    <option value="Employee">Employee</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Rol de permisos por módulo</label>
+                <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions">
+                    <option value="">(sin asignar)</option>
+                </select>
+                <div class="form-text">Solo aplica a Employee. Se gestiona en <a asp-page="/Admin/Security/Roles/Index">Seguridad</a>.</div>
+            </div>
         </div>
     </div>
 

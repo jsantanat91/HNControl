@@ -1,0 +1,211 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Carriers.ClientModel
+@using HNControl.Web.Models
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Carriers - Cliente";
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-1">@Model.Client?.Name</h1>
+        <div class="text-muted small">Bitácora y datos del carrier por servicio.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+        @if (Model.IsAdmin)
+        {
+            <a class="btn btn-outline-primary" asp-page="/Admin/Carriers/Services/Create" asp-route-clientId="@Model.Client?.Id">+ Servicio</a>
+        }
+    </div>
+</div>
+
+@if (Model.Client != null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">RFC</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Rfc) ? "—" : Model.Client.Rfc)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Teléfono</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Phone) ? "—" : Model.Client.Phone)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Email</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Email) ? "—" : Model.Client.Email)</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Dirección</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Address) ? "—" : Model.Client.Address)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Services.Count == 0)
+    {
+        <div class="alert alert-light border">Este cliente no tiene servicios cargados.</div>
+    }
+
+    <div class="row row-cols-1 g-4">
+        @foreach (var s in Model.Services)
+        {
+            var collapseId = "note_" + s.Service.Id.ToString("N");
+            <div class="col">
+                <div class="card hn-module accent-blue">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                            <div>
+                                <div class="hn-module-title mb-1">@s.Service.ServiceLabel</div>
+                                <div class="text-muted small">
+                                    <strong>@s.CarrierName</strong>
+                                    @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
+                                    {
+                                        <span> • @s.Service.Plan</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                @if (Model.IsAdmin)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Carriers/Services/Edit" asp-route-id="@s.Service.Id">Editar</a>
+                                }
+                                <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false">+ Nota</button>
+                            </div>
+                        </div>
+
+                        <hr class="my-3" />
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="text-muted small"># Cuenta</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.AccountNumber) ? "—" : s.Service.AccountNumber)</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small"># Contrato</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ContractNumber) ? "—" : s.Service.ContractNumber)</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">Circuit ID</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.CircuitId) ? "—" : s.Service.CircuitId)</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="text-muted small">Dirección del servicio</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ServiceAddress) ? "—" : s.Service.ServiceAddress)</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted small">IP info</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.IpInfo) ? "—" : s.Service.IpInfo)</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="text-muted small">Soporte Tel</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportPhone) ? "—" : s.SupportPhone)</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">Soporte Email</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportEmail) ? "—" : s.SupportEmail)</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">Portal</div>
+                                @if (!string.IsNullOrWhiteSpace(s.SupportPortalUrl))
+                                {
+                                    <a class="hn-link" href="@s.SupportPortalUrl" target="_blank" rel="noopener">Abrir</a>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold">—</span>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(s.Service.Notes))
+                        {
+                            <div class="mt-3">
+                                <div class="text-muted small">Notas del servicio</div>
+                                <div>@s.Service.Notes</div>
+                            </div>
+                        }
+
+                        <div class="collapse mt-3" id="@collapseId">
+                            <div class="card border-0" style="box-shadow:none;">
+                                <div class="card-body p-0">
+                                    <form method="post" asp-page-handler="AddNote" asp-route-id="@Model.Client?.Id">
+                                        <input type="hidden" asp-for="Input.ServiceId" value="@s.Service.Id" />
+
+                                        <div class="row g-2">
+                                            <div class="col-md-3">
+                                                <label class="form-label small text-muted">Tipo</label>
+                                                <select class="form-select" asp-for="Input.NoteType">
+                                                    <option value="Info">Info</option>
+                                                    <option value="Ticket">Ticket</option>
+                                                    <option value="Incident">Incidente</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small text-muted">Ticket</label>
+                                                <input class="form-control" asp-for="Input.TicketNumber" placeholder="#" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small text-muted">Nota</label>
+                                                <input class="form-control" asp-for="Input.Message" placeholder="Qué pasó, con quién hablaste, siguiente paso..." />
+                                            </div>
+                                            <div class="col-12 d-flex gap-2 mt-2">
+                                                <button class="btn btn-primary" type="submit">Guardar nota</button>
+                                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId">Cancelar</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="fw-semibold">Bitácora reciente</div>
+                                <span class="text-muted small">Últimas @s.RecentNotes.Count</span>
+                            </div>
+
+                            @if (s.RecentNotes.Count == 0)
+                            {
+                                <div class="text-muted small mt-2">Sin notas aún.</div>
+                            }
+                            else
+                            {
+                                <div class="list-group list-group-flush mt-2">
+                                    @foreach (var n in s.RecentNotes)
+                                    {
+                                        <div class="list-group-item px-0">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                <div class="small">
+                                                    <span class="badge text-bg-light">@n.NoteType</span>
+                                                    @if (!string.IsNullOrWhiteSpace(n.TicketNumber))
+                                                    {
+                                                        <span class="badge text-bg-warning">#@n.TicketNumber</span>
+                                                    }
+                                                    <span class="text-muted">@n.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                                                </div>
+                                                <div class="text-muted small">@n.CreatedByName</div>
+                                            </div>
+                                            <div class="mt-1">@n.Message</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

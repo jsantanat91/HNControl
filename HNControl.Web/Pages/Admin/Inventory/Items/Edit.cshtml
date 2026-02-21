@@ -1,0 +1,66 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.Inventory.Items.EditModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Editar item";
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <h1 class="h4 mb-0">Editar item</h1>
+    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+</div>
+
+<form method="post" class="card">
+    <div class="card-body">
+        <input type="hidden" asp-for="Input.Id" />
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Nombre</label>
+                <input class="form-control" asp-for="Input.Name" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">SKU</label>
+                <input class="form-control" asp-for="Input.Sku" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Unidad</label>
+                <input class="form-control" asp-for="Input.Unit" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">On hand</label>
+                <input class="form-control" asp-for="Input.QuantityOnHand" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Reorder</label>
+                <input class="form-control" asp-for="Input.ReorderLevel" />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.IsConsumable" />
+                    <label class="form-check-label" asp-for="Input.IsConsumable">Consumible</label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="4"></textarea>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.IsActive" />
+                    <label class="form-check-label" asp-for="Input.IsActive">Activo</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,10 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Employees;
 
@@ -22,6 +25,8 @@ public class CreateModel : PageModel
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
+
+    public List<SelectListItem> PermissionRoleOptions { get; set; } = new();
 
     public string? Error { get; set; }
 
@@ -41,14 +46,54 @@ public class CreateModel : PageModel
         [DataType(DataType.Date)] public DateTime? HireDate { get; set; }
 
         [Range(0, 9999999)] public decimal SalaryBase { get; set; }
+
+        [Required]
+        public string AppRole { get; set; } = AppRoles.Employee; // Admin o Employee
+
+        public Guid? PermissionRoleId { get; set; }
+
         [Required] public string Password { get; set; } = "";
     }
 
-    public void OnGet() { }
+    public async Task OnGetAsync()
+    {
+        Input.AppRole = AppRoles.Employee;
+        await LoadPermissionRoleOptionsAsync();
+    }
+
+    private async Task LoadPermissionRoleOptionsAsync(Guid? selectedId = null)
+    {
+        var roles = await _db.PermissionRoles
+            .AsNoTracking()
+            .Where(r => r.IsActive)
+            .OrderByDescending(r => r.IsDefault)
+            .ThenBy(r => r.Name)
+            .Select(r => new { r.Id, r.Name, r.IsDefault })
+            .ToListAsync();
+
+        PermissionRoleOptions = roles
+            .Select(r => new SelectListItem
+            {
+                Value = r.Id.ToString(),
+                Text = r.IsDefault ? $"{r.Name} (Default)" : r.Name,
+                Selected = selectedId.HasValue && r.Id == selectedId.Value
+            })
+            .ToList();
+
+        if (!selectedId.HasValue)
+        {
+            var def = roles.FirstOrDefault(x => x.IsDefault);
+            if (def != null) Input.PermissionRoleId = def.Id;
+        }
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid)
+        {
+            await LoadPermissionRoleOptionsAsync(Input.PermissionRoleId);
+            return Page();
+        }
 
         var existing = await _userMgr.FindByEmailAsync(Input.Email);
         if (existing != null)
@@ -71,7 +116,11 @@ public class CreateModel : PageModel
             return Page();
         }
 
-        await _userMgr.AddToRoleAsync(user, AppRoles.Employee);
+        // Role principal (Admin/Employee)
+        if (string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+            await _userMgr.AddToRoleAsync(user, AppRoles.Admin);
+        else
+            await _userMgr.AddToRoleAsync(user, AppRoles.Employee);
 
         _db.EmployeeProfiles.Add(new EmployeeProfile
         {
@@ -91,6 +140,29 @@ public class CreateModel : PageModel
         });
 
         await _db.SaveChangesAsync();
+
+        // Asignación de rol de permisos por módulo (solo para Employee)
+        if (!string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            var roleId = Input.PermissionRoleId
+                         ?? await _db.PermissionRoles
+                             .AsNoTracking()
+                             .Where(r => r.IsDefault && r.IsActive)
+                             .Select(r => (Guid?)r.Id)
+                             .FirstOrDefaultAsync();
+
+            if (roleId.HasValue)
+            {
+                _db.UserPermissionRoles.Add(new UserPermissionRole
+                {
+                    UserId = user.Id,
+                    PermissionRoleId = roleId.Value,
+                    AssignedAt = DateTime.UtcNow,
+                    AssignedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ""
+                });
+                await _db.SaveChangesAsync();
+            }
+        }
         return RedirectToPage("/Admin/Employees/Index");
     }
 }

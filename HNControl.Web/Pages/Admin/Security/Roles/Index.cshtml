@@ -1,0 +1,52 @@
+@page
+@model HNControl.Web.Pages.Admin.Security.Roles.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Seguridad · Roles de permisos";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h1 class="h4 mb-1">Roles de permisos por módulo</h1>
+        <div class="text-muted">Asigna un rol a cada empleado para controlar a qué pestañas (módulos) puede entrar.</div>
+    </div>
+    <a class="btn btn-primary" asp-page="./Create">Nuevo rol</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Rol</th>
+                        <th>Descripción</th>
+                        <th>Default</th>
+                        <th>Activo</th>
+                        <th class="text-end">Módulos</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Roles)
+                {
+                    <tr>
+                        <td class="fw-semibold">@r.Name</td>
+                        <td class="text-muted">@r.Description</td>
+                        <td>@(r.IsDefault ? "Sí" : "-")</td>
+                        <td>@(r.IsActive ? "Sí" : "No")</td>
+                        <td class="text-end">@r.ModulesCount</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@r.Id">Editar</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-muted small">
+            Tip rápido: Admin ignora estos permisos. Solo aplican a usuarios en rol <strong>Employee</strong>.
+        </div>
+    </div>
+</div>

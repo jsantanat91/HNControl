@@ -27,6 +27,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
 
+    // --------------------
+    // Seguridad / Permisos por módulo
+    // --------------------
+    public DbSet<PermissionRole> PermissionRoles => Set<PermissionRole>();
+    public DbSet<PermissionRoleModule> PermissionRoleModules => Set<PermissionRoleModule>();
+    public DbSet<UserPermissionRole> UserPermissionRoles => Set<UserPermissionRole>();
+
+    // --------------------
+    // Carrier (Internet)
+    // --------------------
+    public DbSet<InternetCarrier> InternetCarriers => Set<InternetCarrier>();
+    public DbSet<ClientCarrierService> ClientCarrierServices => Set<ClientCarrierService>();
+    public DbSet<ClientCarrierNote> ClientCarrierNotes => Set<ClientCarrierNote>();
+
+    // --------------------
+    // Inventarios
+    // --------------------
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+
     public DbSet<Eval360Competency> Eval360Competencies => Set<Eval360Competency>();
     public DbSet<Eval360Question> Eval360Questions => Set<Eval360Question>();
     public DbSet<Eval360Campaign> Eval360Campaigns => Set<Eval360Campaign>();
@@ -140,7 +160,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-b.Entity<Project>(e =>
+        b.Entity<Project>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Title).HasMaxLength(200);
@@ -184,6 +204,151 @@ b.Entity<Project>(e =>
 
             e.HasIndex(x => new { x.UserId, x.PeriodStart, x.PeriodEnd }).IsUnique();
             e.Property(x => x.VariablePercent).HasColumnType("numeric(5,4)");
+        });
+
+        // --------------------
+        // Seguridad / Permisos por módulo
+        // --------------------
+        b.Entity<PermissionRole>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(80);
+            e.Property(x => x.Description).HasMaxLength(400);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.IsDefault);
+
+            e.HasMany(x => x.Modules)
+                .WithOne(m => m.PermissionRole!)
+                .HasForeignKey(m => m.PermissionRoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PermissionRoleModule>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ModuleKey).HasMaxLength(60);
+            e.HasIndex(x => new { x.PermissionRoleId, x.ModuleKey }).IsUnique();
+        });
+
+        b.Entity<UserPermissionRole>(e =>
+        {
+            e.HasKey(x => x.UserId);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.AssignedByUserId).HasMaxLength(64);
+            e.HasIndex(x => x.PermissionRoleId);
+
+            e.HasOne(x => x.PermissionRole)
+                .WithMany()
+                .HasForeignKey(x => x.PermissionRoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // --------------------
+        // Carrier (Internet)
+        // --------------------
+        b.Entity<InternetCarrier>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(120);
+            e.Property(x => x.SupportPhone).HasMaxLength(40);
+            e.Property(x => x.SupportEmail).HasMaxLength(120);
+            e.Property(x => x.SupportPortalUrl).HasMaxLength(400);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+
+        b.Entity<ClientCarrierService>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ServiceLabel).HasMaxLength(140);
+            e.Property(x => x.Plan).HasMaxLength(140);
+            e.Property(x => x.AccountNumber).HasMaxLength(120);
+            e.Property(x => x.ContractNumber).HasMaxLength(120);
+            e.Property(x => x.CircuitId).HasMaxLength(120);
+            e.Property(x => x.ServiceAddress).HasMaxLength(200);
+            e.Property(x => x.IpInfo).HasMaxLength(200);
+            e.Property(x => x.SupportPhoneOverride).HasMaxLength(40);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+
+            e.HasIndex(x => new { x.ClientId, x.CarrierId });
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Carrier)
+                .WithMany(c => c.Services)
+                .HasForeignKey(x => x.CarrierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasMany(x => x.CarrierNotes)
+                .WithOne(n => n.Service!)
+                .HasForeignKey(n => n.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ClientCarrierNote>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TicketNumber).HasMaxLength(120);
+            e.Property(x => x.Message).HasMaxLength(3000);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.Property(x => x.CreatedByName).HasMaxLength(200);
+            e.HasIndex(x => new { x.ServiceId, x.CreatedAt });
+        });
+
+        // --------------------
+        // Inventarios
+        // --------------------
+        b.Entity<InventoryItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Sku).HasMaxLength(60);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Category).HasMaxLength(100);
+            e.Property(x => x.Unit).HasMaxLength(40);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.QuantityOnHand).HasColumnType("numeric(18,3)");
+            e.Property(x => x.ReorderLevel).HasColumnType("numeric(18,3)");
+
+            // SKU es opcional. Si quieres hacerlo único, úsalo como NULL (no "")
+            // y crea un índice UNIQUE filtrado en una migración.
+            e.HasIndex(x => x.Sku).IsUnique(false);
+
+            e.HasMany(x => x.Movements)
+                .WithOne(m => m.Item!)
+                .HasForeignKey(m => m.ItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<InventoryMovement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Quantity).HasColumnType("numeric(18,3)");
+            e.Property(x => x.SerialNumber).HasMaxLength(120);
+            e.Property(x => x.Reference).HasMaxLength(120);
+            e.Property(x => x.RequestedByUserId).HasMaxLength(64);
+            e.Property(x => x.RequestedByName).HasMaxLength(200);
+            e.Property(x => x.ResponsibleUserId).HasMaxLength(64);
+            e.Property(x => x.ResponsibleName).HasMaxLength(200);
+            e.Property(x => x.ApprovedByUserId).HasMaxLength(64);
+            e.Property(x => x.ApprovedByName).HasMaxLength(200);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.AdminNote).HasMaxLength(2000);
+
+            e.HasIndex(x => new { x.Status, x.RequestedAt });
+            e.HasIndex(x => x.ProjectId);
+            e.HasIndex(x => x.AssignedClientId);
+
+            e.HasOne(x => x.Project)
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.AssignedClient)
+                .WithMany()
+                .HasForeignKey(x => x.AssignedClientId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         

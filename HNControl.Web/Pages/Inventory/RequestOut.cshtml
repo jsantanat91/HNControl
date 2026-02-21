@@ -1,0 +1,62 @@
+@page
+@model HNControl.Web.Pages.Inventory.RequestOutModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Solicitar salida";
+}
+
+<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <h1 class="h4 mb-0">Solicitar salida</h1>
+    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+</div>
+
+<form method="post" class="card">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Item</label>
+                <select class="form-select" asp-for="Input.ItemId" asp-items="Model.ItemOptions"></select>
+                <div class="form-text">Si es <strong>hardware</strong>, completa Cliente/Serie; si es consumible, déjalos en blanco.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Cantidad</label>
+                <input class="form-control" asp-for="Input.Quantity" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Proyecto</label>
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectOptions"></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Responsable</label>
+                <select class="form-select" asp-for="Input.ResponsibleUserId" asp-items="Model.EmployeeOptions"></select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Cliente asignado (hardware)</label>
+                <select class="form-select" asp-for="Input.AssignedClientId" asp-items="Model.ClientOptions"></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Serie / Asset Tag (hardware)</label>
+                <input class="form-control" asp-for="Input.SerialNumber" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="4" placeholder="Motivo, destino, observaciones..."></textarea>
+            </div>
+        </div>
+
+        <div class="alert alert-light border mt-3 mb-0">
+            Se crea como <strong>Pendiente</strong>. Un admin la aprueba para que impacte existencias.
+        </div>
+    </div>
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Enviar solicitud</button>
+        <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

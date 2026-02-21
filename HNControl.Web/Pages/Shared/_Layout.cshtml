@@ -2,11 +2,21 @@
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
+@inject IModuleAccessService ModuleAccess
 
 @{
     var path = Context?.Request?.Path.Value ?? "";
     string Active(string startsWith)
         => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+
+    // Permisos por módulo (solo aplica a Employees). Admin bypass.
+    var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    if (SignInManager.IsSignedIn(User) && !User.IsInRole(AppRoles.Admin))
+    {
+        allowedModules = await ModuleAccess.GetAllowedModulesAsync(User);
+    }
+
+    bool Has(string key) => User.IsInRole(AppRoles.Admin) || allowedModules.Contains(key);
 }
 
 <!DOCTYPE html>
@@ -47,13 +57,41 @@
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard">KPI</a></li>
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index">360</a></li>
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a></li>
+                                <li class="nav-item"><a class="hn-navbtn @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a></li>
+                                <li class="nav-item"><a class="hn-navbtn @Active("/Inventory")" asp-page="/Inventory/Index">Inventarios</a></li>
+                                <li class="nav-item"><a class="hn-navbtn @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a></li>
                             }
                             else
                             {
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile">Mi ficha</a></li>
-                                <li class="nav-item"><a class="hn-navbtn @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index">Mis órdenes</a></li>
-                                <li class="nav-item"><a class="hn-navbtn @Active("/Viaticos")" asp-page="/Viaticos/Index">Mis viáticos</a></li>
-                                <li class="nav-item"><a class="hn-navbtn @Active("/Eval360")" asp-page="/Eval360/Index">360</a></li>
+                                @if (Has(AppModules.ServiceOrders))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index">Mis órdenes</a></li>
+                                }
+                                @if (Has(AppModules.Viaticos))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Viaticos")" asp-page="/Viaticos/Index">Mis viáticos</a></li>
+                                }
+                                @if (Has(AppModules.Eval360))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Eval360")" asp-page="/Eval360/Index">360</a></li>
+                                }
+                                @if (Has(AppModules.Projects))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Projects")" asp-page="/Projects/Index">Proyectos</a></li>
+                                }
+                                @if (Has(AppModules.Knowledge))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a></li>
+                                }
+                                @if (Has(AppModules.Carriers))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a></li>
+                                }
+                                @if (Has(AppModules.Inventory))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Inventory")" asp-page="/Inventory/Index">Inventarios</a></li>
+                                }
                             }
 
                             <li class="nav-item hn-sep d-none d-lg-block"></li>
