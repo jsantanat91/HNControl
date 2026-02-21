@@ -1,0 +1,120 @@
+@page
+@model HNControl.Web.Pages.Monitoring.IndexModel
+@{
+    ViewData["Title"] = "Monitoreo";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Monitoreo</h1>
+        <div class="text-muted small">Ping/TCP/HTTP por cliente · historial automático</div>
+    </div>
+
+    @if (Model.IsAdmin)
+    {
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" asp-page="/Admin/Monitoring/Targets/Index">Administrar targets</a>
+        </div>
+    }
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm hn-hover">
+            <div class="card-body">
+                <div class="text-muted small">Up</div>
+                <div class="fs-3 fw-bold">@Model.UpCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm hn-hover">
+            <div class="card-body">
+                <div class="text-muted small">Down</div>
+                <div class="fs-3 fw-bold">@Model.DownCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm hn-hover">
+            <div class="card-body">
+                <div class="text-muted small">Unknown</div>
+                <div class="fs-3 fw-bold">@Model.UnknownCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Groups.Any())
+{
+    <div class="alert alert-info">Aún no hay targets registrados. (Sí, el NOC también necesita onboarding 😅)</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var g in Model.Groups)
+        {
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <div class="fw-semibold">@g.ClientName</div>
+                            <div class="text-muted small">@g.Items.Count target(s)</div>
+                        </div>
+
+                        <div class="row g-3">
+                            @foreach (var t in g.Items)
+                            {
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="border rounded-4 p-3 h-100 hn-hover" style="background: rgba(2,6,23,.02); border:1px solid rgba(15,23,42,.08)!important;">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div>
+                                                <div class="fw-semibold">@t.Name</div>
+                                                @if (!string.IsNullOrWhiteSpace(t.ContractLabel))
+                                                {
+                                                    <div class="text-muted small">@t.ContractLabel</div>
+                                                }
+                                                <div class="text-muted small">@t.ProbeType · @t.Address</div>
+                                            </div>
+                                            <span class="badge @t.BadgeClass">@t.LastStatus</span>
+                                        </div>
+
+                                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                                            <div class="text-muted small">
+                                                @if (t.LastCheckedAt == null)
+                                                {
+                                                    <span>Sin check</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@t.LastCheckedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                                                    @if (t.LastLatencyMs != null)
+                                                    {
+                                                        <span> · @t.LastLatencyMs.Value ms</span>
+                                                    }
+                                                }
+                                            </div>
+
+                                            @if (Model.IsAdmin)
+                                            {
+                                                <form method="post" asp-page-handler="Run" class="m-0">
+                                                    <input type="hidden" name="id" value="@t.Id" />
+                                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Probar</button>
+                                                </form>
+                                            }
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(t.LastError))
+                                        {
+                                            <div class="mt-2 small text-danger">@t.LastError</div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

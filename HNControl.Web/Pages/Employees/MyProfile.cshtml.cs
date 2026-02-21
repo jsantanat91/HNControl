@@ -27,8 +27,23 @@ public class MyProfileModel : PageModel
     public ViaticMini? CurrentWeek { get; set; }
     public List<ViaticMini> RecentWeeks { get; set; } = new();
 
-    public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal);
+    public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal, decimal DeductionsQuincenal, decimal NetQuincenal);
     public PerfMini? CurrentPay { get; set; }
+
+    public record DeductionMini(
+        string Concept,
+        EmployeeDeductionType Type,
+        EmployeeDeductionMode Mode,
+        decimal PeriodAmount,
+        decimal? RemainingAmount,
+        DateTime StartDate,
+        DateTime? EndDate
+    );
+
+    public List<DeductionMini> ActiveDeductions { get; set; } = new();
+    public decimal DeductionsTotal { get; set; } = 0m;
+
+    public decimal NetQuincenal => CurrentPay?.NetQuincenal ?? 0m;
 
     public record Eval360Mini(Guid CampaignId, string Title, DateTime Start, DateTime End, decimal AutoPct, decimal OthersPct, int OthersCount, bool VisibleToEmployee);
     public Eval360Mini? LastEval360 { get; set; }
@@ -109,13 +124,78 @@ public class MyProfileModel : PageModel
         var baseQ = Profile!.SalaryBase / 2m;
         var fijo80 = baseQ * 0.80m;
         var max20 = baseQ * 0.20m;
-        var total = fijo80 + (max20 * vp);
+        var total = Math.Round(fijo80 + (max20 * vp), 2);
+
+        // Deducciones activas (si aún no existen tablas, no tronamos)
+        await LoadDeductionsAsync(userId, baseQ, total);
+        var net = Math.Round(total - DeductionsTotal, 2);
+        if (net < 0m) net = 0m;
 
         var period = review == null
             ? $"{ps:yyyy-MM-dd} a {pe:yyyy-MM-dd}"
             : $"{review.PeriodStart:yyyy-MM-dd} a {review.PeriodEnd:yyyy-MM-dd}";
 
-        CurrentPay = new PerfMini(period, vp, total);
+        CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, net);
+    }
+
+    private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal)
+    {
+        ActiveDeductions = new();
+        DeductionsTotal = 0m;
+
+        try
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var deds = await _db.EmployeeDeductions
+                .AsNoTracking()
+                .Where(d => d.UserId == userId && d.IsActive)
+                .Where(d => d.StartDate <= today && (d.EndDate == null || d.EndDate >= today))
+                .OrderBy(d => d.Type)
+                .ThenBy(d => d.Concept)
+                .ToListAsync();
+
+            foreach (var d in deds)
+            {
+                var amount = d.Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => d.Amount,
+                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
+                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
+                    _ => d.Amount
+                };
+
+                amount = Math.Round(amount, 2);
+                if (amount < 0m) amount = 0m;
+
+                // Para préstamos con saldo, no descontamos más del saldo
+                if (d.RemainingAmount.HasValue)
+                {
+                    if (d.RemainingAmount.Value <= 0m) continue;
+                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                }
+
+                ActiveDeductions.Add(new DeductionMini(
+                    d.Concept,
+                    d.Type,
+                    d.Mode,
+                    amount,
+                    d.RemainingAmount,
+                    d.StartDate,
+                    d.EndDate
+                ));
+
+                DeductionsTotal += amount;
+            }
+
+            DeductionsTotal = Math.Round(DeductionsTotal, 2);
+        }
+        catch
+        {
+            // Tablas aún no existen o no accesibles: nos quedamos sin deducciones.
+            ActiveDeductions = new();
+            DeductionsTotal = 0m;
+        }
     }
 
     private async Task LoadEval360Async(string userId)

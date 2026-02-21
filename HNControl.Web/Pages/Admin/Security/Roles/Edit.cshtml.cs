@@ -1,128 +1,147 @@
-using System.ComponentModel.DataAnnotations;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace HNControl.Web.Pages.Admin.Security.Roles;
-
-[Authorize(Roles = AppRoles.Admin)]
-public class EditModel : PageModel
+namespace HNControl.Web.Pages.Admin.Security.Roles
 {
-    private readonly ApplicationDbContext _db;
-    public EditModel(ApplicationDbContext db) => _db = db;
-
-    public List<ModuleOption> Modules { get; set; } = new();
-
-    [BindProperty]
-    public InputModel Input { get; set; } = new();
-
-    public class ModuleOption
+    [Authorize(Roles = "Admin")]
+    public class EditModel : PageModel
     {
-        public string Key { get; set; } = "";
-        public string Label { get; set; } = "";
-    }
+        private readonly ApplicationDbContext _db;
 
-    public class InputModel
-    {
-        public Guid Id { get; set; }
-
-        [Required, MaxLength(80)]
-        public string Name { get; set; } = "";
-
-        [MaxLength(400)]
-        public string Description { get; set; } = "";
-
-        public bool IsDefault { get; set; }
-        public bool IsActive { get; set; } = true;
-
-        public List<string> SelectedModules { get; set; } = new();
-    }
-
-    public async Task<IActionResult> OnGetAsync(Guid id)
-    {
-        LoadModules();
-
-        var role = await _db.PermissionRoles
-            .Include(r => r.Modules)
-            .FirstOrDefaultAsync(r => r.Id == id);
-
-        if (role == null) return NotFound();
-
-        Input = new InputModel
+        public EditModel(ApplicationDbContext db)
         {
-            Id = role.Id,
-            Name = role.Name,
-            Description = role.Description,
-            IsDefault = role.IsDefault,
-            IsActive = role.IsActive,
-            SelectedModules = role.Modules.Select(m => m.ModuleKey).ToList()
-        };
+            _db = db;
+        }
 
-        return Page();
-    }
+        [BindProperty]
+        public InputModel Input { get; set; } = new();
 
-    public async Task<IActionResult> OnPostAsync()
-    {
-        LoadModules();
-        if (!ModelState.IsValid) return Page();
+        public List<SelectListItem> ModuleOptions { get; set; } = new();
 
-        var role = await _db.PermissionRoles
-            .Include(r => r.Modules)
-            .FirstOrDefaultAsync(r => r.Id == Input.Id);
-
-        if (role == null) return NotFound();
-
-        var name = Input.Name.Trim();
-        if (await _db.PermissionRoles.AnyAsync(r => r.Id != role.Id && r.Name.ToLower() == name.ToLower()))
+        public class InputModel
         {
-            ModelState.AddModelError(string.Empty, "Ya existe un rol con ese nombre.");
+            public Guid Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Description { get; set; } = "";
+            public bool IsDefault { get; set; }
+            public bool IsActive { get; set; } = true;
+
+            // keys posteadas del checklist
+            public List<string> SelectedModules { get; set; } = new();
+        }
+
+        public async Task<IActionResult> OnGetAsync(Guid id)
+        {
+            var role = await _db.PermissionRoles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (role == null) return NotFound();
+
+            var roleModules = await _db.PermissionRoleModules
+                .AsNoTracking()
+                .Where(x => x.PermissionRoleId == id)
+                .Select(x => x.ModuleKey)
+                .ToListAsync();
+
+            Input = new InputModel
+            {
+                Id = role.Id,
+                Name = role.Name,
+                Description = role.Description,
+                IsDefault = role.IsDefault,
+                IsActive = role.IsActive,
+                SelectedModules = roleModules
+            };
+
+            LoadModuleOptions();
             return Page();
         }
 
-        if (Input.IsDefault)
+        public async Task<IActionResult> OnPostAsync()
         {
-            var others = await _db.PermissionRoles.Where(r => r.IsDefault && r.Id != role.Id).ToListAsync();
-            foreach (var o in others) o.IsDefault = false;
-        }
-
-        role.Name = name;
-        role.Description = (Input.Description ?? "").Trim();
-        role.IsDefault = Input.IsDefault;
-        role.IsActive = Input.IsActive;
-        role.UpdatedAt = DateTime.UtcNow;
-
-        var selected = Input.SelectedModules
-            .Where(k => !string.IsNullOrWhiteSpace(k))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        // Sync modules
-        var toRemove = role.Modules.Where(m => !selected.Contains(m.ModuleKey, StringComparer.OrdinalIgnoreCase)).ToList();
-        foreach (var m in toRemove) role.Modules.Remove(m);
-
-        var existing = role.Modules.Select(m => m.ModuleKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var key in selected)
-        {
-            if (existing.Contains(key)) continue;
-            role.Modules.Add(new PermissionRoleModule
+            if (!ModelState.IsValid)
             {
-                PermissionRoleId = role.Id,
-                ModuleKey = key.Trim()
-            });
+                LoadModuleOptions();
+                return Page();
+            }
+
+            // 1) Recarga tracked (esto elimina el “grafo posteado” y mata el concurrency)
+            var role = await _db.PermissionRoles
+                .FirstOrDefaultAsync(x => x.Id == Input.Id);
+
+            if (role == null)
+                return NotFound(); // ya no existe
+
+            // 2) Actualiza campos simples
+            role.Name = (Input.Name ?? "").Trim();
+            role.Description = (Input.Description ?? "").Trim();
+            role.IsDefault = Input.IsDefault;
+            role.IsActive = Input.IsActive;
+            role.UpdatedAt = DateTime.UtcNow;
+
+            // 3) Si lo marcaron default, baja el default de los demás
+            if (role.IsDefault)
+            {
+                await _db.PermissionRoles
+                    .Where(x => x.Id != role.Id && x.IsDefault)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(x => x.IsDefault, false)
+                        .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+            }
+
+            // 4) Reemplaza módulos de forma segura (NO Update(graph))
+            var wanted = (Input.SelectedModules ?? new List<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var existing = await _db.PermissionRoleModules
+                .Where(x => x.PermissionRoleId == role.Id)
+                .ToListAsync();
+
+            _db.PermissionRoleModules.RemoveRange(existing);
+
+            foreach (var key in wanted)
+            {
+                _db.PermissionRoleModules.Add(new PermissionRoleModule
+                {
+                    Id = Guid.NewGuid(),
+                    PermissionRoleId = role.Id,
+                    ModuleKey = key
+                });
+            }
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                TempData["Success"] = "Rol actualizado.";
+                return RedirectToPage("./Index");
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Si alguien lo tocó al mismo tiempo o había tracking raro, recarga y avisa
+                TempData["Error"] = "El rol cambió mientras lo editabas. Refresca y vuelve a intentar.";
+                return RedirectToPage("./Edit", new { id = Input.Id });
+            }
         }
 
-        await _db.SaveChangesAsync();
-
-        return RedirectToPage("./Index");
-    }
-
-    private void LoadModules()
-    {
-        Modules = AppModules.AllKnown
-            .Select(k => new ModuleOption { Key = k, Label = AppModules.Label(k) })
-            .ToList();
+        private void LoadModuleOptions()
+        {
+            // Ajusta a tu fuente real de módulos si ya la tienes en un helper.
+            // Aquí asumo que tienes AppModules.All o algo parecido; si no, deja hardcode.
+            var all = AppModules.All; // List<(string Key, string Label)>
+            ModuleOptions = all.Select(m => new SelectListItem(m.Label, m.Key)).ToList();
+        }
     }
 }

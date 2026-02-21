@@ -1,71 +1,116 @@
 @page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Security.Roles.EditModel
 @{
-    Layout = "_Layout";
     ViewData["Title"] = "Editar rol de permisos";
 }
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h4 mb-0">Editar rol de permisos</h1>
-    <a class="btn btn-outline-secondary" asp-page="./Index">Volver</a>
+<div class="container-xxl py-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="mb-0">@ViewData["Title"]</h2>
+            <div class="text-muted">Define qué módulos/pestañas puede ver un empleado con este rol.</div>
+        </div>
+        <a class="btn btn-outline-secondary" asp-page="./Index">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    @if (TempData["Error"] is string err && !string.IsNullOrWhiteSpace(err))
+    {
+        <div class="alert alert-danger">@err</div>
+    }
+    @if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+
+    <form method="post" class="card shadow-sm border-0">
+        <div class="card-body p-4">
+
+            <input type="hidden" asp-for="Input.Id" />
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control" asp-for="Input.Name" maxlength="80" />
+                    <span class="text-danger small" asp-validation-for="Input.Name"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Activo</label>
+                    <select class="form-select" asp-for="Input.IsActive">
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" asp-for="Input.Description" rows="2" maxlength="400"></textarea>
+                    <span class="text-danger small" asp-validation-for="Input.Description"></span>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" asp-for="Input.IsDefault" />
+                        <label class="form-check-label" asp-for="Input.IsDefault">
+                            Rol por defecto (para empleados nuevos)
+                        </label>
+                    </div>
+                    <div class="text-muted small">
+                        Si marcas este rol como default, se desmarca automáticamente en los demás.
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="mb-0">Módulos permitidos</h5>
+                <div class="text-muted small">Marca lo que el empleado podrá ver/usar.</div>
+            </div>
+
+            <div class="row g-2">
+                @foreach (var opt in Model.ModuleOptions)
+                {
+                    var key = opt.Value ?? "";
+                    var isChecked = Model.Input.SelectedModules?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
+
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="d-flex align-items-center gap-2 border rounded-3 p-2 hover-shadow-sm" style="cursor:pointer;">
+                            <input class="form-check-input m-0"
+                                   type="checkbox"
+                                   name="Input.SelectedModules"
+                                   value="@key"
+                                   @(isChecked ? "checked" : "") />
+                            <div class="d-flex flex-column">
+                                <span class="fw-semibold">@opt.Text</span>
+                                <span class="text-muted small">@key</span>
+                            </div>
+                        </label>
+                    </div>
+                }
+            </div>
+
+        </div>
+
+        <div class="card-footer bg-white border-0 d-flex justify-content-end gap-2 p-3">
+            <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Guardar cambios
+            </button>
+        </div>
+    </form>
 </div>
-
-<form method="post" class="card shadow-sm">
-    <div class="card-body">
-        <div asp-validation-summary="All" class="text-danger"></div>
-
-        <input type="hidden" asp-for="Input.Id" />
-
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Nombre</label>
-                <input class="form-control" asp-for="Input.Name" />
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Descripción</label>
-                <input class="form-control" asp-for="Input.Description" />
-            </div>
-
-            <div class="col-md-3">
-                <div class="form-check mt-4">
-                    <input class="form-check-input" asp-for="Input.IsDefault" />
-                    <label class="form-check-label">Marcar como Default</label>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-check mt-4">
-                    <input class="form-check-input" asp-for="Input.IsActive" />
-                    <label class="form-check-label">Activo</label>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4" />
-
-        <h2 class="h6 mb-2">Módulos permitidos</h2>
-        <div class="text-muted small mb-3">Tip: si quitas un módulo, el Employee ya no verá esa pestaña y al entrar recibirá Access Denied.</div>
-
-        <div class="row row-cols-1 row-cols-lg-2 g-2">
-        @foreach (var m in Model.Modules)
-        {
-            var id = $"m_{m.Key}";
-            <div class="col">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
-                           @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
-                    <label class="form-check-label" for="@id">@m.Label</label>
-                </div>
-            </div>
-        }
-        </div>
-    </div>
-
-    <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
-        <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
-    </div>
-</form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+
+<style>
+    .hover-shadow-sm:hover {
+        box-shadow: 0 .25rem .75rem rgba(0,0,0,.08);
+        transition: box-shadow .15s ease-in-out;
+    }
+</style>

@@ -59,6 +59,7 @@
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Knowledge")" asp-page="/Knowledge/Index">Documentos</a></li>
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a></li>
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Inventory")" asp-page="/Inventory/Index">Inventarios</a></li>
+                                <li class="nav-item"><a class="hn-navbtn @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a></li>
                                 <li class="nav-item"><a class="hn-navbtn @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a></li>
                             }
                             else
@@ -91,6 +92,10 @@
                                 @if (Has(AppModules.Inventory))
                                 {
                                     <li class="nav-item"><a class="hn-navbtn @Active("/Inventory")" asp-page="/Inventory/Index">Inventarios</a></li>
+                                }
+                                @if (Has(AppModules.Monitoring))
+                                {
+                                    <li class="nav-item"><a class="hn-navbtn @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a></li>
                                 }
                             }
 

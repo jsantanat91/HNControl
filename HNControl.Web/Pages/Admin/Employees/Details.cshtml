@@ -25,6 +25,12 @@
             Viáticos
         </a>
 
+        <a class="btn btn-outline-warning"
+           asp-page="/Admin/Employees/Deductions/Index"
+           asp-route-userId="@Model.Employee.UserId">
+            Deducciones
+        </a>
+
         <a class="btn btn-primary"
            asp-page="/Admin/Performance/Rate"
            asp-route-employeeId="@Model.Employee.UserId"

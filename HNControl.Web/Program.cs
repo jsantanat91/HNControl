@@ -1,6 +1,7 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using HNControl.Web.Services.Monitoring;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
@@ -58,6 +59,20 @@ builder.Services.AddScoped<IModuleAccessService, ModuleAccessService>();
 builder.Services.AddScoped<ModulePermissionPageFilter>();
 
 // --------------------
+// Monitoreo
+// --------------------
+builder.Services.AddHttpClient("monitoring");
+builder.Services.AddScoped<IMonitorProbeService, MonitorProbeService>();
+builder.Services.AddHostedService<MonitorWorker>();
+
+// --------------------
+// Monitoreo
+// --------------------
+builder.Services.AddHttpClient("monitoring");
+builder.Services.AddScoped<IMonitorProbeService, MonitorProbeService>();
+builder.Services.AddHostedService<MonitorWorker>();
+
+// --------------------
 // Razor Pages routing / auth conventions
 // --------------------
 builder.Services.AddRazorPages(options =>
@@ -102,6 +117,12 @@ builder.Services.AddRazorPages(options =>
 
     // Inventarios: empleado solicita entrada/salida, admin aprueba
     options.Conventions.AuthorizeFolder("/Inventory", "EmployeeOnly");
+
+    // Monitoreo: empleado y admin (admin gestiona targets)
+    options.Conventions.AuthorizeFolder("/Monitoring", "EmployeeOnly");
+
+    // Monitoreo: empleados (lectura) + admin
+    options.Conventions.AuthorizeFolder("/Monitoring", "EmployeeOnly");
 
     // Seguridad / permisos (Admin)
     options.Conventions.AuthorizeFolder("/Admin/Security", "AdminOnly");

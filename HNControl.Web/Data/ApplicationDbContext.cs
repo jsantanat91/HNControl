@@ -47,6 +47,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
 
+    // --------------------
+    // Nómina (Deducciones)
+    // --------------------
+    public DbSet<EmployeeDeduction> EmployeeDeductions => Set<EmployeeDeduction>();
+
+    // --------------------
+    // Monitoreo
+    // --------------------
+    public DbSet<MonitorTarget> MonitorTargets => Set<MonitorTarget>();
+    public DbSet<MonitorCheck> MonitorChecks => Set<MonitorCheck>();
+
     public DbSet<Eval360Competency> Eval360Competencies => Set<Eval360Competency>();
     public DbSet<Eval360Question> Eval360Questions => Set<Eval360Question>();
     public DbSet<Eval360Campaign> Eval360Campaigns => Set<Eval360Campaign>();
@@ -78,6 +89,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.HireDate).HasColumnType("date");
             e.Property(x => x.BirthDate).HasColumnType("date");
             e.Property(x => x.SalaryBase).HasColumnType("numeric(12,2)");
+        });
+
+        // --------------------
+        // Nómina (Deducciones)
+        // --------------------
+        b.Entity<EmployeeDeduction>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.Concept).HasMaxLength(200);
+            e.Property(x => x.Amount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.Rate).HasColumnType("numeric(6,5)");
+            e.Property(x => x.StartDate).HasColumnType("date");
+            e.Property(x => x.EndDate).HasColumnType("date");
+            e.Property(x => x.TotalAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.RemainingAmount).HasColumnType("numeric(12,2)");
+
+            e.HasIndex(x => new { x.UserId, x.IsActive, x.StartDate, x.EndDate });
+
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ViaticWeek>(w =>
@@ -351,8 +386,49 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        
+        // --------------------
+        // Monitoreo
+        // --------------------
+        b.Entity<MonitorTarget>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Fqdn).HasMaxLength(255);
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.SubnetMask).HasMaxLength(32);
+            e.Property(x => x.Gateway).HasMaxLength(64);
+            e.Property(x => x.HttpUrl).HasMaxLength(600);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.Property(x => x.Notes).HasMaxLength(2000);
 
+            e.HasIndex(x => new { x.IsActive, x.NextCheckAt });
+            e.HasIndex(x => x.ClientId);
+            e.HasIndex(x => x.ClientServiceContractId);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasMany(x => x.Checks)
+                .WithOne(c => c.Target!)
+                .HasForeignKey(c => c.TargetId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MonitorCheck>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Error).HasMaxLength(500);
+            e.HasIndex(x => new { x.TargetId, x.CheckedAt });
+        });
+
+        
         // --------------------
         // Eval 360
         // --------------------

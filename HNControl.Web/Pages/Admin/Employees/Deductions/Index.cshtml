@@ -1,0 +1,67 @@
+@page
+@model HNControl.Web.Pages.Admin.Employees.Deductions.IndexModel
+@{
+    ViewData["Title"] = "Deducciones";
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Deducciones</h1>
+        <div class="text-muted small">@Model.Employee?.FullName</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-id="@Model.UserId">Volver</a>
+        <a class="btn btn-primary" asp-page="Create" asp-route-userId="@Model.UserId">Nueva deducción</a>
+    </div>
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="alert alert-info">Sin deducciones aún. (Tu nómina está demasiado tranquila… sospechoso.)</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+            <tr>
+                <th>Concepto</th>
+                <th>Tipo</th>
+                <th>Modo</th>
+                <th>Importe</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Saldo</th>
+                <th class="text-end"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var d in Model.Items)
+            {
+                <tr>
+                    <td class="fw-semibold">@d.Concept</td>
+                    <td class="text-muted small">@d.Type</td>
+                    <td class="text-muted small">@d.Mode</td>
+                    <td>@d.AmountLabel</td>
+                    <td class="text-muted small">@(d.StartDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td class="text-muted small">@(d.EndDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td class="text-muted small">@(d.RemainingAmount?.ToString("N2") ?? "—")</td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@d.Id" asp-route-userId="@Model.UserId">Editar</a>
+                            @if (d.IsActive)
+                            {
+                                <form method="post" asp-page-handler="Stop" class="d-inline m-0">
+                                    <input type="hidden" name="UserId" value="@Model.UserId" />
+                                    <input type="hidden" name="id" value="@d.Id" />
+                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Detener</button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
