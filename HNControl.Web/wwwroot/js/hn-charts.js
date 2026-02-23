@@ -66,7 +66,20 @@
     if (!config) return config;
 
     config.options = config.options || {};
-    config.options.maintainAspectRatio = config.options.maintainAspectRatio ?? false;
+    // IMPORTANT: no forzamos maintainAspectRatio=false porque puede provocar un loop de ResizeObserver
+    // (canvas creciendo “al infinito”) cuando el contenedor no tiene altura fija.
+    // Dejamos el default de Chart.js (true) y solo aplicamos un aspectRatio razonable si no existe.
+    config.options.responsive = config.options.responsive ?? true;
+    config.options.maintainAspectRatio = config.options.maintainAspectRatio ?? true;
+
+    if (config.options.aspectRatio == null) {
+      // Un poco más “wide” para que no se vea gigante en pantallas grandes.
+      // (más ratio = menos altura)
+      if (config.type === 'line') config.options.aspectRatio = 2.8;
+      else if (config.type === 'bar') config.options.aspectRatio = 2.4;
+      else if (config.type === 'doughnut' || config.type === 'pie') config.options.aspectRatio = 1.9;
+      else config.options.aspectRatio = 2.2;
+    }
 
     // tidy scales
     const scales = (config.options.scales = config.options.scales || {});

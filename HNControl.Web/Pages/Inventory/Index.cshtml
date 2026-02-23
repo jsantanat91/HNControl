@@ -40,8 +40,8 @@
                         <th>Item</th>
                         <th>SKU</th>
                         <th>Tipo</th>
-                        <th class="text-end">On hand</th>
-                        <th class="text-end">Reorder</th>
+                        <th class="text-end">Existencia</th>
+                        <th class="text-end">Reorden</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,11 +54,11 @@
                         <td>
                             @if (i.IsConsumable)
                             {
-                                <span class="badge text-bg-light">Consumible</span>
+                                <span class="hn-badge hn-badge-green">Consumible</span>
                             }
                             else
                             {
-                                <span class="badge text-bg-light">Hardware</span>
+                                <span class="hn-badge hn-badge-blue">Hardware</span>
                             }
                         </td>
                         <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>

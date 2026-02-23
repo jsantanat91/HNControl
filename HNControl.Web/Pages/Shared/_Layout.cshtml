@@ -38,6 +38,11 @@
 
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
+
+    <!-- Charts: algunos pages traen <script> inline (fuera de section Scripts),
+         así que Chart.js debe estar disponible antes de parsear el body. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="~/js/hn-charts.js" asp-append-version="true"></script>
 </head>
 <body>
 @if (SignInManager.IsSignedIn(User))
@@ -298,9 +303,6 @@ else
 }
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="~/js/hn-charts.js" asp-append-version="true"></script>
     <script src="~/js/hn-ui.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)

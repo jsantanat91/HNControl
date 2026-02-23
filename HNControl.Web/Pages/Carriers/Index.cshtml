@@ -4,6 +4,7 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Carriers";
+    var accents = new[] { "accent-cyan", "accent-blue", "accent-green", "accent-purple", "accent-amber" };
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -30,8 +31,9 @@
 <div class="row row-cols-1 row-cols-lg-2 g-4">
     @foreach (var c in Model.Clients)
     {
+        var accent = accents[Math.Abs(c.ClientId.GetHashCode()) % accents.Length];
         <div class="col d-flex">
-            <div class="card hn-module accent-cyan w-100">
+            <div class="card hn-module @accent w-100">
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div>

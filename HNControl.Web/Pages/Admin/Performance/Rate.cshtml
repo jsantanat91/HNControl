@@ -84,6 +84,7 @@
 
         .hn-overall .progress-bar {
             border-radius: 999px;
+            transition: width .25s ease;
         }
 </style>
 
@@ -137,7 +138,7 @@
                 </div>
                 <div style="min-width:min(420px, 100%);">
                     <div class="progress">
-                        <div id="overallBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+                        <div id="overallBar" class="progress-bar bg-primary" role="progressbar" style="width:0%"></div>
                     </div>
                     <div class="hn-help mb-0">Esto es visual: el cálculo real lo hace el servidor al guardar.</div>
                 </div>

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects;
@@ -20,7 +21,9 @@ public class CreateModel : PageModel
     public SelectList EmployeeItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    [BindProperty] public NewClientModel NewClient { get; set; } = new();
+    [BindProperty]
+    [ValidateNever]
+    public NewClientModel NewClient { get; set; } = new();
 
     public string? Info { get; set; }
     public string? Error { get; set; }
@@ -51,7 +54,7 @@ public class CreateModel : PageModel
     {
         public ClientType Type { get; set; } = ClientType.Moral;
 
-        [Required, MaxLength(200)]
+        [Required(ErrorMessage = "El nombre es requerido."), MaxLength(200)]
         public string Name { get; set; } = "";
 
         [MaxLength(13)] public string? Rfc { get; set; }
