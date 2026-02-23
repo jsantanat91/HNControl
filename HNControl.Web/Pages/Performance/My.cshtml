@@ -20,7 +20,7 @@
 
 <div class="row g-3">
     <div class="col-lg-6">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Historial</div>
             <div class="card-body table-responsive">
                 <table class="table table-sm align-middle mb-0">
@@ -50,7 +50,7 @@
     </div>
 
     <div class="col-lg-6">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Gráfica (variable %)</div>
             <div class="card-body">
                 <canvas id="varChart" height="140"></canvas>
@@ -59,12 +59,11 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const labels = @Html.Raw(Model.ChartLabelsJson);
     const values = @Html.Raw(Model.ChartValuesJson);
 
-    new Chart(document.getElementById('varChart'), {
+    const cfg = {
       type: 'line',
       data: {
         labels: labels,
@@ -79,5 +78,15 @@
           y: { min: 0, max: 1 }
         }
       }
-    });
+    };
+
+    // valores vienen 0–1, pero lo mostramos como %
+    cfg.options = cfg.options || {};
+    cfg.options.scales = cfg.options.scales || {};
+    cfg.options.scales.y = cfg.options.scales.y || {};
+    cfg.options.scales.y.ticks = cfg.options.scales.y.ticks || {};
+    cfg.options.scales.y.ticks.callback = (v) => Math.round(v * 100) + '%';
+
+    window.hnCharts?.decorate(cfg);
+    new Chart(document.getElementById('varChart'), cfg);
 </script>

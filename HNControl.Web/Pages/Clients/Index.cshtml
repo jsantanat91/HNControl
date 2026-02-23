@@ -2,6 +2,8 @@
 @model HNControl.Web.Pages.Clients.IndexModel
 @{
     Layout = "_Layout";
+
+    ViewData["Title"] = "Clientes";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -12,7 +14,7 @@
     <a class="btn btn-primary" asp-page="/Clients/Create">+ Nuevo cliente</a>
 </div>
 
-<div class="card shadow-sm hn-hover hn-hover">
+<div class="card shadow-soft hn-hover">
     <div class="card-body table-responsive">
         <table class="table table-sm align-middle">
             <thead>

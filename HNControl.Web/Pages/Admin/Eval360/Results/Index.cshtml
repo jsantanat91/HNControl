@@ -140,14 +140,14 @@ else
 }
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Cambio de periodo: navega al mismo folder con nuevo GUID (relativo, respeta PathBase).
-        (function(){
+        (function () {
             const camp = document.getElementById('campaignSelect');
             const user = document.getElementById('userSelect');
-            if(!camp) return;
-            camp.addEventListener('change', function(){
+            if (!camp) return;
+
+            camp.addEventListener('change', function () {
                 const cid = camp.value;
                 const uid = user ? user.value : '';
                 const qs = uid ? ('?UserId=' + encodeURIComponent(uid)) : '';
@@ -160,20 +160,23 @@ else
         const evalValues = @Html.Raw(Model.OthersJson);
 
         if (labels && labels.length) {
-            new Chart(document.getElementById('cmpChart'), {
-              type: 'bar',
-              data: {
-                labels,
-                datasets: [
-                  { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-                  { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
-                ]
-              },
-              options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true, max: 100 } }
-              }
-            });
+            const cmpCfg = {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                        { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            };
+
+            window.hnCharts?.decorate(cmpCfg);
+            new Chart(document.getElementById('cmpChart'), cmpCfg);
         }
 
         const tLabels = @Html.Raw(Model.TeamLabelsJson);
@@ -181,20 +184,23 @@ else
         const tEval = @Html.Raw(Model.TeamEvalJson);
 
         if (tLabels && tLabels.length) {
-            new Chart(document.getElementById('teamChart'), {
-              type: 'bar',
-              data: {
-                labels: tLabels,
-                datasets: [
-                  { label: 'Esperado (promedio)', data: tExpected, backgroundColor: 'rgba(16, 185, 129, 0.35)' },
-                  { label: 'Evaluación (promedio)', data: tEval, backgroundColor: 'rgba(59, 130, 246, 0.35)' }
-                ]
-              },
-              options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true, max: 100 } }
-              }
-            });
+            const teamCfg = {
+                type: 'bar',
+                data: {
+                    labels: tLabels,
+                    datasets: [
+                        { label: 'Esperado (promedio)', data: tExpected, backgroundColor: 'rgba(16, 185, 129, 0.35)' },
+                        { label: 'Evaluación (promedio)', data: tEval, backgroundColor: 'rgba(59, 130, 246, 0.35)' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            };
+
+            window.hnCharts?.decorate(teamCfg);
+            new Chart(document.getElementById('teamChart'), teamCfg);
         }
     </script>
 }

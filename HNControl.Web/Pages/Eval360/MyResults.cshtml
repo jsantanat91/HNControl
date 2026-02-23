@@ -92,27 +92,27 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const labels = @Html.Raw(Model.LabelsJson);
         const expectedValues = @Html.Raw(Model.AutoJson);
         const evalValues = @Html.Raw(Model.OthersJson);
 
-        new Chart(document.getElementById('cmpChart'), {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-              { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
-            ]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: { beginAtZero: true, max: 100 }
+        const cfg = {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                    { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 100 } }
             }
-          }
-        });
+        };
+
+        window.hnCharts?.decorate(cfg);
+        new Chart(document.getElementById('cmpChart'), cfg);
     </script>
 }

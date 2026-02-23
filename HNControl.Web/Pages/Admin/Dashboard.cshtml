@@ -2,22 +2,24 @@
 @model HNControl.Web.Pages.Admin.DashboardModel
 @{
     Layout = "_Layout";
+
+    ViewData["Title"] = "Panel";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Dashboard</h1>
+        <h1 class="h4 m-0">Panel</h1>
         <div class="text-muted small">KPIs · evaluaciones · operación</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" asp-page="/Performance/Rate">Calificar</a>
-        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Export Nómina</a>
+        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Exportar nómina</a>
     </div>
 </div>
 
 <div class="row g-3">
     <div class="col-md-3">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Empleados</div>
                 <div class="fs-4 fw-semibold">@Model.Kpi.Employees</div>
@@ -26,7 +28,7 @@
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Órdenes en revisión</div>
                 <div class="fs-4 fw-semibold">@Model.Kpi.OrdersInReview</div>
@@ -35,7 +37,7 @@
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">SLA vencidos (proyectos)</div>
                 <div class="fs-4 fw-semibold">@Model.Kpi.OverdueProjects</div>
@@ -44,7 +46,7 @@
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-body">
                 <div class="text-muted small">Viáticos pendientes</div>
                 <div class="fs-4 fw-semibold">@Model.Kpi.PendingViaticWeeks</div>
@@ -55,7 +57,7 @@
 
 <div class="row g-3 mt-1">
     <div class="col-lg-7">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Órdenes completadas (últimos 30 días)</div>
             <div class="card-body">
                 <canvas id="ordersChart" height="110"></canvas>
@@ -64,7 +66,7 @@
     </div>
 
     <div class="col-lg-5">
-        <div class="card shadow-sm hn-hover hn-hover">
+        <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Top variable % (última evaluación)</div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -90,14 +92,16 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const labels = @Html.Raw(Model.OrdersLabelsJson);
     const values = @Html.Raw(Model.OrdersValuesJson);
 
-    new Chart(document.getElementById('ordersChart'), {
+    const cfg = {
       type: 'line',
       data: { labels, datasets: [{ label: 'Completadas', data: values, tension: 0.25 }] },
       options: { scales: { y: { beginAtZero: true } } }
-    });
+    };
+
+    window.hnCharts?.decorate(cfg);
+    new Chart(document.getElementById('ordersChart'), cfg);
 </script>

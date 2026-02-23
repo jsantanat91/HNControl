@@ -43,7 +43,7 @@
 
 <div class="row g-3">
     <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">KPI promedio (90 días)</div>
                 <div class="fs-3 fw-bold">@Model.KPIAvgScore.ToString("0.0")</div>
@@ -53,7 +53,7 @@
     </div>
 
     <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Variable promedio (6 meses)</div>
                 <div class="fs-3 fw-bold">@((Model.VariableAvgPercent * 100m).ToString("0.##"))%</div>
@@ -63,7 +63,7 @@
     </div>
 
     <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Viáticos mes actual</div>
                 <div class="fs-3 fw-bold">@Model.CurrentMonthViaticTotal.ToString("C")</div>
@@ -73,7 +73,7 @@
     </div>
 
     <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="fw-semibold">KPIs del mes</div>
@@ -94,7 +94,7 @@
     </div>
 
     <div class="col-12 col-lg-6">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="fw-semibold">Variable (historial)</div>
@@ -107,7 +107,7 @@
     </div>
 
     <div class="col-12">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="fw-semibold">Viáticos del mes (semanas)</div>
@@ -147,24 +147,27 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const kpiLabels = @Html.Raw(Model.KpiMonthLabelsJson);
         const kpiValues = @Html.Raw(Model.KpiMonthValuesJson);
 
-        new Chart(document.getElementById('kpiMonthChart'), {
+        const kpiCfg = {
             type: 'bar',
             data: { labels: kpiLabels, datasets: [{ label: 'KPI', data: kpiValues }] },
-            options: { responsive: true }
-        });
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        };
+        window.hnCharts?.decorate(kpiCfg);
+        new Chart(document.getElementById('kpiMonthChart'), kpiCfg);
 
         const varLabels = @Html.Raw(Model.VarHistLabelsJson);
         const varValues = @Html.Raw(Model.VarHistValuesJson);
 
-        new Chart(document.getElementById('varHistChart'), {
+        const varCfg = {
             type: 'line',
-            data: { labels: varLabels, datasets: [{ label: '% Variable', data: varValues }] },
-            options: { responsive: true }
-        });
+            data: { labels: varLabels, datasets: [{ label: 'Variable (%)', data: varValues }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        };
+        window.hnCharts?.decorate(varCfg);
+        new Chart(document.getElementById('varHistChart'), varCfg);
     </script>
 }

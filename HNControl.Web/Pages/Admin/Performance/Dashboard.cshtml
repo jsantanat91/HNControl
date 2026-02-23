@@ -47,7 +47,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-12 col-lg-3">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Empleados</div>
                 <div class="fs-4 fw-bold">@Model.EmployeesTotal</div>
@@ -55,7 +55,7 @@
         </div>
     </div>
     <div class="col-12 col-lg-3">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Evaluados</div>
                 <div class="fs-4 fw-bold">@Model.EmployeesRated</div>
@@ -63,7 +63,7 @@
         </div>
     </div>
     <div class="col-12 col-lg-3">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Promedio general</div>
                 <div class="fs-4 fw-bold">@((Model.AvgScoreAll ?? 0).ToString("0.0"))</div>
@@ -71,7 +71,7 @@
         </div>
     </div>
     <div class="col-12 col-lg-3">
-        <div class="card shadow-sm">
+        <div class="card shadow-soft">
             <div class="card-body">
                 <div class="text-muted small">Total a pagar</div>
                 <div class="fs-4 fw-bold">@Model.TotalPayrollPay.ToString("C")</div>
@@ -95,7 +95,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-soft">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table align-middle">
@@ -152,24 +152,25 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const labels = @Html.Raw(Model.LabelsJson);
         const totalPay = @Html.Raw(Model.TotalPayJson);
         const varPct = @Html.Raw(Model.VarPercentJson);
 
-        const payCtx = document.getElementById('payChart');
-        new Chart(payCtx, {
+        const payCfg = {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Total a pagar', data: totalPay }] },
-            options: { responsive: true }
-        });
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        };
+        window.hnCharts?.decorate(payCfg);
+        new Chart(document.getElementById('payChart'), payCfg);
 
-        const varCtx = document.getElementById('varChart');
-        new Chart(varCtx, {
+        const varCfg = {
             type: 'bar',
-            data: { labels, datasets: [{ label: '% variable', data: varPct }] },
-            options: { responsive: true }
-        });
+            data: { labels, datasets: [{ label: 'Variable (%)', data: varPct }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+        };
+        window.hnCharts?.decorate(varCfg);
+        new Chart(document.getElementById('varChart'), varCfg);
     </script>
 }

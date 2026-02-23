@@ -19,7 +19,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm hn-hover hn-hover">
+<div class="card shadow-soft hn-hover">
     <div class="card-header fw-semibold">Resumen por empleado</div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
@@ -62,14 +62,16 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const labels = @Html.Raw(Model.LabelsJson);
         const values = @Html.Raw(Model.ValuesJson);
-        new Chart(document.getElementById('chartVar'), {
-          type: 'bar',
-          data: { labels, datasets: [{ label: 'Variable %', data: values }] },
-          options: { scales: { y: { beginAtZero: true, max: 100 } } }
-        });
+
+        const cfg = {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Variable (%)', data: values }] },
+            options: { scales: { y: { beginAtZero: true, max: 100 } } }
+        };
+        window.hnCharts?.decorate(cfg);
+        new Chart(document.getElementById('chartVar'), cfg);
     </script>
 }

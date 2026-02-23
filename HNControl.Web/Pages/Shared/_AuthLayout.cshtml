@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Identity
 
 @{
-    // Layout sin navbar, pensado para Login / Denied / etc.
+    // Layout sin sidebar, pensado para Login / Denied / etc.
     var title = (ViewData["Title"] as string) ?? "HN Control";
 }
 
@@ -13,7 +13,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@title - HN Control</title>
 
+    <meta name="theme-color" content="#1e40af" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
 
