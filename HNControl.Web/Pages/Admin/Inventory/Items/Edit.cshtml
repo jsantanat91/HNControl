@@ -5,36 +5,74 @@
     ViewData["Title"] = "Editar item";
 }
 
-<div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+<div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0">Editar item</h1>
     <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
 <form method="post" class="card">
     <div class="card-body">
-        <input type="hidden" asp-for="Input.Id" />
         <div class="row g-3">
-            <div class="col-md-8">
+            <div class="col-md-6">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.Name" />
+                <span class="text-danger small" asp-validation-for="Input.Name"></span>
             </div>
-            <div class="col-md-4">
-                <label class="form-label">SKU</label>
+
+            <div class="col-md-3">
+                <label class="form-label">SKU (opcional)</label>
                 <input class="form-control" asp-for="Input.Sku" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Categoría</label>
+                <select class="form-select" asp-for="Input.Category" asp-items="Model.CategoryOptions"></select>
+                <div class="form-text">
+                    ¿No aparece? <a asp-page="/Admin/Inventory/Categories/Index" target="_blank">Cargar categorías</a>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Marca</label>
+                <select class="form-select" asp-for="Input.BrandId" asp-items="Model.BrandOptions"></select>
+                <div class="form-text">
+                    ¿No aparece? <a asp-page="/Admin/Inventory/Brands/Index" target="_blank">Cargar marcas</a>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Modelo</label>
+                <input class="form-control" asp-for="Input.Model" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Ubicación</label>
+                <select class="form-select" asp-for="Input.Location" asp-items="Model.LocationOptions"></select>
+                <div class="form-text">
+                    ¿No aparece? <a asp-page="/Admin/Inventory/Locations/Index" target="_blank">Cargar ubicaciones</a>
+                </div>
             </div>
 
             <div class="col-md-3">
                 <label class="form-label">Unidad</label>
                 <input class="form-control" asp-for="Input.Unit" />
             </div>
+
             <div class="col-md-3">
-                <label class="form-label">On hand</label>
+                <label class="form-label">Existencia</label>
                 <input class="form-control" asp-for="Input.QuantityOnHand" />
             </div>
+
             <div class="col-md-3">
-                <label class="form-label">Reorder</label>
+                <label class="form-label">Stock mínimo</label>
                 <input class="form-control" asp-for="Input.ReorderLevel" />
             </div>
+
             <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check">
                     <input class="form-check-input" asp-for="Input.IsConsumable" />
@@ -44,7 +82,7 @@
 
             <div class="col-12">
                 <label class="form-label">Notas</label>
-                <textarea class="form-control" asp-for="Input.Notes" rows="4"></textarea>
+                <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
             </div>
 
             <div class="col-12">
@@ -55,6 +93,7 @@
             </div>
         </div>
     </div>
+
     <div class="card-footer d-flex gap-2">
         <button class="btn btn-primary" type="submit">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>

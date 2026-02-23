@@ -17,16 +17,21 @@ public class ExportItemsModel : PageModel
     {
         var rows = await _db.InventoryItems
             .AsNoTracking()
-            .Where(i => i.IsActive)
+            .Include(i => i.Brand)
             .OrderBy(i => i.Name)
             .Select(i => new
             {
                 i.Name,
                 i.Sku,
+                Brand = i.Brand != null ? i.Brand.Name : "",
+                i.Model,
+                i.Location,
+                i.Category,
                 Type = i.IsConsumable ? "Consumible" : "Hardware",
                 i.Unit,
-                i.QuantityOnHand,
-                i.ReorderLevel,
+                Existencia = i.QuantityOnHand,
+                StockMinimo = i.ReorderLevel,
+                i.IsActive,
                 i.Notes
             })
             .ToListAsync();
@@ -34,28 +39,39 @@ public class ExportItemsModel : PageModel
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Items");
 
+        // Headers (igual que la plantilla)
         ws.Cell(1, 1).Value = "Nombre";
         ws.Cell(1, 2).Value = "SKU";
-        ws.Cell(1, 3).Value = "Tipo";
-        ws.Cell(1, 4).Value = "Unidad";
-        ws.Cell(1, 5).Value = "OnHand";
-        ws.Cell(1, 6).Value = "Reorder";
-        ws.Cell(1, 7).Value = "Notas";
+        ws.Cell(1, 3).Value = "Marca";
+        ws.Cell(1, 4).Value = "Modelo";
+        ws.Cell(1, 5).Value = "Ubicacion";
+        ws.Cell(1, 6).Value = "Categoria";
+        ws.Cell(1, 7).Value = "Tipo";
+        ws.Cell(1, 8).Value = "Unidad";
+        ws.Cell(1, 9).Value = "Existencia";
+        ws.Cell(1, 10).Value = "StockMinimo";
+        ws.Cell(1, 11).Value = "Activo";
+        ws.Cell(1, 12).Value = "Notas";
 
         var r = 2;
         foreach (var x in rows)
         {
             ws.Cell(r, 1).Value = x.Name;
             ws.Cell(r, 2).Value = x.Sku;
-            ws.Cell(r, 3).Value = x.Type;
-            ws.Cell(r, 4).Value = x.Unit;
-            ws.Cell(r, 5).Value = x.QuantityOnHand;
-            ws.Cell(r, 6).Value = x.ReorderLevel;
-            ws.Cell(r, 7).Value = x.Notes;
+            ws.Cell(r, 3).Value = x.Brand;
+            ws.Cell(r, 4).Value = x.Model;
+            ws.Cell(r, 5).Value = x.Location;
+            ws.Cell(r, 6).Value = x.Category;
+            ws.Cell(r, 7).Value = x.Type;
+            ws.Cell(r, 8).Value = x.Unit;
+            ws.Cell(r, 9).Value = x.Existencia;
+            ws.Cell(r, 10).Value = x.StockMinimo;
+            ws.Cell(r, 11).Value = x.IsActive ? "Sí" : "No";
+            ws.Cell(r, 12).Value = x.Notes;
             r++;
         }
 
-        ws.Range(1, 1, 1, 7).Style.Font.Bold = true;
+        ws.Range(1, 1, 1, 12).Style.Font.Bold = true;
         ws.Columns().AdjustToContents();
 
         using var ms = new MemoryStream();

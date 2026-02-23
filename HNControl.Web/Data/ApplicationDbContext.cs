@@ -44,6 +44,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     // --------------------
     // Inventarios
     // --------------------
+ 
+    public DbSet<InventoryBrand> InventoryBrands => Set<InventoryBrand>();
+    public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
+    public DbSet<InventoryLocation> InventoryLocations => Set<InventoryLocation>();
+
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
 
@@ -336,26 +341,64 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         // --------------------
         // Inventarios
         // --------------------
+        b.Entity<InventoryBrand>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(120);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            e.HasIndex(x => x.Name).IsUnique(true);
+        });
+
+        b.Entity<InventoryCategory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            e.HasIndex(x => x.Name).IsUnique(true);
+        });
+
+        b.Entity<InventoryLocation>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            e.HasIndex(x => x.Name).IsUnique(true);
+        });
+
         b.Entity<InventoryItem>(e =>
         {
             e.HasKey(x => x.Id);
+
             e.Property(x => x.Sku).HasMaxLength(60);
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.Category).HasMaxLength(100);
+
             e.Property(x => x.Unit).HasMaxLength(40);
             e.Property(x => x.Notes).HasMaxLength(2000);
+
+            e.Property(x => x.Model).HasMaxLength(120);
+            e.Property(x => x.Location).HasMaxLength(200);
+
             e.Property(x => x.QuantityOnHand).HasColumnType("numeric(18,3)");
             e.Property(x => x.ReorderLevel).HasColumnType("numeric(18,3)");
 
-            // SKU es opcional. Si quieres hacerlo único, úsalo como NULL (no "")
-            // y crea un índice UNIQUE filtrado en una migración.
             e.HasIndex(x => x.Sku).IsUnique(false);
+            e.HasIndex(x => x.BrandId);
+
+            e.HasOne(x => x.Brand)
+                .WithMany(b => b.Items)
+                .HasForeignKey(x => x.BrandId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             e.HasMany(x => x.Movements)
                 .WithOne(m => m.Item!)
                 .HasForeignKey(m => m.ItemId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
         b.Entity<InventoryMovement>(e =>
         {
             e.HasKey(x => x.Id);
@@ -371,19 +414,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.Property(x => x.AdminNote).HasMaxLength(2000);
 
-            e.HasIndex(x => new { x.Status, x.RequestedAt });
-            e.HasIndex(x => x.ProjectId);
-            e.HasIndex(x => x.AssignedClientId);
-
-            e.HasOne(x => x.Project)
-                .WithMany()
-                .HasForeignKey(x => x.ProjectId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            e.HasOne(x => x.AssignedClient)
-                .WithMany()
-                .HasForeignKey(x => x.AssignedClientId)
-                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.ItemId);
         });
 
         // --------------------

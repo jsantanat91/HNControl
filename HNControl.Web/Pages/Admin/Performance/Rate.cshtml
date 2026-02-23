@@ -263,10 +263,24 @@
             const overallBar = document.getElementById('overallBar');
 
             function clamp(v){ return Math.max(1, Math.min(5, v)); }
+                    function paintRange(range){
+            const min = parseFloat(range.min || "1");
+            const max = parseFloat(range.max || "5");
+            const val = parseFloat(range.value || "3");
+            const pct = ((val - min) / (max - min)) * 100;
 
+            // Azul antes, gris después (usando bootstrap var)
+            range.style.background =
+                `linear-gradient(to right,
+                    var(--bs-primary) 0%,
+                    var(--bs-primary) ${pct}%,
+                    rgba(15,23,42,.12) ${pct}%,
+                    rgba(15,23,42,.12) 100%)`;
+        }
             function setMetricUI(range){
                 const metric = range.closest('.hn-metric');
                 if(!metric) return;
+           
 
                 const pill = metric.querySelector('.hn-pill');
                 const valEl = pill?.querySelector('.val');
@@ -278,6 +292,7 @@
 
                 if(valEl) valEl.textContent = v;
                 if(wordEl) wordEl.textContent = words[v] || "";
+                paintRange(range);
             }
 
             function setOverall(){

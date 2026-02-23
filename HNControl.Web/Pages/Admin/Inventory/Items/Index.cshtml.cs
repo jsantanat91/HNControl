@@ -1,8 +1,9 @@
-using HNControl.Web.Data;
-using Microsoft.AspNetCore.Http;
+using System.Globalization;
 using ClosedXML.Excel;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -13,244 +14,418 @@ namespace HNControl.Web.Pages.Admin.Inventory.Items;
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+
     public IndexModel(ApplicationDbContext db) => _db = db;
+
+    public List<InventoryItem> Items { get; set; } = new();
 
     [BindProperty(SupportsGet = true)]
     public string? Q { get; set; }
 
-    public List<InventoryItem> Items { get; set; } = new();
-
     [TempData] public string? Info { get; set; }
     [TempData] public string? Error { get; set; }
 
-    
+    public async Task OnGetAsync()
+    {
+        var query = _db.InventoryItems
+            .AsNoTracking()
+            .Include(i => i.Brand)
+            .AsQueryable();
 
+        if (!string.IsNullOrWhiteSpace(Q))
+        {
+            var q = Q.Trim().ToLowerInvariant();
+            query = query.Where(i =>
+                i.Name.ToLower().Contains(q) ||
+                (i.Sku != null && i.Sku.ToLower().Contains(q)));
+        }
+
+        Items = await query
+            .OrderByDescending(i => i.IsActive)
+            .ThenBy(i => i.Name)
+            .ToListAsync();
+    }
+
+    // =========================
+    // TEMPLATE (Excel)
+    // =========================
     public IActionResult OnGetTemplate()
     {
-        // Plantilla para carga masiva
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Items");
 
-        ws.Cell(1, 1).Value = "Nombre";
-        ws.Cell(1, 2).Value = "SKU";
-        ws.Cell(1, 3).Value = "Categoría";
-        ws.Cell(1, 4).Value = "Tipo";      // Consumible | Hardware
-        ws.Cell(1, 5).Value = "Unidad";    // pza, m, caja...
-        ws.Cell(1, 6).Value = "OnHand";    // existencia
-        ws.Cell(1, 7).Value = "Reorder";   // reorden
-        ws.Cell(1, 8).Value = "Activo";    // Sí | No
-        ws.Cell(1, 9).Value = "Notas";
+        // Headers
+        var headers = new[]
+        {
+            "Nombre",
+            "SKU (opcional)",
+            "Categoría",
+            "Marca",
+            "Modelo",
+            "Ubicación",
+            "Unidad",
+            "Existencia",
+            "Stock mínimo",
+            "Activo (TRUE/FALSE)",
+            "Notas"
+        };
 
-        ws.Range(1, 1, 1, 9).Style.Font.Bold = true;
-        ws.Range(1, 1, 1, 9).Style.Fill.BackgroundColor = XLColor.FromHtml("#F1F5F9");
+        for (int c = 0; c < headers.Length; c++)
+        {
+            ws.Cell(1, c + 1).Value = headers[c];
+            ws.Cell(1, c + 1).Style.Font.Bold = true;
+        }
 
-        // Validaciones (para que no te metan "HardWaree" y luego culpen a la app 😄)
-        var dvTipo = ws.Range(2, 4, 2000, 4).SetDataValidation();
-        dvTipo.IgnoreBlanks = true;
-        dvTipo.InCellDropdown = true;
-        dvTipo.List("Consumible,Hardware", true);
+        // Example row
+        ws.Cell(2, 1).Value = "Router AC";
+        ws.Cell(2, 2).Value = ""; // SKU opcional
+        ws.Cell(2, 3).Value = "Routers";
+        ws.Cell(2, 4).Value = "Ubiquiti";
+        ws.Cell(2, 5).Value = "ER-X";
+        ws.Cell(2, 6).Value = "Almacén Matamoros";
+        ws.Cell(2, 7).Value = "pza";
+        ws.Cell(2, 8).Value = 5;
+        ws.Cell(2, 9).Value = 2;
+        ws.Cell(2, 10).Value = "TRUE";
+        ws.Cell(2, 11).Value = "Equipo demo";
 
-        var dvActivo = ws.Range(2, 8, 2000, 8).SetDataValidation();
-        dvActivo.IgnoreBlanks = true;
-        dvActivo.InCellDropdown = true;
-        dvActivo.List("Sí,No", true);
-
-        // Anchos razonables
-        ws.Columns(1, 9).AdjustToContents();
-        ws.Column(1).Width = Math.Max(ws.Column(1).Width, 32);
-        ws.Column(9).Width = Math.Max(ws.Column(9).Width, 40);
+        ws.Columns().AdjustToContents();
 
         using var ms = new MemoryStream();
         wb.SaveAs(ms);
         var bytes = ms.ToArray();
 
-        var fileName = "inventario_template_import.xlsx";
-        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        var fileName = "plantilla_items_inventario.xlsx";
+        const string mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        return File(bytes, mime, fileName);
     }
 
+    // =========================
+    // IMPORT (Excel)
+    // =========================
     public async Task<IActionResult> OnPostImportAsync(IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
             Error = "Selecciona un archivo .xlsx.";
-            return RedirectToPage(new { q = Q });
+            return RedirectToPage();
         }
 
-        var ext = Path.GetExtension(file.FileName ?? "").ToLowerInvariant();
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (ext != ".xlsx")
         {
-            Error = "Solo se permiten archivos .xlsx (Excel).";
-            return RedirectToPage(new { q = Q });
+            Error = "Formato no permitido. Usa .xlsx";
+            return RedirectToPage();
         }
 
-        // Cache de items existentes (SKU y Nombre)
-        var existing = await _db.InventoryItems.ToListAsync();
-        var bySku = existing
-            .Where(i => !string.IsNullOrWhiteSpace(i.Sku))
-            .GroupBy(i => i.Sku.Trim().ToLowerInvariant())
+        if (file.Length > 10 * 1024 * 1024)
+        {
+            Error = "El archivo es muy grande (máximo 10MB).";
+            return RedirectToPage();
+        }
+
+        // Caches
+        var brandList = await _db.InventoryBrands.ToListAsync();
+        var brandByName = brandList
+            .Where(b => !string.IsNullOrWhiteSpace(b.Name))
+            .GroupBy(b => b.Name.Trim().ToLowerInvariant())
             .ToDictionary(g => g.Key, g => g.First());
 
-        var byName = existing
+        var catList = await _db.InventoryCategories.ToListAsync();
+        var catByName = catList
+            .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+            .GroupBy(c => c.Name.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var locList = await _db.InventoryLocations.ToListAsync();
+        var locByName = locList
+            .Where(l => !string.IsNullOrWhiteSpace(l.Name))
+            .GroupBy(l => l.Name.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Items existentes para match
+        var items = await _db.InventoryItems.ToListAsync();
+        var itemBySku = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Sku))
+            .GroupBy(i => i.Sku!.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var itemByName = items
             .Where(i => !string.IsNullOrWhiteSpace(i.Name))
             .GroupBy(i => i.Name.Trim().ToLowerInvariant())
             .ToDictionary(g => g.Key, g => g.First());
 
-        int created = 0, updated = 0, skipped = 0;
-        var errors = new List<string>();
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
 
-        using var stream = file.OpenReadStream();
-        using var wb = new XLWorkbook(stream);
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        ms.Position = 0;
+
+        using var wb = new XLWorkbook(ms);
         var ws = wb.Worksheets.FirstOrDefault();
         if (ws == null)
         {
-            Error = "No pude leer la hoja del Excel.";
-            return RedirectToPage(new { q = Q });
+            Error = "El Excel no tiene hojas.";
+            return RedirectToPage();
         }
 
-        // Esperamos headers en la fila 1 (como la plantilla)
-        // Cols: 1 Nombre, 2 SKU, 3 Categoría, 4 Tipo, 5 Unidad, 6 OnHand, 7 Reorder, 8 Activo, 9 Notas
-        for (var row = 2; row <= 5000; row++)
+        // Header map
+        var headerRow = ws.Row(1);
+        var headerMap = BuildHeaderMap(headerRow);
+
+        // Required columns (mínimo)
+        if (!headerMap.ContainsKey("name"))
         {
-            var name = (ws.Cell(row, 1).GetString() ?? "").Trim();
-            var sku = (ws.Cell(row, 2).GetString() ?? "").Trim();
-            var category = (ws.Cell(row, 3).GetString() ?? "").Trim();
-            var tipo = (ws.Cell(row, 4).GetString() ?? "").Trim();
-            var unit = (ws.Cell(row, 5).GetString() ?? "").Trim();
-            var activeTxt = (ws.Cell(row, 8).GetString() ?? "").Trim();
-            var notes = (ws.Cell(row, 9).GetString() ?? "").Trim();
+            Error = "Falta la columna 'Nombre'.";
+            return RedirectToPage();
+        }
 
-            // Si la fila está vacía, corta
-            var empty = string.IsNullOrWhiteSpace(name)
-                        && string.IsNullOrWhiteSpace(sku)
-                        && string.IsNullOrWhiteSpace(category)
-                        && string.IsNullOrWhiteSpace(tipo)
-                        && string.IsNullOrWhiteSpace(unit)
-                        && string.IsNullOrWhiteSpace(activeTxt)
-                        && string.IsNullOrWhiteSpace(notes)
-                        && ws.Cell(row, 6).IsEmpty()
-                        && ws.Cell(row, 7).IsEmpty();
+        var lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+        if (lastRow < 2)
+        {
+            Error = "El Excel no tiene filas de datos.";
+            return RedirectToPage();
+        }
 
-            if (empty) break;
+        for (int r = 2; r <= lastRow; r++)
+        {
+            var row = ws.Row(r);
 
+            var name = GetString(row, headerMap, "name")?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(name))
             {
                 skipped++;
-                errors.Add($"Fila {row}: 'Nombre' es requerido.");
                 continue;
             }
 
-            decimal onHand = 0m;
-            decimal reorder = 0m;
+            var sku = GetString(row, headerMap, "sku")?.Trim();
+            if (string.IsNullOrWhiteSpace(sku)) sku = null;
 
-            try
+            var category = GetString(row, headerMap, "category")?.Trim() ?? "";
+            var brandName = GetString(row, headerMap, "brand")?.Trim();
+            var model = GetString(row, headerMap, "model")?.Trim();
+            var location = GetString(row, headerMap, "location")?.Trim();
+            var unit = GetString(row, headerMap, "unit")?.Trim();
+            if (string.IsNullOrWhiteSpace(unit)) unit = "pza";
+
+            var onHand = GetDecimal(row, headerMap, "onhand");
+            var reorder = GetDecimal(row, headerMap, "reorder");
+            var active = GetBool(row, headerMap, "active", defaultValue: true);
+            var notes = GetString(row, headerMap, "notes")?.Trim() ?? "";
+
+            // Normaliza
+            name = name.Trim();
+            category = category.Trim();
+            model = string.IsNullOrWhiteSpace(model) ? null : model.Trim();
+            location = string.IsNullOrWhiteSpace(location) ? null : location.Trim();
+            brandName = string.IsNullOrWhiteSpace(brandName) ? null : brandName.Trim();
+            unit = unit.Trim();
+
+            // Asegura catálogo categoría (si vino)
+            if (!string.IsNullOrWhiteSpace(category))
             {
-                // Soporta número o texto
-                var c6 = ws.Cell(row, 6);
-                if (!c6.IsEmpty())
-                    onHand = c6.DataType == XLDataType.Number ? (decimal)c6.GetDouble() : decimal.Parse(c6.GetString());
-
-                var c7 = ws.Cell(row, 7);
-                if (!c7.IsEmpty())
-                    reorder = c7.DataType == XLDataType.Number ? (decimal)c7.GetDouble() : decimal.Parse(c7.GetString());
+                var ck = category.ToLowerInvariant();
+                if (!catByName.ContainsKey(ck))
+                {
+                    var c = new InventoryCategory
+                    {
+                        Name = category,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.InventoryCategories.Add(c);
+                    catByName[ck] = c;
+                }
             }
-            catch
+
+            // Asegura catálogo ubicación (si vino)
+            if (!string.IsNullOrWhiteSpace(location))
             {
-                skipped++;
-                errors.Add($"Fila {row}: OnHand/Reorder inválidos (usa números).");
-                continue;
+                var lk = location.ToLowerInvariant();
+                if (!locByName.ContainsKey(lk))
+                {
+                    var l = new InventoryLocation
+                    {
+                        Name = location,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.InventoryLocations.Add(l);
+                    locByName[lk] = l;
+                }
             }
 
-            bool isConsumable = true;
-            if (!string.IsNullOrWhiteSpace(tipo))
+            // Asegura marca (si vino)
+            Guid? brandId = null;
+            if (!string.IsNullOrWhiteSpace(brandName))
             {
-                var t = tipo.Trim().ToLowerInvariant();
-                isConsumable = t.StartsWith("c"); // consumible
-                if (t.StartsWith("h")) isConsumable = false; // hardware
+                var bk = brandName.ToLowerInvariant();
+                if (!brandByName.TryGetValue(bk, out var b))
+                {
+                    b = new InventoryBrand
+                    {
+                        Name = brandName,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.InventoryBrands.Add(b);
+                    brandByName[bk] = b;
+                }
+                brandId = b.Id;
             }
 
-            bool isActive = true;
-            if (!string.IsNullOrWhiteSpace(activeTxt))
+            // Match item
+            InventoryItem? item = null;
+
+            if (!string.IsNullOrWhiteSpace(sku))
             {
-                var a = activeTxt.Trim().ToLowerInvariant();
-                if (a.StartsWith("n")) isActive = false; // no
-                if (a.StartsWith("s")) isActive = true;  // sí
+                var sk = sku.ToLowerInvariant();
+                itemBySku.TryGetValue(sk, out item);
             }
 
-            unit = string.IsNullOrWhiteSpace(unit) ? "pza" : unit;
-
-            InventoryItem item;
-            bool isNew = false;
-
-            var skuKey = (sku ?? "").Trim().ToLowerInvariant();
-            var nameKey = name.Trim().ToLowerInvariant();
-
-            if (!string.IsNullOrWhiteSpace(skuKey) && bySku.TryGetValue(skuKey, out item!))
+            if (item == null)
             {
-                // update por SKU
+                var nk = name.ToLowerInvariant();
+                itemByName.TryGetValue(nk, out item);
             }
-            else if (byName.TryGetValue(nameKey, out item!))
-            {
-                // update por nombre (fallback)
-            }
-            else
+
+            if (item == null)
             {
                 item = new InventoryItem
                 {
+                    Id = Guid.NewGuid(),
                     CreatedAt = DateTime.UtcNow
                 };
-                isNew = true;
-            }
 
-            // Limita tamaños (por si alguien pega una novela)
-            string cut(string s, int max) => (s ?? "").Length <= max ? (s ?? "") : (s ?? "").Substring(0, max);
-
-            item.Name = cut(name, 200);
-            item.Sku = cut(sku, 60);
-            item.Category = cut(category, 100);
-            item.IsConsumable = isConsumable;
-            item.Unit = cut(unit, 40);
-            item.QuantityOnHand = onHand;
-            item.ReorderLevel = reorder;
-            item.IsActive = isActive;
-            item.Notes = cut(notes, 2000);
-            item.UpdatedAt = DateTime.UtcNow;
-
-            if (isNew)
-            {
                 _db.InventoryItems.Add(item);
                 created++;
 
-                // actualiza diccionarios
-                if (!string.IsNullOrWhiteSpace(item.Sku))
-                    bySku[item.Sku.Trim().ToLowerInvariant()] = item;
-                byName[item.Name.Trim().ToLowerInvariant()] = item;
+                // cache por nombre y sku (si existe)
+                itemByName[name.ToLowerInvariant()] = item;
+                if (!string.IsNullOrWhiteSpace(sku))
+                    itemBySku[sku.ToLowerInvariant()] = item;
             }
             else
             {
                 updated++;
             }
+
+            // Upsert fields
+            item.Name = name;
+            item.Sku = sku;
+            item.Category = category;          // texto seleccionado desde catálogo
+            item.BrandId = brandId;            // FK a catálogo de marcas
+            item.Model = model;
+            item.Location = location;          // texto seleccionado desde catálogo
+
+            item.Unit = unit;
+            item.QuantityOnHand = onHand;
+            item.ReorderLevel = reorder;
+            item.IsActive = active;
+
+            // Consumible vs hardware (si traes columna "tipo" en tu template viejo, aquí puedes mapearlo)
+            // Si no viene, NO lo tocamos para no cambiar tu lógica:
+            // item.IsConsumable = item.IsConsumable;
+
+            item.Notes = notes;
+            item.UpdatedAt = DateTime.UtcNow;
         }
 
         await _db.SaveChangesAsync();
 
-        var errHead = errors.Count > 0
-            ? $" · Errores: {errors.Count} (primeros: {string.Join(" | ", errors.Take(5))})"
-            : "";
-
-        Info = $"Importación lista. Nuevos: {created} · Actualizados: {updated} · Omitidos: {skipped}{errHead}";
-        return RedirectToPage(new { q = Q });
+        Info = $"Importación lista: {created} creados, {updated} actualizados, {skipped} saltados.";
+        return RedirectToPage();
     }
 
+    // =========================
+    // Helpers
+    // =========================
 
-    public async Task OnGetAsync()
+    private static Dictionary<string, int> BuildHeaderMap(IXLRow headerRow)
     {
-        var q = (Q ?? "").Trim();
-        var query = _db.InventoryItems.AsNoTracking().OrderBy(i => i.Name).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(q))
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        var lastCol = headerRow.LastCellUsed()?.Address.ColumnNumber ?? 0;
+        for (int c = 1; c <= lastCol; c++)
         {
-            var l = q.ToLower();
-            query = query.Where(i => (i.Name ?? "").ToLower().Contains(l) || (i.Sku ?? "").ToLower().Contains(l));
+            var raw = headerRow.Cell(c).GetString()?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+
+            var k = NormalizeHeader(raw);
+
+            // Aliases
+            if (k is "nombre" or "name") map["name"] = c;
+            else if (k is "sku" or "codigo" or "código" or "clave") map["sku"] = c;
+            else if (k is "categoria" or "categoría" or "category") map["category"] = c;
+            else if (k is "marca" or "brand") map["brand"] = c;
+            else if (k is "modelo" or "model") map["model"] = c;
+            else if (k is "ubicacion" or "ubicación" or "location") map["location"] = c;
+            else if (k is "unidad" or "unit") map["unit"] = c;
+            else if (k is "existencia" or "onhand" or "on hand" or "qty" or "cantidad") map["onhand"] = c;
+            else if (k is "stockminimo" or "stock mínimo" or "stock minimo" or "reorder" or "reorderlevel" or "min") map["reorder"] = c;
+            else if (k is "activo" or "active") map["active"] = c;
+            else if (k is "notas" or "notes" or "nota") map["notes"] = c;
         }
-        Items = await query.Take(1000).ToListAsync();
+
+        return map;
+    }
+
+    private static string NormalizeHeader(string s)
+    {
+        s = s.Trim().ToLowerInvariant();
+        s = s.Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u").Replace("ü", "u");
+        s = s.Replace("(", "").Replace(")", "");
+        s = s.Replace("_", " ").Replace("-", " ");
+        s = string.Join(" ", s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return s;
+    }
+
+    private static string? GetString(IXLRow row, Dictionary<string, int> map, string key)
+    {
+        if (!map.TryGetValue(key, out var col)) return null;
+        return row.Cell(col).GetString();
+    }
+
+    private static decimal GetDecimal(IXLRow row, Dictionary<string, int> map, string key)
+    {
+        if (!map.TryGetValue(key, out var col)) return 0m;
+        var cell = row.Cell(col);
+
+        if (cell.DataType == XLDataType.Number)
+        {
+            return Convert.ToDecimal(cell.GetDouble());
+        }
+
+        var txt = cell.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(txt)) return 0m;
+
+        // intenta con cultura actual y con invariant
+        if (decimal.TryParse(txt, NumberStyles.Any, CultureInfo.CurrentCulture, out var d)) return d;
+        if (decimal.TryParse(txt, NumberStyles.Any, CultureInfo.InvariantCulture, out d)) return d;
+
+        // intenta limpiar comas/espacios
+        txt = txt.Replace(",", "").Replace(" ", "");
+        if (decimal.TryParse(txt, NumberStyles.Any, CultureInfo.InvariantCulture, out d)) return d;
+
+        return 0m;
+    }
+
+    private static bool GetBool(IXLRow row, Dictionary<string, int> map, string key, bool defaultValue)
+    {
+        if (!map.TryGetValue(key, out var col)) return defaultValue;
+        var cell = row.Cell(col);
+
+        if (cell.DataType == XLDataType.Boolean)
+            return cell.GetBoolean();
+
+        var txt = cell.GetString()?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(txt)) return defaultValue;
+
+        return txt is "true" or "1" or "si" or "sí" or "yes" or "y";
     }
 }

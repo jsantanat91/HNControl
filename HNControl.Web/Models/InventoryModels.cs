@@ -2,18 +2,72 @@ using System.ComponentModel.DataAnnotations;
 
 namespace HNControl.Web.Models;
 
-public class InventoryItem
+public class InventoryBrand
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    [MaxLength(60)]
-    public string Sku { get; set; } = "";
+    [Required, MaxLength(120)]
+    public string Name { get; set; } = "";
+
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public List<InventoryItem> Items { get; set; } = new();
+}
+
+public class InventoryCategory
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required, MaxLength(100)]
+    public string Name { get; set; } = "";
+
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class InventoryLocation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required, MaxLength(200)]
     public string Name { get; set; } = "";
 
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class InventoryItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    // SKU es opcional (puede venir null)
+    [MaxLength(60)]
+    public string? Sku { get; set; }
+
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = "";
+
+    // OJO: se guarda como texto (pero se elige desde catálogo)
     [MaxLength(100)]
     public string Category { get; set; } = "";
+
+    // Marca / Modelo / Ubicación
+    public Guid? BrandId { get; set; }
+    public InventoryBrand? Brand { get; set; }
+
+    [MaxLength(120)]
+    public string? Model { get; set; }
+
+    // OJO: se guarda como texto (pero se elige desde catálogo)
+    [MaxLength(200)]
+    public string? Location { get; set; }
 
     [MaxLength(40)]
     public string Unit { get; set; } = "pza";

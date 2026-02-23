@@ -84,7 +84,7 @@ public class RequestInModel : PageModel
         ItemOptions = items.Select(i => new SelectListItem
         {
             Value = i.Id.ToString(),
-            Text = $"{i.Name}{(string.IsNullOrWhiteSpace(i.Sku) ? "" : " [" + i.Sku + "]")} • OnHand: {i.QuantityOnHand} {i.Unit}"
+            Text = $"{i.Name}{(string.IsNullOrWhiteSpace(i.Sku) ? "" : " [" + i.Sku + "]")} • Existencia: {i.QuantityOnHand} {i.Unit}"
         }).ToList();
     }
 }

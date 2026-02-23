@@ -4,6 +4,7 @@ using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Inventory.Items;
@@ -16,71 +17,138 @@ public class EditModel : PageModel
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
+    public List<SelectListItem> BrandOptions { get; set; } = new();
+    public List<SelectListItem> CategoryOptions { get; set; } = new();
+    public List<SelectListItem> LocationOptions { get; set; } = new();
+
+    public string? Error { get; set; }
+
     public class InputModel
     {
         public Guid Id { get; set; }
 
-        [Required, MaxLength(160)]
-        public string Name { get; set; } = "";
-
         [MaxLength(60)]
         public string? Sku { get; set; }
 
-        [MaxLength(20)]
-        public string Unit { get; set; } = "pz";
+        [Required, MaxLength(200)]
+        public string Name { get; set; } = "";
 
-        public bool IsConsumable { get; set; } = true;
+        [MaxLength(100)]
+        public string Category { get; set; } = "";
 
-        [Range(0, 999999)]
-        public decimal QuantityOnHand { get; set; } = 0;
+        public Guid? BrandId { get; set; }
 
-        [Range(0, 999999)]
-        public decimal ReorderLevel { get; set; } = 0;
+        [MaxLength(120)]
+        public string? Model { get; set; }
+
+        [MaxLength(200)]
+        public string? Location { get; set; }
+
+        [MaxLength(40)]
+        public string Unit { get; set; } = "pza";
+
+        public decimal QuantityOnHand { get; set; }
+        public decimal ReorderLevel { get; set; }
+
+        public bool IsConsumable { get; set; }
+        public bool IsActive { get; set; }
 
         [MaxLength(2000)]
-        public string? Notes { get; set; }
-
-        public bool IsActive { get; set; } = true;
+        public string Notes { get; set; } = "";
     }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        var i = await _db.InventoryItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (i == null) return NotFound();
+        var item = await _db.InventoryItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
 
         Input = new InputModel
         {
-            Id = i.Id,
-            Name = i.Name,
-            Sku = i.Sku,
-            Unit = i.Unit,
-            IsConsumable = i.IsConsumable,
-            QuantityOnHand = i.QuantityOnHand,
-            ReorderLevel = i.ReorderLevel,
-            Notes = i.Notes,
-            IsActive = i.IsActive
+            Id = item.Id,
+            Name = item.Name,
+            Sku = item.Sku,
+            Category = item.Category ?? "",
+            BrandId = item.BrandId,
+            Model = item.Model,
+            Location = item.Location,
+            Unit = item.Unit,
+            QuantityOnHand = item.QuantityOnHand,
+            ReorderLevel = item.ReorderLevel,
+            IsConsumable = item.IsConsumable,
+            IsActive = item.IsActive,
+            Notes = item.Notes ?? ""
         };
+
+        await LoadCatalogsAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid) return Page();
+        await LoadCatalogsAsync();
 
-        var i = await _db.InventoryItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
-        if (i == null) return NotFound();
+        Input.Name = (Input.Name ?? "").Trim();
+        Input.Sku = string.IsNullOrWhiteSpace(Input.Sku) ? null : Input.Sku.Trim();
+        Input.Category = (Input.Category ?? "").Trim();
+        Input.Model = string.IsNullOrWhiteSpace(Input.Model) ? null : Input.Model.Trim();
+        Input.Location = string.IsNullOrWhiteSpace(Input.Location) ? null : Input.Location.Trim();
+        Input.Unit = string.IsNullOrWhiteSpace(Input.Unit) ? "pza" : Input.Unit.Trim();
+        Input.Notes = (Input.Notes ?? "").Trim();
 
-        i.Name = Input.Name.Trim();
-        i.Sku = (Input.Sku ?? "").Trim();
-        i.Unit = (Input.Unit ?? "pz").Trim();
-        i.IsConsumable = Input.IsConsumable;
-        i.QuantityOnHand = Input.QuantityOnHand;
-        i.ReorderLevel = Input.ReorderLevel;
-        i.Notes = (Input.Notes ?? "").Trim();
-        i.IsActive = Input.IsActive;
-        i.UpdatedAt = DateTime.UtcNow;
+        if (!ModelState.IsValid)
+        {
+            Error = "Revisa los campos marcados.";
+            return Page();
+        }
+
+        var item = await _db.InventoryItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
+        if (item == null) return NotFound();
+
+        item.Name = Input.Name;
+        item.Sku = Input.Sku;
+        item.Category = Input.Category;
+        item.BrandId = Input.BrandId;
+        item.Model = Input.Model;
+        item.Location = Input.Location;
+        item.Unit = Input.Unit;
+
+        item.QuantityOnHand = Input.QuantityOnHand;
+        item.ReorderLevel = Input.ReorderLevel;
+
+        item.IsConsumable = Input.IsConsumable;
+        item.IsActive = Input.IsActive;
+
+        item.Notes = Input.Notes;
+        item.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return RedirectToPage("./Index");
+    }
+
+    private async Task LoadCatalogsAsync()
+    {
+        BrandOptions = await _db.InventoryBrands
+            .AsNoTracking()
+            .Where(b => b.IsActive)
+            .OrderBy(b => b.Name)
+            .Select(b => new SelectListItem(b.Name, b.Id.ToString()))
+            .ToListAsync();
+        BrandOptions.Insert(0, new SelectListItem("— Sin marca —", ""));
+
+        CategoryOptions = await _db.InventoryCategories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new SelectListItem(c.Name, c.Name))
+            .ToListAsync();
+        CategoryOptions.Insert(0, new SelectListItem("— Sin categoría —", ""));
+
+        LocationOptions = await _db.InventoryLocations
+            .AsNoTracking()
+            .Where(l => l.IsActive)
+            .OrderBy(l => l.Name)
+            .Select(l => new SelectListItem(l.Name, l.Name))
+            .ToListAsync();
+        LocationOptions.Insert(0, new SelectListItem("— Sin ubicación —", ""));
     }
 }

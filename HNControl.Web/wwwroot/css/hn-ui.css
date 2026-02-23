@@ -472,3 +472,22 @@ a:hover { color: var(--hn-blue-dark); text-decoration: underline; }
   .hn-sidebar{ display:none; }
   .hn-main{ padding: 18px 14px 26px; }
 }
+/* Range con fill (azul antes del thumb) */
+.hn-range {
+    height: .55rem;
+    border-radius: 999px;
+    background: rgba(15,23,42,.12);
+}
+
+    /* Dejamos el track transparente para que se vea el background del input */
+    .hn-range::-webkit-slider-runnable-track {
+        height: .55rem;
+        background: transparent;
+        border-radius: 999px;
+    }
+
+    .hn-range::-moz-range-track {
+        height: .55rem;
+        background: transparent;
+        border-radius: 999px;
+    }

@@ -63,7 +63,7 @@ public class DetailsModel : PageModel
         {
             if (mov.Item.QuantityOnHand < mov.Quantity)
             {
-                ModelState.AddModelError(string.Empty, $"Stock insuficiente: OnHand {mov.Item.QuantityOnHand} {mov.Item.Unit}.");
+                ModelState.AddModelError(string.Empty, $"Stock insuficiente: Existencia {mov.Item.QuantityOnHand} {mov.Item.Unit}.");
                 await tx.RollbackAsync();
                 return await OnGetAsync(id);
             }

@@ -1,0 +1,94 @@
+@page
+@model HNControl.Web.Pages.Admin.Inventory.Brands.IndexModel
+@using HNControl.Web.Models
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Admin - Marcas";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Marcas (Inventario)</h1>
+        <div class="text-muted small">Catálogo de marcas para usar en los items.</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">← Volver a items</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-success">@Model.Info</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" asp-page-handler="Add" class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Nueva marca</label>
+                <input class="form-control" asp-for="NewName" placeholder="Ej. Ubiquiti, Hikvision, Mikrotik..." />
+                <span class="text-danger small" asp-validation-for="NewName"></span>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary" type="submit">Agregar</button>
+            </div>
+            <div class="col-md-3 text-muted small">
+                Tip: si escribes “UBIQUITI” y “Ubiquiti”, te lo detecta como la misma.
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Marca</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var b in Model.Brands)
+                {
+                    <tr>
+                        <td class="fw-semibold">@b.Name</td>
+                        <td>
+                            @if (b.IsActive)
+                            {
+                                <span class="hn-badge hn-badge-green">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="hn-badge hn-badge-gray">Inactiva</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Toggle" class="d-inline">
+                                <input type="hidden" name="id" value="@b.Id" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">@(b.IsActive ? "Desactivar" : "Activar")</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.Brands.Count == 0)
+        {
+            <div class="text-muted">Sin marcas aún.</div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
