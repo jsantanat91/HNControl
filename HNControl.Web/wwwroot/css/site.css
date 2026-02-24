@@ -1,3 +1,22 @@
+:root {
+    --hn-font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+}
+
+body {
+    font-family: var(--hn-font);
+}
+
+:root {
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+}
+
+body {
+    font-family: var(--font-sans);
+}
+
+.money, .currency, .kpi-value, .card .display-6, .card .fs-1, .card .fs-2, .card .fs-3, .card .fs-4 {
+    font-family: var(--font-sans);
+}
 /* Checklist UI */
 .hn-checklist-card {
     border: 1px solid rgba(0,0,0,.06);
