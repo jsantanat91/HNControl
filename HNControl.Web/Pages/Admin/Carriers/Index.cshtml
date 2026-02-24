@@ -24,7 +24,9 @@
             <table class="table align-middle">
                 <thead>
                     <tr>
+                        <th style="width:86px;">Logo</th>
                         <th>Carrier</th>
+                        <th>Ejecutivo</th>
                         <th>Tel soporte</th>
                         <th>Email</th>
                         <th>Portal</th>
@@ -35,7 +37,18 @@
                 @foreach (var c in Model.Carriers)
                 {
                     <tr>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(c.LogoStoragePath))
+                            {
+                                <img src="@Url.Page("/Carriers/Logo", new { id = c.Id })" alt="logo" style="height:36px; width:72px; object-fit:contain;" class="border rounded bg-white p-1" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
                         <td class="fw-semibold">@c.Name</td>
+                        <td>@(string.IsNullOrWhiteSpace(c.ExecutiveName) ? "—" : c.ExecutiveName)</td>
                         <td>@(string.IsNullOrWhiteSpace(c.SupportPhone) ? "—" : c.SupportPhone)</td>
                         <td>@(string.IsNullOrWhiteSpace(c.SupportEmail) ? "—" : c.SupportEmail)</td>
                         <td>

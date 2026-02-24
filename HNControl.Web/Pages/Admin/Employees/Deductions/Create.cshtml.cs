@@ -62,6 +62,7 @@ public class CreateModel : PageModel
             UserId = UserId,
             Concept = Input.Concept.Trim(),
             Type = Input.Type,
+            Direction = Input.Direction,
             Mode = Input.Mode,
             Amount = Input.Amount,
             Rate = rate,
@@ -84,6 +85,8 @@ public class CreateModel : PageModel
     {
         [Required, MaxLength(200)]
         public string Concept { get; set; } = "";
+
+        public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
 
         public EmployeeDeductionType Type { get; set; } = EmployeeDeductionType.Otro;
         public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;

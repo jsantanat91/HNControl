@@ -41,6 +41,7 @@ public class IndexModel : PageModel
             Id = d.Id,
             Concept = d.Concept,
             Type = d.Type,
+            Direction = d.Direction,
             Mode = d.Mode,
             Amount = d.Amount,
             Rate = d.Rate,
@@ -74,6 +75,7 @@ public class IndexModel : PageModel
         public Guid Id { get; set; }
         public string Concept { get; set; } = "";
         public EmployeeDeductionType Type { get; set; }
+        public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
         public EmployeeDeductionMode Mode { get; set; }
         public decimal Amount { get; set; }
         public decimal Rate { get; set; }
@@ -82,10 +84,18 @@ public class IndexModel : PageModel
         public bool IsActive { get; set; }
         public decimal? RemainingAmount { get; set; }
 
-        public string AmountLabel => Mode switch
+        public string AmountLabel
         {
-            EmployeeDeductionMode.FixedAmount => Amount.ToString("N2"),
-            _ => (Rate * 100m).ToString("0.##") + "%"
-        };
+            get
+            {
+                var baseLabel = Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => Amount.ToString("N2"),
+                    _ => (Rate * 100m).ToString("0.##") + "%"
+                };
+
+                return Direction == EmployeeDeductionDirection.Bonus ? "+" + baseLabel : baseLabel;
+            }
+        }
     }
 }

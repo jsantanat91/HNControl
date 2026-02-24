@@ -59,7 +59,13 @@
                 @foreach (var b in Model.Brands)
                 {
                     <tr>
-                        <td class="fw-semibold">@b.Name</td>
+                        <td>
+                            <form method="post" asp-page-handler="Rename" class="d-flex gap-2 align-items-center">
+                                <input type="hidden" name="id" value="@b.Id" />
+                                <input class="form-control form-control-sm" name="name" value="@b.Name" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                            </form>
+                        </td>
                         <td>
                             @if (b.IsActive)
                             {

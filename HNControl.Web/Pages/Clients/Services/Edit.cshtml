@@ -61,6 +61,12 @@
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
+            <div class="col-md-4">
+                <label class="form-label">Monto mensual</label>
+                <input class="form-control" asp-for="Input.MonthlyAmount" placeholder="$0.00" />
+                <div class="form-text">Costo mensual del servicio.</div>
+            </div>
+
             <div class="col-md-6">
                 <label class="form-label">Inicio</label>
                 <input class="form-control" type="date" asp-for="Input.ContractStartDate" />

@@ -12,6 +12,24 @@ public class InternetCarrier
     [Required, MaxLength(120)]
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// Nombre del ejecutivo / contacto principal del carrier.
+    /// </summary>
+    [MaxLength(120)]
+    public string ExecutiveName { get; set; } = "";
+
+    // Logo (opcional)
+    [MaxLength(500)]
+    public string? LogoStoragePath { get; set; }
+
+    [MaxLength(255)]
+    public string? LogoOriginalFileName { get; set; }
+
+    [MaxLength(100)]
+    public string? LogoContentType { get; set; }
+
+    public long? LogoSizeBytes { get; set; }
+
     [MaxLength(40)]
     public string SupportPhone { get; set; } = "";
 

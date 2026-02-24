@@ -77,4 +77,34 @@ public class IndexModel : PageModel
         Info = b.IsActive ? "Marca activada." : "Marca desactivada.";
         return RedirectToPage();
     }
+
+    public async Task<IActionResult> OnPostRenameAsync(Guid id, string name)
+    {
+        var b = await _db.InventoryBrands.FirstOrDefaultAsync(x => x.Id == id);
+        if (b == null) return NotFound();
+
+        var newName = (name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            Error = "El nombre no puede ir vacío.";
+            return RedirectToPage();
+        }
+
+        var key = newName.ToLowerInvariant();
+        var exists = await _db.InventoryBrands.AsNoTracking()
+            .AnyAsync(x => x.Id != id && x.Name.ToLower() == key);
+
+        if (exists)
+        {
+            Error = "Ya existe otra marca con ese nombre.";
+            return RedirectToPage();
+        }
+
+        b.Name = newName;
+        b.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Info = "Marca actualizada.";
+        return RedirectToPage();
+    }
 }

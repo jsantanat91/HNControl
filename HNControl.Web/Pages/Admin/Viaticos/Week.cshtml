@@ -26,13 +26,18 @@
         <div class="text-muted small">
             Empleado: <strong>@(Model.Week.EmployeeProfile?.FullName ?? Model.Week.UserId)</strong>
             · Semana: <strong>@Model.Week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
-            · Estado: <strong>@Model.Week.Status</strong>
+            · Estado: <strong>@Model.Week.Status.GetDisplayName()</strong>
         </div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index">Volver</a>
         <a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/ExportWeek" asp-route-id="@Model.Week.Id">Exportar CSV</a>
+
+        <form method="post" asp-page-handler="Delete" class="d-inline">
+            <input type="hidden" name="id" value="@Model.Week.Id" />
+            <button class="btn btn-outline-danger" type="submit" onclick="return confirm('¿Eliminar esta semana COMPLETA? (se borra todo, incluso si estaba aprobada)');">Eliminar semana</button>
+        </form>
 
         @if (Model.Week.Status == HNControl.Web.Models.ViaticWeekStatus.Submitted)
         {

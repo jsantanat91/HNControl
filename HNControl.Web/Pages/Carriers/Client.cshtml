@@ -62,10 +62,20 @@
                             <div>
                                 <div class="hn-module-title mb-1">@s.Service.ServiceLabel</div>
                                 <div class="text-muted small">
-                                    <strong>@s.CarrierName</strong>
+                                    <span class="d-inline-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrWhiteSpace(s.CarrierLogoUrl))
+                                        {
+                                            <img src="@s.CarrierLogoUrl" alt="logo" style="height:22px; width:48px; object-fit:contain;" class="border rounded bg-white p-1" />
+                                        }
+                                        <strong>@s.CarrierName</strong>
+                                    </span>
                                     @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
                                     {
                                         <span> • @s.Service.Plan</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(s.CarrierExecutive))
+                                    {
+                                        <span> • Ejecutivo: <b>@s.CarrierExecutive</b></span>
                                     }
                                 </div>
                             </div>
@@ -102,6 +112,11 @@
                             <div class="col-md-6">
                                 <div class="text-muted small">IP info</div>
                                 <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.IpInfo) ? "—" : s.Service.IpInfo)</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="text-muted small">Ejecutivo</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CarrierExecutive) ? "—" : s.CarrierExecutive)</div>
                             </div>
 
                             <div class="col-md-4">

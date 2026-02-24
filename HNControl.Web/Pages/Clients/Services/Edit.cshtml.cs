@@ -67,6 +67,9 @@ public class EditModel : PageModel
         [MaxLength(2000)]
         public string Notes { get; set; } = "";
 
+        [Range(0, 99999999)]
+        public decimal? MonthlyAmount { get; set; }
+
         public IFormFile? SignedContract { get; set; }
     }
 
@@ -91,6 +94,7 @@ public class EditModel : PageModel
             Provider = Contract.Provider,
             AccountNumber = Contract.AccountNumber,
             ContractNumber = Contract.ContractNumber,
+            MonthlyAmount = Contract.MonthlyAmount,
             ContractStartDate = Contract.ContractStartDate?.Date,
             ContractEndDate = Contract.ContractEndDate?.Date,
             ProjectId = Contract.ProjectId,
@@ -120,6 +124,7 @@ public class EditModel : PageModel
         Contract.Provider = (Input.Provider ?? "").Trim();
         Contract.AccountNumber = (Input.AccountNumber ?? "").Trim();
         Contract.ContractNumber = (Input.ContractNumber ?? "").Trim();
+        Contract.MonthlyAmount = Input.MonthlyAmount;
         Contract.ContractStartDate = Input.ContractStartDate?.Date;
         Contract.ContractEndDate = Input.ContractEndDate?.Date;
         Contract.ProjectId = Input.ProjectId;

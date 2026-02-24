@@ -41,6 +41,7 @@ public class EditModel : PageModel
         Input = new InputModel
         {
             Concept = d.Concept,
+            Direction = d.Direction,
             Type = d.Type,
             Mode = d.Mode,
             Amount = d.Amount,
@@ -69,6 +70,7 @@ public class EditModel : PageModel
         if (d == null) return NotFound();
 
         d.Concept = Input.Concept.Trim();
+        d.Direction = Input.Direction;
         d.Type = Input.Type;
         d.Mode = Input.Mode;
         d.Amount = Input.Amount;
@@ -102,6 +104,8 @@ public class EditModel : PageModel
     {
         [Required, MaxLength(200)]
         public string Concept { get; set; } = "";
+
+        public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
 
         public EmployeeDeductionType Type { get; set; } = EmployeeDeductionType.Otro;
         public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;

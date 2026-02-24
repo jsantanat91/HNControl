@@ -1,23 +1,23 @@
 @page
 @model HNControl.Web.Pages.Admin.Employees.Deductions.IndexModel
 @{
-    ViewData["Title"] = "Deducciones";
+    ViewData["Title"] = "Ajustes";
 }
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Deducciones</h1>
+        <h1 class="h4 mb-0">Ajustes</h1>
         <div class="text-muted small">@Model.Employee?.FullName</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-id="@Model.UserId">Volver</a>
-        <a class="btn btn-primary" asp-page="Create" asp-route-userId="@Model.UserId">Nueva deducción</a>
+        <a class="btn btn-primary" asp-page="Create" asp-route-userId="@Model.UserId">Nuevo ajuste</a>
     </div>
 </div>
 
 @if (!Model.Items.Any())
 {
-    <div class="alert alert-info">Sin deducciones aún. (Tu nómina está demasiado tranquila… sospechoso.)</div>
+    <div class="alert alert-info">Sin ajustes aún. (Tu nómina está demasiado tranquila… sospechoso.)</div>
 }
 else
 {
@@ -26,6 +26,7 @@ else
             <thead>
             <tr>
                 <th>Concepto</th>
+                <th>Dirección</th>
                 <th>Tipo</th>
                 <th>Modo</th>
                 <th>Importe</th>
@@ -40,8 +41,18 @@ else
             {
                 <tr>
                     <td class="fw-semibold">@d.Concept</td>
-                    <td class="text-muted small">@d.Type</td>
-                    <td class="text-muted small">@d.Mode</td>
+                    <td>
+                        @if (d.Direction == HNControl.Web.Models.EmployeeDeductionDirection.Bonus)
+                        {
+                            <span class="badge text-bg-success">@d.Direction.GetDisplayName()</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-warning">@d.Direction.GetDisplayName()</span>
+                        }
+                    </td>
+                    <td class="text-muted small">@d.Type.GetDisplayName()</td>
+                    <td class="text-muted small">@d.Mode.GetDisplayName()</td>
                     <td>@d.AmountLabel</td>
                     <td class="text-muted small">@(d.StartDate?.ToString("yyyy-MM-dd") ?? "—")</td>
                     <td class="text-muted small">@(d.EndDate?.ToString("yyyy-MM-dd") ?? "—")</td>

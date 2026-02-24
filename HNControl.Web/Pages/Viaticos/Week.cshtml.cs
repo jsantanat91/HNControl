@@ -14,11 +14,13 @@ public class WeekModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
+    private readonly IFileStorage _storage;
 
-    public WeekModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr)
+    public WeekModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IFileStorage storage)
     {
         _db = db;
         _userMgr = userMgr;
+        _storage = storage;
     }
 
     public ViaticWeek? Week { get; set; }
@@ -94,7 +96,10 @@ public class WeekModel : PageModel
         foreach (var e in week.Entries.ToList())
         {
             if (e.Attachment != null)
+            {
+                await _storage.DeleteIfExistsAsync(e.Attachment.StoragePath);
                 _db.ViaticAttachments.Remove(e.Attachment);
+            }
 
             _db.ViaticEntries.Remove(e);
         }
@@ -127,7 +132,10 @@ public class WeekModel : PageModel
         }
 
         if (entry.Attachment != null)
+        {
+            await _storage.DeleteIfExistsAsync(entry.Attachment.StoragePath);
             _db.ViaticAttachments.Remove(entry.Attachment);
+        }
 
         _db.ViaticEntries.Remove(entry);
         await _db.SaveChangesAsync();
@@ -136,6 +144,35 @@ public class WeekModel : PageModel
         await _db.SaveChangesAsync();
 
         return RedirectToPage("/Viaticos/Week", new { id = entry.WeekId });
+    }
+
+    public async Task<IActionResult> OnPostDeleteWeekAsync(Guid weekId)
+    {
+        var userId = _userMgr.GetUserId(User)!;
+
+        var week = await _db.ViaticWeeks
+            .Include(w => w.Entries).ThenInclude(e => e.Attachment)
+            .FirstOrDefaultAsync(w => w.Id == weekId && w.UserId == userId);
+
+        if (week == null) return NotFound();
+
+        if (week.Status != ViaticWeekStatus.Draft)
+        {
+            Error = "Solo puedes eliminar semanas en estado Borrador.";
+            return RedirectToPage("/Viaticos/Week", new { id = weekId });
+        }
+
+        foreach (var e in week.Entries)
+        {
+            if (e.Attachment != null)
+                await _storage.DeleteIfExistsAsync(e.Attachment.StoragePath);
+        }
+
+        _db.ViaticWeeks.Remove(week);
+        await _db.SaveChangesAsync();
+
+        Info = "Semana eliminada.";
+        return RedirectToPage("/Viaticos/Index");
     }
 
     public async Task<IActionResult> OnPostToggleBillableAsync(Guid entryId)

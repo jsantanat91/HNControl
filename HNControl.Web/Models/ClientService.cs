@@ -57,6 +57,12 @@ public class ClientServiceContract
     [MaxLength(2000)]
     public string Notes { get; set; } = "";
 
+    /// <summary>
+    /// Monto mensual del contrato (costo mensual del servicio durante el contrato).
+    /// </summary>
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? MonthlyAmount { get; set; }
+
     // Archivo del contrato firmado (PDF recomendado)
     [MaxLength(500)]
     public string? SignedContractStoragePath { get; set; }

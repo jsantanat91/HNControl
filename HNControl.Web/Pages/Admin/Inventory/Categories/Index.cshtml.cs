@@ -77,4 +77,34 @@ public class IndexModel : PageModel
         Info = c.IsActive ? "Categoría activada." : "Categoría desactivada.";
         return RedirectToPage();
     }
+
+    public async Task<IActionResult> OnPostRenameAsync(Guid id, string name)
+    {
+        var c = await _db.InventoryCategories.FirstOrDefaultAsync(x => x.Id == id);
+        if (c == null) return NotFound();
+
+        var newName = (name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            Error = "El nombre no puede ir vacío.";
+            return RedirectToPage();
+        }
+
+        var key = newName.ToLowerInvariant();
+        var exists = await _db.InventoryCategories.AsNoTracking()
+            .AnyAsync(x => x.Id != id && x.Name.ToLower() == key);
+
+        if (exists)
+        {
+            Error = "Ya existe otra categoría con ese nombre.";
+            return RedirectToPage();
+        }
+
+        c.Name = newName;
+        c.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Info = "Categoría actualizada.";
+        return RedirectToPage();
+    }
 }

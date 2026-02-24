@@ -6,23 +6,16 @@
 }
 
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-    <h1 class="h4 mb-0">Solicitar salida</h1>
+    <div>
+        <h1 class="h4 mb-0">Solicitar salida</h1>
+        <div class="text-muted small">Agrega varios items y envía una sola solicitud (tipo viáticos, pero con tornillos 😄).</div>
+    </div>
     <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
 
 <form method="post" class="card">
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-8">
-                <label class="form-label">Item</label>
-                <select class="form-select" asp-for="Input.ItemId" asp-items="Model.ItemOptions"></select>
-                <div class="form-text">Si es <strong>hardware</strong>, completa Cliente/Serie; si es consumible, déjalos en blanco.</div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Cantidad</label>
-                <input class="form-control" asp-for="Input.Quantity" />
-            </div>
-
             <div class="col-md-6">
                 <label class="form-label">Proyecto</label>
                 <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectOptions"></select>
@@ -32,23 +25,72 @@
                 <select class="form-select" asp-for="Input.ResponsibleUserId" asp-items="Model.EmployeeOptions"></select>
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Cliente asignado (hardware)</label>
-                <select class="form-select" asp-for="Input.AssignedClientId" asp-items="Model.ClientOptions"></select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Serie / Asset Tag (hardware)</label>
-                <input class="form-control" asp-for="Input.SerialNumber" />
-            </div>
-
             <div class="col-12">
-                <label class="form-label">Notas</label>
-                <textarea class="form-control" asp-for="Input.Notes" rows="4" placeholder="Motivo, destino, observaciones..."></textarea>
+                <label class="form-label">Notas generales (opcional)</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="2" placeholder="Motivo, destino, observaciones..."></textarea>
             </div>
         </div>
 
-        <div class="alert alert-light border mt-3 mb-0">
-            Se crea como <strong>Pendiente</strong>. Un admin la aprueba para que impacte existencias.
+        <hr class="my-3" />
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">Items a retirar</div>
+            <button class="btn btn-sm btn-outline-primary" type="button" id="addRowBtn">+ Agregar item</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="min-width:340px;">Item</th>
+                        <th style="width:130px;">Cantidad</th>
+                        <th style="min-width:260px;">Cliente (hardware)</th>
+                        <th style="min-width:200px;">Serie / Asset</th>
+                        <th style="min-width:260px;">Nota (opcional)</th>
+                        <th style="width:70px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="linesBody">
+                    @for (var i = 0; i < (Model.Input.Lines?.Count ?? 0); i++)
+                    {
+                        <tr>
+                            <td>
+                                <select class="form-select" name="Input.Lines[@i].ItemId" required>
+                                    <option value="">— Selecciona —</option>
+                                    @foreach (var opt in Model.ItemOptions)
+                                    {
+                                        <option value="@opt.Value" selected="@(Model.Input.Lines[i].ItemId.ToString() == opt.Value)">@opt.Text</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <input class="form-control" type="number" step="0.01" min="1" name="Input.Lines[@i].Quantity" value="@Model.Input.Lines[i].Quantity" required />
+                            </td>
+                            <td>
+                                <select class="form-select" name="Input.Lines[@i].AssignedClientId">
+                                    @foreach (var opt in Model.ClientOptions)
+                                    {
+                                        <option value="@opt.Value" selected="@(Model.Input.Lines[i].AssignedClientId?.ToString() == opt.Value)">@opt.Text</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <input class="form-control" name="Input.Lines[@i].SerialNumber" value="@Model.Input.Lines[i].SerialNumber" />
+                            </td>
+                            <td>
+                                <input class="form-control" name="Input.Lines[@i].Notes" value="@Model.Input.Lines[i].Notes" />
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button">X</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-light border mt-2 mb-0">
+            Se crean como <strong>Pendiente</strong>. Un admin las aprueba para impactar existencias.
         </div>
     </div>
     <div class="card-footer d-flex gap-2">
@@ -57,6 +99,70 @@
     </div>
 </form>
 
+<template id="rowTemplate">
+    <tr>
+        <td>
+            <select class="form-select" name="Input.Lines[__i__].ItemId" required>
+                <option value="">— Selecciona —</option>
+                @foreach (var opt in Model.ItemOptions)
+                {
+                    <option value="@opt.Value">@opt.Text</option>
+                }
+            </select>
+        </td>
+        <td>
+            <input class="form-control" type="number" step="0.01" min="1" name="Input.Lines[__i__].Quantity" value="1" required />
+        </td>
+        <td>
+            <select class="form-select" name="Input.Lines[__i__].AssignedClientId">
+                @foreach (var opt in Model.ClientOptions)
+                {
+                    <option value="@opt.Value">@opt.Text</option>
+                }
+            </select>
+        </td>
+        <td>
+            <input class="form-control" name="Input.Lines[__i__].SerialNumber" />
+        </td>
+        <td>
+            <input class="form-control" name="Input.Lines[__i__].Notes" />
+        </td>
+        <td class="text-end">
+            <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button">X</button>
+        </td>
+    </tr>
+</template>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const body = document.getElementById('linesBody');
+            const tpl = document.getElementById('rowTemplate');
+            const addBtn = document.getElementById('addRowBtn');
+
+            function wireRemove(btn) {
+                btn.addEventListener('click', () => {
+                    const tr = btn.closest('tr');
+                    tr?.remove();
+                    // reindex names
+                    [...body.querySelectorAll('tr')].forEach((row, idx) => {
+                        row.querySelectorAll('[name]').forEach(el => {
+                            el.name = el.name.replace(/Input\.Lines\[\d+\]/g, `Input.Lines[${idx}]`);
+                        });
+                    });
+                });
+            }
+
+            body.querySelectorAll('.removeRowBtn').forEach(wireRemove);
+
+            addBtn.addEventListener('click', () => {
+                const idx = body.querySelectorAll('tr').length;
+                const html = tpl.innerHTML.replaceAll('__i__', idx);
+                body.insertAdjacentHTML('beforeend', html);
+                const newBtn = body.querySelector('tr:last-child .removeRowBtn');
+                if (newBtn) wireRemove(newBtn);
+            });
+        })();
+    </script>
 }

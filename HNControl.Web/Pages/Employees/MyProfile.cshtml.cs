@@ -28,13 +28,14 @@ public class MyProfileModel : PageModel
     public ViaticMini? CurrentWeek { get; set; }
     public List<ViaticMini> RecentWeeks { get; set; } = new();
 
-    public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal, decimal DeductionsQuincenal, decimal NetQuincenal);
+    public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal, decimal DeductionsQuincenal, decimal BonusesQuincenal, decimal NetQuincenal);
     public PerfMini? CurrentPay { get; set; }
 
     public record DeductionMini(
         string Concept,
         EmployeeDeductionType Type,
         EmployeeDeductionMode Mode,
+        EmployeeDeductionDirection Direction,
         decimal PeriodAmount,
         decimal? RemainingAmount,
         DateTime StartDate,
@@ -43,6 +44,7 @@ public class MyProfileModel : PageModel
 
     public List<DeductionMini> ActiveDeductions { get; set; } = new();
     public decimal DeductionsTotal { get; set; } = 0m;
+    public decimal BonusesTotal { get; set; } = 0m;
 
     public decimal NetQuincenal => CurrentPay?.NetQuincenal ?? 0m;
 
@@ -149,20 +151,21 @@ public class MyProfileModel : PageModel
 
         // Deducciones activas (si aún no existen tablas, no tronamos)
         await LoadDeductionsAsync(userId, baseQ, total);
-        var net = Math.Round(total - DeductionsTotal, 2);
+        var net = Math.Round(total - DeductionsTotal + BonusesTotal, 2);
         if (net < 0m) net = 0m;
 
         var period = review == null
             ? $"{ps:yyyy-MM-dd} a {pe:yyyy-MM-dd}"
             : $"{review.PeriodStart:yyyy-MM-dd} a {review.PeriodEnd:yyyy-MM-dd}";
 
-        CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, net);
+        CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, BonusesTotal, net);
     }
 
     private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal)
     {
         ActiveDeductions = new();
         DeductionsTotal = 0m;
+        BonusesTotal = 0m;
 
         try
         {
@@ -200,22 +203,28 @@ public class MyProfileModel : PageModel
                     d.Concept,
                     d.Type,
                     d.Mode,
+                    d.Direction,
                     amount,
                     d.RemainingAmount,
                     d.StartDate,
                     d.EndDate
                 ));
 
-                DeductionsTotal += amount;
+                if (d.Direction == EmployeeDeductionDirection.Bonus)
+                    BonusesTotal += amount;
+                else
+                    DeductionsTotal += amount;
             }
 
             DeductionsTotal = Math.Round(DeductionsTotal, 2);
+            BonusesTotal = Math.Round(BonusesTotal, 2);
         }
         catch
         {
             // Tablas aún no existen o no accesibles: nos quedamos sin deducciones.
             ActiveDeductions = new();
             DeductionsTotal = 0m;
+            BonusesTotal = 0m;
         }
     }
 

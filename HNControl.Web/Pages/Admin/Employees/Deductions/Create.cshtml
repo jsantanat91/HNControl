@@ -1,12 +1,12 @@
 @page
 @model HNControl.Web.Pages.Admin.Employees.Deductions.CreateModel
 @{
-    ViewData["Title"] = "Nueva deducción";
+    ViewData["Title"] = "Nuevo ajuste";
 }
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Nueva deducción</h1>
+        <h1 class="h4 mb-0">Nuevo ajuste</h1>
         <div class="text-muted small">@Model.Employee?.FullName</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="Index" asp-route-userId="@Model.UserId">Volver</a>
@@ -25,11 +25,15 @@
                         <span class="text-danger small" asp-validation-for="Input.Concept"></span>
                     </div>
 
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Dirección</label>
+                        <select class="form-select" asp-for="Input.Direction" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionDirection>()"></select>
+                    </div>
+                    <div class="col-12 col-md-4">
                         <label class="form-label">Tipo</label>
                         <select class="form-select" asp-for="Input.Type" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionType>()"></select>
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <label class="form-label">Modo</label>
                         <select class="form-select" asp-for="Input.Mode" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionMode>()"></select>
                     </div>

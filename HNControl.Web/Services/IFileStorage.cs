@@ -20,4 +20,9 @@ public interface IFileStorage
         string contentType);
 
     Task<(Stream stream, string contentType, string downloadName)> OpenAsync(string storagePath, string downloadName);
+
+    /// <summary>
+    /// Borra un archivo si existe. Si no existe, no lanza.
+    /// </summary>
+    Task DeleteIfExistsAsync(string storagePath);
 }

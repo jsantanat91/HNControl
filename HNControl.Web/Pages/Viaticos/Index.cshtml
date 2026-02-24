@@ -41,7 +41,7 @@
             <thead>
                 <tr>
                     <th>Semana (lunes)</th>
-                    <th>Status</th>
+                    <th>Estado</th>
                     <th class="text-end">Total</th>
                     <th></th>
                 </tr>
@@ -51,7 +51,7 @@
                 {
                     <tr>
                         <td>@w.WeekStartDate.ToString("yyyy-MM-dd")</td>
-                        <td>@w.Status</td>
+                        <td>@w.Status.GetDisplayName()</td>
                         <td class="text-end">@w.Total.ToString("C")</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Viaticos/Week" asp-route-id="@w.Id">Abrir</a>

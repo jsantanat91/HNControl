@@ -39,30 +39,36 @@
                     <tr>
                         <th>Item</th>
                         <th>SKU</th>
-                        <th>Tipo</th>
+                        <th>Categoría</th>
+                        <th>Ubicación</th>
                         <th class="text-end">Existencia</th>
                         <th class="text-end">Stock mínimo</th>
+                        <th class="text-end">Estado</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach (var i in Model.Items)
                 {
                     var low = i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel;
-                    <tr class="@(low ? "table-warning" : "")">
+                    <tr>
                         <td class="fw-semibold">@i.Name</td>
                         <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "—" : i.Sku)</td>
                         <td>
-                            @if (i.IsConsumable)
+                            <span class="hn-badge hn-badge-slate">@(string.IsNullOrWhiteSpace(i.Category) ? "Sin categoría" : i.Category)</span>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)</td>
+                        <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
+                        <td class="text-end">@i.ReorderLevel</td>
+                        <td class="text-end">
+                            @if (low)
                             {
-                                <span class="hn-badge hn-badge-green">Consumible</span>
+                                <span class="hn-badge hn-badge-amber">Bajo stock</span>
                             }
                             else
                             {
-                                <span class="hn-badge hn-badge-blue">Hardware</span>
+                                <span class="hn-badge hn-badge-green">OK</span>
                             }
                         </td>
-                        <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
-                        <td class="text-end">@i.ReorderLevel</td>
                     </tr>
                 }
                 </tbody>

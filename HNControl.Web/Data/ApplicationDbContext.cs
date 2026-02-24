@@ -122,6 +122,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
             e.Property(x => x.UserId).HasMaxLength(64);
             e.Property(x => x.Concept).HasMaxLength(200);
+            e.Property(x => x.Direction)
+    .HasConversion<int>()
+    .HasDefaultValue(EmployeeDeductionDirection.Deduct);
             e.Property(x => x.Amount).HasColumnType("numeric(12,2)");
             e.Property(x => x.Rate).HasColumnType("numeric(6,5)");
             e.Property(x => x.StartDate).HasColumnType("date");
@@ -205,6 +208,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.ContractEndDate).HasColumnType("date");
 
             e.Property(x => x.Notes).HasMaxLength(2000);
+
+            e.Property(x => x.MonthlyAmount).HasColumnType("numeric(12,2)");
 
             e.Property(x => x.SignedContractStoragePath).HasMaxLength(500);
             e.Property(x => x.SignedContractOriginalFileName).HasMaxLength(255);
@@ -308,10 +313,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(120);
+            e.Property(x => x.ExecutiveName).HasMaxLength(120);
             e.Property(x => x.SupportPhone).HasMaxLength(40);
             e.Property(x => x.SupportEmail).HasMaxLength(120);
             e.Property(x => x.SupportPortalUrl).HasMaxLength(400);
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.LogoStoragePath).HasMaxLength(500);
+            e.Property(x => x.LogoOriginalFileName).HasMaxLength(255);
+            e.Property(x => x.LogoContentType).HasMaxLength(100);
             e.HasIndex(x => x.Name).IsUnique();
         });
 

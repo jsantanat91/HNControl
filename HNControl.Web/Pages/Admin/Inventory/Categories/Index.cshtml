@@ -54,7 +54,13 @@
                     @foreach (var c in Model.Categories)
                     {
                         <tr>
-                            <td class="fw-semibold">@c.Name</td>
+                            <td>
+                                <form method="post" asp-page-handler="Rename" class="d-flex gap-2 align-items-center">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <input class="form-control form-control-sm" name="name" value="@c.Name" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                                </form>
+                            </td>
                             <td>
                                 @if (c.IsActive)
                                 {

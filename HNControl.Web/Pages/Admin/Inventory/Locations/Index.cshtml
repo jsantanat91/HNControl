@@ -54,7 +54,13 @@
                     @foreach (var l in Model.Locations)
                     {
                         <tr>
-                            <td class="fw-semibold">@l.Name</td>
+                            <td>
+                                <form method="post" asp-page-handler="Rename" class="d-flex gap-2 align-items-center">
+                                    <input type="hidden" name="id" value="@l.Id" />
+                                    <input class="form-control form-control-sm" name="name" value="@l.Name" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                                </form>
+                            </td>
                             <td>
                                 @if (l.IsActive)
                                 {

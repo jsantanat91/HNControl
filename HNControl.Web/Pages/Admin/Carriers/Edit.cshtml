@@ -10,13 +10,18 @@
     <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
 
-<form method="post" class="card">
+<form method="post" enctype="multipart/form-data" class="card">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.Name" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Ejecutivo</label>
+                <input class="form-control" asp-for="Input.ExecutiveName" placeholder="Nombre del ejecutivo / contacto" />
             </div>
             <div class="col-md-3">
                 <label class="form-label">Tel soporte</label>
@@ -29,6 +34,17 @@
             <div class="col-12">
                 <label class="form-label">Portal</label>
                 <input class="form-control" asp-for="Input.SupportPortalUrl" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Logo (opcional)</label>
+                <input class="form-control" type="file" asp-for="Input.LogoFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" />
+                @if (!string.IsNullOrWhiteSpace(Model.CurrentLogoUrl))
+                {
+                    <div class="form-text mt-2">Logo actual:</div>
+                    <img src="@Model.CurrentLogoUrl" alt="Logo carrier" style="max-height:72px; max-width:260px; object-fit:contain;" class="border rounded p-1 bg-white" />
+                }
+                <div class="form-text">PNG/JPG/WEBP. Máx 5MB.</div>
             </div>
             <div class="col-12">
                 <label class="form-label">Notas</label>

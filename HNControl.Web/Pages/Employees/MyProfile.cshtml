@@ -157,6 +157,10 @@ else
                                         <span>Deducciones</span>
                                         <span>-@Model.CurrentPay.DeductionsQuincenal.ToString("C")</span>
                                     </div>
+                                    <div class="d-flex justify-content-between text-muted">
+                                        <span>Bonos</span>
+                                        <span>+@Model.CurrentPay.BonusesQuincenal.ToString("C")</span>
+                                    </div>
                                 </div>
 
                                 <a class="btn btn-sm btn-outline-primary mt-3" asp-page="/Performance/My">Ver historial</a>
@@ -172,14 +176,14 @@ else
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <div class="text-muted small">Nómina</div>
-                                    <div class="fw-semibold">Deducciones activas</div>
+                                    <div class="fw-semibold">Ajustes activos</div>
                                 </div>
-                                <span class="badge text-bg-warning">Descuentos</span>
+                                <span class="badge text-bg-warning">Nómina</span>
                             </div>
 
                             @if (!Model.ActiveDeductions.Any())
                             {
-                                <div class="text-muted small mt-2">No tienes deducciones activas. Disfruta mientras dure 😄</div>
+                                <div class="text-muted small mt-2">No tienes ajustes activos. Disfruta mientras dure 😄</div>
                             }
                             else
                             {
@@ -197,16 +201,36 @@ else
                                                 <tr>
                                                     <td>
                                                         <div class="fw-semibold">@d.Concept</div>
-                                                        <div class="text-muted small">@d.Type · @d.Mode</div>
+                                                        <div class="text-muted small">
+                                                            @if (d.Direction == HNControl.Web.Models.EmployeeDeductionDirection.Bonus)
+                                                            {
+                                                                <span class="badge text-bg-success me-1">@d.Direction.GetDisplayName()</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge text-bg-warning me-1">@d.Direction.GetDisplayName()</span>
+                                                            }
+                                                            @d.Type.GetDisplayName() · @d.Mode.GetDisplayName()
+                                                        </div>
                                                     </td>
-                                                    <td class="text-end fw-semibold">@d.PeriodAmount.ToString("C")</td>
+                                                    <td class="text-end fw-semibold">
+                                                        @(d.Direction == HNControl.Web.Models.EmployeeDeductionDirection.Bonus ? "+" : "-")@d.PeriodAmount.ToString("C")
+                                                    </td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <td class="text-muted">Total</td>
-                                                <td class="text-end fw-semibold">@Model.DeductionsTotal.ToString("C")</td>
+                                                <td class="text-muted">Deducciones</td>
+                                                <td class="text-end fw-semibold">-@Model.DeductionsTotal.ToString("C")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Bonos</td>
+                                                <td class="text-end fw-semibold">+@Model.BonusesTotal.ToString("C")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Impacto neto</td>
+                                                <td class="text-end fw-semibold">@Math.Round(Model.BonusesTotal - Model.DeductionsTotal, 2).ToString("C")</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -237,7 +261,7 @@ else
                                             <div class="fw-semibold">@Model.CurrentWeek.WeekStart.ToString("yyyy-MM-dd")</div>
                                         </div>
                                         <div>
-                                            <span class="badge text-bg-secondary">@Model.CurrentWeek.Status</span>
+                                            <span class="badge text-bg-secondary">@Model.CurrentWeek.Status.GetDisplayName()</span>
                                         </div>
                                         <div class="text-end">
                                             <div class="text-muted small">Total</div>
@@ -255,7 +279,7 @@ else
                                         <thead>
                                             <tr>
                                                 <th>Semana</th>
-                                                <th>Status</th>
+                                                <th>Estado</th>
                                                 <th class="text-end">Total</th>
                                                 <th class="text-end"></th>
                                             </tr>
@@ -265,7 +289,7 @@ else
                                             {
                                                 <tr>
                                                     <td>@w.WeekStart.ToString("yyyy-MM-dd")</td>
-                                                    <td>@w.Status</td>
+                                                    <td>@w.Status.GetDisplayName()</td>
                                                     <td class="text-end">@w.Total.ToString("C")</td>
                                                     <td class="text-end">
                                                         <a class="btn btn-sm btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@w.Id">Abrir</a>

@@ -65,6 +65,10 @@
                                     <div class="text-muted small">
                                         Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "—" : c.AccountNumber)
                                         · #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "—" : c.ContractNumber)
+                                        @if (c.MonthlyAmount.HasValue)
+                                        {
+                                            <span> · Mensual: <b>@c.MonthlyAmount.Value.ToString("C")</b></span>
+                                        }
                                     </div>
                                 </td>
                                 <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "—" : c.Provider)</td>

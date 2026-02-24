@@ -4,9 +4,30 @@ namespace HNControl.Web.Models;
 
 public enum EmployeeDeductionType
 {
+    [Display(Name = "Pensión alimenticia")]
     PensionAlimenticia = 1,
+
+    [Display(Name = "Préstamo")]
     Prestamo = 2,
+
+    [Display(Name = "Prima vacacional")]
+    PrimaVacacional = 3,
+
+    [Display(Name = "Otro")]
     Otro = 99
+}
+
+/// <summary>
+/// Dirección del ajuste:
+/// 1 = Deducción (resta), 2 = Bono (suma).
+/// </summary>
+public enum EmployeeDeductionDirection
+{
+    [Display(Name = "Deducción")]
+    Deduct = 1,
+
+    [Display(Name = "Bono")]
+    Bonus = 2
 }
 
 public enum EmployeeDeductionMode
@@ -35,6 +56,8 @@ public class EmployeeDeduction
     public EmployeeProfile? Employee { get; set; }
 
     public EmployeeDeductionType Type { get; set; } = EmployeeDeductionType.Otro;
+
+    public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
 
     [Required, MaxLength(200)]
     public string Concept { get; set; } = "";

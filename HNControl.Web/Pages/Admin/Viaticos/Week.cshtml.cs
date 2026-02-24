@@ -14,11 +14,13 @@ public class WeekModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
+    private readonly IFileStorage _storage;
 
-    public WeekModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr)
+    public WeekModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IFileStorage storage)
     {
         _db = db;
         _userMgr = userMgr;
+        _storage = storage;
     }
 
     public ViaticWeek? Week { get; set; }
@@ -82,5 +84,26 @@ public class WeekModel : PageModel
         await _db.SaveChangesAsync();
         Info = "Semana rechazada.";
         return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        var week = await _db.ViaticWeeks
+            .Include(w => w.Entries).ThenInclude(e => e.Attachment)
+            .FirstOrDefaultAsync(w => w.Id == id);
+
+        if (week == null) return NotFound();
+
+        foreach (var e in week.Entries)
+        {
+            if (e.Attachment != null)
+                await _storage.DeleteIfExistsAsync(e.Attachment.StoragePath);
+        }
+
+        _db.ViaticWeeks.Remove(week);
+        await _db.SaveChangesAsync();
+
+        Info = "Semana eliminada.";
+        return RedirectToPage("/Admin/Viaticos/Index", new { userId = week.UserId });
     }
 }

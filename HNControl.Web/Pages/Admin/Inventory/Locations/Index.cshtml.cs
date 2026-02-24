@@ -77,4 +77,34 @@ public class IndexModel : PageModel
         Info = l.IsActive ? "Ubicación activada." : "Ubicación desactivada.";
         return RedirectToPage();
     }
+
+    public async Task<IActionResult> OnPostRenameAsync(Guid id, string name)
+    {
+        var l = await _db.InventoryLocations.FirstOrDefaultAsync(x => x.Id == id);
+        if (l == null) return NotFound();
+
+        var newName = (name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            Error = "El nombre no puede ir vacío.";
+            return RedirectToPage();
+        }
+
+        var key = newName.ToLowerInvariant();
+        var exists = await _db.InventoryLocations.AsNoTracking()
+            .AnyAsync(x => x.Id != id && x.Name.ToLower() == key);
+
+        if (exists)
+        {
+            Error = "Ya existe otra ubicación con ese nombre.";
+            return RedirectToPage();
+        }
+
+        l.Name = newName;
+        l.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Info = "Ubicación actualizada.";
+        return RedirectToPage();
+    }
 }

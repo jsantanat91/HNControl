@@ -10,12 +10,17 @@
     <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
 
-<form method="post" class="card">
+<form method="post" enctype="multipart/form-data" class="card">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.Name" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Ejecutivo</label>
+                <input class="form-control" asp-for="Input.ExecutiveName" placeholder="Nombre del ejecutivo / contacto" />
             </div>
             <div class="col-md-3">
                 <label class="form-label">Tel soporte</label>
@@ -28,6 +33,12 @@
             <div class="col-12">
                 <label class="form-label">Portal</label>
                 <input class="form-control" asp-for="Input.SupportPortalUrl" placeholder="https://..." />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Logo (opcional)</label>
+                <input class="form-control" type="file" asp-for="Input.LogoFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" />
+                <div class="form-text">PNG/JPG/WEBP. Máx 5MB.</div>
             </div>
             <div class="col-12">
                 <label class="form-label">Notas</label>

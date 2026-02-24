@@ -26,6 +26,8 @@ public class ClientModel : PageModel
     {
         public ClientCarrierService Service { get; set; } = default!;
         public string CarrierName { get; set; } = "";
+        public string CarrierExecutive { get; set; } = "";
+        public string? CarrierLogoUrl { get; set; }
         public string SupportPhone { get; set; } = "";
         public string SupportEmail { get; set; } = "";
         public string SupportPortalUrl { get; set; } = "";
@@ -122,6 +124,10 @@ public class ClientModel : PageModel
             {
                 Service = s,
                 CarrierName = carrierName,
+                CarrierExecutive = s.Carrier?.ExecutiveName ?? "",
+                CarrierLogoUrl = !string.IsNullOrWhiteSpace(s.Carrier?.LogoStoragePath)
+                    ? Url.Page("/Carriers/Logo", new { id = s.Carrier!.Id })
+                    : null,
                 SupportPhone = supportPhone,
                 SupportEmail = s.Carrier?.SupportEmail ?? "",
                 SupportPortalUrl = s.Carrier?.SupportPortalUrl ?? "",

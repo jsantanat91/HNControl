@@ -63,6 +63,9 @@ public class CreateModel : PageModel
         [MaxLength(2000)]
         public string Notes { get; set; } = "";
 
+        [Range(0, 99999999)]
+        public decimal? MonthlyAmount { get; set; }
+
         public IFormFile? SignedContract { get; set; }
     }
 
@@ -102,6 +105,7 @@ public class CreateModel : PageModel
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = (Input.Notes ?? "").Trim(),
+            MonthlyAmount = Input.MonthlyAmount,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

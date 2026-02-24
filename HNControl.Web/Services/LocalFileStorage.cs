@@ -106,6 +106,25 @@ public class LocalFileStorage : IFileStorage
         return Task.FromResult((fs, GuessContentType(fullPath), downloadName));
     }
 
+    public Task DeleteIfExistsAsync(string storagePath)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+            return Task.CompletedTask;
+
+        var fullPath = Path.Combine(_basePath, storagePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        try
+        {
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+        catch
+        {
+            // No tiramos el flujo por borrar un archivo. La DB manda.
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static string GuessContentType(string path)
     {
         var ext = Path.GetExtension(path).ToLowerInvariant();

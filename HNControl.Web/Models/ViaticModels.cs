@@ -13,9 +13,16 @@ public enum ViaticCategory
 
 public enum ViaticWeekStatus
 {
+    [Display(Name = "Borrador")]
     Draft = 1,
+
+    [Display(Name = "Enviado")]
     Submitted = 2,
+
+    [Display(Name = "Aprobado")]
     Approved = 3,
+
+    [Display(Name = "Rechazado")]
     Rejected = 4
 }
 
