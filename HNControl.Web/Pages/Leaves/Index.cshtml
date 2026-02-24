@@ -1,7 +1,41 @@
 @page
+@using HNControl.Web.Models
 @model HNControl.Web.Pages.Leaves.IndexModel
 @{
     ViewData["Title"] = "Vacaciones";
+
+    string TypeText(LeaveRequestType t) => t switch
+    {
+        LeaveRequestType.Vacation => "Vacaciones",
+        LeaveRequestType.Medical => "Médica",
+        LeaveRequestType.Personal => "Personal",
+        _ => t.ToString()
+    };
+
+    string TypeBadge(LeaveRequestType t) => t switch
+    {
+        LeaveRequestType.Vacation => "bg-primary text-white",
+        LeaveRequestType.Medical => "bg-danger text-white",
+        LeaveRequestType.Personal => "bg-dark text-white",
+        _ => "bg-secondary text-white"
+    };
+
+    string StatusText(LeaveRequestStatus s) => s switch
+    {
+        LeaveRequestStatus.Pending => "Pendiente",
+        LeaveRequestStatus.Approved => "Aprobado",
+        LeaveRequestStatus.Rejected => "Rechazado",
+        LeaveRequestStatus.Cancelled => "Cancelado",
+        _ => s.ToString()
+    };
+
+    string StatusBadge(LeaveRequestStatus s) => s switch
+    {
+        LeaveRequestStatus.Approved => "bg-success text-white",
+        LeaveRequestStatus.Rejected => "bg-danger text-white",
+        LeaveRequestStatus.Cancelled => "bg-secondary text-white",
+        _ => "bg-warning text-dark"
+    };
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -77,31 +111,30 @@ else
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
-                            <tr>
-                                <th>Tipo</th>
-                                <th>Fechas</th>
-                                <th class="text-end">Días</th>
-                                <th>Status</th>
-                                <th>Evidencias</th>
-                                <th class="text-end"></th>
-                            </tr>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Fechas</th>
+                            <th class="text-end">Días</th>
+                            <th>Estatus</th>
+                            <th>Evidencias</th>
+                            <th class="text-end"></th>
+                        </tr>
                         </thead>
                         <tbody>
                         @foreach (var r in Model.Items)
                         {
-                            var badge = r.Status switch
-                            {
-                                HNControl.Web.Models.LeaveRequestStatus.Approved => "text-bg-success",
-                                HNControl.Web.Models.LeaveRequestStatus.Rejected => "text-bg-danger",
-                                HNControl.Web.Models.LeaveRequestStatus.Cancelled => "text-bg-secondary",
-                                _ => "text-bg-warning"
-                            };
+                            var typeText = TypeText(r.Type);
+                            var typeCss = TypeBadge(r.Type);
+
+                            var stText = StatusText(r.Status);
+                            var stCss = StatusBadge(r.Status);
+
                             <tr>
                                 <td>
-                                    <div class="fw-semibold">@r.Type</div>
+                                    <span class="badge rounded-pill @typeCss">@typeText</span>
                                     @if (!string.IsNullOrWhiteSpace(r.Reason))
                                     {
-                                        <div class="text-muted small">@r.Reason</div>
+                                        <div class="text-muted small mt-1">@r.Reason</div>
                                     }
                                 </td>
                                 <td>
@@ -109,14 +142,16 @@ else
                                     <div class="text-muted small">Solicitado: @r.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                                 </td>
                                 <td class="text-end fw-semibold">@r.TotalDays</td>
-                                <td><span class="badge @badge">@r.Status</span></td>
+                                <td><span class="badge rounded-pill @stCss">@stText</span></td>
                                 <td>
                                     @if (r.Evidences?.Count > 0)
                                     {
                                         <div class="d-flex flex-column gap-1">
                                             @foreach (var ev in r.Evidences.OrderByDescending(x => x.UploadedAt).Take(3))
                                             {
-                                                <a class="small" asp-page="/Leaves/DownloadEvidence" asp-route-id="@ev.Id"><i class="bi bi-paperclip"></i> @ev.OriginalFileName</a>
+                                                <a class="small" asp-page="/Leaves/DownloadEvidence" asp-route-id="@ev.Id">
+                                                    <i class="bi bi-paperclip"></i> @ev.OriginalFileName
+                                                </a>
                                             }
                                             @if (r.Evidences.Count > 3)
                                             {
@@ -124,16 +159,16 @@ else
                                             }
                                         </div>
                                     }
-                                    else
-                                    {
-                                        <span class="text-muted small">—</span>
-                                    }
+                                    else { <span class="text-muted small">—</span> }
                                 </td>
                                 <td class="text-end">
-                                    @if (r.Status == HNControl.Web.Models.LeaveRequestStatus.Pending)
+                                    @if (r.Status == LeaveRequestStatus.Pending)
                                     {
                                         <form method="post" asp-page-handler="Cancel" asp-route-id="@r.Id" class="d-inline">
-                                            <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('¿Cancelar solicitud?');">Cancelar</button>
+                                            <button class="btn btn-sm btn-outline-danger" type="submit"
+                                                    onclick="return confirm('¿Cancelar solicitud?');">
+                                                Cancelar
+                                            </button>
                                         </form>
                                     }
                                 </td>

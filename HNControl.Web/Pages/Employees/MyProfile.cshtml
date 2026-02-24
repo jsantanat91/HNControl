@@ -338,7 +338,7 @@ else
                                 <canvas id="myExamsChart" height="160"></canvas>
                             </div>
 
-                            <div class="text-muted small mt-2">Assigned: @Model.ExamsAssignedCount · InProgress: @Model.ExamsInProgressCount · Submitted: @Model.ExamsSubmittedCount · Graded: @Model.ExamsGradedCount</div>
+                            <div class="text-muted small mt-2">Asignados: @Model.ExamsAssignedCount · En progreso: @Model.ExamsInProgressCount · En revisión: @Model.ExamsSubmittedCount · Calificados: @Model.ExamsGradedCount</div>
 
                             <a class="btn btn-sm btn-outline-primary mt-3" asp-page="/Exams/Index">Abrir módulo</a>
                         </div>
@@ -361,5 +361,46 @@ else
 
         window.hnCharts?.decorate(myCfg);
         new Chart(document.getElementById('myExamsChart'), myCfg);
+    </script>
+}
+@section Scripts {
+    <script>
+        (function () {
+          const rawLabels = @Html.Raw(Model.ExamsLabelsJson);
+          const values = @Html.Raw(Model.ExamsValuesJson);
+
+          const map = { "Assigned":"Asignado", "InProgress":"En progreso", "Submitted":"En revisión", "Graded":"Calificado" };
+          const labels = (rawLabels || []).map(x => map[x] ?? x);
+
+          const canvas = document.getElementById('myExamsChart');
+          if (!canvas) return;
+
+          const pairs = labels.map((l, i) => ({ l, v: (values[i] ?? 0) })).filter(x => x.v > 0);
+
+          if (pairs.length === 0) {
+            canvas.parentElement.innerHTML = `<div class="text-muted small">Sin datos</div>`;
+            return;
+          }
+
+          if (pairs.length === 1) {
+            canvas.parentElement.innerHTML =
+              `<div class="d-flex align-items-center justify-content-center" style="height:160px;">
+                 <div class="text-center">
+                   <div class="h2 fw-semibold mb-0">${pairs[0].v}</div>
+                   <div class="text-muted">${pairs[0].l}</div>
+                 </div>
+               </div>`;
+            return;
+          }
+
+          const cfg = {
+            type: 'doughnut',
+            data: { labels: pairs.map(x => x.l), datasets: [{ label: 'Exámenes', data: pairs.map(x => x.v) }] },
+            options: { plugins: { legend: { position: 'bottom' } } }
+          };
+
+          window.hnCharts?.decorate(cfg);
+          new Chart(canvas, cfg);
+        })();
     </script>
 }
