@@ -19,13 +19,15 @@ public class TakeModel : PageModel
     public TakeModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IFileStorage storage)
     {
         _db = db;
-         _userMgr = userMgr;
+        _userMgr = userMgr;
         _storage = storage;
     }
 
     public ExamAssignment? Assignment { get; set; }
 
-    public bool IsReadOnly => Assignment != null && (Assignment.Status == ExamAssignmentStatus.Submitted || Assignment.Status == ExamAssignmentStatus.Graded);
+    public bool IsReadOnly => Assignment != null &&
+                              (Assignment.Status == ExamAssignmentStatus.Submitted ||
+                               Assignment.Status == ExamAssignmentStatus.Graded);
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
@@ -33,6 +35,7 @@ public class TakeModel : PageModel
         var isAdmin = User.IsInRole(AppRoles.Admin);
 
         Assignment = await _db.ExamAssignments
+            .AsSplitQuery()
             .Include(a => a.Exam)
                 .ThenInclude(e => e.Questions)
                     .ThenInclude(q => q.Choices)
@@ -43,7 +46,6 @@ public class TakeModel : PageModel
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (Assignment == null) return NotFound();
-
         if (!isAdmin && Assignment.UserId != userId) return Forbid();
 
         // marcar inicio automático
@@ -52,8 +54,7 @@ public class TakeModel : PageModel
             if (Assignment.Status == ExamAssignmentStatus.Assigned)
                 Assignment.Status = ExamAssignmentStatus.InProgress;
 
-            if (Assignment.StartedAt == null)
-                Assignment.StartedAt = DateTime.UtcNow;
+            Assignment.StartedAt ??= DateTime.UtcNow;
 
             // MaxScore inicial
             if (Assignment.MaxScore <= 0m && Assignment.Exam?.Questions != null)
@@ -82,9 +83,16 @@ public class TakeModel : PageModel
         assignment!.Status = ExamAssignmentStatus.InProgress;
         assignment.StartedAt ??= DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // si el navegador reenvió / doble click: no truena, solo recarga
+            TempData["Success"] = "Guardado.";
+        }
 
-        TempData["Success"] = "Guardado.";
         return RedirectToPage(new { id });
     }
 
@@ -116,8 +124,7 @@ public class TakeModel : PageModel
 
             if (q.Type == ExamQuestionType.OpenText || q.Type == ExamQuestionType.Attachment)
             {
-                // manual
-                ans.AutoScore = 0m;
+                ans.AutoScore = 0m; // manual
             }
             else
             {
@@ -146,7 +153,24 @@ public class TakeModel : PageModel
             assignment.GradedAt = DateTime.UtcNow;
         }
 
-        await _db.SaveChangesAsync();
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // si ya se envió en otro POST (doble click / refresh / dos tabs), no explota
+            var latest = await _db.ExamAssignments.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (latest != null && latest.Status >= ExamAssignmentStatus.Submitted)
+            {
+                TempData["Success"] = "Enviado (ya estaba enviado, solo se evitó el doble envío).";
+                return RedirectToPage(new { id });
+            }
+
+            throw; // si fue otra cosa real, que reviente para verla
+        }
 
         TempData["Success"] = hasOpen
             ? "Enviado. Falta calificación de preguntas abiertas."
@@ -161,6 +185,7 @@ public class TakeModel : PageModel
         var isAdmin = User.IsInRole(AppRoles.Admin);
 
         var assignment = await _db.ExamAssignments
+            .AsSplitQuery()
             .Include(a => a.Exam)
                 .ThenInclude(e => e.Questions)
                     .ThenInclude(q => q.Choices)
@@ -201,7 +226,7 @@ public class TakeModel : PageModel
                 assignment.Answers.Add(ans);
             }
 
-            // Open text
+            // Open text / Attachment text
             if (q.Type == ExamQuestionType.OpenText || q.Type == ExamQuestionType.Attachment)
             {
                 var tKey = $"t_{q.Id:N}";
@@ -255,30 +280,30 @@ public class TakeModel : PageModel
                 .Where(x => x != Guid.Empty)
                 .ToHashSet();
 
-            // limpiar selecciones previas
-            if (ans.SelectedChoices.Count > 0)
-            {
-                _db.ExamAnswerChoices.RemoveRange(ans.SelectedChoices);
-                ans.SelectedChoices.Clear();
-            }
+            // ✅ FIX: borrar selecciones viejas por filtro (idempotente, no revienta si ya se borraron)
+            await _db.ExamAnswerChoices
+                .Where(x => x.ExamAnswerId == ans.Id)
+                .ExecuteDeleteAsync();
+
+            ans.SelectedChoices.Clear();
 
             foreach (var cid in selectedIds)
             {
-                ans.SelectedChoices.Add(new ExamAnswerChoice
+                var eac = new ExamAnswerChoice
                 {
                     Id = Guid.NewGuid(),
                     ExamAnswerId = ans.Id,
                     ChoiceId = cid
-                });
+                };
+
+                _db.ExamAnswerChoices.Add(eac);
+                ans.SelectedChoices.Add(eac);
             }
 
             ans.UpdatedAt = DateTime.UtcNow;
         }
 
-        // max score si no está
         if (assignment.MaxScore <= 0m)
             assignment.MaxScore = questions.Sum(q => q.Points);
-
-        await Task.CompletedTask;
     }
 }
