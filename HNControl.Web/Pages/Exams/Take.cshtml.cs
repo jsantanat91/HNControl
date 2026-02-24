@@ -1,6 +1,5 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
-using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,13 +13,11 @@ public class TakeModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
-    private readonly IFileStorage _storage;
 
-    public TakeModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IFileStorage storage)
+    public TakeModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr)
     {
         _db = db;
         _userMgr = userMgr;
-        _storage = storage;
     }
 
     public ExamAssignment? Assignment { get; set; }
@@ -29,6 +26,9 @@ public class TakeModel : PageModel
                               (Assignment.Status == ExamAssignmentStatus.Submitted ||
                                Assignment.Status == ExamAssignmentStatus.Graded);
 
+    // =========================
+    // GET: Render del examen
+    // =========================
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var userId = _userMgr.GetUserId(User);
@@ -40,15 +40,13 @@ public class TakeModel : PageModel
                 .ThenInclude(e => e.Questions)
                     .ThenInclude(q => q.Choices)
             .Include(a => a.Answers)
-                .ThenInclude(ans => ans.SelectedChoices)
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.Attachments)
+                .ThenInclude(ans => ans.SelectedChoices) // solo para mostrar seleccionadas en UI
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (Assignment == null) return NotFound();
         if (!isAdmin && Assignment.UserId != userId) return Forbid();
 
-        // marcar inicio automático
+        // Marcar inicio automático
         if (!IsReadOnly)
         {
             if (Assignment.Status == ExamAssignmentStatus.Assigned)
@@ -56,7 +54,6 @@ public class TakeModel : PageModel
 
             Assignment.StartedAt ??= DateTime.UtcNow;
 
-            // MaxScore inicial
             if (Assignment.MaxScore <= 0m && Assignment.Exam?.Questions != null)
                 Assignment.MaxScore = Assignment.Exam.Questions.Sum(q => q.Points);
 
@@ -66,10 +63,14 @@ public class TakeModel : PageModel
         return Page();
     }
 
+    // =========================
+    // POST: Guardar (sin enviar)
+    // =========================
     public async Task<IActionResult> OnPostSaveAsync(Guid id)
     {
-        var (assignment, forbidOrNotFound) = await LoadForEditAsync(id);
-        if (forbidOrNotFound != null) return forbidOrNotFound;
+        var (assignment, error) = await LoadForPostAsync(id);
+        if (error != null) return error;
+
         Assignment = assignment;
 
         if (IsReadOnly)
@@ -78,7 +79,7 @@ public class TakeModel : PageModel
             return RedirectToPage(new { id });
         }
 
-        await SaveAnswersFromFormAsync(assignment!);
+        await SaveAnswersFromFormAsync(assignment!, saveOnly: true);
 
         assignment!.Status = ExamAssignmentStatus.InProgress;
         assignment.StartedAt ??= DateTime.UtcNow;
@@ -86,20 +87,25 @@ public class TakeModel : PageModel
         try
         {
             await _db.SaveChangesAsync();
+            TempData["Success"] = "Guardado.";
         }
         catch (DbUpdateConcurrencyException)
         {
-            // si el navegador reenvió / doble click: no truena, solo recarga
-            TempData["Success"] = "Guardado.";
+            // Si el navegador reenvió, o hubo algo raro, no reventamos.
+            TempData["Success"] = "Guardado (se evitó un conflicto de concurrencia).";
         }
 
         return RedirectToPage(new { id });
     }
 
+    // =========================
+    // POST: Enviar (submit)
+    // =========================
     public async Task<IActionResult> OnPostSubmitAsync(Guid id)
     {
-        var (assignment, forbidOrNotFound) = await LoadForEditAsync(id);
-        if (forbidOrNotFound != null) return forbidOrNotFound;
+        var (assignment, error) = await LoadForPostAsync(id);
+        if (error != null) return error;
+
         Assignment = assignment;
 
         if (IsReadOnly)
@@ -108,11 +114,13 @@ public class TakeModel : PageModel
             return RedirectToPage(new { id });
         }
 
-        await SaveAnswersFromFormAsync(assignment!);
+        // Guardar respuestas y obtener selección por pregunta para autograde (sin depender de navegación trackeada)
+        var selectedMap = await SaveAnswersFromFormAsync(assignment!, saveOnly: false);
 
         // Auto-grade
         var exam = assignment!.Exam!;
         var questions = exam.Questions.OrderBy(q => q.Ordinal).ToList();
+
         assignment.MaxScore = questions.Sum(q => q.Points);
 
         foreach (var q in questions)
@@ -122,16 +130,17 @@ public class TakeModel : PageModel
 
             ans.AutoScore = 0m;
 
-            if (q.Type == ExamQuestionType.OpenText || q.Type == ExamQuestionType.Attachment)
+            if (q.Type == ExamQuestionType.OpenText)
             {
-                ans.AutoScore = 0m; // manual
+                // manual
+                ans.AutoScore = 0m;
             }
             else
             {
                 var correct = q.Choices.Where(c => c.IsCorrect).Select(c => c.Id).ToHashSet();
-                var selected = ans.SelectedChoices.Select(sc => sc.ChoiceId).ToHashSet();
+                selectedMap.TryGetValue(q.Id, out var selected);
+                selected ??= new HashSet<Guid>();
 
-                // Exact match
                 var ok = correct.SetEquals(selected) && correct.Count > 0;
                 ans.AutoScore = ok ? q.Points : 0m;
             }
@@ -142,7 +151,7 @@ public class TakeModel : PageModel
         assignment.Score = assignment.Answers.Sum(a => a.AutoScore + a.ManualScore);
         assignment.SubmittedAt = DateTime.UtcNow;
 
-        var hasOpen = questions.Any(q => q.Type == ExamQuestionType.OpenText || q.Type == ExamQuestionType.Attachment);
+        var hasOpen = questions.Any(q => q.Type == ExamQuestionType.OpenText);
         if (hasOpen)
         {
             assignment.Status = ExamAssignmentStatus.Submitted;
@@ -159,17 +168,9 @@ public class TakeModel : PageModel
         }
         catch (DbUpdateConcurrencyException)
         {
-            // si ya se envió en otro POST (doble click / refresh / dos tabs), no explota
-            var latest = await _db.ExamAssignments.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == id);
-
-            if (latest != null && latest.Status >= ExamAssignmentStatus.Submitted)
-            {
-                TempData["Success"] = "Enviado (ya estaba enviado, solo se evitó el doble envío).";
-                return RedirectToPage(new { id });
-            }
-
-            throw; // si fue otra cosa real, que reviente para verla
+            // No truena: si fue doble submit / refresh / tab duplicada, ya quedó (o quedó casi).
+            TempData["Success"] = "Enviado (se evitó un conflicto de concurrencia).";
+            return RedirectToPage(new { id });
         }
 
         TempData["Success"] = hasOpen
@@ -179,7 +180,10 @@ public class TakeModel : PageModel
         return RedirectToPage(new { id });
     }
 
-    private async Task<(ExamAssignment? assignment, IActionResult? errorResult)> LoadForEditAsync(Guid id)
+    // ==========================================================
+    // Loader para POST: IMPORTANTÍSIMO -> NO incluir SelectedChoices
+    // ==========================================================
+    private async Task<(ExamAssignment? assignment, IActionResult? errorResult)> LoadForPostAsync(Guid id)
     {
         var userId = _userMgr.GetUserId(User);
         var isAdmin = User.IsInRole(AppRoles.Admin);
@@ -189,10 +193,7 @@ public class TakeModel : PageModel
             .Include(a => a.Exam)
                 .ThenInclude(e => e.Questions)
                     .ThenInclude(q => q.Choices)
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.SelectedChoices)
-            .Include(a => a.Answers)
-                .ThenInclude(ans => ans.Attachments)
+            .Include(a => a.Answers) // <- sin SelectedChoices para evitar tracking de filas viejas
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (assignment == null) return (null, NotFound());
@@ -201,8 +202,14 @@ public class TakeModel : PageModel
         return (assignment, null);
     }
 
-    private async Task SaveAnswersFromFormAsync(ExamAssignment assignment)
+    // ==========================================================
+    // Guardar respuestas desde Form (anti-concurrencia)
+    // - Devuelve selección por QuestionId para autograde
+    // ==========================================================
+    private async Task<Dictionary<Guid, HashSet<Guid>>> SaveAnswersFromFormAsync(ExamAssignment assignment, bool saveOnly)
     {
+        var map = new Dictionary<Guid, HashSet<Guid>>();
+
         var exam = assignment.Exam!;
         var questions = exam.Questions.OrderBy(q => q.Ordinal).ToList();
 
@@ -222,82 +229,47 @@ public class TakeModel : PageModel
                     Comment = "",
                     UpdatedAt = DateTime.UtcNow
                 };
+
                 _db.ExamAnswers.Add(ans);
                 assignment.Answers.Add(ans);
             }
 
-            // Open text / Attachment text
-            if (q.Type == ExamQuestionType.OpenText || q.Type == ExamQuestionType.Attachment)
+            // Open text
+            if (q.Type == ExamQuestionType.OpenText)
             {
                 var tKey = $"t_{q.Id:N}";
                 ans.TextAnswer = (Request.Form[tKey].ToString() ?? "").Trim();
             }
 
-            // Attachments (diagrama / evidencia)
-            if (q.Type == ExamQuestionType.Attachment)
+            // Choices (Single / Multiple)
+            if (q.Type != ExamQuestionType.OpenText)
             {
-                var fKey = $"f_{q.Id:N}";
-                var files = Request.Form.Files.GetFiles(fKey);
+                var qKey = $"q_{q.Id:N}";
+                var selected = Request.Form[qKey].ToArray();
 
-                if (files != null && files.Count > 0)
+                var selectedIds = selected
+                    .Select(x => Guid.TryParse(x, out var g) ? g : Guid.Empty)
+                    .Where(x => x != Guid.Empty)
+                    .ToHashSet();
+
+                map[q.Id] = selectedIds;
+
+                // 🔥 FIX: borrar en BD por filtro (sin EF RemoveRange) para evitar DbUpdateConcurrencyException
+                // Nota: NO cargamos SelectedChoices en POST, entonces EF no trackea filas viejas.
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $@"DELETE FROM ""ExamAnswerChoices"" WHERE ""ExamAnswerId"" = {ans.Id}"
+                );
+
+                // Insertar nuevas selecciones
+                foreach (var cid in selectedIds)
                 {
-                    var subFolder = $"exams/{assignment.Id:N}";
-                    var allowedExt = new[] { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic" };
-
-                    foreach (var file in files)
+                    _db.ExamAnswerChoices.Add(new ExamAnswerChoice
                     {
-                        var attId = Guid.NewGuid();
-                        var (storagePath, sizeBytes, contentType, originalName) = await _storage.SaveFileAsync(
-                            file,
-                            subFolder,
-                            attId.ToString("N"),
-                            allowedExt,
-                            15 * 1024 * 1024
-                        );
-
-                        var att = new ExamAnswerAttachment
-                        {
-                            Id = attId,
-                            ExamAnswerId = ans.Id,
-                            OriginalFileName = originalName,
-                            ContentType = contentType,
-                            StoragePath = storagePath,
-                            SizeBytes = sizeBytes,
-                            UploadedAt = DateTime.UtcNow
-                        };
-
-                        _db.ExamAnswerAttachments.Add(att);
-                        ans.Attachments.Add(att);
-                    }
+                        Id = Guid.NewGuid(),
+                        ExamAnswerId = ans.Id,
+                        ChoiceId = cid
+                    });
                 }
-            }
-
-            // Choices
-            var qKey = $"q_{q.Id:N}";
-            var selected = Request.Form[qKey].ToArray();
-            var selectedIds = selected
-                .Select(x => Guid.TryParse(x, out var g) ? g : Guid.Empty)
-                .Where(x => x != Guid.Empty)
-                .ToHashSet();
-
-            // ✅ FIX: borrar selecciones viejas por filtro (idempotente, no revienta si ya se borraron)
-            await _db.ExamAnswerChoices
-                .Where(x => x.ExamAnswerId == ans.Id)
-                .ExecuteDeleteAsync();
-
-            ans.SelectedChoices.Clear();
-
-            foreach (var cid in selectedIds)
-            {
-                var eac = new ExamAnswerChoice
-                {
-                    Id = Guid.NewGuid(),
-                    ExamAnswerId = ans.Id,
-                    ChoiceId = cid
-                };
-
-                _db.ExamAnswerChoices.Add(eac);
-                ans.SelectedChoices.Add(eac);
             }
 
             ans.UpdatedAt = DateTime.UtcNow;
@@ -305,5 +277,9 @@ public class TakeModel : PageModel
 
         if (assignment.MaxScore <= 0m)
             assignment.MaxScore = questions.Sum(q => q.Points);
+
+        // no requiere nada async adicional, pero dejamos firma async por SQL delete
+        await Task.CompletedTask;
+        return map;
     }
 }

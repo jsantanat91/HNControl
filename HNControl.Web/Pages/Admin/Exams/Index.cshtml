@@ -1,5 +1,6 @@
 @page
 @model HNControl.Web.Pages.Admin.Exams.IndexModel
+@using HNControl.Web.Helpers
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Exámenes (Admin)";
@@ -54,6 +55,16 @@
                                 {
                                     <span class="badge text-bg-secondary">No</span>
                                 }
+                                    @{
+                                        var (stText, stCss) = UiBadges.ExamStatus(a.Status);
+                                        var (rsText, rsCss) = UiBadges.ExamResult(a.Score, a.MaxScore, 80m);
+                                    }
+                                    <span class="badge rounded-pill @stCss">@stText</span>
+
+                                    @if (a.Status == ExamAssignmentStatus.Graded)
+                                    {
+                                        <span class="badge rounded-pill @rsCss ms-2">@rsText</span>
+                                    }
                             </td>
                             <td class="text-end">@e.Questions</td>
                             <td class="text-end">@e.Assigned</td>

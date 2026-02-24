@@ -1,5 +1,6 @@
 @page
 @model HNControl.Web.Pages.Exams.IndexModel
+@using HNControl.Web.Helpers
 @{
     ViewData["Title"] = "Exámenes";
 }
@@ -50,7 +51,20 @@
                                     HNControl.Web.Models.ExamAssignmentStatus.Submitted => "text-bg-warning",
                                     HNControl.Web.Models.ExamAssignmentStatus.InProgress => "text-bg-info",
                                     _ => "text-bg-secondary"
+
+                                    @{
+   var (stText, stCss) = UiBadges.ExamStatus(a.Status);
+   var (rsText, rsCss) = UiBadges.ExamResult(a.Score, a.MaxScore, 80m);
+}
+<span class="badge rounded-pill @stCss">@stText</span>
+
+@if (a.Status == ExamAssignmentStatus.Graded)
+{
+  <span class="badge rounded-pill @rsCss ms-2">@rsText</span>
+}
                                 };
+
+
                                 <tr>
                                     <td>
                                         <div class="fw-semibold">@a.Exam?.Title</div>
