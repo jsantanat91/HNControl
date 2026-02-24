@@ -112,6 +112,14 @@
                         <span class="hn-side-icon"><i class="bi bi-activity"></i></span>
                         <span class="hn-side-text">Monitoreo</span>
                     </a>
+                    <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index">
+                        <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
+                        <span class="hn-side-text">Vacaciones</span>
+                    </a>
+                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index">
+                        <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
+                        <span class="hn-side-text">Exámenes</span>
+                    </a>
                     <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">
                         <span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span>
                         <span class="hn-side-text">Seguridad</span>
@@ -179,6 +187,20 @@
                         <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index">
                             <span class="hn-side-icon"><i class="bi bi-activity"></i></span>
                             <span class="hn-side-text">Monitoreo</span>
+                        </a>
+                    }
+                    @if (Has(AppModules.Leaves))
+                    {
+                        <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index">
+                            <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
+                            <span class="hn-side-text">Vacaciones</span>
+                        </a>
+                    }
+                    @if (Has(AppModules.Exams))
+                    {
+                        <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index">
+                            <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
+                            <span class="hn-side-text">Exámenes</span>
                         </a>
                     }
                 }
@@ -261,6 +283,8 @@
                     <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></a>
                     <a class="hn-side-link @Active("/Inventory")" asp-page="/Inventory/Index"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></a>
                     <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a>
+                    <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
+                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Exámenes</span></a>
                     <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index"><span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span><span class="hn-side-text">Seguridad</span></a>
                 }
                 else
@@ -282,6 +306,10 @@
                     { <a class="hn-side-link @Active("/Inventory")" asp-page="/Inventory/Index"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></a> }
                     @if (Has(AppModules.Monitoring))
                     { <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a> }
+                    @if (Has(AppModules.Leaves))
+                    { <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a> }
+                    @if (Has(AppModules.Exams))
+                    { <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Exámenes</span></a> }
                 }
 
                 <hr class="border-light opacity-25 my-3" />

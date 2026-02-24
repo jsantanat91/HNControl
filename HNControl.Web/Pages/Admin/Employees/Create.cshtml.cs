@@ -47,6 +47,8 @@ public class CreateModel : PageModel
 
         [Range(0, 9999999)] public decimal SalaryBase { get; set; }
 
+        [Range(0, 60)] public int VacationAllowanceDays { get; set; } = 12;
+
         [Required]
         public string AppRole { get; set; } = AppRoles.Employee; // Admin o Employee
 
@@ -136,6 +138,7 @@ public class CreateModel : PageModel
             BirthDate = Input.BirthDate,
             HireDate = Input.HireDate,
             SalaryBase = Input.SalaryBase,
+            VacationAllowanceDays = Input.VacationAllowanceDays,
             CreatedAt = DateTime.UtcNow
         });
 

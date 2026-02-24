@@ -49,6 +49,7 @@ public class EditModel : PageModel
 
         [Required, EmailAddress] public string Email { get; set; } = "";
         [Range(0, 99999999)] public decimal SalaryBase { get; set; }
+        [Range(0, 60)] public int VacationAllowanceDays { get; set; } = 12;
 
         [Required]
         public string AppRole { get; set; } = AppRoles.Employee; // Admin o Employee
@@ -82,6 +83,7 @@ public class EditModel : PageModel
             BirthDate = Employee.BirthDate,
             HireDate = Employee.HireDate,
             SalaryBase = Employee.SalaryBase,
+            VacationAllowanceDays = Employee.VacationAllowanceDays,
             Email = email,
             AppRole = appRole,
             PermissionRoleId = upr?.PermissionRoleId
@@ -140,6 +142,7 @@ public class EditModel : PageModel
         Employee.BirthDate = Input.BirthDate;
         Employee.HireDate = Input.HireDate;
         Employee.SalaryBase = Input.SalaryBase;
+        Employee.VacationAllowanceDays = Input.VacationAllowanceDays;
         Employee.Email = Input.Email.Trim();
         Employee.UpdatedAt = DateTime.UtcNow;
 

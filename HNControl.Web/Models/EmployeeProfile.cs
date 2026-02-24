@@ -55,6 +55,9 @@ public class EmployeeProfile
     // Sueldo base (lo usamos para cálculo 80/20)
     public decimal SalaryBase { get; set; } = 0m;
 
+    // Vacaciones (días por año). Se calcula "usado" desde LeaveRequests aprobadas.
+    public int VacationAllowanceDays { get; set; } = 12;
+
     // Extras útiles (no afectan lo actual)
     public bool IsActive { get; set; } = true;
 

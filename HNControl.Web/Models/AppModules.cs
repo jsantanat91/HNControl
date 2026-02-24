@@ -14,6 +14,8 @@ public static class AppModules
     public const string Carriers = "Carriers";
     public const string Inventory = "Inventory";
     public const string Monitoring = "Monitoring";
+    public const string Leaves = "Leaves";   // Vacaciones e incidencias
+    public const string Exams = "Exams";     // Exámenes
 
     // Admin (solo para UI de permisos; Admin bypass en runtime)
     public const string Clients = "Clients";
@@ -29,7 +31,9 @@ public static class AppModules
         Knowledge,
         Carriers,
         Inventory,
-        Monitoring
+        Monitoring,
+        Leaves,
+        Exams
     ];
 
     public static readonly string[] AllKnown =
@@ -42,6 +46,8 @@ public static class AppModules
         Carriers,
         Inventory,
         Monitoring,
+        Leaves,
+        Exams,
         Clients,
         Performance,
         Security
@@ -57,6 +63,8 @@ public static class AppModules
         Carriers => "Carriers (Internet)",
         Inventory => "Inventarios",
         Monitoring => "Monitoreo",
+        Leaves => "Vacaciones e incidencias",
+        Exams => "Exámenes",
         Clients => "Clientes",
         Performance => "KPI / Nómina",
         Security => "Seguridad / Permisos",
@@ -86,33 +94,20 @@ public static class AppModules
         if (viewEnginePath.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase)) return Carriers;
         if (viewEnginePath.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase)) return Inventory;
         if (viewEnginePath.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) return Monitoring;
+        if (viewEnginePath.StartsWith("/Leaves", StringComparison.OrdinalIgnoreCase)) return Leaves;
+        if (viewEnginePath.StartsWith("/Exams", StringComparison.OrdinalIgnoreCase)) return Exams;
 
         if (viewEnginePath.StartsWith("/Clients", StringComparison.OrdinalIgnoreCase)) return Clients;
         if (viewEnginePath.StartsWith("/Performance", StringComparison.OrdinalIgnoreCase)) return Performance;
         if (viewEnginePath.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase)) return Security;
 
         return null;
-
     }
-    // Dentro de la clase AppModules (Models/AppModules.cs)
+
+    /// <summary>
+    /// Lista para UI de roles/permisos.
+    /// OJO: los keys deben coincidir con lo que guardamos en PermissionRoleModules.ModuleKey.
+    /// </summary>
     public static readonly IReadOnlyList<(string Key, string Label)> All =
-        new List<(string Key, string Label)>
-        {
-        // Ajusta Labels como quieras. Los Keys deben coincidir con los que usas en el filtro de módulos.
-        ("dashboard",   "Inicio / Dashboard"),
-        ("clients",     "Clientes"),
-        ("projects",    "Proyectos"),
-        ("serviceorders","Órdenes de Servicio"),
-        ("performance", "KPI / Desempeño"),
-        ("viatics",     "Viáticos"),
-
-        // Nuevos módulos
-        ("carriers",    "Carriers (Internet)"),
-        ("inventory",   "Inventarios"),
-        ("monitoring",  "Monitoreo"),
-        ("deductions",  "Deducciones (Nómina)"),
-
-        // Admin-only si quieres mostrarlos también en el catálogo (opcional)
-        ("security",    "Seguridad / Roles")
-        };
+        AllKnown.Select(k => (k, Label(k))).ToList();
 }

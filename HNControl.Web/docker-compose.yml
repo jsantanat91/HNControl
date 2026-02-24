@@ -1,0 +1,31 @@
+services:
+  hncontrol_web:
+    container_name: hncontrol_web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+
+      ConnectionStrings__Default: "Host=database_primary;Port=5432;Database=hncontrol;Username=hncontrol_user;Password=${HNCONTROL_DB_PASSWORD};Include Error Detail=false"
+
+      PublicLinks__BaseUrl: "https://control.hubnet-solutions.net"
+      Storage__BasePath: "App_Data/uploads"
+
+    volumes:
+      - hncontrol_uploads:/app/App_Data/uploads
+
+    networks:
+      - infra_net
+
+    expose:
+      - "8080"
+
+volumes:
+  hncontrol_uploads:
+
+networks:
+  infra_net:
+    external: true

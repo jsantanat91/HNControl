@@ -1,3 +1,4 @@
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -50,6 +51,24 @@ public class MyProfileModel : PageModel
 
     public string SeniorityText { get; set; } = "";
 
+    // Vacaciones
+    public int VacYear { get; set; }
+    public int VacationAllowance { get; set; }
+    public int VacationUsed { get; set; }
+    public int VacationRemaining { get; set; }
+    public int VacationPending { get; set; }
+    public DateTime? NextVacationStart { get; set; }
+    public DateTime? NextVacationEnd { get; set; }
+
+    // Exámenes
+    public int ExamsAssignedCount { get; set; }
+    public int ExamsInProgressCount { get; set; }
+    public int ExamsSubmittedCount { get; set; }
+    public int ExamsGradedCount { get; set; }
+
+    public string ExamsLabelsJson { get; set; } = "[]";
+    public string ExamsValuesJson { get; set; } = "[]";
+
     public async Task OnGetAsync()
     {
         var userId = _userMgr.GetUserId(User);
@@ -65,6 +84,8 @@ public class MyProfileModel : PageModel
         await LoadViaticosAsync(userId);
         await LoadPayrollAsync(userId);
         await LoadEval360Async(userId);
+        await LoadLeavesAsync(userId);
+        await LoadExamsAsync(userId);
     }
 
     private async Task LoadViaticosAsync(string userId)
@@ -257,6 +278,65 @@ public class MyProfileModel : PageModel
             othersCount,
             visibleToEmployee
         );
+    }
+
+    private async Task LoadLeavesAsync(string userId)
+    {
+        VacYear = DateTime.Now.Year;
+
+        // Allowance viene del perfil
+        VacationAllowance = Profile?.VacationAllowanceDays ?? 0;
+
+        var used = await _db.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.Type == LeaveRequestType.Vacation
+                        && x.Status == LeaveRequestStatus.Approved
+                        && x.StartDate.Year == VacYear)
+            .SumAsync(x => (int?)x.TotalDays) ?? 0;
+
+        VacationUsed = used;
+        VacationRemaining = VacationAllowance - VacationUsed;
+        if (VacationRemaining < 0) VacationRemaining = 0;
+
+        VacationPending = await _db.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.Type == LeaveRequestType.Vacation
+                        && x.Status == LeaveRequestStatus.Pending)
+            .CountAsync();
+
+        var today = DateTime.UtcNow.Date;
+        var next = await _db.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.Type == LeaveRequestType.Vacation
+                        && x.Status == LeaveRequestStatus.Approved
+                        && x.StartDate >= today)
+            .OrderBy(x => x.StartDate)
+            .FirstOrDefaultAsync();
+
+        NextVacationStart = next?.StartDate;
+        NextVacationEnd = next?.EndDate;
+    }
+
+    private async Task LoadExamsAsync(string userId)
+    {
+        var items = await _db.ExamAssignments
+            .AsNoTracking()
+            .Where(a => a.UserId == userId)
+            .ToListAsync();
+
+        ExamsAssignedCount = items.Count(x => x.Status == ExamAssignmentStatus.Assigned);
+        ExamsInProgressCount = items.Count(x => x.Status == ExamAssignmentStatus.InProgress);
+        ExamsSubmittedCount = items.Count(x => x.Status == ExamAssignmentStatus.Submitted);
+        ExamsGradedCount = items.Count(x => x.Status == ExamAssignmentStatus.Graded);
+
+        var labels = new[] { "Assigned", "InProgress", "Submitted", "Graded" };
+        var values = new[] { ExamsAssignedCount, ExamsInProgressCount, ExamsSubmittedCount, ExamsGradedCount };
+
+        ExamsLabelsJson = JsonSerializer.Serialize(labels);
+        ExamsValuesJson = JsonSerializer.Serialize(values);
     }
 
     private static string CalcSeniority(DateTime? hireDate)

@@ -1,0 +1,101 @@
+@page
+@model HNControl.Web.Pages.Admin.Leaves.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Vacaciones (Admin)";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Vacaciones e incidencias</h1>
+        <div class="text-muted small">Pendientes: <b>@Model.PendingCount</b></div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-primary" asp-page="/Admin/Leaves/Create"><i class="bi bi-plus-lg me-1"></i> Capturar incidencia</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Dashboard">Panel</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">Solicitudes</div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm @(Model.StatusFilter==null?"btn-primary":"btn-outline-primary")" asp-page="/Admin/Leaves/Index">Todas</a>
+            <a class="btn btn-sm @(Model.StatusFilter==HNControl.Web.Models.LeaveRequestStatus.Pending?"btn-primary":"btn-outline-primary")" asp-page="/Admin/Leaves/Index" asp-route-status="0">Pendientes</a>
+            <a class="btn btn-sm @(Model.StatusFilter==HNControl.Web.Models.LeaveRequestStatus.Approved?"btn-primary":"btn-outline-primary")" asp-page="/Admin/Leaves/Index" asp-route-status="1">Aprobadas</a>
+            <a class="btn btn-sm @(Model.StatusFilter==HNControl.Web.Models.LeaveRequestStatus.Rejected?"btn-primary":"btn-outline-primary")" asp-page="/Admin/Leaves/Index" asp-route-status="2">Rechazadas</a>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (!Model.Items.Any())
+        {
+            <div class="text-muted">Sin datos.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Empleado</th>
+                            <th>Tipo</th>
+                            <th>Fechas</th>
+                            <th class="text-end">Días</th>
+                            <th>Status</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Items)
+                    {
+                        var badge = r.Status switch
+                        {
+                            HNControl.Web.Models.LeaveRequestStatus.Approved => "text-bg-success",
+                            HNControl.Web.Models.LeaveRequestStatus.Rejected => "text-bg-danger",
+                            HNControl.Web.Models.LeaveRequestStatus.Cancelled => "text-bg-secondary",
+                            _ => "text-bg-warning"
+                        };
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@(r.EmployeeProfile?.FullName ?? r.UserId)</div>
+                                <div class="text-muted small">@(r.EmployeeProfile?.Position ?? "")</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@r.Type</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Reason))
+                                {
+                                    <div class="text-muted small">@r.Reason</div>
+                                }
+                            </td>
+                            <td class="small">@r.StartDate:yyyy-MM-dd → @r.EndDate:yyyy-MM-dd</td>
+                            <td class="text-end fw-semibold">@r.TotalDays</td>
+                            <td><span class="badge @badge">@r.Status</span></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Leaves/Details" asp-route-id="@r.Id">Detalles</a>
+                                @if (r.Status == HNControl.Web.Models.LeaveRequestStatus.Pending)
+                                {
+                                    <form method="post" asp-page-handler="Approve" asp-route-id="@r.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-success" type="submit">Aprobar</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Reject" asp-route-id="@r.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

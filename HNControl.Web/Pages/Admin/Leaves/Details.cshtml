@@ -1,0 +1,117 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.Leaves.DetailsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Detalle de solicitud";
+}
+
+@if (Model.Item == null)
+{
+    <div class="alert alert-warning">No encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Detalle</h1>
+        <div class="text-muted small">@Model.Item.EmployeeProfile?.FullName · @Model.Item.Type</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index">Volver</a>
+</div>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-4 text-muted">Empleado</dt>
+                    <dd class="col-8">@Model.Item.EmployeeProfile?.FullName (@Model.Item.UserId)</dd>
+
+                    <dt class="col-4 text-muted">Tipo</dt>
+                    <dd class="col-8">@Model.Item.Type</dd>
+
+                    <dt class="col-4 text-muted">Fechas</dt>
+                    <dd class="col-8">@Model.Item.StartDate:yyyy-MM-dd → @Model.Item.EndDate:yyyy-MM-dd</dd>
+
+                    <dt class="col-4 text-muted">Días</dt>
+                    <dd class="col-8 fw-semibold">@Model.Item.TotalDays</dd>
+
+                    <dt class="col-4 text-muted">Status</dt>
+                    <dd class="col-8"><span class="badge text-bg-secondary">@Model.Item.Status</span></dd>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Item.Reason))
+                    {
+                        <dt class="col-4 text-muted">Motivo</dt>
+                        <dd class="col-8">@Model.Item.Reason</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Item.AdminComment))
+                    {
+                        <dt class="col-4 text-muted">Comentario admin</dt>
+                        <dd class="col-8">@Model.Item.AdminComment</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-soft hn-hover mt-3">
+            <div class="card-header fw-semibold">Evidencias</div>
+            <div class="card-body">
+                @if (Model.Item.Evidences == null || !Model.Item.Evidences.Any())
+                {
+                    <div class="text-muted">Sin evidencias.</div>
+                }
+                else
+                {
+                    <ul class="mb-0">
+                        @foreach (var ev in Model.Item.Evidences.OrderByDescending(x => x.UploadedAt))
+                        {
+                            <li>
+                                <a asp-page="/Leaves/DownloadEvidence" asp-route-id="@ev.Id">@ev.OriginalFileName</a>
+                                <span class="text-muted small">· @Math.Round(ev.SizeBytes / 1024d, 0) KB</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Revisión</div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
+                    <label class="form-label">Comentario admin</label>
+                    <textarea class="form-control" asp-for="Input.AdminComment" rows="3"></textarea>
+
+                    @if (Model.Item.Status == HNControl.Web.Models.LeaveRequestStatus.Pending)
+                    {
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-success" type="submit" asp-page-handler="Approve">Aprobar</button>
+                            <button class="btn btn-outline-danger" type="submit" asp-page-handler="Reject">Rechazar</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary mt-3 mb-0">Esta solicitud ya está @Model.Item.Status.</div>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

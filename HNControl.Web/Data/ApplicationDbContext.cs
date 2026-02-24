@@ -75,6 +75,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
     public DbSet<ServiceOrderSignature> ServiceOrderSignatures => Set<ServiceOrderSignature>();
 
+    // --------------------
+    // Vacaciones e incidencias
+    // --------------------
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<LeaveEvidence> LeaveEvidences => Set<LeaveEvidence>();
+
+    // --------------------
+    // Exámenes
+    // --------------------
+    public DbSet<Exam> Exams => Set<Exam>();
+    public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
+    public DbSet<ExamChoice> ExamChoices => Set<ExamChoice>();
+    public DbSet<ExamAssignment> ExamAssignments => Set<ExamAssignment>();
+    public DbSet<ExamAnswer> ExamAnswers => Set<ExamAnswer>();
+    public DbSet<ExamAnswerAttachment> ExamAnswerAttachments => Set<ExamAnswerAttachment>();
+    public DbSet<ExamAnswerChoice> ExamAnswerChoices => Set<ExamAnswerChoice>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -94,6 +111,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.HireDate).HasColumnType("date");
             e.Property(x => x.BirthDate).HasColumnType("date");
             e.Property(x => x.SalaryBase).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VacationAllowanceDays).HasDefaultValue(12);
         });
 
         // --------------------
@@ -586,5 +604,122 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.StoragePath).HasMaxLength(500);
         });
 
+        // --------------------
+        // Vacaciones e incidencias
+        // --------------------
+        b.Entity<LeaveRequest>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.StartDate).HasColumnType("date");
+            e.Property(x => x.EndDate).HasColumnType("date");
+            e.Property(x => x.Reason).HasMaxLength(1200);
+            e.Property(x => x.AdminComment).HasMaxLength(600);
+
+            e.HasIndex(x => new { x.UserId, x.Status, x.StartDate });
+
+            e.HasOne(x => x.EmployeeProfile)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Evidences)
+                .WithOne(a => a.LeaveRequest!)
+                .HasForeignKey(a => a.LeaveRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<LeaveEvidence>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OriginalFileName).HasMaxLength(255);
+            e.Property(x => x.ContentType).HasMaxLength(100);
+            e.Property(x => x.StoragePath).HasMaxLength(500);
+            e.HasIndex(x => x.LeaveRequestId);
+        });
+
+        // --------------------
+        // Exámenes
+        // --------------------
+        b.Entity<Exam>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+
+            e.HasMany(x => x.Questions)
+                .WithOne(q => q.Exam!)
+                .HasForeignKey(q => q.ExamId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Assignments)
+                .WithOne(a => a.Exam!)
+                .HasForeignKey(a => a.ExamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ExamQuestion>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Text).HasMaxLength(2000);
+            e.Property(x => x.Points).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.ExamId, x.Ordinal });
+
+            e.HasMany(x => x.Choices)
+                .WithOne(c => c.Question!)
+                .HasForeignKey(c => c.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ExamChoice>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Text).HasMaxLength(1000);
+            e.HasIndex(x => new { x.QuestionId, x.Ordinal });
+        });
+
+        b.Entity<ExamAssignment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.Score).HasColumnType("numeric(12,2)");
+            e.Property(x => x.MaxScore).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.ExamId, x.UserId, x.Status });
+
+            e.HasOne(x => x.EmployeeProfile)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Answers)
+                .WithOne(a => a.Assignment!)
+                .HasForeignKey(a => a.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ExamAnswer>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Comment).HasMaxLength(1000);
+            e.Property(x => x.AutoScore).HasColumnType("numeric(12,2)");
+            e.Property(x => x.ManualScore).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.AssignmentId, x.QuestionId }).IsUnique();
+
+            e.HasMany(x => x.SelectedChoices)
+                .WithOne(sc => sc.Answer!)
+                .HasForeignKey(sc => sc.ExamAnswerId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ExamAnswerChoice>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.ExamAnswerId, x.ChoiceId }).IsUnique();
+        });
+
     }
 }
+

@@ -1,0 +1,158 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Exams.TakeModel
+@{
+    ViewData["Title"] = "Resolver examen";
+}
+
+@if (Model.Assignment == null)
+{
+    <div class="alert alert-warning">No encontrado.</div>
+    return;
+}
+
+@{
+    var a = Model.Assignment;
+    var exam = a.Exam;
+    var questions = exam?.Questions?.OrderBy(q => q.Ordinal).ToList() ?? new List<HNControl.Web.Models.ExamQuestion>();
+
+    string Badge(HNControl.Web.Models.ExamAssignmentStatus s) => s switch
+    {
+        HNControl.Web.Models.ExamAssignmentStatus.Graded => "text-bg-success",
+        HNControl.Web.Models.ExamAssignmentStatus.Submitted => "text-bg-warning",
+        HNControl.Web.Models.ExamAssignmentStatus.InProgress => "text-bg-info",
+        _ => "text-bg-secondary"
+    };
+
+    var readOnly = Model.IsReadOnly;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h4 m-0">@exam?.Title</h1>
+        <div class="text-muted small">@exam?.Description</div>
+        <div class="mt-2">
+            <span class="badge @Badge(a.Status)">@a.Status</span>
+            <span class="text-muted small ms-2">Puntaje: <b>@a.Score.ToString("0.##")</b> / @a.MaxScore.ToString("0.##")</span>
+            @if (a.DueAt.HasValue)
+            {
+                <span class="text-muted small ms-2">· Límite: @a.DueAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+            }
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Exams/Index">Volver</a>
+    </div>
+</div>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        @if (!questions.Any())
+        {
+            <div class="alert alert-warning">Este examen no tiene preguntas todavía.</div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var q in questions)
+                {
+                    var ans = a.Answers.FirstOrDefault(x => x.QuestionId == q.Id);
+                    var selected = ans?.SelectedChoices.Select(sc => sc.ChoiceId).ToHashSet() ?? new HashSet<Guid>();
+
+                    <div class="p-3 rounded-3" style="background: rgba(2,6,23,.03); border:1px solid rgba(15,23,42,.06);">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-semibold">@q.Ordinal. @q.Text</div>
+                                <div class="text-muted small">@q.Type · @q.Points.ToString("0.##") pts</div>
+                            </div>
+                            @if (readOnly)
+                            {
+                                <span class="badge text-bg-light">Auto: @((ans?.AutoScore ?? 0m).ToString("0.##")) · Manual: @((ans?.ManualScore ?? 0m).ToString("0.##"))</span>
+                            }
+                        </div>
+
+                        @if (q.Type == HNControl.Web.Models.ExamQuestionType.OpenText || q.Type == HNControl.Web.Models.ExamQuestionType.Attachment)
+                        {
+                            <div class="mt-2">
+                                <textarea class="form-control" name="t_@q.Id.ToString("N")" rows="3" @(readOnly ? "disabled" : "")>@(ans?.TextAnswer ?? "")</textarea>
+                            </div>
+
+                            @if (q.Type == HNControl.Web.Models.ExamQuestionType.Attachment)
+                            {
+                                <div class="mt-2">
+                                    @if (!readOnly)
+                                    {
+                                        <label class="form-label small">Adjuntar archivo(s) (PDF/imagen)</label>
+                                        <input class="form-control" type="file" name="f_@q.Id.ToString("N")" multiple />
+                                        <div class="text-muted small mt-1">Tip: para el diagrama, una foto o un PDF queda perfecto.</div>
+                                    }
+
+                                    @if (ans?.Attachments != null && ans.Attachments.Any())
+                                    {
+                                        <div class="mt-2">
+                                            <div class="text-muted small">Adjuntos:</div>
+                                            <ul class="mb-0">
+                                                @foreach (var att in ans.Attachments.OrderByDescending(x => x.UploadedAt))
+                                                {
+                                                    <li>
+                                                        <a asp-page="/Exams/DownloadAttachment" asp-route-id="@att.Id">@att.OriginalFileName</a>
+                                                        <span class="text-muted small">(@(Math.Round(att.SizeBytes / 1024.0)) KB)</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-muted small mt-2">Sin adjuntos.</div>
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="mt-2 d-flex flex-column gap-2">
+                                @foreach (var c in q.Choices.OrderBy(x => x.Ordinal))
+                                {
+                                    var idStr = $"c_{c.Id:N}";
+                                    var isChecked = selected.Contains(c.Id);
+                                    var inputType = q.Type == HNControl.Web.Models.ExamQuestionType.MultipleChoice ? "checkbox" : "radio";
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="@inputType" name="q_@q.Id.ToString("N")" value="@c.Id" id="@idStr" @(isChecked ? "checked" : "") @(readOnly ? "disabled" : "") />
+                                        <label class="form-check-label" for="@idStr">@c.Text</label>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (readOnly && !string.IsNullOrWhiteSpace(ans?.Comment))
+                        {
+                            <div class="text-muted small mt-2">Comentario: @ans!.Comment</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        @if (!readOnly)
+        {
+            <button class="btn btn-outline-primary" type="submit" asp-page-handler="Save"><i class="bi bi-save me-1"></i> Guardar</button>
+            <button class="btn btn-primary" type="submit" asp-page-handler="Submit" onclick="return confirm('¿Enviar examen? Ya no podrás editarlo.');"><i class="bi bi-send me-1"></i> Enviar</button>
+        }
+        else
+        {
+            <span class="text-muted small">Modo lectura.</span>
+        }
+    </div>
+</form>

@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+.idea/
+.git/
+*.user
+*.suo
+*.log
+node_modules/
+dist/

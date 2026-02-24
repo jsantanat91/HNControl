@@ -13,14 +13,17 @@ public class DashboardModel : PageModel
     private readonly ApplicationDbContext _db;
     public DashboardModel(ApplicationDbContext db) => _db = db;
 
-    public record KpiVm(int Employees, int OrdersInReview, int OverdueProjects, int PendingViaticWeeks);
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0);
+    public record KpiVm(int Employees, int OrdersInReview, int OverdueProjects, int PendingViaticWeeks, int PendingLeaveRequests, int ExamsToGrade);
+    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0);
 
     public record TopVm(string UserId, string Name, decimal Variable);
     public List<TopVm> Top { get; set; } = new();
 
     public string OrdersLabelsJson { get; set; } = "[]";
     public string OrdersValuesJson { get; set; } = "[]";
+
+    public string ExamStatusLabelsJson { get; set; } = "[]";
+    public string ExamStatusValuesJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -41,7 +44,15 @@ public class DashboardModel : PageModel
             .Where(w => w.Status == ViaticWeekStatus.Submitted)
             .CountAsync();
 
-        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks);
+        var pendingLeaves = await _db.LeaveRequests
+            .Where(x => x.Status == LeaveRequestStatus.Pending)
+            .CountAsync();
+
+        var examsToGrade = await _db.ExamAssignments
+            .Where(x => x.Status == ExamAssignmentStatus.Submitted)
+            .CountAsync();
+
+        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade);
 
         // Top variable (última evaluación por empleado)
         var latest = await _db.PerformanceReviews
@@ -75,5 +86,16 @@ public class DashboardModel : PageModel
 
         OrdersLabelsJson = JsonSerializer.Serialize(labels);
         OrdersValuesJson = JsonSerializer.Serialize(values);
+
+        // Chart exámenes (estatus)
+        var ex = await _db.ExamAssignments
+            .AsNoTracking()
+            .GroupBy(a => a.Status)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Status = g.Key.ToString(), Cnt = g.Count() })
+            .ToListAsync();
+
+        ExamStatusLabelsJson = JsonSerializer.Serialize(ex.Select(x => x.Status));
+        ExamStatusValuesJson = JsonSerializer.Serialize(ex.Select(x => x.Cnt));
     }
 }

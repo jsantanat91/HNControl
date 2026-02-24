@@ -123,6 +123,14 @@ builder.Services.AddRazorPages(options =>
 
     // Monitoreo: empleados (lectura) + admin
     options.Conventions.AuthorizeFolder("/Monitoring", "EmployeeOnly");
+    // Vacaciones e incidencias
+    options.Conventions.AuthorizeFolder("/Leaves", "EmployeeOnly");
+    options.Conventions.AuthorizeFolder("/Admin/Leaves", "AdminOnly");
+
+    // Exámenes
+    options.Conventions.AuthorizeFolder("/Exams", "EmployeeOnly");
+    options.Conventions.AuthorizeFolder("/Admin/Exams", "AdminOnly");
+
 
     // Seguridad / permisos (Admin)
     options.Conventions.AuthorizeFolder("/Admin/Security", "AdminOnly");

@@ -1,0 +1,97 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.Exams.GradeModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Calificar";
+}
+
+@if (Model.Assignment == null || Model.Exam == null)
+{
+    <div class="alert alert-warning">No encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Calificar: @Model.Exam.Title</h1>
+        <div class="text-muted small">Empleado: @Model.Assignment.EmployeeProfile?.FullName (@Model.Assignment.UserId)</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Results" asp-route-id="@Model.Assignment.ExamId">Volver</a>
+</div>
+
+<form method="post" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        @if (!Model.OpenAnswers.Any())
+        {
+            <div class="alert alert-info mb-0">Este examen no tiene preguntas abiertas. (Entonces ¿por qué estás aquí?)</div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @for (int i = 0; i < Model.Grades.Count; i++)
+                {
+                    var g = Model.Grades[i];
+                    var vm = Model.OpenAnswers.First(x => x.AnswerId == g.AnswerId || x.QuestionId == g.QuestionId);
+
+                    <div class="p-3 rounded-3" style="background: rgba(2,6,23,.03); border:1px solid rgba(15,23,42,.06);">
+                        <div class="fw-semibold">@vm.QuestionText</div>
+                        <div class="text-muted small">Máx: @vm.Points.ToString("0.##") pts</div>
+
+                        <div class="mt-2">
+                            <label class="form-label small">Respuesta</label>
+                            <textarea class="form-control" rows="3" disabled>@vm.TextAnswer</textarea>
+                        </div>
+
+                        @if (vm.Type == HNControl.Web.Models.ExamQuestionType.Attachment)
+                        {
+                            <div class="mt-2">
+                                <div class="text-muted small">Adjuntos:</div>
+                                @if (vm.Attachments != null && vm.Attachments.Any())
+                                {
+                                    <ul class="mb-0">
+                                        @foreach (var att in vm.Attachments)
+                                        {
+                                            <li>
+                                                <a asp-page="/Exams/DownloadAttachment" asp-route-id="@att.Id">@att.Name</a>
+                                                <span class="text-muted small">(@(Math.Round(att.SizeBytes / 1024.0)) KB)</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <div class="text-muted small">Sin adjuntos.</div>
+                                }
+                            </div>
+                        }
+
+                        <input type="hidden" asp-for="Grades[i].AnswerId" />
+                        <input type="hidden" asp-for="Grades[i].QuestionId" />
+
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-3">
+                                <label class="form-label small">Puntos</label>
+                                <input class="form-control" asp-for="Grades[i].ManualScore" type="number" step="0.5" min="0" max="@vm.Points" />
+                            </div>
+                            <div class="col-md-9">
+                                <label class="form-label small">Comentario (opcional)</label>
+                                <input class="form-control" asp-for="Grades[i].Comment" />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i> Guardar calificación</button>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Results" asp-route-id="@Model.Assignment.ExamId">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

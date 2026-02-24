@@ -1,0 +1,83 @@
+@page
+@model HNControl.Web.Pages.Admin.Leaves.CreateModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Capturar incidencia";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Capturar incidencia / vacaciones</h1>
+        <div class="text-muted small">Para cuando el empleado no te la pidió… pero ya se fue 😅</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index">Volver</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Empleado</label>
+                <select class="form-select" asp-for="Input.UserId" asp-items="Model.EmployeeOptions">
+                    <option value="">— Selecciona —</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" asp-for="Input.Type">
+                    <option value="Vacation">Vacaciones</option>
+                    <option value="Medical">Médica</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Other">Otra</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" asp-for="Input.Status">
+                    <option value="Approved">Aprobado</option>
+                    <option value="Pending">Pendiente</option>
+                    <option value="Rejected">Rechazado</option>
+                    <option value="Cancelled">Cancelado</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Inicio</label>
+                <input class="form-control" asp-for="Input.StartDate" type="date" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fin</label>
+                <input class="form-control" asp-for="Input.EndDate" type="date" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Evidencias (opcional)</label>
+                <input class="form-control" asp-for="Input.EvidenceFiles" type="file" multiple />
+                <div class="form-text">PDF/PNG/JPG/WEBP/HEIC · max 15MB c/u</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Motivo</label>
+                <textarea class="form-control" asp-for="Input.Reason" rows="3"></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Comentario admin</label>
+                <input class="form-control" asp-for="Input.AdminComment" placeholder="Ej: Incidencia médica con justificante" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

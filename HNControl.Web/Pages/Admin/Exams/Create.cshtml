@@ -1,0 +1,53 @@
+@page
+@model HNControl.Web.Pages.Admin.Exams.CreateModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Crear examen";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Crear examen</h1>
+        <div class="text-muted small">Después agregas preguntas y lo asignas.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index">Volver</a>
+</div>
+
+<form method="post" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Título</label>
+                <input class="form-control" asp-for="Input.Title" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Límite (minutos)</label>
+                <input class="form-control" asp-for="Input.TimeLimitMinutes" type="number" min="1" max="600" />
+                <div class="form-text">Opcional</div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.IsActive" type="checkbox" />
+                    <label class="form-check-label" asp-for="Input.IsActive">Activo</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Crear</button>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
