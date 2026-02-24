@@ -5,6 +5,8 @@ using HNControl.Web.Services.Monitoring;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -155,6 +157,17 @@ builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
 // QuestPDF licencia community
 QuestPDF.Settings.License = LicenseType.Community;
 
+var mx = new CultureInfo("es-MX");
+CultureInfo.DefaultThreadCurrentCulture = mx;
+CultureInfo.DefaultThreadCurrentUICulture = mx;
+
+builder.Services.Configure<RequestLocalizationOptions>(o =>
+{
+    o.DefaultRequestCulture = new RequestCulture(mx);
+    o.SupportedCultures = new[] { mx };
+    o.SupportedUICultures = new[] { mx };
+});
+
 var app = builder.Build();
 
 // --------------------
@@ -193,7 +206,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
+app.UseRequestLocalization();
 app.UseRouting();
 
 app.UseAuthentication();
