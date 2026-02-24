@@ -195,6 +195,20 @@ using (var scope = app.Services.CreateScope())
 
 }
 
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "UNHANDLED | TraceId={TraceId} Path={Path}", ctx.TraceIdentifier, ctx.Request.Path);
+        throw;
+    }
+});
+
 // --------------------
 // Pipeline
 // --------------------
