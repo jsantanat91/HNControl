@@ -1,18 +1,25 @@
 @page
 @model HNControl.Web.Pages.Admin.Exams.IndexModel
-@using HNControl.Web.Helpers
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Exámenes (Admin)";
+
+    string ActiveBadge(bool active) => active ? "text-bg-success" : "text-bg-secondary";
+    string ActiveText(bool active) => active ? "Activo" : "Inactivo";
+
+    string PendingBadge(int pending) => pending > 0 ? "text-bg-warning" : "text-bg-secondary";
+    string AvgBadge(decimal pct) => pct >= 80m ? "text-bg-success" : (pct > 0m ? "text-bg-danger" : "text-bg-secondary");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Exámenes</h1>
-        <div class="text-muted small">Crear · asignar · calificar</div>
+        <div class="text-muted small">Crear · asignar · revisar resultados</div>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-primary" asp-page="/Admin/Exams/Create"><i class="bi bi-plus-lg me-1"></i> Crear examen</a>
+        <a class="btn btn-primary" asp-page="/Admin/Exams/Create">
+            <i class="bi bi-plus-lg me-1"></i> Crear examen
+        </a>
         <a class="btn btn-outline-secondary" asp-page="/Admin/Dashboard">Panel</a>
     </div>
 </div>
@@ -30,55 +37,65 @@
                     <thead>
                         <tr>
                             <th>Examen</th>
-                            <th class="text-center">Activo</th>
+                            <th class="text-center">Estado</th>
                             <th class="text-end">Preguntas</th>
                             <th class="text-end">Asignados</th>
+                            <th class="text-end">En revisión</th>
                             <th class="text-end">Pend. calificar</th>
                             <th class="text-end">Promedio</th>
                             <th class="text-end"></th>
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach (var e in Model.Items)
-                    {
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">@e.Title</div>
-                                <div class="text-muted small">@e.Id</div>
-                            </td>
-                            <td class="text-center">
-                                @if (e.IsActive)
-                                {
-                                    <span class="badge text-bg-success">Sí</span>
-                                }
-                                else
-                                {
-                                    <span class="badge text-bg-secondary">No</span>
-                                }
-                                    @{
-                                        var (stText, stCss) = UiBadges.ExamStatus(a.Status);
-                                        var (rsText, rsCss) = UiBadges.ExamResult(a.Score, a.MaxScore, 80m);
-                                    }
-                                    <span class="badge rounded-pill @stCss">@stText</span>
+                        @foreach (var r in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@r.Title</div>
+                                    <div class="text-muted small">Id: @r.Id</div>
+                                </td>
 
-                                    @if (a.Status == ExamAssignmentStatus.Graded)
-                                    {
-                                        <span class="badge rounded-pill @rsCss ms-2">@rsText</span>
-                                    }
-                            </td>
-                            <td class="text-end">@e.Questions</td>
-                            <td class="text-end">@e.Assigned</td>
-                            <td class="text-end">@e.PendingGrade</td>
-                            <td class="text-end">@e.AvgPct.ToString("0")%</td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Exams/Edit" asp-route-id="@e.Id">Editar</a>
-                                <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Exams/Assign" asp-route-id="@e.Id">Asignar</a>
-                                <a class="btn btn-sm btn-outline-success" asp-page="/Admin/Exams/Results" asp-route-id="@e.Id">Resultados</a>
-                            </td>
-                        </tr>
-                    }
+                                <td class="text-center">
+                                    <span class="badge rounded-pill @ActiveBadge(r.IsActive)">@ActiveText(r.IsActive)</span>
+                                </td>
+
+                                <td class="text-end">@r.Questions</td>
+                                <td class="text-end">@r.Assigned</td>
+                                <td class="text-end">@r.Submitted</td>
+
+                                <td class="text-end">
+                                    <span class="badge rounded-pill @PendingBadge(r.PendingGrade)">@r.PendingGrade</span>
+                                </td>
+
+                                <td class="text-end">
+                                    <span class="badge rounded-pill @AvgBadge(r.AvgPct)">
+                                        @(r.AvgPct > 0 ? $"{r.AvgPct:0}%" : "—")
+                                    </span>
+                                    <div class="text-muted small">@((r.AvgScore > 0) ? $"{r.AvgScore:0.##} pts" : "")</div>
+                                </td>
+
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Exams/Edit" asp-route-id="@r.Id">
+                                            Editar
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-success" asp-page="/Admin/Exams/Assign" asp-route-id="@r.Id">
+                                            Asignar
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Exams/Results" asp-route-id="@r.Id">
+                                            Resultados
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
+            </div>
+
+            <div class="text-muted small mt-2">
+                * “Pend. calificar” = enviados con preguntas abiertas/adjuntos que requieren revisión.
+                * “Promedio” se calcula sobre intentos “Calificados”.
             </div>
         }
     </div>
