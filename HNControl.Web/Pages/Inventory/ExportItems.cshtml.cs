@@ -27,7 +27,8 @@ public class ExportItemsModel : PageModel
                 i.Model,
                 i.Location,
                 i.Category,
-                Type = i.IsConsumable ? "Consumible" : "Hardware",
+                // "Tipo" ahora se reporta como la categoría (evita que todo salga "Consumible")
+                Type = i.Category ?? "",
                 i.Unit,
                 Existencia = i.QuantityOnHand,
                 StockMinimo = i.ReorderLevel,

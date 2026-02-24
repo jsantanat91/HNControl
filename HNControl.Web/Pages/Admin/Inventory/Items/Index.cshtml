@@ -55,7 +55,6 @@
                         <th>Marca</th>
                         <th>Modelo</th>
                         <th>Ubicación</th>
-                        <th>Tipo</th>
                         <th class="text-end">Existencia</th>
                         <th class="text-end">Stock mínimo</th>
                         <th>Activo</th>
@@ -72,16 +71,6 @@
                             <td>@(i.Brand?.Name ?? "—")</td>
                             <td>@(string.IsNullOrWhiteSpace(i.Model) ? "—" : i.Model)</td>
                             <td>@(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)</td>
-                            <td>
-                                @if (i.IsConsumable)
-                                {
-                                    <span class="hn-badge hn-badge-green">Consumible</span>
-                                }
-                                else
-                                {
-                                    <span class="hn-badge hn-badge-blue">Hardware</span>
-                                }
-                            </td>
                             <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
                             <td class="text-end">@i.ReorderLevel</td>
                             <td>@(i.IsActive ? "Sí" : "No")</td>
