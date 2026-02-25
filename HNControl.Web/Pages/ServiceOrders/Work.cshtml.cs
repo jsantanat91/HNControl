@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -52,18 +52,10 @@ public class WorkModel : PageModel
     {
         public Guid? WorkItemId { get; set; }
         public string Title { get; set; } = "";
-        public string TypeLabel { get; set; } = "";      // texto para UI
-        public string TypeKey { get; set; } = "";        // key para color/badge
-        public int? ActivityNumber { get; set; }         // 1..N (solo actividades)
-        public int? WorkItemPostIndex { get; set; }      // índice en WorkItemsPost
-        public int TotalCount { get; set; }
-        public int DoneCount { get; set; }
-        public string CompletionPercent { get; set; } = "0%";
-        public bool IsDefaultOpen { get; set; }
-
+        public string TypeLabel { get; set; } = "";
+        public int? WorkItemPostIndex { get; set; }
         public List<int> ItemIndices { get; set; } = new();
     }
-
 
     public List<ChecklistGroupVm> ChecklistGroups { get; set; } = new();
 
@@ -201,72 +193,88 @@ public class WorkModel : PageModel
     }
 
     // ✅ Un botón: firma y envía
-    public async Task<IActionResult> OnPostSignAndSubmitAsync(
-        Guid id,
-        string? TechName,
-        string? ClientName,
-        string? TechSigDataUrl,
-        string? ClientSigDataUrl)
+    // ✅ Un botón: firma y envía (GUARDA checklist + campos abiertos antes de enviar)
+public async Task<IActionResult> OnPostSignAndSubmitAsync(
+    Guid id,
+    string? TechName,
+    string? ClientName,
+    string? TechSigDataUrl,
+    string? ClientSigDataUrl)
+{
+    // NO llamamos LoadAsync() aquí, porque sobre-escribe lo posteado (ItemsPost / WorkItemsPost).
+    Order = await _db.ServiceOrders
+        .Include(o => o.Client)
+        .Include(o => o.Checklist)
+        .Include(o => o.WorkItems)
+        .Include(o => o.Signatures)
+        .FirstOrDefaultAsync(o => o.Id == id);
+
+    if (Order == null) return NotFound();
+    if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
+
+    // 1) Guardar checklist + notas
+    foreach (var vm in ItemsPost ?? new())
     {
-        // ⚠️ No usamos LoadAsync() aquí porque en POST pisaría lo posteado (ItemsPost / WorkItemsPost).
-        Order = await _db.ServiceOrders
-            .Include(o => o.Client)
-            .Include(o => o.Checklist)
-            .Include(o => o.WorkItems)
-            .Include(o => o.Evidences)
-            .Include(o => o.Signatures)
-            .FirstOrDefaultAsync(o => o.Id == id);
+        var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
+        if (it == null) continue;
 
-        if (Order == null) return NotFound();
-        if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
+        it.IsDone = vm.IsDone;
+        it.Notes = (vm.Notes ?? "").Trim();
+    }
 
-        // Guardar checklist + campos abiertos (para que el PDF sí lleve todo, aunque el técnico no presione "Guardar").
-        foreach (var vm in ItemsPost ?? new())
+    // 2) Guardar campos abiertos por actividad (en global)
+    if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
+    {
+        foreach (var wvm in WorkItemsPost)
         {
-            var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
-            if (it == null) continue;
+            var wi = Order.WorkItems.FirstOrDefault(x => x.Id == wvm.Id);
+            if (wi == null) continue;
 
-            it.IsDone = vm.IsDone;
-            it.Notes = (vm.Notes ?? "").Trim();
+            wi.WorkPerformed = (wvm.WorkPerformed ?? "").Trim();
+            wi.MaterialsUsed = (wvm.MaterialsUsed ?? "").Trim();
+            wi.TechnicianNotes = (wvm.TechnicianNotes ?? "").Trim();
+            wi.IsCompleted = wvm.IsCompleted;
+            wi.UpdatedAt = DateTime.UtcNow;
         }
+    }
 
-        if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
-        {
-            foreach (var wvm in WorkItemsPost)
-            {
-                var wi = Order.WorkItems.FirstOrDefault(x => x.Id == wvm.Id);
-                if (wi == null) continue;
+    if (Order.Status == ServiceOrderStatus.Created)
+    {
+        Order.Status = ServiceOrderStatus.InProgress;
+        Order.StartedAt = DateTime.UtcNow;
+    }
 
-                wi.WorkPerformed = (wvm.WorkPerformed ?? "").Trim();
-                wi.MaterialsUsed = (wvm.MaterialsUsed ?? "").Trim();
-                wi.TechnicianNotes = (wvm.TechnicianNotes ?? "").Trim();
-                wi.IsCompleted = wvm.IsCompleted;
-                wi.UpdatedAt = DateTime.UtcNow;
-            }
-        }
+    await _db.SaveChangesAsync();
 
-        if (Order.Status == ServiceOrderStatus.Created)
-        {
-            Order.Status = ServiceOrderStatus.InProgress;
-            Order.StartedAt = DateTime.UtcNow;
-        }
+    // 3) Guardar firmas (si vienen)
+    await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+    await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
-        await _db.SaveChangesAsync();
+    _db.ChangeTracker.Clear();
+    await LoadAsync(id);
 
-        // Firmas
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
+    if (Order == null) return NotFound();
 
-        _db.ChangeTracker.Clear();
-        await LoadAsync(id);
+    if (!HasTechSignature || !HasClientSignature)
+    {
+        Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
+        return Page();
+    }
 
-        if (Order == null) return NotFound();
+    // 4) Enviar a revisión
+    await _db.Database.ExecuteSqlInterpolatedAsync($@"
+UPDATE ""ServiceOrders""
+SET ""Status"" = {ServiceOrderStatus.InReview},
+    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
+WHERE ""Id"" = {id};
+");
 
-        if (!HasTechSignature || !HasClientSignature)
-        {
-            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
-            return Page();
-        }
+    _db.ChangeTracker.Clear();
+    await LoadAsync(id);
+
+    Info = "✅ Checklist guardado + firmas guardadas y enviado a revisión.";
+    return Page();
+}
 
         await _db.Database.ExecuteSqlInterpolatedAsync($@"
 UPDATE ""ServiceOrders""
@@ -278,10 +286,9 @@ WHERE ""Id"" = {id};
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
 
-        Info = "✅ Checklist guardado + firmas guardadas y enviado a revisión.";
+        Info = "✅ Firmas guardadas y enviado a revisión.";
         return Page();
     }
-
 
     // Compatibilidad: handlers viejos (ya sin EF SaveChanges para firmas)
     public async Task<IActionResult> OnPostSaveSignaturesAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
@@ -402,25 +409,17 @@ WHERE ""Id"" = {id};
         var flat = new List<ItemVm>();
         var groups = new List<ChecklistGroupVm>();
 
-        void AddGroup(Guid? workItemId, string title, string typeLabel, string typeKey, int? activityNumber, int? wiPostIndex, IEnumerable<ServiceOrderChecklistItem> items)
+        void AddGroup(Guid? workItemId, string title, string typeLabel, int? wiPostIndex, IEnumerable<ServiceOrderChecklistItem> items)
         {
             var g = new ChecklistGroupVm
             {
                 WorkItemId = workItemId,
                 Title = title,
                 TypeLabel = typeLabel,
-                TypeKey = typeKey,
-                ActivityNumber = activityNumber,
                 WorkItemPostIndex = wiPostIndex
             };
 
-            var listItems = items.ToList();
-            g.TotalCount = listItems.Count;
-            g.DoneCount = listItems.Count(x => x.IsDone);
-            g.CompletionPercent = g.TotalCount == 0 ? "0%" : $"{(g.DoneCount * 100m / g.TotalCount):0.#}%";
-
-
-            foreach (var it in listItems.OrderBy(x => x.SortOrder))
+            foreach (var it in items.OrderBy(x => x.SortOrder))
             {
                 flat.Add(new ItemVm
                 {
@@ -440,26 +439,22 @@ WHERE ""Id"" = {id};
 
         if (WorkItems.Count == 0)
         {
-            AddGroup(null, "Checklist", Order.Type.ToString(), Order.Type.ToString(), null, null, Order.Checklist);
+            AddGroup(null, "Checklist", Order.Type.ToString(), null, Order.Checklist);
         }
         else
         {
             var generalItems = Order.Checklist.Where(i => i.WorkItemId == null);
-            AddGroup(null, "Checklist general", "General", "General", null, null, generalItems);
+            AddGroup(null, "Checklist general", "General", null, generalItems);
 
             for (var wiIndex = 0; wiIndex < WorkItems.Count; wiIndex++)
             {
                 var w = WorkItems[wiIndex];
                 var wiItems = Order.Checklist.Where(i => i.WorkItemId == w.Id);
-                AddGroup(w.Id, w.Title, w.Type.ToString(), w.Type.ToString(), wiIndex + 1, wiIndex, wiItems);
+                AddGroup(w.Id, w.Title, w.Type.ToString(), wiIndex, wiItems);
             }
         }
 
-        // Abrir por default la primera sección incompleta (o la primera si ya está todo OK)
-        var firstOpen = groups.FirstOrDefault(x => x.TotalCount > 0 && x.DoneCount < x.TotalCount) ?? groups.FirstOrDefault();
-        if (firstOpen != null) firstOpen.IsDefaultOpen = true;
-
-ItemsPost = flat;
+        ItemsPost = flat;
         ChecklistGroups = groups;
 
         ChecklistCompletionPercent = $"{(GetChecklistCompletion(Order) * 100m):0.#}%";

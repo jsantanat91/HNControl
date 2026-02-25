@@ -1,6 +1,5 @@
 @page "{id:guid}"
 @model HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel
-@using System
 @{
     ViewData["Title"] = "Orden de Servicio";
 }
@@ -61,6 +60,47 @@
                     <button class="btn btn-outline-success" type="submit" formaction="?handler=SendEmail">Enviar PDF por correo</button>
                 </form>
             </div>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header bg-white border-0 fw-semibold d-flex justify-content-between align-items-center">
+                <span>Vista previa PDF</span>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" target="_blank"
+                       href="@Url.Page("/Admin/ServiceOrders/DownloadPdf", null, new { id = Model.Order.Id, inline = true }, null)">Abrir</a>
+                    <a class="btn btn-sm btn-outline-secondary"
+                       href="@Url.Page("/Admin/ServiceOrders/Details", null, new { id = Model.Order.Id, pdfRefresh = 1 }, null)">Actualizar</a>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                @if (string.IsNullOrWhiteSpace(Model.Order.PdfStoragePath))
+                {
+                    <div class="p-3 text-muted">
+                        Aún no hay PDF generado. Usa <strong>Generar PDF</strong> (o “Actualizar” para forzar regeneración en esta vista).
+                    </div>
+                }
+                else
+                {
+                    var refresh = Context.Request.Query.ContainsKey("pdfRefresh");
+                    var pdfUrl = Url.Page("/Admin/ServiceOrders/DownloadPdf", null,
+                        new { id = Model.Order.Id, inline = true, refresh = refresh }, null);
+
+                    // Cache-buster: cuando refrescamos, forzamos recarga del visor.
+                    pdfUrl += refresh ? $"&v={DateTime.UtcNow.Ticks}" : $"&v={(Model.Order.PdfGeneratedAt?.Ticks ?? 0)}";
+
+                    <object data="@pdfUrl" type="application/pdf" style="width:100%; height:650px;">
+                        <div class="p-3 text-muted">
+                            Tu navegador no pudo mostrar el PDF aquí.
+                            <a target="_blank" href="@pdfUrl">Abrir PDF</a>
+                        </div>
+                    </object>
+                }
+            </div>
+
+            <div class="card-footer bg-white border-0 text-muted small">
+                Si hiciste cambios (checklist/notas/firmas), usa “Actualizar”.
+            </div>
+        </div>
         </div>
 
         @if (Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview)
@@ -90,46 +130,7 @@
     </div>
 
     <div class="col-lg-5">
-        
-        @* Vista previa PDF (Admin) *@
-        @if (Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview || !string.IsNullOrWhiteSpace(Model.Order.PdfStoragePath))
-        {
-            var previewRefresh = Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview ? "true" : "false";
-            var v = (Model.Order.PdfGeneratedAt?.Ticks ?? DateTime.UtcNow.Ticks).ToString();
-
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-header bg-white border-0 fw-semibold d-flex align-items-center justify-content-between">
-                    <span>Vista previa PDF</span>
-                    <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary" target="_blank"
-                           href="/Admin/ServiceOrders/DownloadPdf?id=@Model.Order.Id&inline=true&refresh=@previewRefresh&v=@v">Abrir</a>
-                        <form method="post" class="m-0">
-                            <input type="hidden" name="id" value="@Model.Order.Id" />
-                            <button class="btn btn-sm btn-outline-secondary" type="submit" formaction="?handler=GeneratePdf">Actualizar</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="ratio ratio-4x3 border rounded-4 overflow-hidden">
-                        <iframe title="Vista previa PDF"
-                                src="/Admin/ServiceOrders/DownloadPdf?id=@Model.Order.Id&inline=true&refresh=@previewRefresh&v=@v"
-                                style="border:0"></iframe>
-                    </div>
-                    <div class="text-muted small mt-2">
-                        @if (Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview)
-                        {
-                            <span>Esta vista se genera con la info más reciente (incluye notas del checklist).</span>
-                        }
-                        else
-                        {
-                            <span>Si hiciste cambios, usa “Actualizar”.</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-
-<div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0">
             <div class="card-header bg-white border-0 fw-semibold">Firma / Evidencias</div>
             <div class="card-body">
                 <div class="mb-2">
