@@ -37,9 +37,43 @@ public class WorkModel : PageModel
 
     public string ChecklistCompletionPercent { get; set; } = "0%";
 
+    public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
+
+    public class WorkItemPostVm
+    {
+        public Guid Id { get; set; }
+        public string WorkPerformed { get; set; } = "";
+        public string MaterialsUsed { get; set; } = "";
+        public string TechnicianNotes { get; set; } = "";
+        public bool IsCompleted { get; set; }
+    }
+
+    public class ChecklistGroupVm
+    {
+        public Guid? WorkItemId { get; set; }
+        public string Title { get; set; } = "";
+        public string TypeLabel { get; set; } = "";      // texto para UI
+        public string TypeKey { get; set; } = "";        // key para color/badge
+        public int? ActivityNumber { get; set; }         // 1..N (solo actividades)
+        public int? WorkItemPostIndex { get; set; }      // índice en WorkItemsPost
+        public int TotalCount { get; set; }
+        public int DoneCount { get; set; }
+        public string CompletionPercent { get; set; } = "0%";
+        public bool IsDefaultOpen { get; set; }
+
+        public List<int> ItemIndices { get; set; } = new();
+    }
+
+
+    public List<ChecklistGroupVm> ChecklistGroups { get; set; } = new();
+
+    [BindProperty] public List<WorkItemPostVm> WorkItemsPost { get; set; } = new();
+
     public class ItemVm
     {
         public Guid Id { get; set; }
+        public Guid? WorkItemId { get; set; }
+        public string Category { get; set; } = "";
         public string Title { get; set; } = "";
         public bool IsDone { get; set; }
         public string Notes { get; set; } = "";
@@ -65,16 +99,40 @@ public class WorkModel : PageModel
 
     public async Task<IActionResult> OnPostSaveChecklistAsync(Guid id)
     {
-        var ok = await LoadAsync(id);
-        if (!ok || Order == null) return Forbid();
+        // En POST NO llamamos LoadAsync() porque sobre-escribe lo posteado (ItemsPost / WorkItemsPost).
+        Order = await _db.ServiceOrders
+            .Include(o => o.Client)
+            .Include(o => o.Checklist)
+            .Include(o => o.WorkItems)
+            .FirstOrDefaultAsync(o => o.Id == id);
 
-        foreach (var vm in ItemsPost)
+        if (Order == null) return NotFound();
+        if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
+
+        // Checklist
+        foreach (var vm in ItemsPost ?? new())
         {
             var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
             if (it == null) continue;
 
             it.IsDone = vm.IsDone;
             it.Notes = (vm.Notes ?? "").Trim();
+        }
+
+        // Campos abiertos por actividad
+        if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
+        {
+            foreach (var wvm in WorkItemsPost)
+            {
+                var wi = Order.WorkItems.FirstOrDefault(x => x.Id == wvm.Id);
+                if (wi == null) continue;
+
+                wi.WorkPerformed = (wvm.WorkPerformed ?? "").Trim();
+                wi.MaterialsUsed = (wvm.MaterialsUsed ?? "").Trim();
+                wi.TechnicianNotes = (wvm.TechnicianNotes ?? "").Trim();
+                wi.IsCompleted = wvm.IsCompleted;
+                wi.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         if (Order.Status == ServiceOrderStatus.Created)
@@ -84,10 +142,7 @@ public class WorkModel : PageModel
         }
 
         await _db.SaveChangesAsync();
-
-        Info = "Checklist guardado.";
-        await LoadAsync(id);
-        return Page();
+        return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostUploadEvidenceAsync(Guid id)
@@ -153,9 +208,52 @@ public class WorkModel : PageModel
         string? TechSigDataUrl,
         string? ClientSigDataUrl)
     {
-        var ok = await LoadAsync(id);
-        if (!ok || Order == null) return Forbid();
+        // ⚠️ No usamos LoadAsync() aquí porque en POST pisaría lo posteado (ItemsPost / WorkItemsPost).
+        Order = await _db.ServiceOrders
+            .Include(o => o.Client)
+            .Include(o => o.Checklist)
+            .Include(o => o.WorkItems)
+            .Include(o => o.Evidences)
+            .Include(o => o.Signatures)
+            .FirstOrDefaultAsync(o => o.Id == id);
 
+        if (Order == null) return NotFound();
+        if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
+
+        // Guardar checklist + campos abiertos (para que el PDF sí lleve todo, aunque el técnico no presione "Guardar").
+        foreach (var vm in ItemsPost ?? new())
+        {
+            var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
+            if (it == null) continue;
+
+            it.IsDone = vm.IsDone;
+            it.Notes = (vm.Notes ?? "").Trim();
+        }
+
+        if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
+        {
+            foreach (var wvm in WorkItemsPost)
+            {
+                var wi = Order.WorkItems.FirstOrDefault(x => x.Id == wvm.Id);
+                if (wi == null) continue;
+
+                wi.WorkPerformed = (wvm.WorkPerformed ?? "").Trim();
+                wi.MaterialsUsed = (wvm.MaterialsUsed ?? "").Trim();
+                wi.TechnicianNotes = (wvm.TechnicianNotes ?? "").Trim();
+                wi.IsCompleted = wvm.IsCompleted;
+                wi.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        if (Order.Status == ServiceOrderStatus.Created)
+        {
+            Order.Status = ServiceOrderStatus.InProgress;
+            Order.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        // Firmas
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
@@ -180,9 +278,10 @@ WHERE ""Id"" = {id};
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
 
-        Info = "✅ Firmas guardadas y enviado a revisión.";
+        Info = "✅ Checklist guardado + firmas guardadas y enviado a revisión.";
         return Page();
     }
+
 
     // Compatibilidad: handlers viejos (ya sin EF SaveChanges para firmas)
     public async Task<IActionResult> OnPostSaveSignaturesAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
@@ -260,6 +359,7 @@ WHERE ""Id"" = {id};
             .Include(o => o.Checklist)
             .Include(o => o.Evidences)
             .Include(o => o.Signatures)
+            .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (Order == null) return true;
@@ -271,15 +371,96 @@ WHERE ""Id"" = {id};
         if (!string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))
             ClientDownloadUrl = $"{baseUrl}/Public/ServiceOrder/{Order.PublicToken}";
 
-        ItemsPost = Order.Checklist
-            .OrderBy(i => i.SortOrder)
-            .Select(i => new ItemVm
+        WorkItems = Order.WorkItems.OrderBy(w => w.SortOrder).ToList();
+
+        // ✅ Autoreparación: si la orden no trae checklist (o faltan por actividad), lo generamos desde plantilla.
+        var added = false;
+        if (Order.Type != ServiceOrderType.Global && Order.Checklist.Count == 0)
+        {
+            added |= await EnsureChecklistFromTemplateAsync(Order, Order.Type, workItemId: null);
+        }
+
+        foreach (var w in WorkItems)
+        {
+            if (!Order.Checklist.Any(x => x.WorkItemId == w.Id))
+                added |= await EnsureChecklistFromTemplateAsync(Order, w.Type, workItemId: w.Id);
+        }
+
+        if (added)
+            await _db.SaveChangesAsync();
+
+        WorkItemsPost = WorkItems.Select(w => new WorkItemPostVm
+        {
+            Id = w.Id,
+            WorkPerformed = w.WorkPerformed,
+            MaterialsUsed = w.MaterialsUsed,
+            TechnicianNotes = w.TechnicianNotes,
+            IsCompleted = w.IsCompleted
+        }).ToList();
+
+        // Checklist plano pero agrupado por actividad
+        var flat = new List<ItemVm>();
+        var groups = new List<ChecklistGroupVm>();
+
+        void AddGroup(Guid? workItemId, string title, string typeLabel, string typeKey, int? activityNumber, int? wiPostIndex, IEnumerable<ServiceOrderChecklistItem> items)
+        {
+            var g = new ChecklistGroupVm
             {
-                Id = i.Id,
-                Title = i.Title,
-                IsDone = i.IsDone,
-                Notes = i.Notes
-            }).ToList();
+                WorkItemId = workItemId,
+                Title = title,
+                TypeLabel = typeLabel,
+                TypeKey = typeKey,
+                ActivityNumber = activityNumber,
+                WorkItemPostIndex = wiPostIndex
+            };
+
+            var listItems = items.ToList();
+            g.TotalCount = listItems.Count;
+            g.DoneCount = listItems.Count(x => x.IsDone);
+            g.CompletionPercent = g.TotalCount == 0 ? "0%" : $"{(g.DoneCount * 100m / g.TotalCount):0.#}%";
+
+
+            foreach (var it in listItems.OrderBy(x => x.SortOrder))
+            {
+                flat.Add(new ItemVm
+                {
+                    Id = it.Id,
+                    WorkItemId = it.WorkItemId,
+                    Category = it.Category,
+                    Title = it.Title,
+                    IsDone = it.IsDone,
+                    Notes = it.Notes
+                });
+                g.ItemIndices.Add(flat.Count - 1);
+            }
+
+            if (g.ItemIndices.Count > 0)
+                groups.Add(g);
+        }
+
+        if (WorkItems.Count == 0)
+        {
+            AddGroup(null, "Checklist", Order.Type.ToString(), Order.Type.ToString(), null, null, Order.Checklist);
+        }
+        else
+        {
+            var generalItems = Order.Checklist.Where(i => i.WorkItemId == null);
+            AddGroup(null, "Checklist general", "General", "General", null, null, generalItems);
+
+            for (var wiIndex = 0; wiIndex < WorkItems.Count; wiIndex++)
+            {
+                var w = WorkItems[wiIndex];
+                var wiItems = Order.Checklist.Where(i => i.WorkItemId == w.Id);
+                AddGroup(w.Id, w.Title, w.Type.ToString(), w.Type.ToString(), wiIndex + 1, wiIndex, wiItems);
+            }
+        }
+
+        // Abrir por default la primera sección incompleta (o la primera si ya está todo OK)
+        var firstOpen = groups.FirstOrDefault(x => x.TotalCount > 0 && x.DoneCount < x.TotalCount) ?? groups.FirstOrDefault();
+        if (firstOpen != null) firstOpen.IsDefaultOpen = true;
+
+ItemsPost = flat;
+        ChecklistGroups = groups;
 
         ChecklistCompletionPercent = $"{(GetChecklistCompletion(Order) * 100m):0.#}%";
 
@@ -309,6 +490,38 @@ WHERE ""Id"" = {id};
         if (order.Checklist == null || order.Checklist.Count == 0) return 0m;
         var done = order.Checklist.Count(x => x.IsDone);
         return (decimal)done / order.Checklist.Count;
+    }
+
+    private async Task<bool> EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
+    {
+        if (order.Checklist.Any(x => x.WorkItemId == workItemId))
+            return false;
+
+        var template = await _db.ServiceOrderChecklistTemplates
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        if (template == null || template.Items.Count == 0)
+            return false;
+
+        foreach (var it in template.Items.OrderBy(x => x.SortOrder))
+        {
+            order.Checklist.Add(new ServiceOrderChecklistItem
+            {
+                OrderId = order.Id,
+                WorkItemId = workItemId,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            });
+        }
+
+        return true;
     }
 
     // ✅ SQL delete+insert = cero drama con concurrencia

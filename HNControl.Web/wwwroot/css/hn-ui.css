@@ -346,6 +346,9 @@ a:hover { color: var(--hn-blue-dark); text-decoration: underline; }
 .hn-badge-amber{ background: rgba(245,158,11,.12); color: rgba(146,64,14,.98); border-color: rgba(245,158,11,.22); }
 .hn-badge-slate{ background: rgba(100,116,139,.10); color: rgba(51,65,85,.98); border-color: rgba(100,116,139,.20); }
 
+.hn-badge-cyan{ background: rgba(6,182,212,.10); color: rgba(8,145,178,.98); border-color: rgba(6,182,212,.22); }
+.hn-badge-purple{ background: rgba(124,58,237,.10); color: rgba(88,28,135,.98); border-color: rgba(124,58,237,.22); }
+
 /* Module cards (Carriers, etc.) */
 .hn-module{
   position: relative;

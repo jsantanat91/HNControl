@@ -25,6 +25,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         var o = await _db.ServiceOrders
             .Include(x => x.Client)
             .Include(x => x.Checklist)
+            .Include(x => x.WorkItems)
             .Include(x => x.Evidences)
             .Include(x => x.Signatures)
             .FirstAsync(x => x.Id == order.Id);
@@ -108,40 +109,81 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         cc.Item().PaddingTop(6).Text(string.IsNullOrWhiteSpace(o.Description) ? "—" : o.Description);
                     });
 
-                    // Checklist limpio
+                    // Checklist (por actividad si es Global)
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
                         cc.Item().Text("Checklist").SemiBold();
-                        cc.Item().PaddingTop(6).Table(t =>
+                        cc.Item().PaddingTop(6);
+
+                        void RenderChecklistTable(List<ServiceOrderChecklistItem> list)
                         {
-                            t.ColumnsDefinition(cols =>
+                            if (list.Count == 0)
                             {
-                                cols.ConstantColumn(26);
-                                cols.RelativeColumn();
-                                cols.ConstantColumn(34);
-                                cols.RelativeColumn();
-                            });
-
-                            t.Header(h =>
-                            {
-                                h.Cell().Element(CellHead).Text("#");
-                                h.Cell().Element(CellHead).Text("Item");
-                                h.Cell().Element(CellHead).AlignCenter().Text("OK");
-                                h.Cell().Element(CellHead).Text("Notas");
-                            });
-
-                            var list = o.Checklist.OrderBy(x => x.SortOrder).ToList();
-                            for (int i = 0; i < list.Count; i++)
-                            {
-                                var it = list[i];
-                                bool zebra = i % 2 == 1;
-
-                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.SortOrder.ToString()).FontColor(Colors.Grey.Darken2);
-                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Title);
-                                t.Cell().Element(cel => CellBody(cel, zebra)).AlignCenter().Text(it.IsDone ? "✓" : "");
-                                t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Notes ?? "").FontColor(Colors.Grey.Darken2);
+                                cc.Item().Text("—").FontColor(Colors.Grey.Darken2);
+                                return;
                             }
-                        });
+
+                            cc.Item().Table(t =>
+                            {
+                                t.ColumnsDefinition(cols =>
+                                {
+                                    cols.ConstantColumn(26);
+                                    cols.RelativeColumn();
+                                    cols.ConstantColumn(34);
+                                    cols.RelativeColumn();
+                                });
+
+                                t.Header(h =>
+                                {
+                                    h.Cell().Element(CellHead).Text("#");
+                                    h.Cell().Element(CellHead).Text("Item");
+                                    h.Cell().Element(CellHead).AlignCenter().Text("OK");
+                                    h.Cell().Element(CellHead).Text("Notas");
+                                });
+
+                                for (int i = 0; i < list.Count; i++)
+                                {
+                                    var it = list[i];
+                                    bool zebra = i % 2 == 1;
+
+                                    t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.SortOrder.ToString()).FontColor(Colors.Grey.Darken2);
+                                    t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Title);
+                                    t.Cell().Element(cel => CellBody(cel, zebra)).AlignCenter().Text(it.IsDone ? "✓" : "");
+                                    t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Notes ?? "").FontColor(Colors.Grey.Darken2);
+                                }
+                            });
+                        }
+
+                        if (o.WorkItems != null && o.WorkItems.Count > 0)
+                        {
+                            var general = o.Checklist.Where(x => x.WorkItemId == null).OrderBy(x => x.SortOrder).ToList();
+                            if (general.Count > 0)
+                            {
+                                cc.Item().Text("Checklist general").SemiBold();
+                                RenderChecklistTable(general);
+                            }
+
+                            foreach (var w in o.WorkItems.OrderBy(x => x.SortOrder))
+                            {
+                                var items = o.Checklist.Where(x => x.WorkItemId == w.Id).OrderBy(x => x.SortOrder).ToList();
+                                if (items.Count == 0) continue;
+
+                                cc.Item().PaddingTop(8).Text($"{w.SortOrder + 1}. {w.Title} · {w.Type}").SemiBold();
+
+                                if (!string.IsNullOrWhiteSpace(w.WorkPerformed))
+                                    cc.Item().Text($"Trabajo: {w.WorkPerformed}").FontColor(Colors.Grey.Darken2);
+                                if (!string.IsNullOrWhiteSpace(w.MaterialsUsed))
+                                    cc.Item().Text($"Material: {w.MaterialsUsed}").FontColor(Colors.Grey.Darken2);
+                                if (!string.IsNullOrWhiteSpace(w.TechnicianNotes))
+                                    cc.Item().Text($"Obs: {w.TechnicianNotes}").FontColor(Colors.Grey.Darken2);
+
+                                RenderChecklistTable(items);
+                            }
+                        }
+                        else
+                        {
+                            RenderChecklistTable(o.Checklist.OrderBy(x => x.SortOrder).ToList());
+                        }
                     });
 
                     // Evidencias

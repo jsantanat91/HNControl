@@ -51,7 +51,7 @@ public class IndexModel : PageModel
                 o.Project?.Title ?? "-",
                 o.ClientServiceContract?.Label ?? "-",
                 o.Type.GetDisplayName(),
-                o.Status.ToString(),
+                o.Status.GetDisplayName(),
                 o.AssignedEmployee?.FullName ?? "-",
                 publicUrl,
                 o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")

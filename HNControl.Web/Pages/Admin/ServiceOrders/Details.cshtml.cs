@@ -122,36 +122,51 @@ public class DetailsModel : PageModel
         Order.Status = ServiceOrderStatus.Finalized;
         Order.FinalizedAt = DateTime.UtcNow;
 
-        // si no hay PDF, lo generamos al aprobar (para que el cliente descargue ya)
-        if (string.IsNullOrWhiteSpace(Order.PdfStoragePath))
-        {
-            var bytes = await _pdf.RenderAsync(Order);
-            var fileName = $"orden_{Order.Id:N}.pdf";
-            var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{Order.Id}/pdf", fileName, "application/pdf");
-            Order.PdfStoragePath = path;
-            Order.PdfGeneratedAt = DateTime.UtcNow;
-        }
+        // ✅ Guardamos primero para que el PDF refleje status/notes actuales.
+        await _db.SaveChangesAsync();
+
+        // ✅ Siempre regenerar PDF al aprobar (evita PDF viejo sin notas de checklist).
+        var bytes = await _pdf.RenderAsync(Order);
+        var fileName = $"orden_{Order.Id:N}.pdf";
+        var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{Order.Id}/pdf", fileName, "application/pdf");
+        Order.PdfStoragePath = path;
+        Order.PdfGeneratedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
-        Info = "Orden aprobada y finalizada.";
+        Info = "Orden aprobada y finalizada (PDF actualizado).";
         await LoadAsync(id);
         return Page();
     }
 
-    public async Task<IActionResult> OnPostRejectAsync(Guid id, string? ReviewNotes)
+    private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
     {
-        await LoadAsync(id);
-        if (Order == null) return NotFound();
+        if (order.Checklist.Any(x => x.WorkItemId == workItemId))
+            return;
 
-        Order.AdminReviewNotes = (ReviewNotes ?? "").Trim();
-        Order.Status = ServiceOrderStatus.Rejected;
+        var template = await _db.ServiceOrderChecklistTemplates
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
 
-        await _db.SaveChangesAsync();
+        if (template == null || template.Items.Count == 0)
+            return;
 
-        Info = "Orden rechazada.";
-        await LoadAsync(id);
-        return Page();
+        foreach (var it in template.Items.OrderBy(x => x.SortOrder))
+        {
+            order.Checklist.Add(new ServiceOrderChecklistItem
+            {
+                OrderId = order.Id,
+                WorkItemId = workItemId,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            });
+        }
     }
 
     private async Task LoadAsync(Guid id)

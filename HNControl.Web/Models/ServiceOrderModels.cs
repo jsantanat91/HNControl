@@ -12,7 +12,10 @@ public enum ServiceOrderType
     Preventivo = 2,
 
     [Display(Name = "Nueva instalación")]
-    NuevaInstalacion = 3
+    NuevaInstalacion = 3,
+
+    [Display(Name = "Global (múltiple)")]
+    Global = 99
 
     // Para agregar más opciones:
     // , [Display(Name = "Reubicación")] Reubicacion = 4
@@ -21,15 +24,25 @@ public enum ServiceOrderType
 
 public enum ServiceOrderStatus
 {
+    [Display(Name = "Creada")]
     Created = 1,
+
+    [Display(Name = "En proceso")]
     InProgress = 2,
+
+    [Display(Name = "En revisión")]
     InReview = 3,
+
+    [Display(Name = "Finalizada")]
     Finalized = 4,
 
-    // ✅ alias para código viejo que decía "Completed"
+    // ✅ alias para código viejo que decía "Completed" (no lo enumeramos en UI)
     Completed = 4,
 
+    [Display(Name = "Pendiente firma del cliente")]
     PendingClientSignature = 5,
+
+    [Display(Name = "Rechazada")]
     Rejected = 6
 }
 
@@ -95,9 +108,45 @@ public class ServiceOrder
 
     public string? AdminReviewNotes { get; set; }
 
+    // ✅ Orden global = varias actividades dentro de una misma orden
+    public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
+
     public List<ServiceOrderChecklistItem> Checklist { get; set; } = new();
     public List<ServiceOrderEvidence> Evidences { get; set; } = new();
     public List<ServiceOrderSignature> Signatures { get; set; } = new();
+}
+
+public class ServiceOrderWorkItem
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid OrderId { get; set; }
+    public ServiceOrder? Order { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public ServiceOrderType Type { get; set; }
+
+    [MaxLength(200)]
+    public string Title { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string Description { get; set; } = "";
+
+    // Campos abiertos para el instalador
+    [MaxLength(2000)]
+    public string WorkPerformed { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string MaterialsUsed { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string TechnicianNotes { get; set; } = "";
+
+    public bool IsCompleted { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class ServiceOrderChecklistItem
@@ -106,6 +155,10 @@ public class ServiceOrderChecklistItem
 
     public Guid OrderId { get; set; }
     public ServiceOrder? Order { get; set; }
+
+    // ✅ Cuando la orden es global, el checklist puede pertenecer a una actividad.
+    public Guid? WorkItemId { get; set; }
+    public ServiceOrderWorkItem? WorkItem { get; set; }
 
     public int SortOrder { get; set; }
 
@@ -118,6 +171,7 @@ public class ServiceOrderChecklistItem
     public bool IsRequired { get; set; } = true;
 
     public bool IsDone { get; set; }
+
     [MaxLength(600)]
     public string Notes { get; set; } = "";
 }

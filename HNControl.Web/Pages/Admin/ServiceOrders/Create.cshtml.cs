@@ -109,13 +109,12 @@ public class CreateModel : PageModel
 
         _db.ServiceOrders.Add(order);
 
-        order.ClientServiceContractId = Input.ClientServiceContractId == Guid.Empty
-    ? null
-    : Input.ClientServiceContractId;
+        // ✅ Checklist inicial desde plantilla (para que el técnico lo vea al instante)
+        if (order.Type != ServiceOrderType.Global)
+            await EnsureChecklistFromTemplateAsync(order, order.Type, workItemId: null);
 
         await _db.SaveChangesAsync();
 
-        // ✅ Checklist inicial vacío (se agrega con plantilla en la pantalla de edición/detalle)
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
@@ -167,5 +166,36 @@ public class CreateModel : PageModel
 
         ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
         ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
+    }
+
+    private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
+    {
+        // Si ya hay checklist para ese scope, no duplicamos.
+        if (order.Checklist.Any(x => x.WorkItemId == workItemId))
+            return;
+
+        var template = await _db.ServiceOrderChecklistTemplates
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        if (template == null || template.Items.Count == 0)
+            return;
+
+        foreach (var it in template.Items.OrderBy(x => x.SortOrder))
+        {
+            order.Checklist.Add(new ServiceOrderChecklistItem
+            {
+                OrderId = order.Id,
+                WorkItemId = workItemId,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            });
+        }
     }
 }

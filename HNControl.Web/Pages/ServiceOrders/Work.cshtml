@@ -1,7 +1,58 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.ServiceOrders.WorkModel
 @{
     ViewData["Title"] = "Orden de Servicio";
+
+    string TypeBadge(string? typeKey)
+    {
+        var t = (typeKey ?? "").Trim();
+        return t switch
+        {
+            "Preventivo" => "bg-success",
+            "Correctivo" => "bg-danger",
+            "NuevaInstalacion" => "bg-primary",
+            "Nueva instalación" => "bg-primary",
+            "Soporte" => "bg-warning text-dark",
+            "General" => "bg-secondary",
+            "Global" => "bg-dark",
+            _ => "bg-info text-dark"
+        };
+    }
+
+    string TypeFriendly(string? typeKey)
+    {
+        var t = (typeKey ?? "").Trim();
+        return t switch
+        {
+            "NuevaInstalacion" => "Nueva instalación",
+            _ => t
+        };
+    }
+
+    string CatBadge(string? cat)
+    {
+        var s = (cat ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(s)) return "bg-light text-dark border";
+
+        // Hash estable (sin GetHashCode) para colores consistentes.
+        unchecked
+        {
+            int h = 0;
+            foreach (var ch in s)
+                h = (h * 31) + ch;
+
+            var idx = Math.Abs(h) % 6;
+            return idx switch
+            {
+                0 => "bg-primary-subtle text-primary border",
+                1 => "bg-success-subtle text-success border",
+                2 => "bg-warning-subtle text-warning border",
+                3 => "bg-danger-subtle text-danger border",
+                4 => "bg-info-subtle text-info border",
+                _ => "bg-secondary-subtle text-secondary border",
+            };
+        }
+    }
 }
 
 @if (Model.Order == null)
@@ -16,7 +67,8 @@
         <div class="text-muted">
             Cliente: <strong>@(Model.Order.Client?.Name ?? "-")</strong>
             · Título: <strong>@Model.Order.Title</strong>
-            · Tipo: <strong>@Model.Order.Type</strong>
+            · Tipo: <strong>@(Model.WorkItems != null && Model.WorkItems.Count > 0 ? "Global" : Model.Order.Type.ToString())</strong>
+            · Actividades: <strong>@((Model.WorkItems != null && Model.WorkItems.Count > 0) ? Model.WorkItems.Count : 1)</strong>
             · Status: <strong>@Model.Order.Status</strong>
             · Progreso checklist: <strong>@Model.ChecklistCompletionPercent</strong>
         </div>
@@ -37,48 +89,309 @@
 }
 
 <div class="row g-3">
-    <!-- Checklist -->
-    <div class="col-12">
-        <form method="post" class="card shadow-sm border-0">
-            <input type="hidden" name="id" value="@Model.Order.Id" />
 
-            <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="fw-semibold">Checklist</div>
-                    <div class="text-muted small">Progreso: @Model.ChecklistCompletionPercent</div>
+    <!-- CHECKLIST + FIRMAS (mismo form, para que "Firmar y enviar" también guarde notas/checklist) -->
+    <div class="col-12">
+        <form method="post">
+            <input type="hidden" name="id" value="@Model.Order.Id" />
+            <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
+            <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
+
+            <!-- Checklist -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="fw-semibold">Checklist</div>
+                        <div class="text-muted small">Progreso total: @Model.ChecklistCompletionPercent</div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
+                        <button type="submit" class="btn btn-primary btn-sm" formaction="?handler=SaveChecklist">Guardar</button>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
-                    <button type="submit" class="btn btn-primary btn-sm" formaction="?handler=SaveChecklist">Guardar</button>
+
+                <div class="card-body">
+                    <div class="progress mb-3" style="height:10px;">
+                        <div class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+                    </div>
+
+                    @if (Model.ChecklistGroups == null || Model.ChecklistGroups.Count == 0)
+                    {
+                        <div class="text-muted">Esta orden no tiene checklist todavía.</div>
+                    }
+                    else
+                    {
+                        // Global: accordion por actividad
+                        if (Model.WorkItems != null && Model.WorkItems.Count > 0)
+                        {
+                            <div class="accordion" id="hnChecklistAcc">
+                                @for (var gi = 0; gi < Model.ChecklistGroups.Count; gi++)
+                                {
+                                    var g = Model.ChecklistGroups[gi];
+                                    var collapseId = $"hnAcc_{gi}";
+                                    var headId = $"hnHead_{gi}";
+                                    var isGeneral = g.WorkItemId == null;
+
+                                    <div class="accordion-item border-0 mb-2">
+                                        <h2 class="accordion-header" id="@headId">
+                                            <button class="accordion-button @(g.IsDefaultOpen ? "" : "collapsed") rounded-4 shadow-sm" type="button"
+                                                    data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(g.IsDefaultOpen ? "true" : "false")" aria-controls="@collapseId">
+                                                <div class="d-flex w-100 justify-content-between align-items-center gap-3 flex-wrap">
+                                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                        <span class="badge @TypeBadge(g.TypeKey)">@(isGeneral ? "General" : $"Actividad {g.ActivityNumber}")</span>
+                                                        <span class="fw-semibold">@g.Title</span>
+                                                        <span class="badge rounded-pill bg-light text-dark border">@TypeFriendly(g.TypeLabel)</span>
+                                                    </div>
+                                                    <div class="text-muted small">
+                                                        @g.DoneCount/@g.TotalCount · @g.CompletionPercent
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </h2>
+
+                                        <div id="@collapseId" class="accordion-collapse collapse @(g.IsDefaultOpen ? "show" : "")" aria-labelledby="@headId" data-bs-parent="#hnChecklistAcc">
+                                            <div class="accordion-body pt-2">
+
+                                                @* Campos abiertos por actividad *@
+                                                @if (g.WorkItemPostIndex.HasValue)
+                                                {
+                                                    <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
+
+                                                    <div class="border rounded-4 p-3 bg-white mb-3">
+                                                        <div class="fw-semibold mb-2">Datos de la actividad</div>
+                                                        <div class="row g-3">
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small text-muted mb-1">Trabajo realizado</label>
+                                                                <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
+                                                                          placeholder="Qué se hizo, configuración, pruebas, etc."></textarea>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label small text-muted mb-1">Material usado</label>
+                                                                <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
+                                                                          placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
+                                                            </div>
+
+                                                            <div class="col-md-9">
+                                                                <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
+                                                                <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
+                                                                          placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
+                                                            </div>
+
+                                                            <div class="col-md-3 d-flex align-items-end">
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" />
+                                                                    <label class="form-check-label">Actividad completada</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                                @* Checklist items *@
+                                                @if (g.ItemIndices == null || g.ItemIndices.Count == 0)
+                                                {
+                                                    <div class="text-muted">Sin checklist para esta sección.</div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="list-group">
+                                                        @foreach (var ix in g.ItemIndices)
+                                                        {
+                                                            var it = Model.ItemsPost[ix];
+                                                            var noteId = $"hnNote_{ix}";
+
+                                                            <div class="list-group-item rounded-4 mb-2 border">
+                                                                <input type="hidden" asp-for="ItemsPost[ix].Id" />
+
+                                                                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                                                    <div class="d-flex align-items-start gap-2">
+                                                                        <div class="form-check mt-1">
+                                                                            <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <div class="fw-semibold">@it.Title</div>
+                                                                            <div class="d-flex gap-2 flex-wrap mt-1">
+                                                                                @if (!string.IsNullOrWhiteSpace(it.Category))
+                                                                                {
+                                                                                    <span class="badge rounded-pill @CatBadge(it.Category)">@it.Category</span>
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#@noteId">
+                                                                        Notas
+                                                                    </button>
+                                                                </div>
+
+                                                                <div class="collapse mt-2" id="@noteId">
+                                                                    <label class="form-label small mt-2 mb-1 text-muted">Notas</label>
+                                                                    <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
+                                                                              placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                                                                </div>
+
+                                                                @if (!string.IsNullOrWhiteSpace(it.Notes))
+                                                                {
+                                                                    <div class="small text-muted mt-2">Nota actual: @it.Notes</div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="text-muted small mt-2">
+                                Tip rápido: abre cada actividad, marca el checklist y escribe notas donde aplique. Al final, <strong>Firmar y enviar</strong> guarda todo.
+                            </div>
+                        }
+                        else
+                        {
+                            // No-global: UI compacta
+                            var g = Model.ChecklistGroups.FirstOrDefault();
+                            if (g == null)
+                            {
+                                <div class="text-muted">Esta orden no tiene checklist todavía.</div>
+                            }
+                            else
+                            {
+                                <div class="border rounded-4 p-3 bg-white">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                        <div>
+                                            <div class="fw-semibold">@g.Title</div>
+                                            <div class="text-muted small">@TypeFriendly(g.TypeLabel)</div>
+                                        </div>
+                                        <div class="text-muted small">@g.DoneCount/@g.TotalCount · @g.CompletionPercent</div>
+                                    </div>
+
+                                    <div class="list-group mt-3">
+                                        @foreach (var ix in g.ItemIndices)
+                                        {
+                                            var it = Model.ItemsPost[ix];
+                                            var noteId = $"hnNote_{ix}";
+
+                                            <div class="list-group-item rounded-4 mb-2 border">
+                                                <input type="hidden" asp-for="ItemsPost[ix].Id" />
+
+                                                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <div class="form-check mt-1">
+                                                            <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
+                                                        </div>
+
+                                                        <div>
+                                                            <div class="fw-semibold">@it.Title</div>
+                                                            @if (!string.IsNullOrWhiteSpace(it.Category))
+                                                            {
+                                                                <div class="mt-1"><span class="badge rounded-pill @CatBadge(it.Category)">@it.Category</span></div>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#@noteId">Notas</button>
+                                                </div>
+
+                                                <div class="collapse mt-2" id="@noteId">
+                                                    <label class="form-label small mt-2 mb-1 text-muted">Notas</label>
+                                                    <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
+                                                              placeholder="Notas opcionales"></textarea>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
                 </div>
             </div>
 
-            <div class="card-body">
-                <div class="progress mb-3" style="height:10px;">
-                    <div class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+            <!-- Firmas -->
+            <div class="card shadow-sm border-0 mt-3">
+                <div class="card-header bg-white border-0">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                            <div class="fw-semibold">Firmas</div>
+                            <div class="text-muted small">
+                                Dibuja ambas firmas. El botón <strong>Firmar y enviar</strong> también guarda checklist/notas.
+                            </div>
+                        </div>
+
+                        <div class="text-muted small">
+                            Requisito: firma técnico + firma cliente.
+                        </div>
+                    </div>
                 </div>
 
-                <div class="row g-3">
-                    @for (var i = 0; i < Model.ItemsPost.Count; i++)
-                    {
-                        <div class="col-md-6">
-                            <div class="border rounded-4 p-3 h-100 bg-white">
-                                <input type="hidden" asp-for="ItemsPost[i].Id" />
-                                <div class="d-flex justify-content-between align-items-start gap-2">
-                                    <div>
-                                        <div class="fw-semibold">@Model.ItemsPost[i].Title</div>
-                                        <div class="text-muted small">Marca cuando esté completado. Agrega notas si aplica.</div>
-                                    </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <div class="fw-semibold mb-2">Técnico</div>
+                            <label class="form-label small text-muted">Nombre</label>
+                            <input class="form-control mb-2" name="TechName" value="@Model.TechName" placeholder="Nombre del técnico" />
 
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[i].IsDone" />
-                                    </div>
-                                </div>
-
-                                <label class="form-label small mt-3 mb-1 text-muted">Notas</label>
-                                <textarea class="form-control" rows="2" asp-for="ItemsPost[i].Notes" placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                            <div class="border rounded-4 bg-light p-2 hn-sig-box">
+                                <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
                             </div>
+
+                            <div class="d-flex gap-2 mt-2 align-items-center">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
+                                @if (Model.HasTechSignature)
+                                {
+                                    <span class="text-muted small">Firma guardada ✅</span>
+                                    <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" target="_blank">Ver</a>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                            <div class="fw-semibold mb-2">Cliente</div>
+                            <label class="form-label small text-muted">Nombre</label>
+                            <input class="form-control mb-2" name="ClientName" value="@Model.ClientSignerName" placeholder="Nombre del cliente" />
+
+                            <div class="border rounded-4 bg-light p-2 hn-sig-box">
+                                <canvas id="hnClientCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-2 align-items-center">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnClientCanvas')">Limpiar</button>
+                                @if (Model.HasClientSignature)
+                                {
+                                    <span class="text-muted small">Firma guardada ✅</span>
+                                    <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Client" target="_blank">Ver</a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3" />
+
+                    @{
+                        var disabled = Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview
+                        || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Finalized
+                        || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Completed;
+                    }
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        <button type="submit"
+                                class="btn btn-success px-4"
+                                formaction="?handler=SignAndSubmit"
+                                onclick="hnCaptureSigs()"
+                                @(disabled ? "disabled" : "")>
+                            Firmar y enviar
+                        </button>
+                    </div>
+
+                    @if (disabled)
+                    {
+                        <div class="text-muted small mt-2">
+                            Esta orden ya está en revisión/finalizada. Si necesitas re-firmar, pídele al admin que la regrese a “En proceso”.
                         </div>
                     }
                 </div>
@@ -122,97 +435,6 @@
                                 <a class="btn btn-outline-secondary btn-sm" href="?handler=DownloadEvidence&evidenceId=@ev.Id">Descargar</a>
                             </div>
                         }
-                    </div>
-                }
-            </div>
-        </form>
-    </div>
-
-    <!-- Firmas (abajo, grandes) -->
-    <div class="col-12">
-        <form method="post" class="card shadow-sm border-0">
-            <input type="hidden" name="id" value="@Model.Order.Id" />
-            <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
-            <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
-
-            <div class="card-header bg-white border-0">
-                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                    <div>
-                        <div class="fw-semibold">Firmas</div>
-                        <div class="text-muted small">
-                            Dibuja ambas firmas y listo: un botón <strong>firma y envía</strong> a revisión.
-                        </div>
-                    </div>
-
-                    <div class="text-muted small">
-                        Requisito: firma técnico + firma cliente.
-                    </div>
-                </div>
-            </div>
-
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12 col-lg-6">
-                        <div class="fw-semibold mb-2">Técnico</div>
-                        <label class="form-label small text-muted">Nombre</label>
-                        <input class="form-control mb-2" name="TechName" value="@Model.TechName" placeholder="Nombre del técnico" />
-
-                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
-                            <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-2 align-items-center">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
-                            @if (Model.HasTechSignature)
-                            {
-                                <span class="text-muted small">Firma guardada ✅</span>
-                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" target="_blank">Ver</a>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-lg-6">
-                        <div class="fw-semibold mb-2">Cliente</div>
-                        <label class="form-label small text-muted">Nombre</label>
-                        <input class="form-control mb-2" name="ClientName" value="@Model.ClientSignerName" placeholder="Nombre del cliente" />
-
-                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
-                            <canvas id="hnClientCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-2 align-items-center">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnClientCanvas')">Limpiar</button>
-                            @if (Model.HasClientSignature)
-                            {
-                                <span class="text-muted small">Firma guardada ✅</span>
-                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Client" target="_blank">Ver</a>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="my-3" />
-
-                @{
-                    var disabled = Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview
-                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Finalized
-                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Completed;
-                }
-
-                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                    <button type="submit"
-                            class="btn btn-success px-4"
-                            formaction="?handler=SignAndSubmit"
-                            onclick="hnCaptureSigs()"
-                            @(disabled ? "disabled" : "")>
-                        Firmar y enviar
-                    </button>
-                </div>
-
-                @if (disabled)
-                {
-                    <div class="text-muted small mt-2">
-                        Esta orden ya está en revisión/finalizada. Si necesitas re-firmar, pídele al admin que la regrese a “En proceso”.
                     </div>
                 }
             </div>
@@ -318,13 +540,14 @@
         hnInitPad('hnTechCanvas');
         hnInitPad('hnClientCanvas');
     </script>
-    <style>
-        .hn-sig-box {
-            min-height: 300px;
-        }
 
-        .hn-sig-canvas {
-            border-radius: 12px;
-        }
+    <style>
+        .hn-sig-box { min-height: 300px; }
+        .hn-sig-canvas { border-radius: 12px; }
+
+        /* accordion más amable: menos "caja gris" */
+        .accordion-button { background: #fff; }
+        .accordion-button:not(.collapsed) { box-shadow: none; }
+        .accordion-button:focus { box-shadow: none; }
     </style>
 }

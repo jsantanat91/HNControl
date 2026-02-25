@@ -1,4 +1,5 @@
 @page "{id:guid}"
+@using HNControl.Web.Services
 @model HNControl.Web.Pages.Admin.ServiceOrders.EditModel
 @{
     Layout = "_Layout";
@@ -42,7 +43,16 @@
 
             <div class="col-md-4">
                 <label class="form-label">Tipo</label>
-                <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
+                @if (Model.WorkItems.Count > 0 || Model.Input.Type == HNControl.Web.Models.ServiceOrderType.Global)
+                {
+                    <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems" disabled></select>
+                    <input type="hidden" asp-for="Input.Type" />
+                    <div class="text-muted small mt-1">Esta orden es <strong>Global</strong>. El “tipo” real se maneja por actividad.</div>
+                }
+                else
+                {
+                    <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
+                }
             </div>
 
             <div class="col-md-8">
@@ -91,6 +101,106 @@
         <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>
 </form>
+
+<div class="card shadow-soft hn-hover mt-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="fw-semibold">Orden global (actividades)</div>
+                <div class="text-muted small">
+                    Para un solo ticket del cliente con varios trabajos (ej: preventivo + cámara nueva), agrega <strong>actividades</strong>.
+                    Cada actividad tiene su checklist y campos abiertos del técnico.
+                </div>
+            </div>
+
+            @if (Model.WorkItems.Count == 0 && Model.Input.Type != HNControl.Web.Models.ServiceOrderType.Global)
+            {
+                <form method="post" asp-page-handler="ConvertToGlobal" asp-route-id="@Model.Input.Id">
+                    <button class="btn btn-outline-primary" type="submit">Convertir a Global</button>
+                </form>
+            }
+        </div>
+
+        @if (Model.WorkItems.Count > 0 || Model.Input.Type == HNControl.Web.Models.ServiceOrderType.Global)
+        {
+            <hr />
+
+            <form method="post" asp-page-handler="AddWorkItem" asp-route-id="@Model.Input.Id" class="row g-2 align-items-end" novalidate>
+                <div class="col-12">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" asp-for="NewWorkItem.Type" asp-items="Model.WorkTypeItems"></select>
+                    <span asp-validation-for="NewWorkItem.Type" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Título de la actividad</label>
+                    <input class="form-control" asp-for="NewWorkItem.Title" placeholder="Ej: Mantenimiento preventivo" />
+                    <span asp-validation-for="NewWorkItem.Title" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Descripción</label>
+                    <input class="form-control" asp-for="NewWorkItem.Description" placeholder="Ej: revisión, limpieza, pruebas" />
+                    <span asp-validation-for="NewWorkItem.Description" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-1 d-grid">
+                    <button class="btn btn-primary" type="submit">Agregar</button>
+                </div>
+            </form>
+
+            @if (Model.WorkItems.Count > 0)
+            {
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                        <tr>
+                            <th style="width:50px">#</th>
+                            <th style="width:240px">Tipo</th>
+                            <th>Título</th>
+                            <th style="width:110px"></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @for (var i = 0; i < Model.WorkItems.Count; i++)
+                        {
+                            var w = Model.WorkItems[i];
+                            <tr>
+                                <td>@(w.SortOrder + 1)</td>
+                                <td>@w.Type.GetDisplayName()</td>
+                                <td>
+                                    <div class="fw-semibold">@w.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(w.Description))
+                                    {
+                                        <div class="text-muted small">@w.Description</div>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <form method="post" asp-page-handler="DeleteWorkItem" asp-route-id="@Model.Input.Id" class="d-inline">
+                                        <input type="hidden" name="workItemId" value="@w.Id" />
+                                        <button class="btn btn-outline-danger btn-sm" type="submit"
+                                                onclick="return confirm('¿Borrar actividad? Se eliminará su checklist.');">
+                                            Borrar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted small mt-2">Aún no hay actividades. Agrega la primera arriba.</div>
+            }
+        }
+    </div>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

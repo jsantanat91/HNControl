@@ -1,5 +1,6 @@
 @page
 @model HNControl.Web.Pages.Inventory.IndexModel
+@using System
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
@@ -25,20 +26,36 @@
     </div>
 </div>
 
-<form method="get" class="d-flex gap-2 mb-3">
-    <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por nombre o SKU..." />
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por cualquier campo (nombre, SKU, categoría, ubicación, marca, modelo...)" />
+    <input type="hidden" name="page" value="1" />
     <button class="btn btn-primary" type="submit">Buscar</button>
     <a class="btn btn-outline-secondary" asp-page="./Index">Limpiar</a>
 </form>
 
 <div class="card">
     <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <div class="text-muted small">
+                @if (Model.TotalCount == 0)
+                {
+                    <span>Sin resultados.</span>
+                }
+                else
+                {
+                    <span>Mostrando <strong>@Model.From</strong>-<strong>@Model.To</strong> de <strong>@Model.TotalCount</strong></span>
+                }
+            </div>
+            <div class="text-muted small">50 por página</div>
+        </div>
+
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead>
                     <tr>
                         <th>Item</th>
                         <th>SKU</th>
+                        <th>Marca / Modelo</th>
                         <th>Categoría</th>
                         <th>Ubicación</th>
                         <th class="text-end">Existencia</th>
@@ -54,7 +71,15 @@
                         <td class="fw-semibold">@i.Name</td>
                         <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "—" : i.Sku)</td>
                         <td>
-                            <span class="hn-badge hn-badge-slate">@(string.IsNullOrWhiteSpace(i.Category) ? "Sin categoría" : i.Category)</span>
+                            <div class="fw-semibold">@(i.Brand?.Name ?? "—")</div>
+                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(i.Model) ? "—" : i.Model)</div>
+                        </td>
+                        <td>
+                            @{
+                                var catLabel = string.IsNullOrWhiteSpace(i.Category) ? "Sin categoría" : i.Category;
+                                var badge = Model.GetCategoryBadgeClass(i.Category);
+                            }
+                            <span class="hn-badge @badge">@catLabel</span>
                         </td>
                         <td>@(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)</td>
                         <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
@@ -79,9 +104,54 @@
         {
             <div class="text-muted">No hay items.</div>
         }
-        else
+
+        @if (Model.TotalPages > 1)
         {
-            <div class="text-muted small mt-2">Mostrando hasta 500 items.</div>
+            var current = Model.Page;
+            var total = Model.TotalPages;
+            var start = Math.Max(1, current - 3);
+            var end = Math.Min(total, current + 3);
+
+            <nav class="mt-3 d-flex justify-content-end">
+                <ul class="pagination mb-0">
+                    <li class="page-item @(current <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Index" asp-route-q="@Model.Q" asp-route-page="@(current - 1)">Anterior</a>
+                    </li>
+
+                    @if (start > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-page="./Index" asp-route-q="@Model.Q" asp-route-page="1">1</a>
+                        </li>
+                        @if (start > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                    }
+
+                    @for (int p = start; p <= end; p++)
+                    {
+                        <li class="page-item @(p == current ? "active" : "")">
+                            <a class="page-link" asp-page="./Index" asp-route-q="@Model.Q" asp-route-page="@p">@p</a>
+                        </li>
+                    }
+
+                    @if (end < total)
+                    {
+                        @if (end < total - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                        <li class="page-item">
+                            <a class="page-link" asp-page="./Index" asp-route-q="@Model.Q" asp-route-page="@total">@total</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(current >= total ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Index" asp-route-q="@Model.Q" asp-route-page="@(current + 1)">Siguiente</a>
+                    </li>
+                </ul>
+            </nav>
         }
     </div>
 </div>

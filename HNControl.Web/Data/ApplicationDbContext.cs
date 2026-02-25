@@ -71,6 +71,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Eval360Comment> Eval360Comments => Set<Eval360Comment>();
 
     public DbSet<ServiceOrder> ServiceOrders => Set<ServiceOrder>();
+    public DbSet<ServiceOrderWorkItem> ServiceOrderWorkItems => Set<ServiceOrderWorkItem>();
     public DbSet<ServiceOrderChecklistItem> ServiceOrderChecklistItems => Set<ServiceOrderChecklistItem>();
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
     public DbSet<ServiceOrderSignature> ServiceOrderSignatures => Set<ServiceOrderSignature>();
@@ -122,9 +123,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
             e.Property(x => x.UserId).HasMaxLength(64);
             e.Property(x => x.Concept).HasMaxLength(200);
-            e.Property(x => x.Direction)
-    .HasConversion<int>()
-    .HasDefaultValue(EmployeeDeductionDirection.Deduct);
             e.Property(x => x.Amount).HasColumnType("numeric(12,2)");
             e.Property(x => x.Rate).HasColumnType("numeric(6,5)");
             e.Property(x => x.StartDate).HasColumnType("date");
@@ -208,8 +206,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.ContractEndDate).HasColumnType("date");
 
             e.Property(x => x.Notes).HasMaxLength(2000);
-
-            e.Property(x => x.MonthlyAmount).HasColumnType("numeric(12,2)");
 
             e.Property(x => x.SignedContractStoragePath).HasMaxLength(500);
             e.Property(x => x.SignedContractOriginalFileName).HasMaxLength(255);
@@ -313,14 +309,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(120);
-            e.Property(x => x.ExecutiveName).HasMaxLength(120);
             e.Property(x => x.SupportPhone).HasMaxLength(40);
             e.Property(x => x.SupportEmail).HasMaxLength(120);
             e.Property(x => x.SupportPortalUrl).HasMaxLength(400);
             e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.LogoStoragePath).HasMaxLength(500);
-            e.Property(x => x.LogoOriginalFileName).HasMaxLength(255);
-            e.Property(x => x.LogoContentType).HasMaxLength(100);
             e.HasIndex(x => x.Name).IsUnique();
         });
 
@@ -573,9 +565,25 @@ b.Entity<ServiceOrder>(e =>
                 .HasForeignKey(x => x.AssignedUserId)
                 .HasPrincipalKey(p => p.UserId);
 
+            e.HasMany(x => x.WorkItems)
+                .WithOne(w => w.Order!)
+                .HasForeignKey(w => w.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             e.HasMany(x => x.Checklist).WithOne(i => i.Order!).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Evidences).WithOne(i => i.Order!).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Signatures).WithOne(i => i.Order!).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ServiceOrderWorkItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.OrderId);
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.WorkPerformed).HasMaxLength(2000);
+            e.Property(x => x.MaterialsUsed).HasMaxLength(2000);
+            e.Property(x => x.TechnicianNotes).HasMaxLength(2000);
         });
 
         b.Entity<ServiceOrderChecklistTemplate>(e =>
@@ -596,6 +604,13 @@ b.Entity<ServiceOrder>(e =>
             e.HasKey(x => x.Id);
             e.Property(x => x.Title).HasMaxLength(200);
             e.Property(x => x.Notes).HasMaxLength(600);
+
+            e.HasIndex(x => new { x.OrderId, x.WorkItemId });
+
+            e.HasOne(x => x.WorkItem)
+                .WithMany()
+                .HasForeignKey(x => x.WorkItemId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ServiceOrderEvidence>(e =>

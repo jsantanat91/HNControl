@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -27,7 +28,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        // Admin ya tiene su módulo
+        // Admin ya tiene su mÃ³dulo
         if (User.IsInRole(AppRoles.Admin))
             return Redirect("/Admin/ServiceOrders/Index");
 
@@ -48,12 +49,12 @@ public class IndexModel : PageModel
 
         Rows = orders.Select(o => new Row(
             o.Id,
-            o.Client?.Name ?? "—",
+            o.Client?.Name ?? "â€”",
             o.Title,
-            o.Type.ToString(),
-            o.Status.ToString(),
+            o.Type.GetDisplayName(),
+            o.Status.GetDisplayName(),
             o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
-            o.EstimatedEndDate?.ToLocalTime().ToString("yyyy-MM-dd") ?? "—",
+            o.EstimatedEndDate?.ToLocalTime().ToString("yyyy-MM-dd") ?? "â€”",
             $"{baseUrl}/Public/ServiceOrder/{o.PublicToken}"
         )).ToList();
 
