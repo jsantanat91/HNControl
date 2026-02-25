@@ -23,6 +23,28 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Q { get; set; }
 
+    // Filters (Excel-style)
+    [BindProperty(SupportsGet = true)]
+    public string? Cat { get; set; } // category text, "__none" = empty
+
+    [BindProperty(SupportsGet = true)]
+    public string? Loc { get; set; } // location text, "__none" = null/empty
+
+    [BindProperty(SupportsGet = true)]
+    public Guid? BrandId { get; set; } // Guid.Empty = null (sin marca)
+
+    // Sort
+    [BindProperty(SupportsGet = true)]
+    public string? Sort { get; set; } // name|category|brand|location|stock|active
+
+    [BindProperty(SupportsGet = true)]
+    public string? Dir { get; set; } // asc|desc
+
+    // Filter options
+    public List<string> CategoryOptions { get; private set; } = new();
+    public List<string> LocationOptions { get; private set; } = new();
+    public List<InventoryBrand> BrandOptions { get; private set; } = new();
+
     [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
 
@@ -71,6 +93,24 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        // Options for filters
+        CategoryOptions = await _db.InventoryItems.AsNoTracking()
+            .Select(i => i.Category)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        LocationOptions = await _db.InventoryItems.AsNoTracking()
+            .Where(i => i.Location != null && i.Location != "")
+            .Select(i => i.Location!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        BrandOptions = await _db.InventoryBrands.AsNoTracking()
+            .OrderBy(b => b.Name)
+            .ToListAsync();
+
         var q = (Q ?? "").Trim();
 
         var query = _db.InventoryItems
@@ -78,6 +118,30 @@ public class IndexModel : PageModel
             .Include(i => i.Brand)
             .AsQueryable();
 
+        // Filters
+        if (!string.IsNullOrWhiteSpace(Cat))
+        {
+            if (Cat == "__none")
+                query = query.Where(i => (i.Category ?? "") == "");
+            else
+                query = query.Where(i => i.Category == Cat);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Loc))
+        {
+            if (Loc == "__none")
+                query = query.Where(i => i.Location == null || i.Location == "");
+            else
+                query = query.Where(i => i.Location == Loc);
+        }
+
+        if (BrandId.HasValue && BrandId.Value != Guid.Empty)
+            query = query.Where(i => i.BrandId == BrandId.Value);
+
+        if (BrandId.HasValue && BrandId.Value == Guid.Empty)
+            query = query.Where(i => i.BrandId == null);
+
+        // Search
         if (!string.IsNullOrWhiteSpace(q))
         {
             var l = q.ToLowerInvariant();
@@ -99,9 +163,37 @@ public class IndexModel : PageModel
         var totalPages = TotalPages;
         if (totalPages > 0 && Page > totalPages) Page = totalPages;
 
-        Items = await query
-            .OrderByDescending(i => i.IsActive)
-            .ThenBy(i => i.Name)
+        var sort = (Sort ?? "active").Trim().ToLowerInvariant();
+        var desc = string.Equals((Dir ?? "desc").Trim(), "desc", StringComparison.OrdinalIgnoreCase);
+
+        IOrderedQueryable<InventoryItem> ordered = sort switch
+        {
+            "category" => desc
+                ? query.OrderByDescending(i => i.Category).ThenBy(i => i.Name)
+                : query.OrderBy(i => i.Category).ThenBy(i => i.Name),
+
+            "location" => desc
+                ? query.OrderByDescending(i => i.Location ?? "").ThenBy(i => i.Name)
+                : query.OrderBy(i => i.Location ?? "").ThenBy(i => i.Name),
+
+            "brand" => desc
+                ? query.OrderByDescending(i => (i.Brand != null ? (i.Brand.Name ?? "") : "")).ThenBy(i => i.Name)
+                : query.OrderBy(i => (i.Brand != null ? (i.Brand.Name ?? "") : "")).ThenBy(i => i.Name),
+
+            "stock" => desc
+                ? query.OrderByDescending(i => i.QuantityOnHand).ThenBy(i => i.Name)
+                : query.OrderBy(i => i.QuantityOnHand).ThenBy(i => i.Name),
+
+            "name" => desc
+                ? query.OrderByDescending(i => i.Name)
+                : query.OrderBy(i => i.Name),
+
+            _ => desc
+                ? query.OrderByDescending(i => i.IsActive).ThenBy(i => i.Name)
+                : query.OrderBy(i => i.IsActive).ThenBy(i => i.Name),
+        };
+
+        Items = await ordered
             .Skip((Page - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync();

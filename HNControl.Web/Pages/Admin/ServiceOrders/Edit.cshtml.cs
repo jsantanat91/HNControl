@@ -154,35 +154,35 @@ public class EditModel : PageModel
     }
 
     public async Task<IActionResult> OnPostConvertToGlobalAsync(Guid id)
-{
-    // Convertir a global debe ser una operación "quirúrgica": no cargamos grafo completo para evitar
-    // estados trackeados que terminan en DbUpdateConcurrencyException.
-    var order = await _db.ServiceOrders
-        .AsNoTracking()
-        .Where(o => o.Id == id)
-        .Select(o => new { o.Id, o.Type, o.Title, o.Description })
-        .FirstOrDefaultAsync();
-
-    if (order == null) return NotFound();
-
-    // Si ya es global, nada que hacer.
-    if (order.Type == ServiceOrderType.Global)
-        return RedirectToPage(new { id });
-
-    // Si ya hay actividades, solo marcamos la orden como Global (sin tocar nada más).
-    var hasWorkItems = await _db.ServiceOrderWorkItems
-        .AsNoTracking()
-        .AnyAsync(w => w.OrderId == order.Id);
-
-    await using var tx = await _db.Database.BeginTransactionAsync();
-    try
     {
-        if (!hasWorkItems)
+        // ✅ Versión "quirúrgica" (sin grafo trackeado) para evitar DbUpdateConcurrencyException.
+        var order = await _db.ServiceOrders
+            .AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => new { o.Id, o.Type, o.Title, o.Description })
+            .FirstOrDefaultAsync();
+
+        if (order == null) return NotFound();
+
+        var hasWorkItems = await _db.ServiceOrderWorkItems.AsNoTracking().AnyAsync(w => w.OrderId == id);
+        if (order.Type == ServiceOrderType.Global || hasWorkItems)
         {
-            // 1) Crear primera actividad con el contenido actual de la orden
-            var wi = new ServiceOrderWorkItem
+            // Si ya hay actividades, fuerza el tipo a Global.
+            if (hasWorkItems && order.Type != ServiceOrderType.Global)
             {
-                OrderId = order.Id,
+                await _db.ServiceOrders
+                    .Where(o => o.Id == id && o.Type != ServiceOrderType.Global)
+                    .ExecuteUpdateAsync(s => s.SetProperty(o => o.Type, ServiceOrderType.Global));
+            }
+            return RedirectToPage(new { id });
+        }
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var first = new ServiceOrderWorkItem
+            {
+                OrderId = id,
                 SortOrder = 0,
                 Type = order.Type,
                 Title = string.IsNullOrWhiteSpace(order.Title) ? "Actividad 1" : order.Title,
@@ -191,180 +191,165 @@ public class EditModel : PageModel
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _db.ServiceOrderWorkItems.Add(wi);
+            _db.ServiceOrderWorkItems.Add(first);
             await _db.SaveChangesAsync();
 
-            // 2) Mover checklist “general” a esta actividad (si existía)
+            // mover checklist general (WorkItemId NULL) a esta actividad
             await _db.ServiceOrderChecklistItems
-                .Where(x => x.OrderId == order.Id && x.WorkItemId == null)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.WorkItemId, wi.Id));
+                .Where(x => x.OrderId == id && x.WorkItemId == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.WorkItemId, first.Id));
 
-            // 3) Si no había checklist, crear desde template para esta actividad
-            await EnsureChecklistFromTemplateDbAsync(order.Id, wi.Type, wi.Id);
+            // si no había checklist, crear desde plantilla
+            await EnsureChecklistFromTemplateDbAsync(id, first.Type, first.Id);
             await _db.SaveChangesAsync();
-        }
-
-        // 4) Marcar orden como global (UPDATE directo, sin tracking)
-        await _db.ServiceOrders
-            .Where(o => o.Id == order.Id)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(o => o.Type, ServiceOrderType.Global));
-
-        await tx.CommitAsync();
-        return RedirectToPage(new { id });
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        await tx.RollbackAsync();
-        Error = "La orden cambió mientras la convertías a Global. Recarga e inténtalo de nuevo.";
-        return await ReloadAndShowAsync(id);
-    }
-    catch
-    {
-        await tx.RollbackAsync();
-        throw;
-    }
-}
-
-
-    public async Task<IActionResult> OnPostAddWorkItemAsync(Guid id)
-{
-    // Validamos SOLO NewWorkItem para que no fallen Required del form principal.
-    ModelState.Clear();
-    TryValidateModel(NewWorkItem, nameof(NewWorkItem));
-    if (!ModelState.IsValid)
-        return await ReloadAndShowAsync(id);
-
-    // Guard rail: “Global” no es un tipo de actividad.
-    var activityType = NewWorkItem.Type == ServiceOrderType.Global
-        ? ServiceOrderType.Preventivo
-        : NewWorkItem.Type;
-
-    // Traemos lo mínimo de la orden (sin grafo trackeado).
-    var order = await _db.ServiceOrders
-        .AsNoTracking()
-        .Where(o => o.Id == id)
-        .Select(o => new { o.Id, o.Type, o.Title, o.Description })
-        .FirstOrDefaultAsync();
-
-    if (order == null) return NotFound();
-
-    await using var tx = await _db.Database.BeginTransactionAsync();
-
-    try
-    {
-        // Si aún no es global, lo convertimos aquí mismo.
-        if (order.Type != ServiceOrderType.Global)
-        {
-            var hasWorkItems = await _db.ServiceOrderWorkItems
-                .AsNoTracking()
-                .AnyAsync(w => w.OrderId == order.Id);
-
-            if (!hasWorkItems)
-            {
-                var first = new ServiceOrderWorkItem
-                {
-                    OrderId = order.Id,
-                    SortOrder = 0,
-                    Type = order.Type,
-                    Title = string.IsNullOrWhiteSpace(order.Title) ? "Actividad 1" : order.Title,
-                    Description = order.Description ?? "",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                _db.ServiceOrderWorkItems.Add(first);
-                await _db.SaveChangesAsync();
-
-                // mover checklist general a la primera actividad (si existía)
-                await _db.ServiceOrderChecklistItems
-                    .Where(x => x.OrderId == order.Id && x.WorkItemId == null)
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.WorkItemId, first.Id));
-
-                // si no existía checklist, crear desde template
-                await EnsureChecklistFromTemplateDbAsync(order.Id, first.Type, first.Id);
-                await _db.SaveChangesAsync();
-            }
 
             // marcar la orden como global
             await _db.ServiceOrders
-                .Where(o => o.Id == order.Id && o.Type != ServiceOrderType.Global)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(o => o.Type, ServiceOrderType.Global));
-        }
+                .Where(o => o.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(o => o.Type, ServiceOrderType.Global));
 
-        // Agregar nueva actividad
-        var maxSort = await _db.ServiceOrderWorkItems
+            await tx.CommitAsync();
+            return RedirectToPage(new { id });
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<IActionResult> OnPostAddWorkItemAsync(Guid id)
+    {
+        // IMPORTANTÍSIMO:
+        // Al postear desde el form de actividades, el route-param "id" puede ligar a Input.Id y disparar validación
+        // de otros campos requeridos (Title/Status/etc) y entonces parece que el botón “no hace nada”.
+        // Aquí validamos SOLO NewWorkItem.
+        ModelState.Clear();
+        TryValidateModel(NewWorkItem, nameof(NewWorkItem));
+        if (!ModelState.IsValid)
+            return await ReloadAndShowAsync(id);
+
+        var order = await _db.ServiceOrders
             .AsNoTracking()
-            .Where(w => w.OrderId == order.Id)
-            .Select(w => (int?)w.SortOrder)
-            .MaxAsync();
+            .Where(o => o.Id == id)
+            .Select(o => new { o.Id, o.Type, o.Title, o.Description })
+            .FirstOrDefaultAsync();
 
-        var nextSort = (maxSort ?? -1) + 1;
+        if (order == null) return NotFound();
 
-        var wi = new ServiceOrderWorkItem
+        var activityType = NewWorkItem.Type == ServiceOrderType.Global
+            ? ServiceOrderType.Preventivo
+            : NewWorkItem.Type;
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
         {
-            OrderId = order.Id,
-            SortOrder = nextSort,
-            Type = activityType,
-            Title = (NewWorkItem.Title ?? "").Trim(),
-            Description = (NewWorkItem.Description ?? "").Trim(),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            if (order.Type != ServiceOrderType.Global)
+            {
+                var hasWorkItems = await _db.ServiceOrderWorkItems.AsNoTracking().AnyAsync(w => w.OrderId == id);
+                if (!hasWorkItems)
+                {
+                    var first = new ServiceOrderWorkItem
+                    {
+                        OrderId = id,
+                        SortOrder = 0,
+                        Type = order.Type,
+                        Title = string.IsNullOrWhiteSpace(order.Title) ? "Actividad 1" : order.Title,
+                        Description = order.Description ?? "",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-        _db.ServiceOrderWorkItems.Add(wi);
-        await _db.SaveChangesAsync();
+                    _db.ServiceOrderWorkItems.Add(first);
+                    await _db.SaveChangesAsync();
 
-        // Checklist por actividad (desde template)
-        await EnsureChecklistFromTemplateDbAsync(order.Id, wi.Type, wi.Id);
-        await _db.SaveChangesAsync();
+                    await _db.ServiceOrderChecklistItems
+                        .Where(x => x.OrderId == id && x.WorkItemId == null)
+                        .ExecuteUpdateAsync(set => set.SetProperty(x => x.WorkItemId, first.Id));
 
-        await tx.CommitAsync();
-        return RedirectToPage(new { id });
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        await tx.RollbackAsync();
-        Error = "La orden cambió mientras agregabas la actividad. Recarga e inténtalo de nuevo.";
-        return await ReloadAndShowAsync(id);
-    }
-    catch
-    {
-        await tx.RollbackAsync();
-        throw;
-    }
-}
+                    await EnsureChecklistFromTemplateDbAsync(id, first.Type, first.Id);
+                    await _db.SaveChangesAsync();
+                }
 
+                await _db.ServiceOrders
+                    .Where(o => o.Id == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(o => o.Type, ServiceOrderType.Global));
+            }
 
-            order.Type = ServiceOrderType.Global;
+            var maxSort = await _db.ServiceOrderWorkItems
+                .AsNoTracking()
+                .Where(w => w.OrderId == id)
+                .Select(w => (int?)w.SortOrder)
+                .MaxAsync();
+
+            var nextSort = (maxSort ?? -1) + 1;
+
+            var wi = new ServiceOrderWorkItem
+            {
+                OrderId = id,
+                SortOrder = nextSort,
+                Type = activityType,
+                Title = (NewWorkItem.Title ?? "").Trim(),
+                Description = (NewWorkItem.Description ?? "").Trim(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _db.ServiceOrderWorkItems.Add(wi);
             await _db.SaveChangesAsync();
+
+            await EnsureChecklistFromTemplateDbAsync(id, wi.Type, wi.Id);
+            await _db.SaveChangesAsync();
+
+            await tx.CommitAsync();
+            return RedirectToPage(new { id });
         }
-
-        // Agregar nueva actividad
-        var nextSort = order.WorkItems.Count == 0 ? 0 : order.WorkItems.Max(x => x.SortOrder) + 1;
-        var wi = new ServiceOrderWorkItem
+        catch (DbUpdateConcurrencyException)
         {
-            OrderId = order.Id,
-            SortOrder = nextSort,
-            Type = NewWorkItem.Type,
-            Title = (NewWorkItem.Title ?? "").Trim(),
-            Description = (NewWorkItem.Description ?? "").Trim(),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            await tx.RollbackAsync();
+            Error = "La orden cambió mientras agregabas la actividad. Recarga e inténtalo de nuevo.";
+            return await ReloadAndShowAsync(id);
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
 
-        _db.ServiceOrderWorkItems.Add(wi);
-        order.WorkItems.Add(wi);
+    private async Task EnsureChecklistFromTemplateDbAsync(Guid orderId, ServiceOrderType type, Guid? workItemId)
+    {
+        var exists = await _db.ServiceOrderChecklistItems
+            .AsNoTracking()
+            .AnyAsync(x => x.OrderId == orderId && x.WorkItemId == workItemId);
+        if (exists) return;
 
-        // Insertamos primero la actividad para cumplir el FK inmediato en PostgreSQL
-        await _db.SaveChangesAsync();
+        var template = await _db.ServiceOrderChecklistTemplates
+            .AsNoTracking()
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
 
-        // Checklist por actividad
-        await EnsureChecklistFromTemplateAsync(order, wi.Type, workItemId: wi.Id);
+        if (template == null || template.Items.Count == 0)
+            return;
 
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
+        var items = template.Items
+            .OrderBy(x => x.SortOrder)
+            .Select(it => new ServiceOrderChecklistItem
+            {
+                OrderId = orderId,
+                WorkItemId = workItemId,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            })
+            .ToList();
 
-        return RedirectToPage(new { id });
+        _db.ServiceOrderChecklistItems.AddRange(items);
     }
 
     public async Task<IActionResult> OnPostDeleteWorkItemAsync(Guid id, Guid workItemId)
@@ -477,45 +462,6 @@ public class EditModel : PageModel
                 Notes = ""
             });
         }
-
-
-private async Task EnsureChecklistFromTemplateDbAsync(Guid orderId, ServiceOrderType type, Guid? workItemId)
-{
-    // Evita depender de colecciones navegacionales trackeadas.
-    var exists = await _db.ServiceOrderChecklistItems
-        .AsNoTracking()
-        .AnyAsync(x => x.OrderId == orderId && x.WorkItemId == workItemId);
-
-    if (exists) return;
-
-    var template = await _db.ServiceOrderChecklistTemplates
-        .AsNoTracking()
-        .Include(t => t.Items)
-        .Where(t => t.IsActive && t.Type == type)
-        .OrderBy(t => t.Name)
-        .FirstOrDefaultAsync();
-
-    if (template == null || template.Items.Count == 0)
-        return;
-
-    var items = template.Items
-        .OrderBy(x => x.SortOrder)
-        .Select(it => new ServiceOrderChecklistItem
-        {
-            OrderId = orderId,
-            WorkItemId = workItemId,
-            SortOrder = it.SortOrder,
-            Category = it.Category,
-            Title = it.Title,
-            IsRequired = it.IsRequired,
-            IsDone = false,
-            Notes = ""
-        })
-        .ToList();
-
-    _db.ServiceOrderChecklistItems.AddRange(items);
-}
-
     }
 
     private async Task LoadListsAsync()

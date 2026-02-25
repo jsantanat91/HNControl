@@ -81,7 +81,7 @@
                 }
                 else
                 {
-                    var refresh = Context.Request.Query.ContainsKey("pdfRefresh");
+                    var refresh = HttpContext.Request.Query.ContainsKey("pdfRefresh");
                     var pdfUrl = Url.Page("/Admin/ServiceOrders/DownloadPdf", null,
                         new { id = Model.Order.Id, inline = true, refresh = refresh }, null);
 

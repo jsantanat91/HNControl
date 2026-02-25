@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.RegularExpressions;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -193,88 +193,29 @@ public class WorkModel : PageModel
     }
 
     // ✅ Un botón: firma y envía
-    // ✅ Un botón: firma y envía (GUARDA checklist + campos abiertos antes de enviar)
-public async Task<IActionResult> OnPostSignAndSubmitAsync(
-    Guid id,
-    string? TechName,
-    string? ClientName,
-    string? TechSigDataUrl,
-    string? ClientSigDataUrl)
-{
-    // NO llamamos LoadAsync() aquí, porque sobre-escribe lo posteado (ItemsPost / WorkItemsPost).
-    Order = await _db.ServiceOrders
-        .Include(o => o.Client)
-        .Include(o => o.Checklist)
-        .Include(o => o.WorkItems)
-        .Include(o => o.Signatures)
-        .FirstOrDefaultAsync(o => o.Id == id);
-
-    if (Order == null) return NotFound();
-    if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
-
-    // 1) Guardar checklist + notas
-    foreach (var vm in ItemsPost ?? new())
+    public async Task<IActionResult> OnPostSignAndSubmitAsync(
+        Guid id,
+        string? TechName,
+        string? ClientName,
+        string? TechSigDataUrl,
+        string? ClientSigDataUrl)
     {
-        var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
-        if (it == null) continue;
+        var ok = await LoadAsync(id);
+        if (!ok || Order == null) return Forbid();
 
-        it.IsDone = vm.IsDone;
-        it.Notes = (vm.Notes ?? "").Trim();
-    }
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
-    // 2) Guardar campos abiertos por actividad (en global)
-    if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
-    {
-        foreach (var wvm in WorkItemsPost)
+        _db.ChangeTracker.Clear();
+        await LoadAsync(id);
+
+        if (Order == null) return NotFound();
+
+        if (!HasTechSignature || !HasClientSignature)
         {
-            var wi = Order.WorkItems.FirstOrDefault(x => x.Id == wvm.Id);
-            if (wi == null) continue;
-
-            wi.WorkPerformed = (wvm.WorkPerformed ?? "").Trim();
-            wi.MaterialsUsed = (wvm.MaterialsUsed ?? "").Trim();
-            wi.TechnicianNotes = (wvm.TechnicianNotes ?? "").Trim();
-            wi.IsCompleted = wvm.IsCompleted;
-            wi.UpdatedAt = DateTime.UtcNow;
+            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
+            return Page();
         }
-    }
-
-    if (Order.Status == ServiceOrderStatus.Created)
-    {
-        Order.Status = ServiceOrderStatus.InProgress;
-        Order.StartedAt = DateTime.UtcNow;
-    }
-
-    await _db.SaveChangesAsync();
-
-    // 3) Guardar firmas (si vienen)
-    await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
-    await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
-
-    _db.ChangeTracker.Clear();
-    await LoadAsync(id);
-
-    if (Order == null) return NotFound();
-
-    if (!HasTechSignature || !HasClientSignature)
-    {
-        Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
-        return Page();
-    }
-
-    // 4) Enviar a revisión
-    await _db.Database.ExecuteSqlInterpolatedAsync($@"
-UPDATE ""ServiceOrders""
-SET ""Status"" = {ServiceOrderStatus.InReview},
-    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
-WHERE ""Id"" = {id};
-");
-
-    _db.ChangeTracker.Clear();
-    await LoadAsync(id);
-
-    Info = "✅ Checklist guardado + firmas guardadas y enviado a revisión.";
-    return Page();
-}
 
         await _db.Database.ExecuteSqlInterpolatedAsync($@"
 UPDATE ""ServiceOrders""

@@ -17,9 +17,28 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
+    // Search
     [BindProperty(SupportsGet = true)]
     public string? Q { get; set; }
 
+    // Filters (Excel-style)
+    [BindProperty(SupportsGet = true)]
+    public string? Cat { get; set; } // category text, "__none" = empty
+
+    [BindProperty(SupportsGet = true)]
+    public string? Loc { get; set; } // location text, "__none" = null/empty
+
+    [BindProperty(SupportsGet = true)]
+    public Guid? BrandId { get; set; } // "__none" handled in view by empty Guid
+
+    // Sort
+    [BindProperty(SupportsGet = true)]
+    public string? Sort { get; set; } // name|category|brand|location|stock
+
+    [BindProperty(SupportsGet = true)]
+    public string? Dir { get; set; } // asc|desc
+
+    // Paging
     [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
 
@@ -31,7 +50,13 @@ public class IndexModel : PageModel
     public int From => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
     public int To => Math.Min(Page * PageSize, TotalCount);
 
+    // Data
     public List<InventoryItem> Items { get; set; } = new();
+
+    // Filter options
+    public List<string> CategoryOptions { get; private set; } = new();
+    public List<string> LocationOptions { get; private set; } = new();
+    public List<InventoryBrand> BrandOptions { get; private set; } = new();
 
     private static readonly string[] _badgePalette = new[]
     {
@@ -67,6 +92,26 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        // Options first (for selects)
+        CategoryOptions = await _db.InventoryItems.AsNoTracking()
+            .Where(i => i.IsActive)
+            .Select(i => i.Category)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        LocationOptions = await _db.InventoryItems.AsNoTracking()
+            .Where(i => i.IsActive && i.Location != null && i.Location != "")
+            .Select(i => i.Location!)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        BrandOptions = await _db.InventoryBrands.AsNoTracking()
+            .Where(b => b.IsActive)
+            .OrderBy(b => b.Name)
+            .ToListAsync();
+
         var q = (Q ?? "").Trim();
         var query = _db.InventoryItems
             .AsNoTracking()
@@ -74,6 +119,30 @@ public class IndexModel : PageModel
             .Where(i => i.IsActive)
             .AsQueryable();
 
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(Cat))
+        {
+            if (Cat == "__none")
+                query = query.Where(i => (i.Category ?? "") == "");
+            else
+                query = query.Where(i => i.Category == Cat);
+        }
+
+        if (!string.IsNullOrWhiteSpace(Loc))
+        {
+            if (Loc == "__none")
+                query = query.Where(i => i.Location == null || i.Location == "");
+            else
+                query = query.Where(i => i.Location == Loc);
+        }
+
+        if (BrandId.HasValue && BrandId.Value != Guid.Empty)
+            query = query.Where(i => i.BrandId == BrandId.Value);
+
+        if (BrandId.HasValue && BrandId.Value == Guid.Empty)
+            query = query.Where(i => i.BrandId == null);
+
+        // Search (any field)
         if (!string.IsNullOrWhiteSpace(q))
         {
             var l = q.ToLowerInvariant();
@@ -95,8 +164,34 @@ public class IndexModel : PageModel
         var totalPages = TotalPages;
         if (totalPages > 0 && Page > totalPages) Page = totalPages;
 
-        Items = await query
-            .OrderBy(i => i.Name)
+        // Sort
+        var sort = (Sort ?? "name").Trim().ToLowerInvariant();
+        var desc = string.Equals((Dir ?? "asc").Trim(), "desc", StringComparison.OrdinalIgnoreCase);
+
+        IOrderedQueryable<InventoryItem> ordered = sort switch
+        {
+            "category" => desc
+                ? query.OrderByDescending(i => i.Category).ThenBy(i => i.Name)
+                : query.OrderBy(i => i.Category).ThenBy(i => i.Name),
+
+            "location" => desc
+                ? query.OrderByDescending(i => i.Location ?? "").ThenBy(i => i.Name)
+                : query.OrderBy(i => i.Location ?? "").ThenBy(i => i.Name),
+
+            "brand" => desc
+                ? query.OrderByDescending(i => (i.Brand != null ? (i.Brand.Name ?? "") : "")).ThenBy(i => i.Name)
+                : query.OrderBy(i => (i.Brand != null ? (i.Brand.Name ?? "") : "")).ThenBy(i => i.Name),
+
+            "stock" => desc
+                ? query.OrderByDescending(i => i.QuantityOnHand).ThenBy(i => i.Name)
+                : query.OrderBy(i => i.QuantityOnHand).ThenBy(i => i.Name),
+
+            _ => desc
+                ? query.OrderByDescending(i => i.Name)
+                : query.OrderBy(i => i.Name)
+        };
+
+        Items = await ordered
             .Skip((Page - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync();
