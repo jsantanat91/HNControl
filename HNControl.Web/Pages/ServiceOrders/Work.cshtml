@@ -67,79 +67,105 @@
                     }
                     else
                     {
+                        var __gIndex = 0;
+
+                        <div class="accordion" id="hnChecklistAcc">
                         @foreach (var g in Model.ChecklistGroups)
                         {
-                            <div class="col-12">
-                                <div class="border rounded-4 p-3 bg-white">
-                                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                                        <div>
-                                            <div class="fw-semibold">@g.Title</div>
-                                            <div class="text-muted small">@g.TypeLabel</div>
+                            var headId = $"h_{__gIndex}";
+                            var collapseId = $"c_{__gIndex}";
+                            var doneCount = g.ItemIndices.Count(ix => Model.ItemsPost[ix].IsDone);
+                            var totalCount = g.ItemIndices.Count;
+                            var pct = totalCount == 0 ? 0 : (int)Math.Round(doneCount * 100.0 / totalCount);
+
+                            <div class="accordion-item mb-2 border rounded-4 overflow-hidden">
+                                <h2 class="accordion-header" id="@headId">
+                                    <button class="accordion-button @(__gIndex==0 ? "" : "collapsed")" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#@collapseId"
+                                            aria-expanded="@(__gIndex==0 ? "true" : "false")" aria-controls="@collapseId">
+                                        <div class="w-100 d-flex align-items-center gap-2 flex-wrap">
+                                            <span class="badge bg-secondary">@g.TypeLabel</span>
+                                            <strong class="me-auto">@g.Title</strong>
+                                            <span class="text-muted small">Progreso: <strong>@pct%</strong></span>
                                         </div>
-                                    </div>
+                                    </button>
+                                </h2>
 
-                                    @if (g.WorkItemPostIndex.HasValue)
-                                    {
-                                        <hr class="my-3" />
-                                        <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
+                                <div id="@collapseId" class="accordion-collapse collapse @(__gIndex==0 ? "show" : "")"
+                                     aria-labelledby="@headId" data-bs-parent="#hnChecklistAcc">
+                                    <div class="accordion-body">
 
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label small text-muted mb-1">Trabajo realizado</label>
-                                                <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
-                                                          placeholder="Qué se hizo, pasos, configuración, pruebas, etc."></textarea>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label small text-muted mb-1">Material usado</label>
-                                                <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
-                                                          placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
-                                            </div>
-
-                                            <div class="col-md-9">
-                                                <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
-                                                <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
-                                                          placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
-                                            </div>
-
-                                            <div class="col-md-3 d-flex align-items-end">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" />
-                                                    <label class="form-check-label">Actividad completada</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-
-                                    <div class="row g-3 mt-2">
-                                        @foreach (var ix in g.ItemIndices)
+                                        @if (g.WorkItemPostIndex.HasValue)
                                         {
-                                            <div class="col-md-6">
-                                                <div class="border rounded-4 p-3 h-100 bg-white">
-                                                    <input type="hidden" asp-for="ItemsPost[ix].Id" />
-                                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                                        <div>
-                                                            <div class="fw-semibold">@Model.ItemsPost[ix].Title</div>
-                                                            @if (!string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Category))
-                                                            {
-                                                                <div class="text-muted small">Categoría: @Model.ItemsPost[ix].Category</div>
-                                                            }
-                                                        </div>
+                                            <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
 
-                                                        <div class="form-check form-switch m-0">
-                                                            <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
-                                                        </div>
-                                                    </div>
-
-                                                    <label class="form-label small mt-3 mb-1 text-muted">Notas</label>
-                                                    <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
-                                                              placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted mb-1">Trabajo realizado</label>
+                                                    <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
+                                                              placeholder="Qué se hizo, pasos, configuración, pruebas, etc."></textarea>
                                                 </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small text-muted mb-1">Material usado</label>
+                                                    <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
+                                                              placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
+                                                </div>
+
+                                                <div class="col-md-9">
+                                                    <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
+                                                    <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
+                                                              placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
+                                                </div>
+
+                                                <div class="col-md-3 d-flex align-items-end">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" />
+                                                        <label class="form-check-label">Actividad completada</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="progress mb-3" style="height:8px;">
+                                                <div class="progress-bar" role="progressbar" style="width:@pct%"></div>
                                             </div>
                                         }
+
+                                        <div class="row g-3">
+                                            @foreach (var ix in g.ItemIndices)
+                                            {
+                                                <div class="col-md-6">
+                                                    <div class="border rounded-4 p-3 h-100 bg-white">
+                                                        <input type="hidden" asp-for="ItemsPost[ix].Id" />
+                                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                                            <div>
+                                                                <div class="fw-semibold">@Model.ItemsPost[ix].Title</div>
+                                                                @if (!string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Category))
+                                                                {
+                                                                    <div class="text-muted small">Categoría: @Model.ItemsPost[ix].Category</div>
+                                                                }
+                                                            </div>
+
+                                                            <div class="form-check form-switch m-0">
+                                                                <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
+                                                            </div>
+                                                        </div>
+
+                                                        <label class="form-label small mt-3 mb-1 text-muted">Notas</label>
+                                                        <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
+                                                                  placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
-                        }
+
+                               
+                                    __gIndex++;
+                                }
+                    </div>
                     }
                 </div>
             </div>
