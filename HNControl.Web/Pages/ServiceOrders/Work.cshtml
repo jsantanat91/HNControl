@@ -19,7 +19,7 @@
             · Tipo: <strong>@(Model.WorkItems != null && Model.WorkItems.Count > 0 ? "Global" : Model.Order.Type.ToString())</strong>
             · Actividades: <strong>@((Model.WorkItems != null && Model.WorkItems.Count > 0) ? Model.WorkItems.Count : 1)</strong>
             · Status: <strong>@Model.Order.Status</strong>
-            · Progreso checklist: <strong>@Model.ChecklistCompletionPercent</strong>
+            · Progreso checklist: <strong id="hnChecklistPctTextTop">@Model.ChecklistCompletionPercent</strong>
         </div>
     </div>
 
@@ -46,7 +46,7 @@
             <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
                 <div>
                     <div class="fw-semibold">Checklist</div>
-                    <div class="text-muted small">Progreso: @Model.ChecklistCompletionPercent</div>
+                    <div class="text-muted small">Progreso: <strong id="hnChecklistPctText">@Model.ChecklistCompletionPercent</strong></div>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
@@ -57,7 +57,7 @@
 
             <div class="card-body">
                 <div class="progress mb-3" style="height:10px;">
-                    <div class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+                    <div id="hnChecklistPctBar" class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
                 </div>
 
                 <div class="row g-3">
@@ -99,28 +99,51 @@
                                         {
                                             <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
 
-                                            <div class="row g-3 mb-3">
-                                                <div class="col-md-6">
-                                                    <label class="form-label small text-muted mb-1">Trabajo realizado</label>
-                                                    <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
-                                                              placeholder="Qué se hizo, pasos, configuración, pruebas, etc."></textarea>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label small text-muted mb-1">Material usado</label>
-                                                    <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
-                                                              placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
-                                                </div>
+                                            var wi = Model.WorkItemsPost[g.WorkItemPostIndex.Value];
+                                            var showDetails = !string.IsNullOrWhiteSpace(wi.WorkPerformed)
+                                                || !string.IsNullOrWhiteSpace(wi.MaterialsUsed)
+                                                || !string.IsNullOrWhiteSpace(wi.TechnicianNotes)
+                                                || wi.IsCompleted;
 
-                                                <div class="col-md-9">
-                                                    <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
-                                                    <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
-                                                              placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
-                                                </div>
+                                            var detId = $"hnWiDet_{__gIndex}";
 
-                                                <div class="col-md-3 d-flex align-items-end">
-                                                    <div class="form-check form-switch">
+                                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                                <div class="text-muted small">
+                                                    Detalles de actividad (opcional)
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button"
+                                                            class="btn btn-outline-secondary btn-sm"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#@detId"
+                                                            aria-expanded="@(showDetails ? "true" : "false")"
+                                                            aria-controls="@detId">
+                                                        @(showDetails ? "Ocultar" : "Agregar") detalles
+                                                    </button>
+                                                    <div class="form-check form-switch m-0 d-flex align-items-center">
                                                         <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" />
-                                                        <label class="form-check-label">Actividad completada</label>
+                                                        <label class="form-check-label ms-2">Actividad completada</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div id="@detId" class="collapse @(showDetails ? "show" : "")">
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small text-muted mb-1">Trabajo realizado</label>
+                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
+                                                                  placeholder="Qué se hizo, pasos, configuración, pruebas, etc."></textarea>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small text-muted mb-1">Material usado</label>
+                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
+                                                                  placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
+                                                    </div>
+
+                                                    <div class="col-12">
+                                                        <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
+                                                        <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
+                                                                  placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
                                                     </div>
                                                 </div>
                                             </div>
@@ -133,26 +156,47 @@
                                         <div class="row g-3">
                                             @foreach (var ix in g.ItemIndices)
                                             {
+                                                var noteId = $"hnNote_{__gIndex}_{ix}";
+                                                var hasNotes = !string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Notes);
                                                 <div class="col-md-6">
-                                                    <div class="border rounded-4 p-3 h-100 bg-white">
+                                                    <div class="border rounded-4 p-2 h-100 bg-white">
                                                         <input type="hidden" asp-for="ItemsPost[ix].Id" />
                                                         <div class="d-flex justify-content-between align-items-start gap-2">
-                                                            <div>
-                                                                <div class="fw-semibold">@Model.ItemsPost[ix].Title</div>
+                                                            <div class="pe-2">
+                                                                <div class="fw-semibold small">@Model.ItemsPost[ix].Title</div>
                                                                 @if (!string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Category))
                                                                 {
-                                                                    <div class="text-muted small">Categoría: @Model.ItemsPost[ix].Category</div>
+                                                                    <div class="mt-1">
+                                                                        <span class="badge bg-light text-dark border">@Model.ItemsPost[ix].Category</span>
+                                                                    </div>
                                                                 }
                                                             </div>
 
-                                                            <div class="form-check form-switch m-0">
-                                                                <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <button type="button"
+                                                                        class="btn btn-outline-secondary btn-sm"
+                                                                        data-bs-toggle="collapse"
+                                                                        data-bs-target="#@noteId"
+                                                                        aria-expanded="@(hasNotes ? "true" : "false")"
+                                                                        aria-controls="@noteId">
+                                                                    Notas
+                                                                    @if (hasNotes)
+                                                                    {
+                                                                        <span class="ms-1">•</span>
+                                                                    }
+                                                                </button>
+                                                                <div class="form-check form-switch m-0">
+                                                                    <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
+                                                                </div>
                                                             </div>
                                                         </div>
 
-                                                        <label class="form-label small mt-3 mb-1 text-muted">Notas</label>
-                                                        <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
-                                                                  placeholder="Ej: material pendiente, canaleta instalada, configuración lista, etc."></textarea>
+                                                        <div id="@noteId" class="collapse @(hasNotes ? "show" : "")">
+                                                            <div class="mt-2">
+                                                                <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
+                                                                          placeholder="Opcional: detalles, pendientes, materiales, etc."></textarea>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             }
@@ -162,9 +206,8 @@
                                 </div>
                             </div>
 
-                               
-                                    __gIndex++;
-                                }
+                             __gIndex++;
+                        }
                     </div>
                     }
                 </div>
@@ -241,7 +284,7 @@
                     <div class="col-12 col-lg-6">
                         <div class="fw-semibold mb-2">Técnico</div>
                         <label class="form-label small text-muted">Nombre</label>
-                        <input class="form-control mb-2" name="TechName" value="@Model.TechName" placeholder="Nombre del técnico" />
+                        <input class="form-control mb-2" name="TechName" value="@Model.TechName" readonly />
 
                         <div class="border rounded-4 bg-light p-2 hn-sig-box">
                             <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
@@ -311,7 +354,33 @@
     <script>
         function hnChecklistMarkAll(flag) {
             document.querySelectorAll('.hn-check-item').forEach(cb => cb.checked = flag);
+            hnUpdateChecklistProgress();
         }
+
+        function hnUpdateChecklistProgress() {
+            const cbs = Array.from(document.querySelectorAll('.hn-check-item'));
+            if (!cbs.length) return;
+
+            const done = cbs.filter(cb => cb.checked).length;
+            const pct = Math.round((done * 1000) / cbs.length) / 10; // 1 decimal
+            const pctText = (pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1)) + "%";
+
+            const t1 = document.getElementById('hnChecklistPctText');
+            const t2 = document.getElementById('hnChecklistPctTextTop');
+            const bar = document.getElementById('hnChecklistPctBar');
+
+            if (t1) t1.textContent = pctText;
+            if (t2) t2.textContent = pctText;
+            if (bar) bar.style.width = pctText;
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.classList && e.target.classList.contains('hn-check-item')) {
+                hnUpdateChecklistProgress();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => hnUpdateChecklistProgress());
 
         const hnPads = {};
 

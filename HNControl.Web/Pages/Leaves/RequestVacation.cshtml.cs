@@ -78,6 +78,31 @@ public class RequestVacationModel : PageModel
             return Page();
         }
 
+        // ✅ Validación simple de saldo (calendario anual).
+        // Nota: la LFT opera por "año de servicios"; aquí usamos el año calendario para mantener consistencia con el módulo.
+        var year = start.Year;
+        var allowance = profile.HireDate.HasValue
+            ? VacationPolicyMxLft.GetAnnualVacationDays(profile.HireDate, start)
+            : profile.VacationAllowanceDays;
+
+        var usedDays = await _db.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.Type == LeaveRequestType.Vacation
+                        && x.Status == LeaveRequestStatus.Approved
+                        && x.StartDate.Year == year)
+            .SumAsync(x => (int?)x.TotalDays) ?? 0;
+
+        var remaining = allowance - usedDays;
+        if (remaining < 0) remaining = 0;
+
+        if (days > remaining)
+        {
+            ModelState.AddModelError("", $"No tienes saldo suficiente. Te quedan {remaining} día(s) para {year}.");
+            return Page();
+        }
+
+
         var req = new LeaveRequest
         {
             Id = Guid.NewGuid(),

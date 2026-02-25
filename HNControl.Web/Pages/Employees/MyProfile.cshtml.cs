@@ -293,8 +293,10 @@ public class MyProfileModel : PageModel
     {
         VacYear = DateTime.Now.Year;
 
-        // Allowance viene del perfil
-        VacationAllowance = Profile?.VacationAllowanceDays ?? 0;
+        // ✅ Allowance automático por LFT (si no hay HireDate, usamos el valor manual)
+        VacationAllowance = (Profile?.HireDate != null)
+            ? VacationPolicyMxLft.GetAnnualVacationDays(Profile.HireDate, DateTime.Now.Date)
+            : (Profile?.VacationAllowanceDays ?? 0);
 
         var used = await _db.LeaveRequests
             .AsNoTracking()

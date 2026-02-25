@@ -96,6 +96,7 @@ public class WorkModel : PageModel
             .Include(o => o.Client)
             .Include(o => o.Checklist)
             .Include(o => o.WorkItems)
+            .Include(o => o.AssignedEmployee)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (Order == null) return NotFound();
@@ -203,7 +204,7 @@ public class WorkModel : PageModel
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
         _db.ChangeTracker.Clear();
@@ -220,7 +221,9 @@ public class WorkModel : PageModel
         await _db.Database.ExecuteSqlInterpolatedAsync($@"
 UPDATE ""ServiceOrders""
 SET ""Status"" = {ServiceOrderStatus.InReview},
-    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
+    ""SubmittedForReviewAt"" = {DateTime.UtcNow},
+    ""PdfStoragePath"" = NULL,
+    ""PdfGeneratedAt"" = NULL
 WHERE ""Id"" = {id};
 ");
 
@@ -237,7 +240,7 @@ WHERE ""Id"" = {id};
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
         _db.ChangeTracker.Clear();
@@ -252,7 +255,7 @@ WHERE ""Id"" = {id};
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, TechName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
 
         _db.ChangeTracker.Clear();
@@ -269,7 +272,9 @@ WHERE ""Id"" = {id};
         await _db.Database.ExecuteSqlInterpolatedAsync($@"
 UPDATE ""ServiceOrders""
 SET ""Status"" = {ServiceOrderStatus.InReview},
-    ""SubmittedForReviewAt"" = {DateTime.UtcNow}
+    ""SubmittedForReviewAt"" = {DateTime.UtcNow},
+    ""PdfStoragePath"" = NULL,
+    ""PdfGeneratedAt"" = NULL
 WHERE ""Id"" = {id};
 ");
 
@@ -308,6 +313,7 @@ WHERE ""Id"" = {id};
             .Include(o => o.Evidences)
             .Include(o => o.Signatures)
             .Include(o => o.WorkItems)
+            .Include(o => o.AssignedEmployee)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (Order == null) return true;
@@ -412,7 +418,10 @@ WHERE ""Id"" = {id};
         var tech = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var cli = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
-        TechName = tech?.SignedByName ?? "";
+        TechName = !string.IsNullOrWhiteSpace(tech?.SignedByName)
+            ? tech!.SignedByName
+            : (Order.AssignedEmployee?.FullName ?? "");
+
         ClientSignerName = cli?.SignedByName ?? "";
 
         HasTechSignature = tech != null && !string.IsNullOrWhiteSpace(tech.StoragePath);

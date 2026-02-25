@@ -139,6 +139,67 @@ public class DetailsModel : PageModel
         return Page();
     }
 
+
+    public async Task<IActionResult> OnPostRejectAsync(Guid id, string? ReviewNotes)
+    {
+        await LoadAsync(id);
+        if (Order == null) return NotFound();
+
+        Order.AdminReviewNotes = (ReviewNotes ?? "").Trim();
+        Order.Status = ServiceOrderStatus.Rejected;
+
+        // La regresamos a “en proceso” por si quieren seguir trabajando y re-enviar
+        Order.SubmittedForReviewAt = null;
+        Order.FinalizedAt = null;
+
+        // ✅ Invalida PDF cacheado
+        Order.PdfStoragePath = null;
+        Order.PdfGeneratedAt = null;
+
+        await _db.SaveChangesAsync();
+
+        Info = "Orden rechazada. El técnico puede corregir y volver a enviar.";
+        await LoadAsync(id);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostApplyChecklistTemplateAsync(Guid id)
+    {
+        await LoadAsync(id);
+        if (Order == null) return NotFound();
+
+        var before = Order.Checklist.Count;
+
+        // Checklist general (si no es Global)
+        if (Order.Type != ServiceOrderType.Global)
+            await EnsureChecklistFromTemplateAsync(Order, Order.Type, workItemId: null);
+
+        // Si es Global: por actividad
+        if (Order.WorkItems != null && Order.WorkItems.Count > 0)
+        {
+            foreach (var w in Order.WorkItems.OrderBy(x => x.SortOrder))
+                await EnsureChecklistFromTemplateAsync(Order, w.Type, workItemId: w.Id);
+        }
+
+        var added = Order.Checklist.Count - before;
+        if (added > 0)
+        {
+            // ✅ Invalida PDF cacheado
+            Order.PdfStoragePath = null;
+            Order.PdfGeneratedAt = null;
+
+            await _db.SaveChangesAsync();
+            Info = $"Checklist cargado desde plantilla (+{added} ítem(s)).";
+        }
+        else
+        {
+            Info = "No se agregó checklist (ya existía o no hay plantilla para ese tipo).";
+        }
+
+        await LoadAsync(id);
+        return Page();
+    }
+
     private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
     {
         if (order.Checklist.Any(x => x.WorkItemId == workItemId))
@@ -178,6 +239,7 @@ public class DetailsModel : PageModel
             .Include(o => o.Checklist)
             .Include(o => o.Evidences)
             .Include(o => o.Signatures)
+            .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');

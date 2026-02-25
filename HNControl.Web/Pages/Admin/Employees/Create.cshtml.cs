@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using HNControl.Web.Services;
 
 namespace HNControl.Web.Pages.Admin.Employees;
 
@@ -124,7 +125,12 @@ public class CreateModel : PageModel
         else
             await _userMgr.AddToRoleAsync(user, AppRoles.Employee);
 
-        _db.EmployeeProfiles.Add(new EmployeeProfile
+                // ✅ Vacaciones automático por LFT (según fecha de ingreso). Si no hay HireDate, usamos el valor manual.
+        var vacDays = Input.HireDate.HasValue
+            ? VacationPolicyMxLft.GetAnnualVacationDays(Input.HireDate, DateTime.Now.Date)
+            : Input.VacationAllowanceDays;
+
+_db.EmployeeProfiles.Add(new EmployeeProfile
         {
             UserId = user.Id,
             FullName = Input.FullName,
@@ -138,7 +144,7 @@ public class CreateModel : PageModel
             BirthDate = Input.BirthDate,
             HireDate = Input.HireDate,
             SalaryBase = Input.SalaryBase,
-            VacationAllowanceDays = Input.VacationAllowanceDays,
+            VacationAllowanceDays = vacDays,
             CreatedAt = DateTime.UtcNow
         });
 

@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +49,12 @@ public class IndexModel : PageModel
             .Take(200)
             .ToListAsync();
 
-        AllowanceDays = Profile.VacationAllowanceDays;
+        var asOf = (Year == DateTime.Now.Year) ? DateTime.Now.Date : new DateTime(Year, 12, 31);
+
+        // ✅ Calculado automático por LFT según fecha de ingreso.
+        AllowanceDays = Profile.HireDate.HasValue
+            ? VacationPolicyMxLft.GetAnnualVacationDays(Profile.HireDate, asOf)
+            : Profile.VacationAllowanceDays;
 
         UsedDays = await _db.LeaveRequests
             .AsNoTracking()

@@ -28,6 +28,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.WorkItems)
             .Include(x => x.Evidences)
             .Include(x => x.Signatures)
+            .Include(x => x.AssignedEmployee)
             .FirstAsync(x => x.Id == order.Id);
 
         // Logo
@@ -96,6 +97,8 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                             cc.Item().Text("Datos de la orden").SemiBold();
                             cc.Item().Text($"Tipo: {o.Type}");
                             cc.Item().Text($"Status: {o.Status}");
+                            if (!string.IsNullOrWhiteSpace(o.AssignedEmployee?.FullName))
+                                cc.Item().Text($"Técnico: {o.AssignedEmployee.FullName}");
                             cc.Item().Text($"Creada: {o.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm}");
                             if (o.EstimatedEndDate != null)
                                 cc.Item().Text($"SLA: {o.EstimatedEndDate.Value:yyyy-MM-dd}");

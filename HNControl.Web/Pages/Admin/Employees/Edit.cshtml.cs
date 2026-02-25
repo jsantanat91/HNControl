@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -89,6 +90,13 @@ public class EditModel : PageModel
             PermissionRoleId = upr?.PermissionRoleId
         };
 
+        // ✅ Vacaciones automático por LFT (según fecha de ingreso)
+        if (Employee.HireDate != null)
+        {
+            var vacDays = VacationPolicyMxLft.GetAnnualVacationDays(Employee.HireDate, DateTime.Now.Date);
+            Input.VacationAllowanceDays = vacDays;
+        }
+
         await LoadPermissionRoleOptionsAsync(Input.PermissionRoleId);
 
         return Page();
@@ -124,7 +132,14 @@ public class EditModel : PageModel
     {
         if (!ModelState.IsValid)
         {
-            await LoadPermissionRoleOptionsAsync(Input.PermissionRoleId);
+            // ✅ Vacaciones automático por LFT (según fecha de ingreso)
+        if (Employee.HireDate != null)
+        {
+            var vacDays = VacationPolicyMxLft.GetAnnualVacationDays(Employee.HireDate, DateTime.Now.Date);
+            Input.VacationAllowanceDays = vacDays;
+        }
+
+        await LoadPermissionRoleOptionsAsync(Input.PermissionRoleId);
             return Page();
         }
 
@@ -142,7 +157,11 @@ public class EditModel : PageModel
         Employee.BirthDate = Input.BirthDate;
         Employee.HireDate = Input.HireDate;
         Employee.SalaryBase = Input.SalaryBase;
-        Employee.VacationAllowanceDays = Input.VacationAllowanceDays;
+        // ✅ Vacaciones automático por LFT (según fecha de ingreso)
+        var vacDays2 = (Input.HireDate != null)
+            ? VacationPolicyMxLft.GetAnnualVacationDays(Input.HireDate, DateTime.Now.Date)
+            : Input.VacationAllowanceDays;
+        Employee.VacationAllowanceDays = vacDays2;
         Employee.Email = Input.Email.Trim();
         Employee.UpdatedAt = DateTime.UtcNow;
 
