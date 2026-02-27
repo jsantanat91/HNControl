@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.DashboardModel
 @{
     Layout = "_Layout";
@@ -77,6 +77,30 @@
             </div>
         </div>
     </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <div class="text-muted small">Inventario · órdenes pendientes</div>
+                <div class="fs-4 fw-semibold">@Model.Kpi.PendingInventoryOrders</div>
+                <div class="mt-2">
+                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Ver</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <div class="text-muted small">Inventario · bajo stock</div>
+                <div class="fs-4 fw-semibold">@Model.Kpi.LowStockItems</div>
+                <div class="mt-2">
+                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Ver</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3 mt-1">
@@ -117,6 +141,15 @@
 </div>
 
 <div class="row g-3 mt-3">
+    <div class="col-lg-7">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Inventario · movimientos aprobados (últimos 30 días)</div>
+            <div class="card-body">
+                <canvas id="invChart" height="130"></canvas>
+            </div>
+        </div>
+    </div>
+
     <div class="col-lg-5">
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Exámenes (estatus)</div>
@@ -125,13 +158,17 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-7">
+</div>
+
+<div class="row g-3 mt-3">
+    <div class="col-lg-12">
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Acciones rápidas</div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Exámenes</a>
+                    <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
                 </div>
                 <div class="text-muted small mt-2">Porque el mouse también merece propósito.</div>
             </div>
@@ -163,4 +200,26 @@
 
     window.hnCharts?.decorate(exCfg);
     new Chart(document.getElementById('examAdminChart'), exCfg);
+
+    const invLabels = @Html.Raw(Model.InvLabelsJson);
+    const invIn = @Html.Raw(Model.InvInValuesJson);
+    const invOut = @Html.Raw(Model.InvOutValuesJson);
+
+    const invCfg = {
+      type: 'bar',
+      data: {
+        labels: invLabels,
+        datasets: [
+          { label: 'Entradas', data: invIn },
+          { label: 'Salidas', data: invOut }
+        ]
+      },
+      options: {
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    };
+
+    window.hnCharts?.decorate(invCfg);
+    new Chart(document.getElementById('invChart'), invCfg);
 </script>

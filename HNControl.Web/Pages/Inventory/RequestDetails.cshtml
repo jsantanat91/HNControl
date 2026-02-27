@@ -1,17 +1,17 @@
 @page "{id:guid}"
-@model HNControl.Web.Pages.Admin.Inventory.Approvals.DetailsModel
+@model HNControl.Web.Pages.Inventory.RequestDetailsModel
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Aprobar orden";
+    ViewData["Title"] = "Detalle de solicitud";
 }
 
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Revisar orden de inventario</h1>
-        <div class="text-muted small">Aprueba o rechaza la orden completa. Si apruebas, impacta stock.</div>
+        <h1 class="h4 mb-0">Detalle de solicitud</h1>
+        <div class="text-muted small">Tu orden, con todas sus líneas y estatus.</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+    <a class="btn btn-outline-secondary" asp-page="./MyRequests">← Volver</a>
 </div>
 
 @if (Model.Anchor == null)
@@ -21,7 +21,6 @@
 else
 {
     var a = Model.Anchor;
-    var lines = Model.Lines;
 
     <div class="card mb-3">
         <div class="card-body">
@@ -31,8 +30,8 @@ else
                     <div class="fw-semibold">@(a.Type == InventoryMovementType.In ? "Entrada" : "Salida")</div>
                 </div>
                 <div class="col-md-6">
-                    <div class="text-muted small">Orden (fecha/hora)</div>
-                    <div class="fw-semibold">@a.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</div>
+                    <div class="text-muted small">Estatus</div>
+                    <div class="fw-semibold"><span class="badge @Model.StatusCss">@Model.StatusLabel</span></div>
                 </div>
 
                 <div class="col-md-6">
@@ -49,24 +48,15 @@ else
                     <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.RequestedByName) ? "—" : a.RequestedByName)</div>
                 </div>
                 <div class="col-md-6">
-                    <div class="text-muted small">Líneas</div>
-                    <div class="fw-semibold">@lines.Count</div>
+                    <div class="text-muted small">Fecha</div>
+                    <div class="fw-semibold">@a.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                 </div>
-
-                @if (Model.HasMixedStatuses)
-                {
-                    <div class="col-12">
-                        <div class="alert alert-warning mb-0">
-                            Esta orden tiene estatus mezclados (algunas líneas ya fueron procesadas). Para evitar inconsistencias, el sistema desactiva la aprobación/rechazo por orden.
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header fw-semibold">Detalle de líneas</div>
+    <div class="card">
+        <div class="card-header fw-semibold">Líneas</div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table align-middle">
@@ -80,7 +70,7 @@ else
                     </tr>
                     </thead>
                     <tbody>
-                    @foreach (var m in lines)
+                    @foreach (var m in Model.Lines)
                     {
                         <tr>
                             <td>
@@ -113,40 +103,11 @@ else
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
 
-    @if (!ViewData.ModelState.IsValid)
-    {
-        <div class="alert alert-danger">
-            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            @if (Model.Lines.Count == 0)
             {
-                <div>@err.ErrorMessage</div>
+                <div class="text-muted">Sin líneas.</div>
             }
         </div>
-    }
-
-    <div class="card">
-        <div class="card-body">
-            <form method="post" asp-route-id="@a.Id" class="mb-2">
-                <label class="form-label">Nota admin (opcional)</label>
-                <textarea class="form-control" asp-for="Input.AdminNote" rows="3" placeholder="Comentario de aprobación/rechazo..."></textarea>
-                <div class="d-flex gap-2 mt-3">
-                    <button class="btn btn-success" type="submit" asp-page-handler="Approve" disabled="@(!Model.CanDecide)">
-                        Aprobar orden
-                    </button>
-                    <button class="btn btn-outline-danger" type="submit" asp-page-handler="Reject" disabled="@(!Model.CanDecide)">
-                        Rechazar orden
-                    </button>
-                    <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
-                </div>
-            </form>
-
-            <div class="text-muted small mt-2">Tip: si no hay stock suficiente en salidas, te lo va a decir. La realidad no negocia.</div>
-        </div>
     </div>
-}
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
 }

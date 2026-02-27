@@ -1,5 +1,6 @@
 @page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Inventory.Items.EditModel
+@using HNControl.Web.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Editar item";
@@ -98,8 +99,82 @@
     <div class="card-footer d-flex gap-2">
         <button class="btn btn-primary" type="submit">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
+        <a class="btn btn-outline-secondary ms-auto" asp-page="/Admin/Inventory/Movements/Index" asp-route-itemId="@Model.Input.Id">Ver movimientos</a>
     </div>
 </form>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">Movimientos recientes</div>
+        <div class="text-muted small">Últimos 30</div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th class="text-end">Cantidad</th>
+                        <th>Status</th>
+                        <th>Solicitó</th>
+                        <th>Responsable</th>
+                        <th>Aprobó</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var m in Model.RecentMovements)
+                {
+                    <tr>
+                        <td class="text-muted small">@m.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge text-bg-light">@(m.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span></td>
+                        <td class="text-end fw-semibold">@m.Quantity @m.Unit</td>
+                        <td>
+                            @if (m.Status == InventoryMovementStatus.Pending)
+                            {
+                                <span class="badge text-bg-warning">Pendiente</span>
+                            }
+                            else if (m.Status == InventoryMovementStatus.Approved)
+                            {
+                                <span class="badge text-bg-success">Aprobado</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-danger">Rechazado</span>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(m.RequestedByName) ? "—" : m.RequestedByName)</td>
+                        <td>@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "—" : m.ResponsibleName)</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(m.ApprovedByName))
+                            {
+                                <div>@m.ApprovedByName</div>
+                                @if (m.ApprovedAt != null)
+                                {
+                                    <div class="text-muted small">@m.ApprovedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Inventory/Approvals/Details" asp-route-id="@m.Id">Ver orden</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.RecentMovements.Count == 0)
+        {
+            <div class="text-muted">Aún no hay movimientos para este item.</div>
+        }
+    </div>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

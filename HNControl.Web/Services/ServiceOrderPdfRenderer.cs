@@ -1,5 +1,8 @@
-﻿using HNControl.Web.Data;
+using System.ComponentModel.DataAnnotations;
+using System.Reflection;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -12,12 +15,18 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
     private readonly IConfiguration _cfg;
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly IWebHostEnvironment _env;
 
-    public ServiceOrderPdfRenderer(IConfiguration cfg, ApplicationDbContext db, IFileStorage storage)
+    public ServiceOrderPdfRenderer(
+        IConfiguration cfg,
+        ApplicationDbContext db,
+        IFileStorage storage,
+        IWebHostEnvironment env)
     {
         _cfg = cfg;
         _db = db;
         _storage = storage;
+        _env = env;
     }
 
     public async Task<byte[]> RenderAsync(ServiceOrder order)
@@ -31,21 +40,49 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.AssignedEmployee)
             .FirstAsync(x => x.Id == order.Id);
 
-        // Logo
-        var logoPath = (_cfg["Branding:LogoPath"] ?? "wwwroot/images/hn-logo.png").Trim();
-        if (!Path.IsPathRooted(logoPath))
-            logoPath = Path.Combine(Directory.GetCurrentDirectory(), logoPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-        byte[]? logoBytes = File.Exists(logoPath) ? File.ReadAllBytes(logoPath) : null;
+        // --------------------
+        // Branding / logo
+        // --------------------
+        byte[]? logoBytes = LoadLogoBytes();
 
-        // Firmas (leer desde storage, no “a mano” con basePath)
+        // --------------------
+        // Firmas (leer desde storage)
+        // --------------------
         var techSig = o.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
         var cliSig = o.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
         byte[]? techBytes = await TryReadStorageBytesAsync(techSig?.StoragePath);
         byte[]? cliBytes = await TryReadStorageBytesAsync(cliSig?.StoragePath);
 
+        // --------------------
+        // Evidencias (precargar imágenes)
+        // --------------------
+        var evidenceImages = new List<(string Name, DateTime UploadedAt, byte[] Bytes)>();
+        var evidenceFiles = new List<(string Name, DateTime UploadedAt)>();
+
+        foreach (var ev in o.Evidences.OrderByDescending(x => x.UploadedAt))
+        {
+            if (IsSupportedImage(ev))
+            {
+                var bytes = await TryReadStorageBytesAsync(ev.StoragePath);
+                if (bytes != null && bytes.Length > 0)
+                    evidenceImages.Add((ev.OriginalFileName, ev.UploadedAt, bytes));
+                else
+                    evidenceFiles.Add((ev.OriginalFileName, ev.UploadedAt));
+            }
+            else
+            {
+                evidenceFiles.Add((ev.OriginalFileName, ev.UploadedAt));
+            }
+        }
+
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
+
+        // Labels en español
+        var typeLabel = GetDisplayName(o.Type);
+        var status = o.Status == ServiceOrderStatus.Completed ? ServiceOrderStatus.Finalized : o.Status;
+        var statusLabel = GetDisplayName(status);
 
         var doc = Document.Create(container =>
         {
@@ -65,10 +102,10 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         c.Item().Text(o.Title).FontSize(12).SemiBold();
                     });
 
-                    r.ConstantItem(140).AlignRight().AlignMiddle().Element(el =>
+                    r.ConstantItem(160).AlignRight().AlignMiddle().Element(el =>
                     {
                         if (logoBytes != null && logoBytes.Length > 0)
-                            el.Height(46).Image(logoBytes).FitHeight();
+                            el.Height(56).Width(160).Image(logoBytes).FitArea();
                         else
                             el.Text("LOGO").FontSize(14).FontColor(Colors.Grey.Darken2);
                     });
@@ -92,11 +129,11 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                                 cc.Item().Text(o.Client!.Phone).FontColor(Colors.Grey.Darken2);
                         });
 
-                        r.ConstantItem(255).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
+                        r.ConstantItem(270).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                         {
                             cc.Item().Text("Datos de la orden").SemiBold();
-                            cc.Item().Text($"Tipo: {o.Type}");
-                            cc.Item().Text($"Status: {o.Status}");
+                            cc.Item().Text($"Tipo: {typeLabel}");
+                            cc.Item().Text($"Estatus: {statusLabel}");
                             if (!string.IsNullOrWhiteSpace(o.AssignedEmployee?.FullName))
                                 cc.Item().Text($"Técnico: {o.AssignedEmployee.FullName}");
                             cc.Item().Text($"Creada: {o.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm}");
@@ -112,7 +149,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         cc.Item().PaddingTop(6).Text(string.IsNullOrWhiteSpace(o.Description) ? "—" : o.Description);
                     });
 
-                    // Checklist (por actividad si es Global)
+                    // Checklist
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
                         cc.Item().Text("Checklist").SemiBold();
@@ -198,16 +235,47 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         if (!o.Evidences.Any())
                         {
                             cc.Item().Text("Sin evidencias.").FontColor(Colors.Grey.Darken2);
+                            return;
                         }
-                        else
+
+                        if (evidenceImages.Count > 0)
                         {
-                            foreach (var ev in o.Evidences.OrderByDescending(x => x.UploadedAt))
-                                cc.Item().Text($"• {ev.OriginalFileName} — {ev.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm}")
-                                    .FontColor(Colors.Grey.Darken2);
+                            cc.Item().Text("Imágenes").SemiBold().FontColor(Colors.Grey.Darken2);
+                            cc.Item().PaddingTop(6).Table(t =>
+                            {
+                                t.ColumnsDefinition(cols =>
+                                {
+                                    cols.RelativeColumn();
+                                    cols.RelativeColumn();
+                                });
+
+                                foreach (var img in evidenceImages)
+                                {
+                                    t.Cell().Padding(4).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(ic =>
+                                    {
+                                        ic.Item()
+                                            .Height(220)
+                                            .Border(1).BorderColor(Colors.Grey.Lighten2)
+                                            .Background(Colors.Grey.Lighten5)
+                                            .AlignCenter().AlignMiddle()
+                                            .Image(img.Bytes).FitArea();
+
+                                        ic.Item().PaddingTop(4).Text(img.Name).FontSize(9).FontColor(Colors.Grey.Darken2);
+                                        ic.Item().Text(img.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).FontSize(8).FontColor(Colors.Grey.Darken2);
+                                    });
+                                }
+                            });
+                        }
+
+                        if (evidenceFiles.Count > 0)
+                        {
+                            cc.Item().PaddingTop(10).Text("Archivos").SemiBold().FontColor(Colors.Grey.Darken2);
+                            foreach (var f in evidenceFiles)
+                                cc.Item().Text($"• {f.Name} — {f.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm}").FontColor(Colors.Grey.Darken2);
                         }
                     });
 
-                    // Firmas (FIX layout)
+                    // Firmas
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
                         cc.Item().Text("Firmas").SemiBold();
@@ -276,6 +344,70 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         return doc.GeneratePdf();
     }
 
+    // ===== LOGO loader (robusto para publish/docker) =====
+    private byte[]? LoadLogoBytes()
+    {
+        var configured = (_cfg["Branding:LogoPath"] ?? "").Trim();
+
+        var candidates = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(configured))
+            candidates.Add(configured);
+
+        // Defaults que tú estás usando
+        candidates.Add("assets/logo.png");
+        candidates.Add("wwwroot/assets/logo.png");
+
+        // Absolutos típicos en runtime
+        if (!string.IsNullOrWhiteSpace(_env.ContentRootPath))
+        {
+            candidates.Add(Path.Combine(_env.ContentRootPath, "assets", "logo.png"));
+            candidates.Add(Path.Combine(_env.ContentRootPath, "wwwroot", "assets", "logo.png"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_env.WebRootPath))
+        {
+            candidates.Add(Path.Combine(_env.WebRootPath, "assets", "logo.png"));
+        }
+
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "assets", "logo.png"));
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "wwwroot", "assets", "logo.png"));
+        candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo.png"));
+        candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "assets", "logo.png"));
+
+        foreach (var raw in candidates.Where(x => !string.IsNullOrWhiteSpace(x))
+                                      .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var p in ExpandToAbsolutePaths(raw))
+            {
+                try
+                {
+                    if (File.Exists(p))
+                        return File.ReadAllBytes(p);
+                }
+                catch { /* silencio, el logo no debe tumbar el PDF */ }
+            }
+        }
+
+        return null;
+    }
+
+    private IEnumerable<string> ExpandToAbsolutePaths(string path)
+    {
+        path = path.Replace("/", Path.DirectorySeparatorChar.ToString());
+
+        if (Path.IsPathRooted(path))
+            return new[] { path };
+
+        var bases = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(_env.ContentRootPath)) bases.Add(_env.ContentRootPath);
+        bases.Add(AppContext.BaseDirectory);
+        bases.Add(Directory.GetCurrentDirectory());
+
+        return bases.Select(b => Path.GetFullPath(Path.Combine(b, path)));
+    }
+
     private static IContainer CellHead(IContainer c) =>
         c.Background(Colors.Grey.Lighten4)
          .Border(1).BorderColor(Colors.Grey.Lighten2)
@@ -302,5 +434,30 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         {
             return null;
         }
+    }
+
+    private static bool IsSupportedImage(ServiceOrderEvidence ev)
+    {
+        var ct = (ev.ContentType ?? "").Trim().ToLowerInvariant();
+        if (ct.StartsWith("image/"))
+        {
+            if (ct.Contains("heic") || ct.Contains("heif")) return false;
+            if (ct.Contains("webp")) return false;
+            return true;
+        }
+
+        var name = (ev.OriginalFileName ?? "").ToLowerInvariant();
+        return name.EndsWith(".png") || name.EndsWith(".jpg") || name.EndsWith(".jpeg");
+    }
+
+    private static string GetDisplayName(Enum value)
+    {
+        var type = value.GetType();
+        var name = Enum.GetName(type, value) ?? value.ToString();
+        var field = type.GetField(name);
+        if (field == null) return name;
+
+        var attr = field.GetCustomAttribute<DisplayAttribute>();
+        return string.IsNullOrWhiteSpace(attr?.Name) ? name : attr!.Name!;
     }
 }

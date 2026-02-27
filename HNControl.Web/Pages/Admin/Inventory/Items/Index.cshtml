@@ -25,6 +25,7 @@
         </button>
 
         <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Movements/Index">Movimientos</a>
         <a class="btn btn-outline-secondary" asp-page="/Inventory/Index">Vista (empleados)</a>
     </div>
 </div>
@@ -173,7 +174,10 @@
                                 }
                             </td>
                             <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@i.Id">Editar</a>
+                                <div class="btn-group" role="group">
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@i.Id">Editar</a>
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Inventory/Movements/Index" asp-route-itemId="@i.Id">Mov.</a>
+                                </div>
                             </td>
                         </tr>
                     }

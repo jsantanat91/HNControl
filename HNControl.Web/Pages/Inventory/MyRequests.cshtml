@@ -9,7 +9,7 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Mis solicitudes</h1>
-        <div class="text-muted small">Solicitudes donde eres quien pidió o el responsable.</div>
+        <div class="text-muted small">Tus solicitudes, agrupadas por orden (ya no por pieza suelta).</div>
     </div>
 
     <div class="d-flex gap-2">
@@ -26,52 +26,32 @@
                 <tr>
                     <th>Fecha</th>
                     <th>Tipo</th>
-                    <th>Item</th>
-                    <th class="text-end">Cantidad</th>
+                    <th>Resumen</th>
                     <th>Proyecto</th>
                     <th>Responsable</th>
                     <th>Status</th>
+                    <th class="text-end">Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
-                @foreach (var m in Model.Rows)
+                @foreach (var o in Model.Orders)
                 {
                     <tr>
-                        <td class="text-muted small">@m.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-muted small">@o.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                         <td>
-                            @if (m.Type == InventoryMovementType.In)
-                            {
-                                <span class="badge text-bg-light">Entrada</span>
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-light">Salida</span>
-                            }
+                            <span class="badge text-bg-light">@(o.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
+                            <span class="badge text-bg-secondary">@o.LinesCount líneas</span>
                         </td>
                         <td>
-                            <div class="fw-semibold">@m.Item?.Name</div>
-                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "" : ("Serie: " + m.SerialNumber))</div>
-                            @if (m.AssignedClient != null)
-                            {
-                                <div class="text-muted small">Cliente: @m.AssignedClient.Name</div>
-                            }
+                            <div class="fw-semibold">@o.ItemsPreview</div>
                         </td>
-                        <td class="text-end fw-semibold">@m.Quantity @m.Item?.Unit</td>
-                        <td>@(m.Project?.Title ?? "—")</td>
-                        <td>@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "—" : m.ResponsibleName)</td>
+                        <td>@(string.IsNullOrWhiteSpace(o.ProjectTitle) ? "—" : o.ProjectTitle)</td>
+                        <td>@o.ResponsibleName</td>
                         <td>
-                            @if (m.Status == InventoryMovementStatus.Pending)
-                            {
-                                <span class="badge text-bg-warning">Pendiente</span>
-                            }
-                            else if (m.Status == InventoryMovementStatus.Approved)
-                            {
-                                <span class="badge text-bg-success">Aprobado</span>
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-danger">Rechazado</span>
-                            }
+                            <span class="badge @o.StatusCss">@o.StatusLabel</span>
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="./RequestDetails" asp-route-id="@o.AnchorId">Ver</a>
                         </td>
                     </tr>
                 }
@@ -79,13 +59,13 @@
             </table>
         </div>
 
-        @if (Model.Rows.Count == 0)
+        @if (Model.Orders.Count == 0)
         {
             <div class="text-muted">Sin solicitudes.</div>
         }
         else
         {
-            <div class="text-muted small mt-2">Mostrando hasta 300 movimientos.</div>
+            <div class="text-muted small mt-2">Mostrando hasta 300 órdenes.</div>
         }
     </div>
 </div>

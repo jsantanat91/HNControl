@@ -22,5 +22,10 @@
     <PackageReference Include="QRCoder" Version="1.7.0" />
     <PackageReference Include="QuestPDF" Version="2026.2.0" />
   </ItemGroup>
-
+	<ItemGroup>
+		<Content Include="assets\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

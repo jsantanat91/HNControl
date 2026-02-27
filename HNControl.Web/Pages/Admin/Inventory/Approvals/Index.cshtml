@@ -9,11 +9,12 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Aprobaciones de inventario</h1>
-        <div class="text-muted small">Entradas/salidas pendientes de aprobación.</div>
+        <div class="text-muted small">Entradas/salidas pendientes de aprobación (por orden, no por tornillo).</div>
     </div>
 
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Items</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Movements/Index">Movimientos</a>
         <a class="btn btn-outline-secondary" asp-page="/Inventory/Index">Vista (empleados)</a>
     </div>
 </div>
@@ -26,37 +27,32 @@
                 <tr>
                     <th>Fecha</th>
                     <th>Tipo</th>
-                    <th>Item</th>
-                    <th class="text-end">Cantidad</th>
+                    <th>Resumen</th>
                     <th>Proyecto</th>
                     <th>Solicitó</th>
                     <th>Responsable</th>
+                    <th class="text-end">Líneas</th>
                     <th class="text-end">Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
-                @foreach (var m in Model.Pending)
+                @foreach (var o in Model.PendingOrders)
                 {
                     <tr>
-                        <td class="text-muted small">@m.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-muted small">@o.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                         <td>
                             <span class="badge text-bg-warning">Pendiente</span>
-                            <span class="badge text-bg-light">@(m.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
+                            <span class="badge text-bg-light">@(o.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
                         </td>
                         <td>
-                            <div class="fw-semibold">@m.Item?.Name</div>
-                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "" : ("Serie: " + m.SerialNumber))</div>
-                            @if (m.AssignedClient != null)
-                            {
-                                <div class="text-muted small">Cliente: @m.AssignedClient.Name</div>
-                            }
+                            <div class="fw-semibold">@o.ItemsPreview</div>
                         </td>
-                        <td class="text-end fw-semibold">@m.Quantity @m.Item?.Unit</td>
-                        <td>@(m.Project?.Title ?? "—")</td>
-                        <td>@(string.IsNullOrWhiteSpace(m.RequestedByName) ? "—" : m.RequestedByName)</td>
-                        <td>@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "—" : m.ResponsibleName)</td>
+                        <td>@(string.IsNullOrWhiteSpace(o.ProjectTitle) ? "—" : o.ProjectTitle)</td>
+                        <td>@o.RequestedByName</td>
+                        <td>@o.ResponsibleName</td>
+                        <td class="text-end fw-semibold">@o.LinesCount</td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-primary" asp-page="./Details" asp-route-id="@m.Id">Revisar</a>
+                            <a class="btn btn-sm btn-primary" asp-page="./Details" asp-route-id="@o.AnchorId">Revisar orden</a>
                         </td>
                     </tr>
                 }
@@ -64,13 +60,13 @@
             </table>
         </div>
 
-        @if (Model.Pending.Count == 0)
+        @if (Model.PendingOrders.Count == 0)
         {
             <div class="text-muted">No hay solicitudes pendientes.</div>
         }
         else
         {
-            <div class="text-muted small mt-2">Mostrando hasta 500 pendientes.</div>
+            <div class="text-muted small mt-2">Mostrando hasta 500 órdenes pendientes.</div>
         }
     </div>
 </div>

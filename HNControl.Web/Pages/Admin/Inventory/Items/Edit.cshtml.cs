@@ -23,6 +23,21 @@ public class EditModel : PageModel
 
     public string? Error { get; set; }
 
+    public record MovementVm(
+        Guid Id,
+        DateTime RequestedAt,
+        InventoryMovementType Type,
+        decimal Quantity,
+        string Unit,
+        InventoryMovementStatus Status,
+        string RequestedByName,
+        string ResponsibleName,
+        string? ApprovedByName,
+        DateTime? ApprovedAt
+    );
+
+    public List<MovementVm> RecentMovements { get; set; } = new();
+
     public class InputModel
     {
         public Guid Id { get; set; }
@@ -80,6 +95,7 @@ public class EditModel : PageModel
         };
 
         await LoadCatalogsAsync();
+        await LoadRecentMovementsAsync(item.Id, item.Unit);
         return Page();
     }
 
@@ -98,6 +114,7 @@ public class EditModel : PageModel
         if (!ModelState.IsValid)
         {
             Error = "Revisa los campos marcados.";
+            await LoadRecentMovementsAsync(Input.Id, Input.Unit);
             return Page();
         }
 
@@ -150,5 +167,27 @@ public class EditModel : PageModel
             .Select(l => new SelectListItem(l.Name, l.Name))
             .ToListAsync();
         LocationOptions.Insert(0, new SelectListItem("— Sin ubicación —", ""));
+    }
+
+    private async Task LoadRecentMovementsAsync(Guid itemId, string unit)
+    {
+        RecentMovements = await _db.InventoryMovements
+            .AsNoTracking()
+            .Where(m => m.ItemId == itemId)
+            .OrderByDescending(m => m.RequestedAt)
+            .Take(30)
+            .Select(m => new MovementVm(
+                m.Id,
+                m.RequestedAt,
+                m.Type,
+                m.Quantity,
+                unit,
+                m.Status,
+                m.RequestedByName,
+                m.ResponsibleName,
+                m.ApprovedByName,
+                m.ApprovedAt
+            ))
+            .ToListAsync();
     }
 }
