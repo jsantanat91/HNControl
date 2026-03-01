@@ -242,8 +242,16 @@ public class DetailsModel : PageModel
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
 
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
-        if (Order != null && !string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))
-            PublicUrl = $"{baseUrl}/Public/ServiceOrder/{Order.PublicToken}";
+        if (Order == null) return;
+
+        // Backfill token si es orden vieja.
+        if (string.IsNullOrWhiteSpace(Order.PublicToken))
+        {
+            Order.PublicToken = Guid.NewGuid().ToString("N");
+            await _db.SaveChangesAsync();
+        }
+
+        // ✅ Siempre usar el host actual (reverse proxy friendly) y apuntar directo al PDF.
+        PublicUrl = $"{Request.Scheme}://{Request.Host}/Public/ServiceOrder/{Order.PublicToken}?handler=DownloadPdf";
     }
 }

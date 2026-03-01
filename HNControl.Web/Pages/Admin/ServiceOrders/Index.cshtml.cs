@@ -39,10 +39,24 @@ public class IndexModel : PageModel
             .Take(200)
             .ToListAsync();
 
+        // Backfill tokens si vienen de órdenes viejas.
+        var changed = false;
+        foreach (var o in list)
+        {
+            if (string.IsNullOrWhiteSpace(o.PublicToken))
+            {
+                o.PublicToken = Guid.NewGuid().ToString("N");
+                changed = true;
+            }
+        }
+        if (changed)
+            await _db.SaveChangesAsync();
+
         Rows = list.Select(o =>
         {
-            // Ruta pública: /Public/ServiceOrder/{token}
-            var publicUrl = $"{Request.Scheme}://{Request.Host}/Public/ServiceOrder/{o.PublicToken}";
+            // ✅ Ruta pública directa para descargar PDF
+            // (si no existe PDF aún, el endpoint lo genera al vuelo)
+            var publicUrl = $"{Request.Scheme}://{Request.Host}/Public/ServiceOrder/{o.PublicToken}?handler=DownloadPdf";
 
             return new Row(
                 o.Id,

@@ -103,12 +103,24 @@ public class EditModel : PageModel
         return Page();
     }
 
+    // Mantener compatibilidad: si alguien postea sin handler, cae aquí.
     public async Task<IActionResult> OnPostAsync()
+        => await OnPostSaveAsync(Input?.Id ?? Guid.Empty);
+
+    public async Task<IActionResult> OnPostSaveAsync(Guid id)
     {
         await LoadListsAsync();
 
-        if (Input == null) return NotFound();
-        if (!ModelState.IsValid) return Page();
+        // Si el binder no armó el objeto (o el hidden no vino), usamos el route-param.
+        if (Input == null)
+            Input = new InputModel { Id = id };
+
+        // Si el id del route y el del hidden no coinciden, manda el route.
+        if (id != Guid.Empty && Input.Id == Guid.Empty)
+            Input.Id = id;
+
+        if (!ModelState.IsValid)
+            return await ReloadAndShowAsync(Input.Id == Guid.Empty ? id : Input.Id);
 
         // Validación de consistencia
         if (Input.ClientServiceContractId.HasValue)
@@ -129,6 +141,10 @@ public class EditModel : PageModel
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (order == null) return NotFound();
+
+        // ✅ Backfill: si la orden viene de “antes” y no trae token, lo generamos.
+        if (string.IsNullOrWhiteSpace(order.PublicToken))
+            order.PublicToken = Guid.NewGuid().ToString("N");
 
         order.Title = (Input.Title ?? "").Trim();
 

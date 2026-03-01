@@ -26,19 +26,23 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" asp-page-handler="Save" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
 
         <div class="row g-3">
             <div class="col-md-8">
                 <label class="form-label">Título</label>
                 <input class="form-control" asp-for="Input.Title" />
+                <span asp-validation-for="Input.Title" class="text-danger small"></span>
             </div>
 
             <div class="col-md-4">
                 <label class="form-label">Status</label>
                 <select class="form-select" asp-for="Input.Status" asp-items="Model.StatusItems"></select>
+                <span asp-validation-for="Input.Status" class="text-danger small"></span>
             </div>
 
             <div class="col-md-4">
@@ -53,16 +57,19 @@
                 {
                     <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
                 }
+                <span asp-validation-for="Input.Type" class="text-danger small"></span>
             </div>
 
             <div class="col-md-8">
                 <label class="form-label">Técnico / Responsable</label>
                 <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+                <span asp-validation-for="Input.AssignedUserId" class="text-danger small"></span>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Cliente</label>
                 <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="clientSelect"></select>
+                <span asp-validation-for="Input.ClientId" class="text-danger small"></span>
             </div>
 
             <div class="col-md-6">
@@ -82,16 +89,19 @@
             <div class="col-md-6">
                 <label class="form-label">Inicio</label>
                 <input class="form-control" type="date" asp-for="Input.StartDate" />
+                <span asp-validation-for="Input.StartDate" class="text-danger small"></span>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Fecha esperada fin</label>
                 <input class="form-control" type="date" asp-for="Input.ExpectedEndDate" />
+                <span asp-validation-for="Input.ExpectedEndDate" class="text-danger small"></span>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Descripción</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
+                <span asp-validation-for="Input.Description" class="text-danger small"></span>
             </div>
         </div>
     </div>
