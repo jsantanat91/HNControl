@@ -170,6 +170,16 @@ public class MyProfileModel : PageModel
         try
         {
             var today = DateTime.UtcNow.Date;
+            var now = DateTime.UtcNow;
+
+            // ✅ Limpieza segura: si ya venció por fecha, lo marcamos como finalizado.
+            await _db.EmployeeDeductions
+                .Where(d => d.UserId == userId && d.IsActive && d.EndDate != null && d.EndDate < today)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.IsActive, false)
+                    .SetProperty(p => p.UpdatedAt, now));
+
+            var (periodStart, periodEnd, half) = GetPayPeriod(today);
 
             var deds = await _db.EmployeeDeductions
                 .AsNoTracking()
@@ -179,24 +189,79 @@ public class MyProfileModel : PageModel
                 .ThenBy(d => d.Concept)
                 .ToListAsync();
 
+            var setEndIds = new List<Guid>();
+            var expireIds = new List<Guid>();
+
             foreach (var d in deds)
             {
+                // 1) Frecuencia / quincena aplicable
+                if (!ShouldApplyInThisPeriod(d, half))
+                    continue;
+
+                // 2) Plazo (cuántos periodos ha "corrida" la deducción)
+                var occ = CountOccurrencesUpToPeriodStart(d, d.StartDate, periodStart);
+                if (occ <= 0) continue;
+
+                if (d.TermCount.HasValue && d.TermCount.Value > 0 && occ > d.TermCount.Value)
+                {
+                    // Ya se pasó del plazo -> no aplica y lo damos por finalizado.
+                    expireIds.Add(d.Id);
+                    continue;
+                }
+
+                // 3) Cálculo por periodo (quincenal vs mensual)
+                var factor = d.Frequency == EmployeeDeductionFrequency.Monthly ? 2m : 1m;
+
                 var amount = d.Mode switch
                 {
                     EmployeeDeductionMode.FixedAmount => d.Amount,
-                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
-                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
+                    EmployeeDeductionMode.PercentOfBase => (baseQuincenal * factor) * d.Rate,
+                    EmployeeDeductionMode.PercentOfEstimatedPay => (estimatedQuincenal * factor) * d.Rate,
                     _ => d.Amount
                 };
 
                 amount = Math.Round(amount, 2);
                 if (amount < 0m) amount = 0m;
 
-                // Para préstamos con saldo, no descontamos más del saldo
-                if (d.RemainingAmount.HasValue)
+                // 4) Préstamos: cap al saldo estimado (si hay Total o Saldo capturado)
+                decimal? remainingAfter = d.RemainingAmount;
+
+                if (d.Type == EmployeeDeductionType.Prestamo)
                 {
-                    if (d.RemainingAmount.Value <= 0m) continue;
-                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                    var principal = d.TotalAmount ?? d.RemainingAmount;
+
+                    if (principal.HasValue && principal.Value > 0m && amount > 0m)
+                    {
+                        var paidBefore = amount * Math.Max(0, occ - 1);
+                        var remBefore = principal.Value - paidBefore;
+                        if (remBefore < 0m) remBefore = 0m;
+
+                        if (amount > remBefore) amount = remBefore;
+
+                        var remAfter = remBefore - amount;
+                        if (remAfter < 0m) remAfter = 0m;
+
+                        remainingAfter = Math.Round(remAfter, 2);
+
+                        // Si se termina en este periodo, programamos EndDate al fin de la quincena (para que aplique hoy y se "cierre" después)
+                        if (remAfter <= 0m && (d.EndDate == null || d.EndDate.Value > periodEnd))
+                            setEndIds.Add(d.Id);
+                    }
+                    else if (d.RemainingAmount.HasValue)
+                    {
+                        // Compatibilidad con el comportamiento anterior
+                        if (d.RemainingAmount.Value <= 0m) continue;
+                        if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                    }
+                }
+
+                if (amount <= 0m) continue;
+
+                // Si es el último periodo del plazo, programamos fin al cierre de la quincena
+                if (d.TermCount.HasValue && d.TermCount.Value > 0 && occ == d.TermCount.Value)
+                {
+                    if (d.EndDate == null || d.EndDate.Value > periodEnd)
+                        setEndIds.Add(d.Id);
                 }
 
                 ActiveDeductions.Add(new DeductionMini(
@@ -205,7 +270,7 @@ public class MyProfileModel : PageModel
                     d.Mode,
                     d.Direction,
                     amount,
-                    d.RemainingAmount,
+                    remainingAfter,
                     d.StartDate,
                     d.EndDate
                 ));
@@ -214,6 +279,31 @@ public class MyProfileModel : PageModel
                     BonusesTotal += amount;
                 else
                     DeductionsTotal += amount;
+            }
+
+            if (setEndIds.Count > 0)
+            {
+                // Distinct para no repetir
+                var ids = setEndIds.Distinct().ToList();
+
+                await _db.EmployeeDeductions
+                    .Where(x => x.UserId == userId && ids.Contains(x.Id))
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.EndDate, periodEnd)
+                        .SetProperty(p => p.UpdatedAt, now));
+            }
+
+            if (expireIds.Count > 0)
+            {
+                var ids = expireIds.Distinct().ToList();
+                var yesterday = today.AddDays(-1);
+
+                await _db.EmployeeDeductions
+                    .Where(x => x.UserId == userId && ids.Contains(x.Id))
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.IsActive, false)
+                        .SetProperty(p => p.EndDate, yesterday)
+                        .SetProperty(p => p.UpdatedAt, now));
             }
 
             DeductionsTotal = Math.Round(DeductionsTotal, 2);
@@ -228,7 +318,79 @@ public class MyProfileModel : PageModel
         }
     }
 
-    private async Task LoadEval360Async(string userId)
+    private static (DateTime PeriodStart, DateTime PeriodEnd, int Half) GetPayPeriod(DateTime date)
+    {
+        var y = date.Year;
+        var m = date.Month;
+
+        if (date.Day <= 15)
+        {
+            return (new DateTime(y, m, 1), new DateTime(y, m, 15), 1);
+        }
+
+        var last = DateTime.DaysInMonth(y, m);
+        return (new DateTime(y, m, 16), new DateTime(y, m, last), 2);
+    }
+
+    private static bool ShouldApplyInThisPeriod(EmployeeDeduction d, int currentHalf)
+    {
+        if (d.Frequency != EmployeeDeductionFrequency.Monthly)
+            return true;
+
+        var half = (d.ApplyOnHalf is 1 or 2) ? d.ApplyOnHalf.Value : 2;
+        return currentHalf == half;
+    }
+
+    private static int CountOccurrencesUpToPeriodStart(EmployeeDeduction d, DateTime startDate, DateTime currentPeriodStart)
+    {
+        if (currentPeriodStart < startDate.Date) return 0;
+
+        var first = d.Frequency switch
+        {
+            EmployeeDeductionFrequency.Monthly => GetMonthlyPeriodStart(startDate, (d.ApplyOnHalf is 1 or 2) ? d.ApplyOnHalf.Value : 2),
+            _ => GetBiweeklyPeriodStart(startDate)
+        };
+
+        if (currentPeriodStart < first) return 0;
+
+        var count = 1;
+        var cursor = first;
+
+        while (true)
+        {
+            cursor = d.Frequency switch
+            {
+                EmployeeDeductionFrequency.Monthly => cursor.AddMonths(1),
+                _ => NextBiweeklyStart(cursor)
+            };
+
+            if (cursor > currentPeriodStart) break;
+            count++;
+        }
+
+        return count;
+    }
+
+    private static DateTime GetBiweeklyPeriodStart(DateTime d)
+        => d.Day <= 15 ? new DateTime(d.Year, d.Month, 1) : new DateTime(d.Year, d.Month, 16);
+
+    private static DateTime GetMonthlyPeriodStart(DateTime d, int applyHalf)
+    {
+        if (applyHalf == 2)
+            return new DateTime(d.Year, d.Month, 16);
+
+        // applyHalf == 1
+        return d.Day <= 15
+            ? new DateTime(d.Year, d.Month, 1)
+            : new DateTime(d.AddMonths(1).Year, d.AddMonths(1).Month, 1);
+    }
+
+    private static DateTime NextBiweeklyStart(DateTime periodStart)
+        => periodStart.Day == 1
+            ? new DateTime(periodStart.Year, periodStart.Month, 16)
+            : new DateTime(periodStart.AddMonths(1).Year, periodStart.AddMonths(1).Month, 1);
+
+private async Task LoadEval360Async(string userId)
     {
         var isAdmin = User.IsInRole(AppRoles.Admin);
 

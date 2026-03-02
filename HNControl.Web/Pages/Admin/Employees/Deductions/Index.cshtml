@@ -29,6 +29,8 @@ else
                 <th>Dirección</th>
                 <th>Tipo</th>
                 <th>Modo</th>
+                <th>Frecuencia</th>
+                <th>Plazo</th>
                 <th>Importe</th>
                 <th>Inicio</th>
                 <th>Fin</th>
@@ -53,6 +55,8 @@ else
                     </td>
                     <td class="text-muted small">@d.Type.GetDisplayName()</td>
                     <td class="text-muted small">@d.Mode.GetDisplayName()</td>
+                    <td class="text-muted small">@d.FrequencyLabel</td>
+                    <td class="text-muted small">@d.TermLabel</td>
                     <td>@d.AmountLabel</td>
                     <td class="text-muted small">@(d.StartDate?.ToString("yyyy-MM-dd") ?? "—")</td>
                     <td class="text-muted small">@(d.EndDate?.ToString("yyyy-MM-dd") ?? "—")</td>
