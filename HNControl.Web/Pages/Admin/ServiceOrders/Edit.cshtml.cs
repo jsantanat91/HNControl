@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.ServiceOrders;
@@ -26,13 +25,11 @@ public class EditModel : PageModel
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ContractItems { get; set; } = default!;
 
-    [BindProperty] public InputModel Input { get; set; } = new();
-
-    // ✅ No validar este objeto en Save (se valida SOLO en AddWorkItem)
-    [BindProperty, ValidateNever]
-    public NewWorkItemInput NewWorkItem { get; set; } = new();
+    [BindProperty] public InputModel? Input { get; set; }
 
     public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
+
+    [BindProperty] public NewWorkItemInput NewWorkItem { get; set; } = new();
 
     public string? Error { get; set; }
 
@@ -106,69 +103,22 @@ public class EditModel : PageModel
         return Page();
     }
 
-    // Compatibilidad si postean sin handler
-    public async Task<IActionResult> OnPostAsync(Guid id)
-        => await OnPostSaveAsync(id);
-
-    public async Task<IActionResult> OnPostSaveAsync(Guid id)
+    public async Task<IActionResult> OnPostAsync()
     {
         await LoadListsAsync();
 
-        // ✅ Asegura el Id desde ruta
-        if (Input.Id == Guid.Empty)
-            Input.Id = id;
+        if (Input == null) return NotFound();
+        if (!ModelState.IsValid) return Page();
 
-        // ✅ FIX REAL:
-        // Limpia ModelState y vuelve a bindear SOLO Input.
-        // Esto evita que el binder deje Input.Title vacío aunque el UI lo muestre lleno.
-        ModelState.Clear();
-
-        // 1) Intenta con prefijo "Input" (lo correcto con asp-for="Input.Title")
-        var ok = await TryUpdateModelAsync(Input, "Input");
-
-        // 2) Fallback: por si alguna vez postea sin prefijo (name="Title")
-        if (!ok)
-            await TryUpdateModelAsync(Input);
-
-        // Valida SOLO Input (no NewWorkItem)
-        TryValidateModel(Input, nameof(Input));
-
-        if (!ModelState.IsValid)
-        {
-            var showId = Input.Id != Guid.Empty ? Input.Id : id;
-
-            var orderPreview = await _db.ServiceOrders
-                .AsNoTracking()
-                .Where(o => o.Id == showId)
-                .Select(o => new { o.Id, o.Type })
-                .FirstOrDefaultAsync();
-
-            if (orderPreview != null)
-            {
-                WorkItems = await _db.ServiceOrderWorkItems
-                    .AsNoTracking()
-                    .Where(w => w.OrderId == orderPreview.Id)
-                    .OrderBy(w => w.SortOrder)
-                    .ToListAsync();
-
-                if (orderPreview.Type == ServiceOrderType.Global)
-                    Input.Type = ServiceOrderType.Global;
-
-                NewWorkItem.Type = orderPreview.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : orderPreview.Type;
-            }
-
-            Error = BuildModelStateErrorSummary();
-            return Page();
-        }
-
+        // Validación de consistencia
         if (Input.ClientServiceContractId.HasValue)
         {
-            var okContract = await _db.ClientServiceContracts.AnyAsync(c =>
+            var ok = await _db.ClientServiceContracts.AnyAsync(c =>
                 c.Id == Input.ClientServiceContractId.Value &&
                 c.ClientId == Input.ClientId &&
                 (!Input.ProjectId.HasValue || c.ProjectId == null || c.ProjectId == Input.ProjectId));
 
-            if (!okContract)
+            if (!ok)
             {
                 Error = "El contrato seleccionado no pertenece al cliente/proyecto.";
                 return Page();
@@ -180,19 +130,19 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (order == null) return NotFound();
 
-        if (string.IsNullOrWhiteSpace(order.PublicToken))
-            order.PublicToken = Guid.NewGuid().ToString("N");
-
         order.Title = (Input.Title ?? "").Trim();
 
+        // Si ya es Global (tiene actividades), no permitimos “bajar” el tipo.
         order.Type = (order.WorkItems.Count > 0 || order.Type == ServiceOrderType.Global)
             ? ServiceOrderType.Global
             : Input.Type;
 
         order.Status = Input.Status;
+
         order.ClientId = Input.ClientId;
         order.ProjectId = Input.ProjectId;
         order.ClientServiceContractId = Input.ClientServiceContractId;
+
         order.AssignedUserId = Input.AssignedUserId;
 
         order.StartedAt = TimeUtil.UtcDate(Input.StartDate);
@@ -205,6 +155,7 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostConvertToGlobalAsync(Guid id)
     {
+        // ✅ Versión "quirúrgica" (sin grafo trackeado) para evitar DbUpdateConcurrencyException.
         var order = await _db.ServiceOrders
             .AsNoTracking()
             .Where(o => o.Id == id)
@@ -216,6 +167,7 @@ public class EditModel : PageModel
         var hasWorkItems = await _db.ServiceOrderWorkItems.AsNoTracking().AnyAsync(w => w.OrderId == id);
         if (order.Type == ServiceOrderType.Global || hasWorkItems)
         {
+            // Si ya hay actividades, fuerza el tipo a Global.
             if (hasWorkItems && order.Type != ServiceOrderType.Global)
             {
                 await _db.ServiceOrders
@@ -242,13 +194,16 @@ public class EditModel : PageModel
             _db.ServiceOrderWorkItems.Add(first);
             await _db.SaveChangesAsync();
 
+            // mover checklist general (WorkItemId NULL) a esta actividad
             await _db.ServiceOrderChecklistItems
                 .Where(x => x.OrderId == id && x.WorkItemId == null)
                 .ExecuteUpdateAsync(set => set.SetProperty(x => x.WorkItemId, first.Id));
 
+            // si no había checklist, crear desde plantilla
             await EnsureChecklistFromTemplateDbAsync(id, first.Type, first.Id);
             await _db.SaveChangesAsync();
 
+            // marcar la orden como global
             await _db.ServiceOrders
                 .Where(o => o.Id == id)
                 .ExecuteUpdateAsync(s => s.SetProperty(o => o.Type, ServiceOrderType.Global));
@@ -265,6 +220,10 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAddWorkItemAsync(Guid id)
     {
+        // IMPORTANTÍSIMO:
+        // Al postear desde el form de actividades, el route-param "id" puede ligar a Input.Id y disparar validación
+        // de otros campos requeridos (Title/Status/etc) y entonces parece que el botón “no hace nada”.
+        // Aquí validamos SOLO NewWorkItem.
         ModelState.Clear();
         TryValidateModel(NewWorkItem, nameof(NewWorkItem));
         if (!ModelState.IsValid)
@@ -395,6 +354,7 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteWorkItemAsync(Guid id, Guid workItemId)
     {
+        // borramos checklist de esa actividad primero (por si tu DB aún no tiene FK cascade)
         var its = await _db.ServiceOrderChecklistItems
             .Where(x => x.OrderId == id && x.WorkItemId == workItemId)
             .ToListAsync();
@@ -410,6 +370,7 @@ public class EditModel : PageModel
         return RedirectToPage(new { id });
     }
 
+    // Handlers JSON
     public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
     {
         var items = await _db.Projects
@@ -473,24 +434,34 @@ public class EditModel : PageModel
         return Page();
     }
 
-    private string BuildModelStateErrorSummary()
+    private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
     {
-        var parts = ModelState
-            .Where(kvp => kvp.Value != null && kvp.Value.Errors.Count > 0)
-            .Select(kvp =>
+        if (order.Checklist.Any(x => x.WorkItemId == workItemId))
+            return;
+
+        var template = await _db.ServiceOrderChecklistTemplates
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        if (template == null || template.Items.Count == 0)
+            return;
+
+        foreach (var it in template.Items.OrderBy(x => x.SortOrder))
+        {
+            order.Checklist.Add(new ServiceOrderChecklistItem
             {
-                var key = (kvp.Key ?? "").Replace("Input.", "").Replace("NewWorkItem.", "Actividad.");
-                var msg = string.Join(", ", kvp.Value!.Errors.Select(e =>
-                    string.IsNullOrWhiteSpace(e.ErrorMessage) ? (e.Exception?.Message ?? "") : e.ErrorMessage));
-                return string.IsNullOrWhiteSpace(key) ? msg : $"{key}: {msg}";
-            })
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .ToList();
-
-        if (parts.Count == 0)
-            return "No se pudo guardar. Revisa los campos.";
-
-        return "No se pudo guardar: " + string.Join(" | ", parts);
+                OrderId = order.Id,
+                WorkItemId = workItemId,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            });
+        }
     }
 
     private async Task LoadListsAsync()
