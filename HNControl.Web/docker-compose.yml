@@ -1,13 +1,15 @@
 services:
   hncontrol_web:
     container_name: hncontrol_web
-    # SUSTITUYE 'tu-usuario/tu-repo' por el nombre real de tu imagen en Docker Hub o GitHub Registry
-    image: tu-usuario/hncontrol-web:latest 
+    build:
+      # IMPORTANTE: Aquí le decimos que el código está en la subcarpeta
+      context: ./HNControl.Web
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://0.0.0.0:8080
-      # La variable ${HNCONTROL_DB_PASSWORD} la tomará de la sección 'Environment variables' que configuraste en Portainer
+      # Recuerda que HNCONTROL_DB_PASSWORD debe estar en la pestaña Environment Variables de Portainer
       ConnectionStrings__Default: "Host=database_primary;Port=5432;Database=hncontrol;Username=hncontrol_user;Password=${HNCONTROL_DB_PASSWORD};Include Error Detail=false"
       PublicLinks__BaseUrl: "https://control.hubnet-solutions.net"
       Storage__BasePath: "App_Data/uploads"
