@@ -30,7 +30,20 @@ public enum EmployeeDeductionDirection
     Bonus = 2
 }
 
+public enum EmployeeDeductionMode
+{
+    /// <summary>Importe fijo por periodo (ej: $1,200 por quincena).</summary>
+    [Display(Name = "Monto fijo")]
+    FixedAmount = 1,
 
+    /// <summary>Porcentaje sobre el sueldo base (quincenal).</summary>
+    [Display(Name = "% sobre sueldo base")]
+    PercentOfBase = 2,
+
+    /// <summary>Porcentaje sobre el estimado quincenal (80/20 ya aplicado).</summary>
+    [Display(Name = "% sobre nómina estimada (80/20)")]
+    PercentOfEstimatedPay = 3
+}
 
 public enum EmployeeDeductionFrequency
 {
@@ -41,16 +54,13 @@ public enum EmployeeDeductionFrequency
     Monthly = 2
 }
 
-public enum EmployeeDeductionMode
+public enum EmployeeDeductionApplyOnHalf
 {
-    /// <summary>Importe fijo por periodo (ej: $1,200 por quincena).</summary>
-    FixedAmount = 1,
+    [Display(Name = "1ª quincena (1–15)")]
+    First = 1,
 
-    /// <summary>Porcentaje sobre el sueldo base (quincenal).</summary>
-    PercentOfBase = 2,
-
-    /// <summary>Porcentaje sobre el estimado quincenal (80/20 ya aplicado).</summary>
-    PercentOfEstimatedPay = 3
+    [Display(Name = "2ª quincena (16–fin)")]
+    Second = 2
 }
 
 /// <summary>
@@ -76,6 +86,27 @@ public class EmployeeDeduction
     public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;
 
     /// <summary>
+    /// Frecuencia de aplicación:
+    /// - Quincenal: aplica en cada nómina.
+    /// - Mensual: aplica 1 vez al mes (según ApplyOnHalf).
+    /// </summary>
+    public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Biweekly;
+
+    /// <summary>
+    /// Solo si Frequency = Monthly: en qué quincena se aplica.
+    /// NULL = por defecto 1ª quincena.
+    /// </summary>
+    public EmployeeDeductionApplyOnHalf? ApplyOnHalf { get; set; }
+
+    /// <summary>
+    /// Plazo en periodos.
+    /// - Quincenal: número de quincenas
+    /// - Mensual: número de meses
+    /// NULL = indefinido
+    /// </summary>
+    public int? TermCount { get; set; }
+
+    /// <summary>
     /// Para FixedAmount: importe por periodo.
     /// Para modos Percent*: se usa como respaldo (opcional), el cálculo usa Rate.
     /// </summary>
@@ -85,29 +116,6 @@ public class EmployeeDeduction
     /// Para Percent*: 0.10 = 10%.
     /// </summary>
     public decimal Rate { get; set; } = 0m;
-
-
-    /// <summary>
-    /// Frecuencia de aplicación.
-    /// - Quincenal: aplica en cada nómina (1-15 y 16-fin).
-    /// - Mensual: aplica 1 vez al mes, en la quincena indicada por ApplyOnHalf.
-    /// </summary>
-    public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Biweekly;
-
-    /// <summary>
-    /// Solo para Frequency = Mensual.
-    /// 1 = Primera quincena (1-15), 2 = Segunda quincena (16-fin).
-    /// NULL => se asume 2.
-    /// </summary>
-    public int? ApplyOnHalf { get; set; }
-
-    /// <summary>
-    /// Plazo (cantidad de periodos de aplicación).
-    /// - Quincenal: número de quincenas
-    /// - Mensual: número de meses
-    /// NULL => indefinido
-    /// </summary>
-    public int? TermCount { get; set; }
 
     public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
     public DateTime? EndDate { get; set; }

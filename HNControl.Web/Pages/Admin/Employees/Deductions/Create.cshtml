@@ -15,28 +15,45 @@
 <form method="post" class="row g-3">
     <input type="hidden" asp-for="UserId" />
 
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-soft">
-            <div class="card-body">
+    <div class="col-12 col-xl-8">
+        <div class="card shadow-soft border-0">
+            <div class="card-body p-4">
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label">Concepto</label>
-                        <input class="form-control" asp-for="Input.Concept" />
+                        <input class="form-control" asp-for="Input.Concept" placeholder="Ej. Pensión alimenticia" />
                         <span class="text-danger small" asp-validation-for="Input.Concept"></span>
                     </div>
 
+                    <div class="col-12"><hr class="my-1" /></div>
+
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Dirección</label>
+                        <label class="form-label">Movimiento</label>
                         <select class="form-select" asp-for="Input.Direction" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionDirection>()"></select>
+                        <div class="form-text">Deducción = resta. Bono = suma.</div>
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Tipo</label>
                         <select class="form-select" asp-for="Input.Type" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionType>()"></select>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Modo</label>
+                        <label class="form-label">Cálculo</label>
                         <select class="form-select" asp-for="Input.Mode" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionMode>()"></select>
                     </div>
+
+                    <div class="col-12 col-md-6" id="wrapAmount">
+                        <label class="form-label">Monto por periodo</label>
+                        <input class="form-control" asp-for="Input.Amount" type="number" step="0.01" placeholder="1200.00" />
+                    </div>
+
+                    <div class="col-12 col-md-6" id="wrapRate">
+                        <label class="form-label">Porcentaje (%)</label>
+                        <input class="form-control" asp-for="Input.RatePercent" type="number" step="0.01" placeholder="15" />
+                        <div class="form-text">Ej. 15 = 15%.</div>
+                        <span class="text-danger small" asp-validation-for="Input.RatePercent"></span>
+                    </div>
+
+                    <div class="col-12"><hr class="my-1" /></div>
 
                     <div class="col-12 col-md-4">
                         <label class="form-label">Frecuencia</label>
@@ -44,49 +61,47 @@
                         <div class="form-text">Quincenal = cada nómina. Mensual = 1 vez al mes.</div>
                     </div>
 
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4" id="wrapApplyOnHalf">
                         <label class="form-label">Aplicar en</label>
-                        <select class="form-select" asp-for="Input.ApplyOnHalf">
-                            <option value="2">2ª quincena (16-fin)</option>
-                            <option value="1">1ª quincena (1-15)</option>
+                        <select class="form-select" asp-for="Input.ApplyOnHalf" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionApplyOnHalf>()">
+                            <option value="">(Por defecto: 1ª quincena)</option>
                         </select>
-                        <div class="form-text">Solo aplica cuando la frecuencia es Mensual.</div>
+                        <div class="form-text">Solo aplica si la frecuencia es Mensual.</div>
                     </div>
 
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Plazo (periodos)</label>
-                        <input class="form-control" asp-for="Input.TermCount" type="number" min="1" step="1" />
-                        <div class="form-text">Quincenal: quincenas · Mensual: meses · Vacío = indefinido.</div>
-                        <span class="text-danger small" asp-validation-for="Input.TermCount"></span>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Monto fijo (si aplica)</label>
-                        <input class="form-control" asp-for="Input.Amount" type="number" step="0.01" />
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Porcentaje (%, si aplica)</label>
-                        <input class="form-control" asp-for="Input.RatePercent" type="number" step="0.01" placeholder="15 = 15%" />
-                        <span class="text-danger small" asp-validation-for="Input.RatePercent"></span>
-                    </div>
-
-                    <div class="col-12 col-md-6">
                         <label class="form-label">Inicio</label>
                         <input class="form-control" asp-for="Input.StartDate" type="date" />
                     </div>
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Fin (opcional)</label>
-                        <input class="form-control" asp-for="Input.EndDate" type="date" />
+
+                    <div class="col-12 col-md-6" id="wrapTerm">
+                        <label class="form-label">Plazo (periodos)</label>
+                        <input class="form-control" asp-for="Input.TermCount" type="number" min="1" step="1" placeholder="Ej. 6" />
+                        <div class="form-text">Préstamo: cuántas quincenas/meses se descontará. Deja vacío = indefinido.</div>
+                        <div class="text-muted small mt-1" id="endPreview" style="display:none;"></div>
                     </div>
 
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Total (préstamo, opcional)</label>
-                        <input class="form-control" asp-for="Input.TotalAmount" type="number" step="0.01" />
+                    <div class="col-12 col-md-6" id="wrapEndDate">
+                        <label class="form-label">Fin (opcional)</label>
+                        <input class="form-control" asp-for="Input.EndDate" type="date" />
+                        <div class="form-text">Si usas Plazo, el fin se calcula solo.</div>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <label class="form-label">Saldo (préstamo, opcional)</label>
-                        <input class="form-control" asp-for="Input.RemainingAmount" type="number" step="0.01" />
+
+                    <div class="col-12" id="wrapLoan">
+                        <div class="rounded-3 border p-3">
+                            <div class="fw-semibold mb-2">Préstamo (opcional)</div>
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">Monto total</label>
+                                    <input class="form-control" asp-for="Input.TotalAmount" type="number" step="0.01" placeholder="Ej. 10000" />
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label">Saldo (si lo controlas)</label>
+                                    <input class="form-control" asp-for="Input.RemainingAmount" type="number" step="0.01" placeholder="(opcional)" />
+                                    <div class="form-text">Si lo dejas vacío, se asume “indefinido” (no corta por saldo).</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-12">
@@ -107,4 +122,117 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            const modeEl = document.getElementById('Input_Mode');
+            const typeEl = document.getElementById('Input_Type');
+            const freqEl = document.getElementById('Input_Frequency');
+            const applyEl = document.getElementById('Input_ApplyOnHalf');
+            const termEl = document.getElementById('Input_TermCount');
+            const startEl = document.getElementById('Input_StartDate');
+
+            const wrapAmount = document.getElementById('wrapAmount');
+            const wrapRate = document.getElementById('wrapRate');
+            const wrapApplyOnHalf = document.getElementById('wrapApplyOnHalf');
+            const wrapLoan = document.getElementById('wrapLoan');
+            const wrapTerm = document.getElementById('wrapTerm');
+            const wrapEndDate = document.getElementById('wrapEndDate');
+            const endPreview = document.getElementById('endPreview');
+
+            function setSection(el, show) {
+                if (!el) return;
+                el.classList.toggle('d-none', !show);
+                el.querySelectorAll('input, select, textarea').forEach(i => i.disabled = !show);
+            }
+
+            function fmtDate(d) {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yy = d.getFullYear();
+                return `${dd}/${mm}/${yy}`;
+            }
+
+            function calcEndPreview() {
+                if (!endPreview) return;
+                endPreview.style.display = 'none';
+                endPreview.textContent = '';
+
+                const term = termEl ? parseInt(termEl.value || '0', 10) : 0;
+                if (!term || term <= 0) return;
+
+                const startVal = startEl ? startEl.value : '';
+                if (!startVal) return;
+                const start = new Date(startVal + 'T00:00:00');
+                if (isNaN(start.getTime())) return;
+
+                const freq = freqEl ? parseInt(freqEl.value || '1', 10) : 1;
+                const applyHalf = applyEl ? parseInt(applyEl.value || '1', 10) : 1;
+
+                let y = start.getFullYear();
+                let m = start.getMonth();
+                let half = (start.getDate() <= 15) ? 1 : 2;
+                let end;
+
+                if (freq === 2) {
+                    half = (applyHalf === 2) ? 2 : 1;
+                    for (let i = 1; i <= term; i++) {
+                        end = (half === 1)
+                            ? new Date(y, m, 15)
+                            : new Date(y, m + 1, 0);
+                        if (i === term) break;
+                        m += 1;
+                        if (m > 11) { m = 0; y += 1; }
+                    }
+                } else {
+                    for (let i = 1; i <= term; i++) {
+                        end = (half === 1)
+                            ? new Date(y, m, 15)
+                            : new Date(y, m + 1, 0);
+                        if (i === term) break;
+                        if (half === 1) {
+                            half = 2;
+                        } else {
+                            half = 1;
+                            m += 1;
+                            if (m > 11) { m = 0; y += 1; }
+                        }
+                    }
+                }
+
+                if (!end) return;
+                endPreview.style.display = '';
+                endPreview.textContent = `Fin estimado: ${fmtDate(end)} (se calcula en automático)`;
+            }
+
+            function refresh() {
+                const mode = modeEl ? parseInt(modeEl.value || '1', 10) : 1;
+                const freq = freqEl ? parseInt(freqEl.value || '1', 10) : 1;
+                const type = typeEl ? parseInt(typeEl.value || '99', 10) : 99;
+
+                const isPercent = mode !== 1;
+                setSection(wrapAmount, !isPercent);
+                setSection(wrapRate, isPercent);
+
+                const isMonthly = freq === 2;
+                setSection(wrapApplyOnHalf, isMonthly);
+
+                const isLoan = type === 2; // Prestamo
+                setSection(wrapLoan, isLoan);
+                setSection(wrapTerm, isLoan);
+
+                const hasTerm = isLoan && termEl && termEl.value && parseInt(termEl.value || '0', 10) > 0;
+                setSection(wrapEndDate, !hasTerm);
+                calcEndPreview();
+            }
+
+            [modeEl, typeEl, freqEl, applyEl, termEl, startEl].forEach(el => {
+                if (!el) return;
+                el.addEventListener('change', refresh);
+                el.addEventListener('input', refresh);
+            });
+
+            refresh();
+        })();
+    </script>
 }

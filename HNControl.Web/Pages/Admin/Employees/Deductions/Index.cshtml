@@ -26,11 +26,10 @@ else
             <thead>
             <tr>
                 <th>Concepto</th>
-                <th>Dirección</th>
                 <th>Tipo</th>
-                <th>Modo</th>
+                <th>Movimiento</th>
                 <th>Frecuencia</th>
-                <th>Plazo</th>
+                <th>Cálculo</th>
                 <th>Importe</th>
                 <th>Inicio</th>
                 <th>Fin</th>
@@ -43,6 +42,7 @@ else
             {
                 <tr>
                     <td class="fw-semibold">@d.Concept</td>
+                    <td class="text-muted small">@d.Type.GetDisplayName()</td>
                     <td>
                         @if (d.Direction == HNControl.Web.Models.EmployeeDeductionDirection.Bonus)
                         {
@@ -53,13 +53,17 @@ else
                             <span class="badge text-bg-warning">@d.Direction.GetDisplayName()</span>
                         }
                     </td>
-                    <td class="text-muted small">@d.Type.GetDisplayName()</td>
+                    <td class="text-muted small">
+                        @d.Frequency.GetDisplayName()
+                        @if (d.Frequency == HNControl.Web.Models.EmployeeDeductionFrequency.Monthly)
+                        {
+                            <span> · @((d.ApplyOnHalf ?? HNControl.Web.Models.EmployeeDeductionApplyOnHalf.First).GetDisplayName())</span>
+                        }
+                    </td>
                     <td class="text-muted small">@d.Mode.GetDisplayName()</td>
-                    <td class="text-muted small">@d.FrequencyLabel</td>
-                    <td class="text-muted small">@d.TermLabel</td>
                     <td>@d.AmountLabel</td>
-                    <td class="text-muted small">@(d.StartDate?.ToString("yyyy-MM-dd") ?? "—")</td>
-                    <td class="text-muted small">@(d.EndDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td class="text-muted small">@(d.StartDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td class="text-muted small">@(d.EndDate?.ToString("dd/MM/yyyy") ?? "—")</td>
                     <td class="text-muted small">@(d.RemainingAmount?.ToString("N2") ?? "—")</td>
                     <td class="text-end">
                         <div class="d-inline-flex gap-2">

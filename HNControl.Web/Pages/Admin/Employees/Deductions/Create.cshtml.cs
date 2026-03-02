@@ -46,22 +46,20 @@ public class CreateModel : PageModel
         var now = DateTime.UtcNow;
 
         var start = Input.StartDate ?? now.Date;
-        DateTime? end = Input.EndDate;
-
-        // Sanitizar frecuencia / plazo
         var freq = Input.Frequency;
-        var applyHalf = (freq == EmployeeDeductionFrequency.Monthly)
-            ? ((Input.ApplyOnHalf is 1 or 2) ? Input.ApplyOnHalf : 2)
-            : null;
-        var termCount = (Input.TermCount.HasValue && Input.TermCount.Value > 0) ? Input.TermCount : null;
+        var applyHalf = freq == EmployeeDeductionFrequency.Monthly
+            ? (Input.ApplyOnHalf ?? EmployeeDeductionApplyOnHalf.First)
+            : (EmployeeDeductionApplyOnHalf?)null;
 
-        // Para préstamos: si capturas Total pero no Saldo, asumimos saldo inicial = total
-        if (Input.Type == EmployeeDeductionType.Prestamo && Input.TotalAmount.HasValue && !Input.RemainingAmount.HasValue)
-            Input.RemainingAmount = Input.TotalAmount;
+        var isLoan = Input.Type == EmployeeDeductionType.Prestamo;
+        var termCount = isLoan ? Input.TermCount : null;
 
-        // Si viene un plazo y no capturaste fin, lo calculamos automáticamente
-        if (end == null && termCount.HasValue)
-            end = CalcAutoEndDate(start, freq, applyHalf, termCount.Value);
+        // Fin: si hay plazo, el fin lo calculamos (ignora EndDate manual)
+        DateTime? end = null;
+        if (termCount.HasValue && termCount.Value > 0)
+            end = CalcEndDate(start, freq, applyHalf, termCount.Value);
+        else
+            end = Input.EndDate;
 
         // Guardamos porcentaje "humano" (15 = 15%) y lo convertimos a 0..1
         var rate = 0m;
@@ -71,6 +69,17 @@ public class CreateModel : PageModel
             if (rate < 0m) rate = 0m;
             if (rate > 1m) rate = 1m;
         }
+
+        // Limpiar valores que no aplican
+        var amount = Input.Mode == EmployeeDeductionMode.FixedAmount ? Input.Amount : 0m;
+        if (Input.Mode == EmployeeDeductionMode.FixedAmount) rate = 0m;
+
+        decimal? totalAmount = isLoan ? Input.TotalAmount : null;
+        decimal? remainingAmount = isLoan ? Input.RemainingAmount : null;
+
+        // Si es préstamo y capturó total pero no saldo: arrancamos saldo = total
+        if (isLoan && totalAmount.HasValue && !remainingAmount.HasValue)
+            remainingAmount = totalAmount;
 
         var d = new EmployeeDeduction
         {
@@ -82,12 +91,12 @@ public class CreateModel : PageModel
             Frequency = freq,
             ApplyOnHalf = applyHalf,
             TermCount = termCount,
-            Amount = Input.Amount,
+            Amount = amount,
             Rate = rate,
             StartDate = start,
             EndDate = end,
-            TotalAmount = Input.TotalAmount,
-            RemainingAmount = Input.RemainingAmount,
+            TotalAmount = totalAmount,
+            RemainingAmount = remainingAmount,
             IsActive = Input.IsActive,
             CreatedAt = now,
             UpdatedAt = now
@@ -97,57 +106,6 @@ public class CreateModel : PageModel
         await _db.SaveChangesAsync();
 
         return RedirectToPage("Index", new { UserId });
-    }
-
-    private static DateTime CalcAutoEndDate(DateTime start, EmployeeDeductionFrequency freq, int? applyHalf, int termCount)
-    {
-        if (termCount <= 0) return start;
-
-        // Ubicar el primer periodo donde aplica
-        var firstStart = freq switch
-        {
-            EmployeeDeductionFrequency.Biweekly => GetBiweeklyPeriodStart(start),
-            EmployeeDeductionFrequency.Monthly => GetMonthlyPeriodStart(start, (applyHalf is 1 or 2) ? applyHalf.Value : 2),
-            _ => GetBiweeklyPeriodStart(start)
-        };
-
-        // Avanzar (termCount - 1) periodos
-        var lastStart = firstStart;
-        for (var i = 1; i < termCount; i++)
-        {
-            lastStart = freq switch
-            {
-                EmployeeDeductionFrequency.Biweekly => NextBiweeklyStart(lastStart),
-                EmployeeDeductionFrequency.Monthly => lastStart.AddMonths(1),
-                _ => NextBiweeklyStart(lastStart)
-            };
-        }
-
-        return GetPeriodEnd(lastStart);
-    }
-
-    private static DateTime GetBiweeklyPeriodStart(DateTime d)
-        => d.Day <= 15 ? new DateTime(d.Year, d.Month, 1) : new DateTime(d.Year, d.Month, 16);
-
-    private static DateTime GetMonthlyPeriodStart(DateTime d, int applyHalf)
-    {
-        if (applyHalf == 2) return new DateTime(d.Year, d.Month, 16);
-        // applyHalf == 1
-        return d.Day <= 15
-            ? new DateTime(d.Year, d.Month, 1)
-            : new DateTime(d.AddMonths(1).Year, d.AddMonths(1).Month, 1);
-    }
-
-    private static DateTime NextBiweeklyStart(DateTime periodStart)
-        => periodStart.Day == 1
-            ? new DateTime(periodStart.Year, periodStart.Month, 16)
-            : new DateTime(periodStart.AddMonths(1).Year, periodStart.AddMonths(1).Month, 1);
-
-    private static DateTime GetPeriodEnd(DateTime periodStart)
-    {
-        if (periodStart.Day == 1) return new DateTime(periodStart.Year, periodStart.Month, 15);
-        var last = DateTime.DaysInMonth(periodStart.Year, periodStart.Month);
-        return new DateTime(periodStart.Year, periodStart.Month, last);
     }
 
     public class InputModel
@@ -161,16 +119,9 @@ public class CreateModel : PageModel
         public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;
 
         public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Biweekly;
+        public EmployeeDeductionApplyOnHalf? ApplyOnHalf { get; set; } = null;
 
-        /// <summary>Solo para Frequency = Mensual: 1 = 1-15, 2 = 16-fin.</summary>
-        public int? ApplyOnHalf { get; set; } = 2;
-
-        /// <summary>
-        /// Plazo en periodos:
-        /// - Quincenal: quincenas
-        /// - Mensual: meses
-        /// </summary>
-        [Range(1, 240)]
+        [Range(1, 1200)]
         public int? TermCount { get; set; } = null;
 
         [Range(0, 99999999)]
@@ -186,5 +137,61 @@ public class CreateModel : PageModel
         public decimal? RemainingAmount { get; set; } = null;
 
         public bool IsActive { get; set; } = true;
+    }
+
+    private static DateTime CalcEndDate(DateTime start, EmployeeDeductionFrequency freq, EmployeeDeductionApplyOnHalf? applyHalf, int termCount)
+    {
+        if (termCount <= 0) return start;
+
+        if (freq == EmployeeDeductionFrequency.Monthly)
+        {
+            var half = applyHalf ?? EmployeeDeductionApplyOnHalf.First;
+            var y = start.Year;
+            var m = start.Month;
+            DateTime end = start;
+
+            for (var i = 1; i <= termCount; i++)
+            {
+                end = half == EmployeeDeductionApplyOnHalf.First
+                    ? new DateTime(y, m, 15)
+                    : new DateTime(y, m, DateTime.DaysInMonth(y, m));
+
+                if (i == termCount) break;
+
+                m++;
+                if (m == 13) { m = 1; y++; }
+            }
+
+            return end;
+        }
+        else
+        {
+            var half = start.Day <= 15 ? 1 : 2;
+            var y = start.Year;
+            var m = start.Month;
+            DateTime end = start;
+
+            for (var i = 1; i <= termCount; i++)
+            {
+                end = half == 1
+                    ? new DateTime(y, m, 15)
+                    : new DateTime(y, m, DateTime.DaysInMonth(y, m));
+
+                if (i == termCount) break;
+
+                if (half == 1)
+                {
+                    half = 2;
+                }
+                else
+                {
+                    half = 1;
+                    m++;
+                    if (m == 13) { m = 1; y++; }
+                }
+            }
+
+            return end;
+        }
     }
 }
