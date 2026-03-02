@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +45,10 @@ public class EditModel : PageModel
             Direction = d.Direction,
             Type = d.Type,
             Mode = d.Mode,
+            Frequency = d.Frequency,
+            ApplyOnHalf = d.ApplyOnHalf ?? 2,
+            AutoLoan = d.Type == EmployeeDeductionType.Prestamo && d.TermCount.HasValue,
+            TermCount = d.TermCount,
             Amount = d.Amount,
             RatePercent = Math.Round(d.Rate * 100m, 2),
             StartDate = d.StartDate,
@@ -73,11 +78,45 @@ public class EditModel : PageModel
         d.Direction = Input.Direction;
         d.Type = Input.Type;
         d.Mode = Input.Mode;
+        d.Frequency = Input.Frequency;
+        d.ApplyOnHalf = Input.Frequency == EmployeeDeductionFrequency.Mensual ? (Input.ApplyOnHalf ?? 2) : null;
         d.Amount = Input.Amount;
         var now = DateTime.UtcNow;
 
         var start = Input.StartDate ?? now.Date;
         DateTime? end = Input.EndDate;
+
+        if (Input.Type == EmployeeDeductionType.PensionAlimenticia)
+        {
+            Input.Direction = EmployeeDeductionDirection.Deduct;
+            Input.Frequency = EmployeeDeductionFrequency.Quincenal;
+            end = null;
+        }
+
+        var isAutoLoan = Input.Type == EmployeeDeductionType.Prestamo && Input.AutoLoan;
+        if (isAutoLoan)
+        {
+            if (Input.TotalAmount is null || Input.TotalAmount <= 0m)
+                ModelState.AddModelError("Input.TotalAmount", "Para préstamo automático necesitas el Total del préstamo.");
+            if (Input.TermCount is null || Input.TermCount <= 0)
+                ModelState.AddModelError("Input.TermCount", "Para préstamo automático necesitas los Plazos (número de pagos). ");
+            if (Input.Frequency == EmployeeDeductionFrequency.Mensual && (Input.ApplyOnHalf is null or < 1 or > 2))
+                ModelState.AddModelError("Input.ApplyOnHalf", "Para mensual selecciona en qué quincena se cobra (1 o 2).");
+
+            if (!ModelState.IsValid) return Page();
+
+            Input.Direction = EmployeeDeductionDirection.Deduct;
+            Input.Mode = EmployeeDeductionMode.FixedAmount;
+
+            var per = Input.Amount;
+            if (per <= 0m)
+                per = Math.Round(Input.TotalAmount.Value / Input.TermCount.Value, 2);
+            if (per < 0m) per = 0m;
+            Input.Amount = per;
+            Input.RemainingAmount = Input.TotalAmount;
+
+            end = PayPeriodUtil.ComputeLoanEndDate(start, Input.Frequency, Input.ApplyOnHalf, Input.TermCount.Value);
+        }
 
         var rate = 0m;
         if (Input.Mode is EmployeeDeductionMode.PercentOfBase or EmployeeDeductionMode.PercentOfEstimatedPay)
@@ -92,6 +131,7 @@ public class EditModel : PageModel
         d.EndDate = end;
         d.TotalAmount = Input.TotalAmount;
         d.RemainingAmount = Input.RemainingAmount;
+        d.TermCount = isAutoLoan ? Input.TermCount : null;
         d.IsActive = Input.IsActive;
         d.UpdatedAt = now;
 
@@ -109,6 +149,16 @@ public class EditModel : PageModel
 
         public EmployeeDeductionType Type { get; set; } = EmployeeDeductionType.Otro;
         public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;
+
+        public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Quincenal;
+
+        [Range(1, 2)]
+        public int? ApplyOnHalf { get; set; } = 2;
+
+        public bool AutoLoan { get; set; } = true;
+
+        [Range(1, 120)]
+        public int? TermCount { get; set; } = null;
 
         [Range(0, 99999999)]
         public decimal Amount { get; set; } = 0m;

@@ -26,7 +26,7 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" asp-page-handler="Save" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-hover">
+<form id="orderEditForm" method="post" asp-page-handler="Save" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
 
@@ -107,7 +107,7 @@
     </div>
 
     <div class="card-footer d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-primary" type="submit" form="orderEditForm">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>
 </form>
@@ -168,38 +168,38 @@
                 <div class="table-responsive mt-3">
                     <table class="table table-sm align-middle">
                         <thead>
-                        <tr>
-                            <th style="width:50px">#</th>
-                            <th style="width:240px">Tipo</th>
-                            <th>Título</th>
-                            <th style="width:110px"></th>
-                        </tr>
+                            <tr>
+                                <th style="width:50px">#</th>
+                                <th style="width:240px">Tipo</th>
+                                <th>Título</th>
+                                <th style="width:110px"></th>
+                            </tr>
                         </thead>
                         <tbody>
-                        @for (var i = 0; i < Model.WorkItems.Count; i++)
-                        {
-                            var w = Model.WorkItems[i];
-                            <tr>
-                                <td>@(w.SortOrder + 1)</td>
-                                <td>@w.Type.GetDisplayName()</td>
-                                <td>
-                                    <div class="fw-semibold">@w.Title</div>
-                                    @if (!string.IsNullOrWhiteSpace(w.Description))
-                                    {
-                                        <div class="text-muted small">@w.Description</div>
-                                    }
-                                </td>
-                                <td class="text-end">
-                                    <form method="post" asp-page-handler="DeleteWorkItem" asp-route-id="@Model.Input.Id" class="d-inline">
-                                        <input type="hidden" name="workItemId" value="@w.Id" />
-                                        <button class="btn btn-outline-danger btn-sm" type="submit"
-                                                onclick="return confirm('¿Borrar actividad? Se eliminará su checklist.');">
-                                            Borrar
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
+                            @for (var i = 0; i < Model.WorkItems.Count; i++)
+                            {
+                                var w = Model.WorkItems[i];
+                                <tr>
+                                    <td>@(w.SortOrder + 1)</td>
+                                    <td>@w.Type.GetDisplayName()</td>
+                                    <td>
+                                        <div class="fw-semibold">@w.Title</div>
+                                        @if (!string.IsNullOrWhiteSpace(w.Description))
+                                        {
+                                            <div class="text-muted small">@w.Description</div>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <form method="post" asp-page-handler="DeleteWorkItem" asp-route-id="@Model.Input.Id" class="d-inline">
+                                            <input type="hidden" name="workItemId" value="@w.Id" />
+                                            <button class="btn btn-outline-danger btn-sm" type="submit"
+                                                    onclick="return confirm('¿Borrar actividad? Se eliminará su checklist.');">
+                                                Borrar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
                         </tbody>
                     </table>
                 </div>
@@ -213,6 +213,8 @@
 </div>
 
 @section Scripts {
+    <!-- ✅ Fix: tu consola dice "jQuery is not defined" -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
 
     <script>
@@ -227,7 +229,6 @@
                 const r = await fetch(`?handler=Projects&clientId=${clientId}`);
                 const items = await r.json();
 
-                // Si el servidor ya tenía valor (por ejemplo al recargar la página), lo guardamos en data-selected.
                 const desired = projectSelect.value || projectSelect.dataset.selected;
                 projectSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
                 items.forEach(x => {
@@ -271,7 +272,6 @@
         }
 
         document.getElementById('clientSelect')?.addEventListener('change', () => {
-            // Cambió cliente: la selección previa puede dejar de ser válida.
             const projectSelect = document.getElementById('projectSelect');
             const contractSelect = document.getElementById('contractSelect');
             if (projectSelect) projectSelect.dataset.selected = '';

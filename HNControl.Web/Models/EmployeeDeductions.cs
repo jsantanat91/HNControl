@@ -43,6 +43,20 @@ public enum EmployeeDeductionMode
 }
 
 /// <summary>
+/// Frecuencia de aplicación del ajuste.
+/// - Quincenal: aplica en cada periodo (1-15 y 16-fin de mes)
+/// - Mensual: aplica solo 1 vez por mes (en el 1er o 2do periodo)
+/// </summary>
+public enum EmployeeDeductionFrequency
+{
+    [Display(Name = "Quincenal")]
+    Quincenal = 1,
+
+    [Display(Name = "Mensual")]
+    Mensual = 2
+}
+
+/// <summary>
 /// Deducciones del empleado para cálculo de nómina.
 /// - Puede ser con vencimiento (EndDate) o indefinida (EndDate NULL).
 /// - Para préstamos, puedes llevar saldo (RemainingAmount) para cortar al llegar a cero.
@@ -63,6 +77,20 @@ public class EmployeeDeduction
     public string Concept { get; set; } = "";
 
     public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;
+
+    public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Quincenal;
+
+    /// <summary>
+    /// Para frecuencia mensual: en qué quincena del mes se aplica.
+    /// 1 = primera quincena (1-15), 2 = segunda quincena (16-fin de mes).
+    /// </summary>
+    public int? ApplyOnHalf { get; set; }
+
+    /// <summary>
+    /// Para préstamos automáticos: número de pagos.
+    /// Si es NULL, se considera préstamo manual (sin plazos).
+    /// </summary>
+    public int? TermCount { get; set; }
 
     /// <summary>
     /// Para FixedAmount: importe por periodo.
