@@ -29,7 +29,6 @@ else
                 <th>Dirección</th>
                 <th>Tipo</th>
                 <th>Modo</th>
-	                <th>Frecuencia</th>
                 <th>Importe</th>
                 <th>Inicio</th>
                 <th>Fin</th>
@@ -52,15 +51,8 @@ else
                             <span class="badge text-bg-warning">@d.Direction.GetDisplayName()</span>
                         }
                     </td>
-	                    <td class="text-muted small">
-	                        @d.Type.GetDisplayName()
-	                        @if (!string.IsNullOrWhiteSpace(d.LoanLabel))
-	                        {
-	                            <div class="text-muted small">@d.LoanLabel</div>
-	                        }
-	                    </td>
+                    <td class="text-muted small">@d.Type.GetDisplayName()</td>
                     <td class="text-muted small">@d.Mode.GetDisplayName()</td>
-	                    <td class="text-muted small">@d.FrequencyLabel</td>
                     <td>@d.AmountLabel</td>
                     <td class="text-muted small">@(d.StartDate?.ToString("yyyy-MM-dd") ?? "—")</td>
                     <td class="text-muted small">@(d.EndDate?.ToString("yyyy-MM-dd") ?? "—")</td>

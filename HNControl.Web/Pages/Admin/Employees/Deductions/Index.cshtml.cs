@@ -43,9 +43,6 @@ public class IndexModel : PageModel
             Type = d.Type,
             Direction = d.Direction,
             Mode = d.Mode,
-            Frequency = d.Frequency,
-            ApplyOnHalf = d.ApplyOnHalf,
-            TermCount = d.TermCount,
             Amount = d.Amount,
             Rate = d.Rate,
             StartDate = d.StartDate,
@@ -80,28 +77,12 @@ public class IndexModel : PageModel
         public EmployeeDeductionType Type { get; set; }
         public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
         public EmployeeDeductionMode Mode { get; set; }
-        public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Quincenal;
-        public int? ApplyOnHalf { get; set; }
-        public int? TermCount { get; set; }
         public decimal Amount { get; set; }
         public decimal Rate { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public bool IsActive { get; set; }
         public decimal? RemainingAmount { get; set; }
-
-        public string FrequencyLabel
-        {
-            get
-            {
-                if (Frequency == EmployeeDeductionFrequency.Mensual)
-                {
-                    var half = ApplyOnHalf ?? 2;
-                    return half == 1 ? "Mensual (1ª quincena)" : "Mensual (2ª quincena)";
-                }
-                return "Quincenal";
-            }
-        }
 
         public string AmountLabel
         {
@@ -114,15 +95,6 @@ public class IndexModel : PageModel
                 };
 
                 return Direction == EmployeeDeductionDirection.Bonus ? "+" + baseLabel : baseLabel;
-            }
-        }
-
-        public string LoanLabel
-        {
-            get
-            {
-                if (Type != EmployeeDeductionType.Prestamo || TermCount is null) return "";
-                return $"{TermCount.Value} pagos · {FrequencyLabel}";
             }
         }
     }

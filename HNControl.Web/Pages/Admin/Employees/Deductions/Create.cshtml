@@ -39,21 +39,7 @@
                     </div>
 
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Frecuencia</label>
-                        <select class="form-select" asp-for="Input.Frequency" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionFrequency>()"></select>
-                    </div>
-
-                    <div class="col-12 col-md-6" id="applyHalfWrap" style="display:none;">
-                        <label class="form-label">Mensual: aplicar en</label>
-                        <select class="form-select" asp-for="Input.ApplyOnHalf">
-                            <option value="1">1ª quincena (1–15)</option>
-                            <option value="2">2ª quincena (16–fin)</option>
-                        </select>
-                        <span class="text-danger small" asp-validation-for="Input.ApplyOnHalf"></span>
-                    </div>
-
-                    <div class="col-12 col-md-6" id="amountWrap">
-                        <label class="form-label" id="amountLabel">Monto fijo (si aplica)</label>
+                        <label class="form-label">Monto fijo (si aplica)</label>
                         <input class="form-control" asp-for="Input.Amount" type="number" step="0.01" />
                     </div>
 
@@ -75,39 +61,10 @@
                     <div class="col-12 col-md-6">
                         <label class="form-label">Total (préstamo, opcional)</label>
                         <input class="form-control" asp-for="Input.TotalAmount" type="number" step="0.01" />
-                        <span class="text-danger small" asp-validation-for="Input.TotalAmount"></span>
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label">Saldo (préstamo, opcional)</label>
                         <input class="form-control" asp-for="Input.RemainingAmount" type="number" step="0.01" />
-                    </div>
-
-                    <div class="col-12" id="loanAutoWrap" style="display:none;">
-                        <div class="border rounded-4 p-3">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <div>
-                                    <div class="fw-semibold">Préstamo automático</div>
-                                    <div class="text-muted small">El sistema calcula el fin por plazos y aplica el descuento según la frecuencia.</div>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" asp-for="Input.AutoLoan" />
-                                    <label class="form-check-label" asp-for="Input.AutoLoan">Activar</label>
-                                </div>
-                            </div>
-
-                            <div class="row g-3 mt-1" id="loanAutoFields" style="display:none;">
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label">Plazos (número de pagos)</label>
-                                    <input class="form-control" asp-for="Input.TermCount" type="number" step="1" min="1" />
-                                    <span class="text-danger small" asp-validation-for="Input.TermCount"></span>
-                                </div>
-                                <div class="col-12">
-                                    <div class="text-muted small">
-                                        Captura el <b>monto por pago</b> en "Monto fijo". Si lo dejas en 0, lo calculamos: Total / Plazos.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="col-12">
@@ -128,38 +85,4 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-    <script>
-        (function () {
-            const typeSel = document.querySelector('[name="Input.Type"]');
-            const freqSel = document.querySelector('[name="Input.Frequency"]');
-            const applyHalfWrap = document.getElementById('applyHalfWrap');
-            const loanWrap = document.getElementById('loanAutoWrap');
-            const loanSwitch = document.querySelector('[name="Input.AutoLoan"]');
-            const loanFields = document.getElementById('loanAutoFields');
-            const amountLabel = document.getElementById('amountLabel');
-
-            function refresh() {
-                const type = (typeSel?.value || '0');
-                const freq = (freqSel?.value || '1');
-
-                // mensual => muestra selector de quincena
-                applyHalfWrap.style.display = (freq === '2') ? '' : 'none';
-
-                // préstamo => muestra bloque préstamo
-                const isLoan = (type === '2');
-                loanWrap.style.display = isLoan ? '' : 'none';
-                loanFields.style.display = (isLoan && loanSwitch?.checked) ? '' : 'none';
-
-                if (amountLabel) {
-                    amountLabel.textContent = (isLoan && loanSwitch?.checked) ? 'Monto por pago (si lo dejas en 0, se calcula)' : 'Monto fijo (si aplica)';
-                }
-            }
-
-            typeSel?.addEventListener('change', refresh);
-            freqSel?.addEventListener('change', refresh);
-            loanSwitch?.addEventListener('change', refresh);
-            refresh();
-        })();
-    </script>
 }

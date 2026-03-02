@@ -26,12 +26,15 @@
         <div>
             @if (Model.CanDownloadPdf)
             {
-                <a class="btn btn-primary" href="?handler=DownloadPdf">Descargar PDF</a>
+                <a class="btn btn-primary" href="?handler=DownloadPdf&token=@Model.Token">Descargar PDF</a>
             }
         </div>
     </div>
 
-    <div class="text-muted small">
-        Nota: si el PDF no existe todavía, se generará automáticamente al descargar.
-    </div>
+    @if (!Model.CanDownloadPdf)
+    {
+        <div class="alert alert-info">
+            El PDF aún no está disponible. Cuando el admin apruebe la orden, aquí aparecerá el botón de descarga.
+        </div>
+    }
 </div>

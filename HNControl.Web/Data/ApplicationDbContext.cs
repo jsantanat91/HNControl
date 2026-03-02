@@ -125,15 +125,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Concept).HasMaxLength(200);
             e.Property(x => x.Amount).HasColumnType("numeric(12,2)");
             e.Property(x => x.Rate).HasColumnType("numeric(6,5)");
-            e.Property(x => x.Frequency).HasConversion<int>();
-            e.Property(x => x.ApplyOnHalf);
-            e.Property(x => x.TermCount);
             e.Property(x => x.StartDate).HasColumnType("date");
             e.Property(x => x.EndDate).HasColumnType("date");
             e.Property(x => x.TotalAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.RemainingAmount).HasColumnType("numeric(12,2)");
 
-            e.HasIndex(x => new { x.UserId, x.IsActive, x.StartDate, x.EndDate, x.Frequency });
+            e.HasIndex(x => new { x.UserId, x.IsActive, x.StartDate, x.EndDate });
 
             e.HasOne(x => x.Employee)
                 .WithMany()

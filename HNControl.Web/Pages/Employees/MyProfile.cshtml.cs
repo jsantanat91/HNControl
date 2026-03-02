@@ -150,8 +150,7 @@ public class MyProfileModel : PageModel
         var total = Math.Round(fijo80 + (max20 * vp), 2);
 
         // Deducciones activas (si aún no existen tablas, no tronamos)
-        var curPeriod = PayPeriodUtil.FromDate(ps);
-        await LoadDeductionsAsync(userId, baseQ, total, curPeriod);
+        await LoadDeductionsAsync(userId, baseQ, total);
         var net = Math.Round(total - DeductionsTotal + BonusesTotal, 2);
         if (net < 0m) net = 0m;
 
@@ -162,7 +161,7 @@ public class MyProfileModel : PageModel
         CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, BonusesTotal, net);
     }
 
-    private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal, PayPeriodUtil.PayPeriod currentPeriod)
+    private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal)
     {
         ActiveDeductions = new();
         DeductionsTotal = 0m;
@@ -182,10 +181,6 @@ public class MyProfileModel : PageModel
 
             foreach (var d in deds)
             {
-                // Mensuales: solo aplican en 1 quincena del mes.
-                if (!PayPeriodUtil.IsDueThisPeriod(d, currentPeriod))
-                    continue;
-
                 var amount = d.Mode switch
                 {
                     EmployeeDeductionMode.FixedAmount => d.Amount,
@@ -197,24 +192,11 @@ public class MyProfileModel : PageModel
                 amount = Math.Round(amount, 2);
                 if (amount < 0m) amount = 0m;
 
-                decimal? remainingForUi = d.RemainingAmount;
-
-                // Préstamo automático (Total + Plazos): estimamos saldo con base en el calendario.
-                if (d.Type == EmployeeDeductionType.Prestamo && d.TotalAmount.HasValue && d.TermCount.HasValue && d.TermCount.Value > 0)
+                // Para préstamos con saldo, no descontamos más del saldo
+                if (d.RemainingAmount.HasValue)
                 {
-                    var done = PayPeriodUtil.EstimateLoanPaymentsDone(d, currentPeriod);
-                    var remaining = d.TotalAmount.Value - (done * amount);
-                    remaining = Math.Round(remaining, 2);
-                    if (remaining <= 0m) continue;
-                    if (amount > remaining) amount = remaining;
-                    remainingForUi = remaining;
-                }
-                else if (d.RemainingAmount.HasValue)
-                {
-                    // Préstamo manual (saldo capturado): no descontamos más del saldo
                     if (d.RemainingAmount.Value <= 0m) continue;
                     if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
-                    remainingForUi = d.RemainingAmount;
                 }
 
                 ActiveDeductions.Add(new DeductionMini(
@@ -223,7 +205,7 @@ public class MyProfileModel : PageModel
                     d.Mode,
                     d.Direction,
                     amount,
-                    remainingForUi,
+                    d.RemainingAmount,
                     d.StartDate,
                     d.EndDate
                 ));
