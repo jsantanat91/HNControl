@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +22,7 @@ public class IndexModel : PageModel
         string Type,
         string Status,
         string Assigned,
+        string ClaimedBy,
         string PublicUrl,
         string CreatedAt
     );
@@ -35,13 +36,13 @@ public class IndexModel : PageModel
             .Include(o => o.Project)
             .Include(o => o.ClientServiceContract)
             .Include(o => o.AssignedEmployee)
+            .Include(o => o.ClaimedByEmployee)
             .OrderByDescending(o => o.CreatedAt)
             .Take(200)
             .ToListAsync();
 
         Rows = list.Select(o =>
         {
-            // Ruta pública: /Public/ServiceOrder/{token}
             var publicUrl = $"{Request.Scheme}://{Request.Host}/Public/ServiceOrder/{o.PublicToken}";
 
             return new Row(
@@ -53,6 +54,7 @@ public class IndexModel : PageModel
                 o.Type.GetDisplayName(),
                 o.Status.GetDisplayName(),
                 o.AssignedEmployee?.FullName ?? "-",
+                o.ClaimedByEmployee?.FullName ?? "-",
                 publicUrl,
                 o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")
             );

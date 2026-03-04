@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -38,6 +38,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.Evidences)
             .Include(x => x.Signatures)
             .Include(x => x.AssignedEmployee)
+            .Include(x => x.ClaimedByEmployee)
             .FirstAsync(x => x.Id == order.Id);
 
         // --------------------
@@ -55,7 +56,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         byte[]? cliBytes = await TryReadStorageBytesAsync(cliSig?.StoragePath);
 
         // --------------------
-        // Evidencias (precargar imágenes)
+        // Evidencias (precargar imagenes)
         // --------------------
         var evidenceImages = new List<(string Name, DateTime UploadedAt, byte[] Bytes)>();
         var evidenceFiles = new List<(string Name, DateTime UploadedAt)>();
@@ -79,7 +80,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
 
-        // Labels en español
+        // Labels en espanol
         var typeLabel = GetDisplayName(o.Type);
         var status = o.Status == ServiceOrderStatus.Completed ? ServiceOrderStatus.Finalized : o.Status;
         var statusLabel = GetDisplayName(status);
@@ -122,7 +123,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                         {
                             cc.Item().Text("Cliente").SemiBold();
-                            cc.Item().Text(o.Client?.Name ?? "—");
+                            cc.Item().Text(o.Client?.Name ?? "-");
                             if (!string.IsNullOrWhiteSpace(o.Client?.Email))
                                 cc.Item().Text(o.Client!.Email).FontColor(Colors.Grey.Darken2);
                             if (!string.IsNullOrWhiteSpace(o.Client?.Phone))
@@ -134,20 +135,39 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                             cc.Item().Text("Datos de la orden").SemiBold();
                             cc.Item().Text($"Tipo: {typeLabel}");
                             cc.Item().Text($"Estatus: {statusLabel}");
-                            if (!string.IsNullOrWhiteSpace(o.AssignedEmployee?.FullName))
-                                cc.Item().Text($"Técnico: {o.AssignedEmployee.FullName}");
+                            var techName = o.ClaimedByEmployee?.FullName ?? o.AssignedEmployee?.FullName;
+                            if (!string.IsNullOrWhiteSpace(techName))
+                                cc.Item().Text($"Tecnico: {techName}");
                             cc.Item().Text($"Creada: {o.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm}");
                             if (o.EstimatedEndDate != null)
                                 cc.Item().Text($"SLA: {o.EstimatedEndDate.Value:yyyy-MM-dd}");
                         });
                     });
 
-                    // Descripción
+                    // Descripcion
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
-                        cc.Item().Text("Descripción").SemiBold();
-                        cc.Item().PaddingTop(6).Text(string.IsNullOrWhiteSpace(o.Description) ? "—" : o.Description);
+                        cc.Item().Text("Descripcion").SemiBold();
+                        cc.Item().PaddingTop(6).Text(string.IsNullOrWhiteSpace(o.Description) ? "-" : o.Description);
                     });
+
+                    if (!string.IsNullOrWhiteSpace(o.LevantamientoNotes) || !string.IsNullOrWhiteSpace(o.MaterialesNotes))
+                    {
+                        c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
+                        {
+                            cc.Item().Text("Observaciones por etapa").SemiBold();
+                            if (!string.IsNullOrWhiteSpace(o.LevantamientoNotes))
+                            {
+                                cc.Item().PaddingTop(6).Text("Levantamiento").SemiBold();
+                                cc.Item().Text(o.LevantamientoNotes).FontColor(Colors.Grey.Darken2);
+                            }
+                            if (!string.IsNullOrWhiteSpace(o.MaterialesNotes))
+                            {
+                                cc.Item().PaddingTop(6).Text("Materiales").SemiBold();
+                                cc.Item().Text(o.MaterialesNotes).FontColor(Colors.Grey.Darken2);
+                            }
+                        });
+                    }
 
                     // Checklist
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
@@ -159,7 +179,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         {
                             if (list.Count == 0)
                             {
-                                cc.Item().Text("—").FontColor(Colors.Grey.Darken2);
+                                cc.Item().Text("-").FontColor(Colors.Grey.Darken2);
                                 return;
                             }
 
@@ -188,7 +208,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
 
                                     t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.SortOrder.ToString()).FontColor(Colors.Grey.Darken2);
                                     t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Title);
-                                    t.Cell().Element(cel => CellBody(cel, zebra)).AlignCenter().Text(it.IsDone ? "✓" : "");
+                                    t.Cell().Element(cel => CellBody(cel, zebra)).AlignCenter().Text(it.IsDone ? "OK" : "");
                                     t.Cell().Element(cel => CellBody(cel, zebra)).Text(it.Notes ?? "").FontColor(Colors.Grey.Darken2);
                                 }
                             });
@@ -208,7 +228,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                                 var items = o.Checklist.Where(x => x.WorkItemId == w.Id).OrderBy(x => x.SortOrder).ToList();
                                 if (items.Count == 0) continue;
 
-                                cc.Item().PaddingTop(8).Text($"{w.SortOrder + 1}. {w.Title} · {w.Type}").SemiBold();
+                                cc.Item().PaddingTop(8).Text($"{w.SortOrder + 1}. {w.Title} - {w.Type}").SemiBold();
 
                                 if (!string.IsNullOrWhiteSpace(w.WorkPerformed))
                                     cc.Item().Text($"Trabajo: {w.WorkPerformed}").FontColor(Colors.Grey.Darken2);
@@ -240,7 +260,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
 
                         if (evidenceImages.Count > 0)
                         {
-                            cc.Item().Text("Imágenes").SemiBold().FontColor(Colors.Grey.Darken2);
+                            cc.Item().Text("Imagenes").SemiBold().FontColor(Colors.Grey.Darken2);
                             cc.Item().PaddingTop(6).Table(t =>
                             {
                                 t.ColumnsDefinition(cols =>
@@ -271,7 +291,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         {
                             cc.Item().PaddingTop(10).Text("Archivos").SemiBold().FontColor(Colors.Grey.Darken2);
                             foreach (var f in evidenceFiles)
-                                cc.Item().Text($"• {f.Name} — {f.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm}").FontColor(Colors.Grey.Darken2);
+                                cc.Item().Text($"- {f.Name} - {f.UploadedAt.ToLocalTime():yyyy-MM-dd HH:mm}").FontColor(Colors.Grey.Darken2);
                         }
                     });
 
@@ -283,8 +303,8 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                         {
                             r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                             {
-                                x.Item().Text("Técnico").SemiBold();
-                                x.Item().Text(string.IsNullOrWhiteSpace(techSig?.SignedByName) ? "—" : techSig!.SignedByName).FontColor(Colors.Grey.Darken2);
+                                x.Item().Text("Tecnico").SemiBold();
+                                x.Item().Text(string.IsNullOrWhiteSpace(techSig?.SignedByName) ? "-" : techSig!.SignedByName).FontColor(Colors.Grey.Darken2);
                                 if (techSig?.SignedAt != null)
                                     x.Item().Text(techSig.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).FontSize(9).FontColor(Colors.Grey.Darken2);
 
@@ -305,7 +325,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                             r.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                             {
                                 x.Item().Text("Cliente").SemiBold();
-                                x.Item().Text(string.IsNullOrWhiteSpace(cliSig?.SignedByName) ? "—" : cliSig!.SignedByName).FontColor(Colors.Grey.Darken2);
+                                x.Item().Text(string.IsNullOrWhiteSpace(cliSig?.SignedByName) ? "-" : cliSig!.SignedByName).FontColor(Colors.Grey.Darken2);
                                 if (cliSig?.SignedAt != null)
                                     x.Item().Text(cliSig.SignedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).FontSize(9).FontColor(Colors.Grey.Darken2);
 
@@ -329,14 +349,14 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                     {
                         c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                         {
-                            cc.Item().Text("Notas de revisión").SemiBold();
+                            cc.Item().Text("Notas de revision").SemiBold();
                             cc.Item().PaddingTop(6).Text(o.AdminReviewNotes!).FontColor(Colors.Grey.Darken2);
                         });
                     }
                 });
 
                 // FOOTER
-                page.Footer().AlignCenter().Text($"{footer} · {DateTime.Now:yyyy-MM-dd HH:mm}")
+                page.Footer().AlignCenter().Text($"{footer} - {DateTime.Now:yyyy-MM-dd HH:mm}")
                     .FontSize(9).FontColor(Colors.Grey.Darken2);
             });
         });
@@ -354,11 +374,11 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         if (!string.IsNullOrWhiteSpace(configured))
             candidates.Add(configured);
 
-        // Defaults que tú estás usando
+        // Defaults que tu estas usando
         candidates.Add("assets/logo.png");
         candidates.Add("wwwroot/assets/logo.png");
 
-        // Absolutos típicos en runtime
+        // Absolutos tipicos en runtime
         if (!string.IsNullOrWhiteSpace(_env.ContentRootPath))
         {
             candidates.Add(Path.Combine(_env.ContentRootPath, "assets", "logo.png"));
@@ -461,3 +481,6 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         return string.IsNullOrWhiteSpace(attr?.Name) ? name : attr!.Name!;
     }
 }
+
+
+

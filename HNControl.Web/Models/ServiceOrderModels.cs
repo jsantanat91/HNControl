@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HNControl.Web.Models;
@@ -11,15 +11,32 @@ public enum ServiceOrderType
     [Display(Name = "Mantenimiento preventivo")]
     Preventivo = 2,
 
-    [Display(Name = "Nueva instalación")]
+    [Display(Name = "Nueva instalacion")]
     NuevaInstalacion = 3,
 
-    [Display(Name = "Global (múltiple)")]
+    [Display(Name = "Levantamiento tecnico")]
+    LevantamientoTecnico = 4,
+
+    [Display(Name = "Global (multiple)")]
     Global = 99
 
-    // Para agregar más opciones:
-    // , [Display(Name = "Reubicación")] Reubicacion = 4
-    // , [Display(Name = "Levantamiento / Diagnóstico")] Levantamiento = 5
+    // Para agregar mas opciones:
+    // , [Display(Name = "Reubicacion")] Reubicacion = 5
+}
+
+public enum ServiceOrderWorkflowArea
+{
+    [Display(Name = "Levantamiento")]
+    Levantamiento = 1,
+
+    [Display(Name = "Materiales")]
+    Materiales = 2,
+
+    [Display(Name = "Ejecucion")]
+    Ejecucion = 3,
+
+    [Display(Name = "Cierre tecnico")]
+    CierreTecnico = 4
 }
 
 public enum ServiceOrderStatus
@@ -30,13 +47,12 @@ public enum ServiceOrderStatus
     [Display(Name = "En proceso")]
     InProgress = 2,
 
-    [Display(Name = "En revisión")]
+    [Display(Name = "En revision")]
     InReview = 3,
 
     [Display(Name = "Finalizada")]
     Finalized = 4,
 
-    // ✅ alias para código viejo que decía "Completed" (no lo enumeramos en UI)
     Completed = 4,
 
     [Display(Name = "Pendiente firma del cliente")]
@@ -62,12 +78,17 @@ public class ServiceOrder
     public Guid? ProjectId { get; set; }
     public Project? Project { get; set; }
 
-    // Servicio/contrato específico del cliente (para trazabilidad)
     public Guid? ClientServiceContractId { get; set; }
     public ClientServiceContract? ClientServiceContract { get; set; }
 
-    public string AssignedUserId { get; set; } = default!;
+    public string? AssignedUserId { get; set; }
     public EmployeeProfile? AssignedEmployee { get; set; }
+
+    public string? ClaimedByUserId { get; set; }
+    public EmployeeProfile? ClaimedByEmployee { get; set; }
+    public DateTime? ClaimedAt { get; set; }
+
+    public ServiceOrderWorkflowArea CurrentArea { get; set; } = ServiceOrderWorkflowArea.Levantamiento;
 
     public ServiceOrderType Type { get; set; }
     public ServiceOrderStatus Status { get; set; } = ServiceOrderStatus.Created;
@@ -78,6 +99,12 @@ public class ServiceOrder
     [MaxLength(2000)]
     public string Description { get; set; } = "";
 
+    [MaxLength(4000)]
+    public string LevantamientoNotes { get; set; } = "";
+
+    [MaxLength(4000)]
+    public string MaterialesNotes { get; set; } = "";
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? StartedAt { get; set; }
 
@@ -87,7 +114,6 @@ public class ServiceOrder
 
     public DateTime? FinalizedAt { get; set; }
 
-    // ✅ alias para código viejo que esperaba CompletedAt
     [NotMapped]
     public DateTime? CompletedAt
     {
@@ -108,7 +134,6 @@ public class ServiceOrder
 
     public string? AdminReviewNotes { get; set; }
 
-    // ✅ Orden global = varias actividades dentro de una misma orden
     public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
 
     public List<ServiceOrderChecklistItem> Checklist { get; set; } = new();
@@ -133,7 +158,6 @@ public class ServiceOrderWorkItem
     [MaxLength(2000)]
     public string Description { get; set; } = "";
 
-    // Campos abiertos para el instalador
     [MaxLength(2000)]
     public string WorkPerformed { get; set; } = "";
 
@@ -156,7 +180,6 @@ public class ServiceOrderChecklistItem
     public Guid OrderId { get; set; }
     public ServiceOrder? Order { get; set; }
 
-    // ✅ Cuando la orden es global, el checklist puede pertenecer a una actividad.
     public Guid? WorkItemId { get; set; }
     public ServiceOrderWorkItem? WorkItem { get; set; }
 
@@ -208,7 +231,7 @@ public class ServiceOrderSignature
     public string SignedByName { get; set; } = "";
 
     [MaxLength(500)]
-    public string StoragePath { get; set; } = ""; // PNG
+    public string StoragePath { get; set; } = "";
 
     public DateTime SignedAt { get; set; } = DateTime.UtcNow;
 }

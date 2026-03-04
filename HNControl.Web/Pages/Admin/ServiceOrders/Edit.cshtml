@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @using HNControl.Web.Services
 @model HNControl.Web.Pages.Admin.ServiceOrders.EditModel
 @{
@@ -14,7 +14,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Editar orden</h1>
-        <div class="text-muted small">Ajusta lo necesario (cliente, contrato, fechas, técnico, etc.) sin romper trazabilidad.</div>
+        <div class="text-muted small">Ajusta datos generales; cualquier tecnico podra tomar la orden para trabajarla.</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Volver</a>
@@ -34,7 +34,7 @@
 
         <div class="row g-3">
             <div class="col-md-8">
-                <label class="form-label">Título</label>
+                <label class="form-label">Titulo</label>
                 <input class="form-control" asp-for="Input.Title" />
             </div>
 
@@ -49,7 +49,7 @@
                 {
                     <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems" disabled></select>
                     <input type="hidden" asp-for="Input.Type" />
-                    <div class="text-muted small mt-1">Esta orden es <strong>Global</strong>. El “tipo” real se maneja por actividad.</div>
+                    <div class="text-muted small mt-1">Esta orden es <strong>Global</strong>. El tipo real se maneja por actividad.</div>
                 }
                 else
                 {
@@ -58,8 +58,10 @@
             </div>
 
             <div class="col-md-8">
-                <label class="form-label">Técnico / Responsable</label>
-                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+                <label class="form-label">Responsable inicial (opcional)</label>
+                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems">
+                    <option value="">-- Sin responsable inicial --</option>
+                </select>
             </div>
 
             <div class="col-md-6">
@@ -70,14 +72,14 @@
             <div class="col-md-6">
                 <label class="form-label">Proyecto (opcional)</label>
                 <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect" data-selected="@Model.Input.ProjectId">
-                    <option value="">— Sin proyecto —</option>
+                    <option value="">-- Sin proyecto --</option>
                 </select>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Servicio contratado (opcional)</label>
                 <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems" id="contractSelect" data-selected="@Model.Input.ClientServiceContractId">
-                    <option value="">— Sin contrato ligado —</option>
+                    <option value="">-- Sin contrato ligado --</option>
                 </select>
             </div>
 
@@ -92,7 +94,7 @@
             </div>
 
             <div class="col-12">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">Descripcion</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
             </div>
         </div>
@@ -110,8 +112,8 @@
             <div>
                 <div class="fw-semibold">Orden global (actividades)</div>
                 <div class="text-muted small">
-                    Para un solo ticket del cliente con varios trabajos (ej: preventivo + cámara nueva), agrega <strong>actividades</strong>.
-                    Cada actividad tiene su checklist y campos abiertos del técnico.
+                    Para un solo ticket del cliente con varios trabajos (ej: preventivo + camara nueva), agrega <strong>actividades</strong>.
+                    Cada actividad tiene su checklist y campos abiertos del tecnico.
                 </div>
             </div>
 
@@ -139,14 +141,14 @@
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Título de la actividad</label>
+                    <label class="form-label">Titulo de la actividad</label>
                     <input class="form-control" asp-for="NewWorkItem.Title" placeholder="Ej: Mantenimiento preventivo" />
                     <span asp-validation-for="NewWorkItem.Title" class="text-danger small"></span>
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Descripción</label>
-                    <input class="form-control" asp-for="NewWorkItem.Description" placeholder="Ej: revisión, limpieza, pruebas" />
+                    <label class="form-label">Descripcion</label>
+                    <input class="form-control" asp-for="NewWorkItem.Description" placeholder="Ej: revision, limpieza, pruebas" />
                     <span asp-validation-for="NewWorkItem.Description" class="text-danger small"></span>
                 </div>
 
@@ -163,7 +165,7 @@
                         <tr>
                             <th style="width:50px">#</th>
                             <th style="width:240px">Tipo</th>
-                            <th>Título</th>
+                            <th>Titulo</th>
                             <th style="width:110px"></th>
                         </tr>
                         </thead>
@@ -185,7 +187,7 @@
                                     <form method="post" asp-page-handler="DeleteWorkItem" asp-route-id="@Model.Input.Id" class="d-inline">
                                         <input type="hidden" name="workItemId" value="@w.Id" />
                                         <button class="btn btn-outline-danger btn-sm" type="submit"
-                                                onclick="return confirm('¿Borrar actividad? Se eliminará su checklist.');">
+                                                onclick="return confirm('Borrar actividad? Se eliminara su checklist.');">
                                             Borrar
                                         </button>
                                     </form>
@@ -198,7 +200,7 @@
             }
             else
             {
-                <div class="text-muted small mt-2">Aún no hay actividades. Agrega la primera arriba.</div>
+                <div class="text-muted small mt-2">Aun no hay actividades. Agrega la primera arriba.</div>
             }
         }
     </div>
@@ -219,7 +221,7 @@
                 const r = await fetch(`?handler=Projects&clientId=${clientId}`);
                 const items = await r.json();
 
-                // Si el servidor ya tenía valor (por ejemplo al recargar la página), lo guardamos en data-selected.
+                // Si el servidor ya tenia valor (por ejemplo al recargar la pagina), lo guardamos en data-selected.
                 const desired = projectSelect.value || projectSelect.dataset.selected;
                 projectSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
                 items.forEach(x => {
@@ -263,7 +265,7 @@
         }
 
         document.getElementById('clientSelect')?.addEventListener('change', () => {
-            // Cambió cliente: la selección previa puede dejar de ser válida.
+            // Cambio cliente: la seleccion previa puede dejar de ser valida.
             const projectSelect = document.getElementById('projectSelect');
             const contractSelect = document.getElementById('contractSelect');
             if (projectSelect) projectSelect.dataset.selected = '';
@@ -286,3 +288,6 @@
         refreshProjectsAndContracts();
     </script>
 }
+
+
+

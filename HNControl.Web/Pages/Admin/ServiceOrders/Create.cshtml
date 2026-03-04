@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.ServiceOrders.CreateModel
 @{
     Layout = "_Layout";
@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Nueva orden de servicio</h1>
-        <div class="text-muted small">Crea la orden y (sí) luego la puedes editar. Fin del drama 😄</div>
+        <div class="text-muted small">Crea la orden general para que cualquier tecnico pueda tomarla y trabajar por etapas.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Volver</a>
 </div>
@@ -23,7 +23,7 @@
         <div asp-validation-summary="All" class="text-danger small mb-2"></div>
         <div class="row g-3">
             <div class="col-md-8">
-                <label class="form-label">Título</label>
+                <label class="form-label">Titulo</label>
                 <input class="form-control" asp-for="Input.Title" placeholder="Ej: Mantenimiento preventivo CCTV Matamoros" />
             </div>
 
@@ -41,21 +41,23 @@
             <div class="col-md-6">
                 <label class="form-label">Proyecto (opcional)</label>
                 <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect">
-                    <option value="">— Sin proyecto —</option>
+                    <option value="">-- Sin proyecto --</option>
                 </select>
             </div>
 
             <div class="col-md-8">
                 <label class="form-label">Servicio contratado (opcional)</label>
                 <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems" id="contractSelect">
-                    <option value="">— Sin contrato ligado —</option>
+                    <option value="">-- Sin contrato ligado --</option>
                 </select>
-                <div class="form-text">Si lo ligas a un contrato, tendrás trazabilidad de mantenimientos por servicio.</div>
+                <div class="form-text">Si lo ligas a un contrato, tendras trazabilidad de mantenimientos por servicio.</div>
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Técnico / Responsable</label>
-                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems"></select>
+                <label class="form-label">Responsable inicial (opcional)</label>
+                <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems">
+                    <option value="">-- Sin responsable inicial --</option>
+                </select>
             </div>
 
             <div class="col-md-6">
@@ -69,7 +71,7 @@
             </div>
 
             <div class="col-12">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">Descripcion</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Description" placeholder="Contexto, alcance, observaciones..."></textarea>
             </div>
         </div>
@@ -144,3 +146,6 @@
         refreshProjectsAndContracts();
     </script>
 }
+
+
+

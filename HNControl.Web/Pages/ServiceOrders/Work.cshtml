@@ -1,7 +1,9 @@
 ﻿@page "{id:guid}"
+@using HNControl.Web.Models
 @model HNControl.Web.Pages.ServiceOrders.WorkModel
 @{
     ViewData["Title"] = "Orden de Servicio";
+    var isFinalArea = Model.Order?.CurrentArea == ServiceOrderWorkflowArea.CierreTecnico;
 }
 
 @if (Model.Order == null)
@@ -15,19 +17,31 @@
         <h2 class="mb-1">Orden de Servicio</h2>
         <div class="text-muted">
             Cliente: <strong>@(Model.Order.Client?.Name ?? "-")</strong>
-            · Título: <strong>@Model.Order.Title</strong>
-            · Tipo: <strong>@(Model.WorkItems != null && Model.WorkItems.Count > 0 ? "Global" : Model.Order.Type.ToString())</strong>
-            · Actividades: <strong>@((Model.WorkItems != null && Model.WorkItems.Count > 0) ? Model.WorkItems.Count : 1)</strong>
-            · Status: <strong>@Model.Order.Status</strong>
-            · Progreso checklist: <strong id="hnChecklistPctTextTop">@Model.ChecklistCompletionPercent</strong>
+            - Titulo: <strong>@Model.Order.Title</strong>
+            - Tipo: <strong>@(Model.WorkItems != null && Model.WorkItems.Count > 0 ? "Global" : Model.Order.Type.GetDisplayName())</strong>
+            - Status: <strong>@Model.Order.Status.GetDisplayName()</strong>
+            - Area actual: <strong>@Model.Order.CurrentArea.GetDisplayName()</strong>
+            - Progreso del area: <strong id="hnChecklistPctTextTop">@Model.ChecklistCompletionPercent</strong>
+            - Progreso total: <strong>@Model.TotalChecklistCompletionPercent</strong>
+        </div>
+        <div class="small text-muted mt-1">
+            Tomada por: <strong>@(Model.Order.ClaimedByEmployee?.FullName ?? "Sin tomar")</strong>
         </div>
     </div>
 
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" href="javascript:history.back()">Volver</a>
-        @if (!string.IsNullOrWhiteSpace(Model.ClientDownloadUrl))
+        <a class="btn btn-outline-secondary" asp-page="/ServiceOrders/Index">Volver</a>
+        @if (!string.IsNullOrWhiteSpace(Model.Order.PdfStoragePath))
         {
-            <a class="btn btn-primary" target="_blank" href="@Model.ClientDownloadUrl">Link cliente</a>
+            <a class="btn btn-outline-primary" asp-page="/ServiceOrders/DownloadPdf" asp-route-id="@Model.Order.Id" target="_blank">Ver PDF</a>
+        }
+
+        @if (Model.CanTakeOwnership && !Model.IsClaimedByCurrentUser)
+        {
+            <form method="post" asp-page-handler="Take" asp-route-id="@Model.Order.Id" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success">Tomar orden</button>
+            </form>
         }
     </div>
 </div>
@@ -37,315 +51,293 @@
     <div class="alert alert-info">@Model.Info</div>
 }
 
-<div class="row g-3">
-    <!-- Checklist -->
-    <div class="col-12">
-        <form method="post" asp-page-handler="SaveChecklist" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
-            @Html.AntiForgeryToken()
+@if (Model.IsReadOnly)
+{
+    <div class="alert alert-secondary">Modo consulta: solo quien toma la orden puede editar o enviar.</div>
+}
 
-            <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="fw-semibold">Checklist</div>
-                    <div class="text-muted small">Progreso: <strong id="hnChecklistPctText">@Model.ChecklistCompletionPercent</strong></div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-                </div>
+<div class="card shadow-sm border-0 mb-3">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var area in Model.WorkflowAreas)
+            {
+                var cls = area == Model.Order.CurrentArea ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
+                <span class="@cls" style="pointer-events:none;">@area.GetDisplayName()</span>
+            }
+        </div>
+
+        @if (!Model.IsReadOnly)
+        {
+            <div class="d-flex gap-2">
+                <form method="post" asp-page-handler="PreviousArea" asp-route-id="@Model.Order.Id">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Area anterior</button>
+                </form>
+                <form method="post" asp-page-handler="NextArea" asp-route-id="@Model.Order.Id">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Siguiente area</button>
+                </form>
             </div>
+        }
+    </div>
+</div>
 
-            <div class="card-body">
-                <div class="progress mb-3" style="height:10px;">
-                    <div id="hnChecklistPctBar" class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+<div class="row g-3">
+    @if (Model.Order.CurrentArea == ServiceOrderWorkflowArea.Levantamiento || Model.Order.CurrentArea == ServiceOrderWorkflowArea.Materiales)
+    {
+        <div class="col-12">
+            <form method="post" asp-page-handler="SaveAreaNotes" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="fw-semibold">
+                            @(Model.Order.CurrentArea == ServiceOrderWorkflowArea.Levantamiento ? "Levantamiento tecnico" : "Materiales requeridos")
+                        </div>
+                        <div class="text-muted small">Captura observaciones de esta etapa.</div>
+                    </div>
+                    @if (!Model.IsReadOnly)
+                    {
+                        <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                    }
+                </div>
+                <div class="card-body">
+                    <textarea class="form-control" rows="12" name="AreaNotes" readonly="@Model.IsReadOnly"
+                              placeholder="Escribe aqui las observaciones de esta etapa...">@Model.AreaNotes</textarea>
+                </div>
+            </form>
+        </div>
+    }
+
+    @if (Model.Order.CurrentArea == ServiceOrderWorkflowArea.Ejecucion)
+    {
+        <div class="col-12">
+            <form method="post" asp-page-handler="SaveChecklist" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+                @Html.AntiForgeryToken()
+
+                <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="fw-semibold">Checklist y avances tecnicos</div>
+                        <div class="text-muted small">Progreso del area: <strong id="hnChecklistPctText">@Model.ChecklistCompletionPercent</strong></div>
+                    </div>
+                    @if (!Model.IsReadOnly)
+                    {
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                        </div>
+                    }
                 </div>
 
-                <div class="row g-3">
+                <div class="card-body">
+                    <div class="progress mb-3" style="height:10px;">
+                        <div id="hnChecklistPctBar" class="progress-bar" role="progressbar" style="width:@Model.ChecklistCompletionPercent"></div>
+                    </div>
+
                     @if (Model.ChecklistGroups == null || Model.ChecklistGroups.Count == 0)
                     {
-                        <div class="col-12 text-muted">Esta orden no tiene checklist todavía.</div>
+                        <div class="text-muted">Esta area no tiene checklist asignado.</div>
                     }
                     else
                     {
-                        var __gIndex = 0;
-
+                        var gIndex = 0;
                         <div class="accordion" id="hnChecklistAcc">
-                        @foreach (var g in Model.ChecklistGroups)
-                        {
-                            var headId = $"h_{__gIndex}";
-                            var collapseId = $"c_{__gIndex}";
-                            var doneCount = g.ItemIndices.Count(ix => Model.ItemsPost[ix].IsDone);
-                            var totalCount = g.ItemIndices.Count;
-                            var pct = totalCount == 0 ? 0 : (int)Math.Round(doneCount * 100.0 / totalCount);
+                            @foreach (var g in Model.ChecklistGroups)
+                            {
+                                var headId = $"h_{gIndex}";
+                                var collapseId = $"c_{gIndex}";
+                                var doneCount = g.ItemIndices.Count(ix => Model.ItemsPost[ix].IsDone);
+                                var totalCount = g.ItemIndices.Count;
+                                var pct = totalCount == 0 ? 0 : (int)Math.Round(doneCount * 100.0 / totalCount);
 
-                            <div class="accordion-item mb-2 border rounded-4 overflow-hidden">
-                                <h2 class="accordion-header" id="@headId">
-                                    <button class="accordion-button @(__gIndex==0 ? "" : "collapsed")" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#@collapseId"
-                                            aria-expanded="@(__gIndex==0 ? "true" : "false")" aria-controls="@collapseId">
-                                        <div class="w-100 d-flex align-items-center gap-2 flex-wrap">
-                                            <span class="badge bg-secondary">@g.TypeLabel</span>
-                                            <strong class="me-auto">@g.Title</strong>
-                                            <span class="text-muted small">Progreso: <strong>@pct%</strong></span>
-                                        </div>
-                                    </button>
-                                </h2>
-
-                                <div id="@collapseId" class="accordion-collapse collapse @(__gIndex==0 ? "show" : "")"
-                                     aria-labelledby="@headId" data-bs-parent="#hnChecklistAcc">
-                                    <div class="accordion-body">
-
-                                        @if (g.WorkItemPostIndex.HasValue)
-                                        {
-                                            <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
-
-                                            var wi = Model.WorkItemsPost[g.WorkItemPostIndex.Value];
-                                            var showDetails = !string.IsNullOrWhiteSpace(wi.WorkPerformed)
-                                                || !string.IsNullOrWhiteSpace(wi.MaterialsUsed)
-                                                || !string.IsNullOrWhiteSpace(wi.TechnicianNotes)
-                                                || wi.IsCompleted;
-
-                                            var detId = $"hnWiDet_{__gIndex}";
-
-                                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                                                <div class="text-muted small">
-                                                    Detalles de actividad (opcional)
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="button"
-                                                            class="btn btn-outline-secondary btn-sm"
-                                                            data-bs-toggle="collapse"
-                                                            data-bs-target="#@detId"
-                                                            aria-expanded="@(showDetails ? "true" : "false")"
-                                                            aria-controls="@detId">
-                                                        @(showDetails ? "Ocultar" : "Agregar") detalles
-                                                    </button>
-                                                    <div class="form-check form-switch m-0 d-flex align-items-center">
-                                                        <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" />
-                                                        <label class="form-check-label ms-2">Actividad completada</label>
-                                                    </div>
-                                                </div>
+                                <div class="accordion-item mb-2 border rounded-4 overflow-hidden">
+                                    <h2 class="accordion-header" id="@headId">
+                                        <button class="accordion-button @(gIndex == 0 ? "" : "collapsed")" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#@collapseId"
+                                                aria-expanded="@(gIndex == 0 ? "true" : "false")" aria-controls="@collapseId">
+                                            <div class="w-100 d-flex align-items-center gap-2 flex-wrap">
+                                                <span class="badge bg-secondary">@g.TypeLabel</span>
+                                                <strong class="me-auto">@g.Title</strong>
+                                                <span class="text-muted small">Progreso: <strong>@pct%</strong></span>
                                             </div>
+                                        </button>
+                                    </h2>
 
-                                            <div id="@detId" class="collapse @(showDetails ? "show" : "")">
+                                    <div id="@collapseId" class="accordion-collapse collapse @(gIndex == 0 ? "show" : "")"
+                                         aria-labelledby="@headId" data-bs-parent="#hnChecklistAcc">
+                                        <div class="accordion-body">
+                                            @if (g.WorkItemPostIndex.HasValue)
+                                            {
+                                                <input type="hidden" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].Id" />
                                                 <div class="row g-3 mb-3">
                                                     <div class="col-md-6">
                                                         <label class="form-label small text-muted mb-1">Trabajo realizado</label>
-                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed"
-                                                                  placeholder="Qué se hizo, pasos, configuración, pruebas, etc."></textarea>
+                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].WorkPerformed" readonly="@Model.IsReadOnly"></textarea>
                                                     </div>
                                                     <div class="col-md-6">
                                                         <label class="form-label small text-muted mb-1">Material usado</label>
-                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed"
-                                                                  placeholder="Cámara, canaleta, conectores, metros de cable, etc."></textarea>
+                                                        <textarea class="form-control" rows="3" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].MaterialsUsed" readonly="@Model.IsReadOnly"></textarea>
                                                     </div>
-
                                                     <div class="col-12">
-                                                        <label class="form-label small text-muted mb-1">Observaciones del técnico</label>
-                                                        <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes"
-                                                                  placeholder="Pendientes, riesgos, recomendaciones, detalles importantes."></textarea>
+                                                        <label class="form-label small text-muted mb-1">Observaciones del tecnico</label>
+                                                        <textarea class="form-control" rows="2" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].TechnicianNotes" readonly="@Model.IsReadOnly"></textarea>
                                                     </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="progress mb-3" style="height:8px;">
-                                                <div class="progress-bar" role="progressbar" style="width:@pct%"></div>
-                                            </div>
-                                        }
-
-                                        <div class="row g-3">
-                                            @foreach (var ix in g.ItemIndices)
-                                            {
-                                                var noteId = $"hnNote_{__gIndex}_{ix}";
-                                                var hasNotes = !string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Notes);
-                                                <div class="col-md-6">
-                                                    <div class="border rounded-4 p-2 h-100 bg-white">
-                                                        <input type="hidden" asp-for="ItemsPost[ix].Id" />
-                                                        <div class="d-flex justify-content-between align-items-start gap-2">
-                                                            <div class="pe-2">
-                                                                <div class="fw-semibold small">@Model.ItemsPost[ix].Title</div>
-                                                                @if (!string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Category))
-                                                                {
-                                                                    <div class="mt-1">
-                                                                        <span class="badge bg-light text-dark border">@Model.ItemsPost[ix].Category</span>
-                                                                    </div>
-                                                                }
-                                                            </div>
-
-                                                            <div class="d-flex align-items-center gap-2">
-                                                                <button type="button"
-                                                                        class="btn btn-outline-secondary btn-sm"
-                                                                        data-bs-toggle="collapse"
-                                                                        data-bs-target="#@noteId"
-                                                                        aria-expanded="@(hasNotes ? "true" : "false")"
-                                                                        aria-controls="@noteId">
-                                                                    Notas
-                                                                    @if (hasNotes)
-                                                                    {
-                                                                        <span class="ms-1">•</span>
-                                                                    }
-                                                                </button>
-                                                                <div class="form-check form-switch m-0">
-                                                                    <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div id="@noteId" class="collapse @(hasNotes ? "show" : "")">
-                                                            <div class="mt-2">
-                                                                <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes"
-                                                                          placeholder="Opcional: detalles, pendientes, materiales, etc."></textarea>
-                                                            </div>
+                                                    <div class="col-12">
+                                                        <div class="form-check form-switch">
+                                                            <input class="form-check-input" type="checkbox" asp-for="WorkItemsPost[g.WorkItemPostIndex.Value].IsCompleted" disabled="@Model.IsReadOnly" />
+                                                            <label class="form-check-label">Actividad completada</label>
                                                         </div>
                                                     </div>
                                                 </div>
                                             }
-                                        </div>
 
+                                            <div class="row g-3">
+                                                @foreach (var ix in g.ItemIndices)
+                                                {
+                                                    <div class="col-md-6">
+                                                        <div class="border rounded-4 p-2 h-100 bg-white">
+                                                            <input type="hidden" asp-for="ItemsPost[ix].Id" />
+                                                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                                                <div class="pe-2">
+                                                                    <div class="fw-semibold small">@Model.ItemsPost[ix].Title</div>
+                                                                    @if (!string.IsNullOrWhiteSpace(Model.ItemsPost[ix].Category))
+                                                                    {
+                                                                        <div class="mt-1">
+                                                                            <span class="badge bg-light text-dark border">@Model.ItemsPost[ix].Category</span>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+
+                                                                <div class="form-check form-switch m-0">
+                                                                    <input class="form-check-input hn-check-item" type="checkbox" asp-for="ItemsPost[ix].IsDone" disabled="@Model.IsReadOnly" />
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="mt-2">
+                                                                <textarea class="form-control" rows="2" asp-for="ItemsPost[ix].Notes" readonly="@Model.IsReadOnly" placeholder="Notas"></textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                             __gIndex++;
-                        }
-                    </div>
+                                gIndex++;
+                            }
+                        </div>
                     }
                 </div>
-            </div>
-        </form>
-    </div>
+            </form>
+        </div>
 
-    <!-- Evidencias -->
-    <div class="col-12">
-        <form method="post" enctype="multipart/form-data" asp-page-handler="UploadEvidence" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
-            @Html.AntiForgeryToken()
+        <div class="col-12">
+            <form method="post" enctype="multipart/form-data" asp-page-handler="UploadEvidence" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+                @Html.AntiForgeryToken()
 
-            <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
-                <div class="fw-semibold">Evidencias</div>
-                <button type="submit" class="btn btn-outline-primary btn-sm">Subir evidencia</button>
-            </div>
-
-            <div class="card-body">
-                <div class="mb-2 text-muted small">
-                    Permitidos: JPG/JPEG/PNG/WEBP/PDF/HEIC/HEIF
+                <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold">Evidencias</div>
+                    @if (!Model.IsReadOnly)
+                    {
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Subir evidencia</button>
+                    }
                 </div>
 
-                <input class="form-control" type="file" name="EvidenceFile" accept=".jpg,.jpeg,.png,.webp,.pdf,.heic,.heif" />
+                <div class="card-body">
+                    @if (!Model.IsReadOnly)
+                    {
+                        <input class="form-control" type="file" name="EvidenceFile" accept=".jpg,.jpeg,.png,.webp,.pdf,.heic,.heif" />
+                        <hr />
+                    }
 
-                <hr />
-
-                @if (Model.Evidences.Count == 0)
-                {
-                    <div class="text-muted">Sin evidencias.</div>
-                }
-                else
-                {
-                    <div class="list-group">
-                        @foreach (var ev in Model.Evidences)
-                        {
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="fw-semibold">@ev.OriginalFileName</div>
-                                    <div class="text-muted small">@ev.UploadedAtLocal</div>
+                    @if (Model.Evidences.Count == 0)
+                    {
+                        <div class="text-muted">Sin evidencias.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var ev in Model.Evidences)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold">@ev.OriginalFileName</div>
+                                        <div class="text-muted small">@ev.UploadedAtLocal</div>
+                                    </div>
+                                    <a class="btn btn-outline-secondary btn-sm" href="?handler=DownloadEvidence&evidenceId=@ev.Id">Descargar</a>
                                 </div>
-                                <a class="btn btn-outline-secondary btn-sm" href="?handler=DownloadEvidence&evidenceId=@ev.Id">Descargar</a>
+                            }
+                        </div>
+                    }
+                </div>
+            </form>
+        </div>
+    }
+
+    @if (Model.Order.CurrentArea == ServiceOrderWorkflowArea.CierreTecnico)
+    {
+        <div class="col-12">
+            <form method="post" asp-page-handler="SignAndSubmit" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
+
+                <div class="card-header bg-white border-0">
+                    <div class="fw-semibold">Cierre tecnico: firma y envio</div>
+                    <div class="text-muted small">El nombre del tecnico se toma automaticamente del usuario autenticado.</div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-6">
+                            <label class="form-label small text-muted">Tecnico</label>
+                            <input class="form-control mb-2" value="@Model.TechName" readonly />
+
+                            <div class="border rounded-4 bg-light p-2 hn-sig-box">
+                                <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
                             </div>
-                        }
-                    </div>
-                }
-            </div>
-        </form>
-    </div>
 
-    <!-- Firmas (abajo, grandes) -->
-    <div class="col-12">
-        <form method="post" asp-page-handler="SignAndSubmit" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
-            <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
-
-            <div class="card-header bg-white border-0">
-                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                    <div>
-                        <div class="fw-semibold">Firmas</div>
-                        <div class="text-muted small">
-                            Dibuja ambas firmas y listo: un botón <strong>firma y envía</strong> a revisión.
+                            <div class="d-flex gap-2 mt-2 align-items-center">
+                                @if (!Model.IsReadOnly)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
+                                }
+                                @if (Model.HasTechSignature)
+                                {
+                                    <span class="text-muted small">Firma guardada</span>
+                                    <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" target="_blank">Ver</a>
+                                }
+                            </div>
                         </div>
                     </div>
 
-                    <div class="text-muted small">
-                        Requisito: firma técnico + firma cliente.
+                    <hr class="my-3" />
+
+                    @{
+                        var disabled = Model.IsReadOnly ||
+                        Model.Order.Status == ServiceOrderStatus.InReview ||
+                        Model.Order.Status == ServiceOrderStatus.Finalized ||
+                        Model.Order.Status == ServiceOrderStatus.Completed;
+                    }
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        <button type="submit"
+                                class="btn btn-success px-4"
+                                onclick="hnCaptureSigs()"
+                                @(disabled ? "disabled" : "")>
+                            Firmar y enviar
+                        </button>
                     </div>
                 </div>
-            </div>
-
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12 col-lg-6">
-                        <div class="fw-semibold mb-2">Técnico</div>
-                        <label class="form-label small text-muted">Nombre</label>
-                        <input class="form-control mb-2" name="TechName" value="@Model.TechName" readonly />
-
-                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
-                            <canvas id="hnTechCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-2 align-items-center">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnTechCanvas')">Limpiar</button>
-                            @if (Model.HasTechSignature)
-                            {
-                                <span class="text-muted small">Firma guardada ✅</span>
-                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Technician" target="_blank">Ver</a>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="col-12 col-lg-6">
-                        <div class="fw-semibold mb-2">Cliente</div>
-                        <label class="form-label small text-muted">Nombre</label>
-                        <input class="form-control mb-2" name="ClientName" value="@Model.ClientSignerName" placeholder="Nombre del cliente" />
-
-                        <div class="border rounded-4 bg-light p-2 hn-sig-box">
-                            <canvas id="hnClientCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-2 align-items-center">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnSigClear('hnClientCanvas')">Limpiar</button>
-                            @if (Model.HasClientSignature)
-                            {
-                                <span class="text-muted small">Firma guardada ✅</span>
-                                <a class="small ms-auto" href="?handler=SignatureImage&id=@Model.Order.Id&role=Client" target="_blank">Ver</a>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="my-3" />
-
-                @{
-                    var disabled = Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview
-                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Finalized
-                    || Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.Completed;
-                }
-
-                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                    <button type="submit"
-                            class="btn btn-success px-4"
-                            onclick="hnCaptureSigs()"
-                            @(disabled ? "disabled" : "")>
-                        Firmar y enviar
-                    </button>
-                </div>
-
-                @if (disabled)
-                {
-                    <div class="text-muted small mt-2">
-                        Esta orden ya está en revisión/finalizada. Si necesitas re-firmar, pídele al admin que la regrese a “En proceso”.
-                    </div>
-                }
-            </div>
-        </form>
-    </div>
+            </form>
+        </div>
+    }
+    else
+    {
+        <div class="col-12">
+            <div class="alert alert-light border">Para firmar y enviar, avanza al area final <strong>Cierre tecnico</strong>.</div>
+        </div>
+    }
 </div>
 
 @section Scripts
@@ -361,7 +353,7 @@
             if (!cbs.length) return;
 
             const done = cbs.filter(cb => cb.checked).length;
-            const pct = Math.round((done * 1000) / cbs.length) / 10; // 1 decimal
+            const pct = Math.round((done * 1000) / cbs.length) / 10;
             const pctText = (pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1)) + "%";
 
             const t1 = document.getElementById('hnChecklistPctText');
@@ -439,7 +431,7 @@
 
             function end(ev) {
                 drawing = false;
-                ev.preventDefault();
+                if (ev) ev.preventDefault();
             }
 
             canvas.addEventListener('mousedown', start);
@@ -463,14 +455,11 @@
 
         function hnCaptureSigs() {
             const tech = document.getElementById('hnTechCanvas');
-            const client = document.getElementById('hnClientCanvas');
-
-            document.getElementById('hnTechSigDataUrl').value = tech ? tech.toDataURL('image/png') : '';
-            document.getElementById('hnClientSigDataUrl').value = client ? client.toDataURL('image/png') : '';
+            const hidden = document.getElementById('hnTechSigDataUrl');
+            if (tech && hidden) hidden.value = tech.toDataURL('image/png');
         }
 
         hnInitPad('hnTechCanvas');
-        hnInitPad('hnClientCanvas');
     </script>
     <style>
         .hn-sig-box {

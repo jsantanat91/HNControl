@@ -561,9 +561,18 @@ b.Entity<ServiceOrder>(e =>
             e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId);
             e.HasOne(x => x.ClientServiceContract).WithMany().HasForeignKey(x => x.ClientServiceContractId).OnDelete(DeleteBehavior.SetNull);
 
+            e.Property(x => x.AssignedUserId).HasMaxLength(64);
+            e.Property(x => x.ClaimedByUserId).HasMaxLength(64);
+
             e.HasOne(x => x.AssignedEmployee).WithMany()
                 .HasForeignKey(x => x.AssignedUserId)
-                .HasPrincipalKey(p => p.UserId);
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.ClaimedByEmployee).WithMany()
+                .HasForeignKey(x => x.ClaimedByUserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             e.HasMany(x => x.WorkItems)
                 .WithOne(w => w.Order!)
@@ -746,4 +755,5 @@ b.Entity<ServiceOrder>(e =>
 
     }
 }
+
 

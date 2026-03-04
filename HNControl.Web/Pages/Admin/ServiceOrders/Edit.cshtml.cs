@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -50,7 +50,7 @@ public class EditModel : PageModel
 
         public Guid? ClientServiceContractId { get; set; }
 
-        [Required] public string AssignedUserId { get; set; } = "";
+        public string? AssignedUserId { get; set; }
 
         [DataType(DataType.Date)]
         public DateTime StartDate { get; set; }
@@ -109,16 +109,16 @@ public class EditModel : PageModel
 
         if (Input == null) return NotFound();
 
-        // ⚠️ Esta página tiene 2 forms (Editar orden / Agregar actividad).
-        // Al postear el form principal, el binder también intenta validar NewWorkItem (Title requerido)
-        // y eso hace que "parezca" que no guarda aunque el título de la orden sí venga.
-        // Solución: validamos SOLO Input aquí.
+        // âš ï¸ Esta pÃ¡gina tiene 2 forms (Editar orden / Agregar actividad).
+        // Al postear el form principal, el binder tambiÃ©n intenta validar NewWorkItem (Title requerido)
+        // y eso hace que "parezca" que no guarda aunque el tÃ­tulo de la orden sÃ­ venga.
+        // SoluciÃ³n: validamos SOLO Input aquÃ­.
         ModelState.Clear();
         TryValidateModel(Input, nameof(Input));
 
         if (!ModelState.IsValid)
         {
-            // 👉 Antes esto se veía como “no hace nada” porque no había summary.
+            // ðŸ‘‰ Antes esto se veÃ­a como â€œno hace nadaâ€ porque no habÃ­a summary.
             Error = "No se pudo guardar. " + string.Join(" | ",
                 ModelState
                     .Where(kvp => kvp.Value?.Errors.Count > 0)
@@ -134,7 +134,7 @@ public class EditModel : PageModel
             return Page();
         }
 
-        // Validación de consistencia
+        // ValidaciÃ³n de consistencia
         if (Input.ClientServiceContractId.HasValue)
         {
             var ok = await _db.ClientServiceContracts.AnyAsync(c =>
@@ -156,7 +156,7 @@ public class EditModel : PageModel
 
         order.Title = (Input.Title ?? "").Trim();
 
-        // Si ya es Global (tiene actividades), no permitimos “bajar” el tipo.
+        // Si ya es Global (tiene actividades), no permitimos â€œbajarâ€ el tipo.
         order.Type = (order.WorkItems.Count > 0 || order.Type == ServiceOrderType.Global)
             ? ServiceOrderType.Global
             : Input.Type;
@@ -167,7 +167,7 @@ public class EditModel : PageModel
         order.ProjectId = Input.ProjectId;
         order.ClientServiceContractId = Input.ClientServiceContractId;
 
-        order.AssignedUserId = Input.AssignedUserId;
+        order.AssignedUserId = string.IsNullOrWhiteSpace(Input.AssignedUserId) ? null : Input.AssignedUserId.Trim();
 
         order.StartedAt = TimeUtil.UtcDate(Input.StartDate);
         order.EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate);
@@ -179,7 +179,7 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostConvertToGlobalAsync(Guid id)
     {
-        // ✅ Versión "quirúrgica" (sin grafo trackeado) para evitar DbUpdateConcurrencyException.
+        // âœ… VersiÃ³n "quirÃºrgica" (sin grafo trackeado) para evitar DbUpdateConcurrencyException.
         var order = await _db.ServiceOrders
             .AsNoTracking()
             .Where(o => o.Id == id)
@@ -223,7 +223,7 @@ public class EditModel : PageModel
                 .Where(x => x.OrderId == id && x.WorkItemId == null)
                 .ExecuteUpdateAsync(set => set.SetProperty(x => x.WorkItemId, first.Id));
 
-            // si no había checklist, crear desde plantilla
+            // si no habÃ­a checklist, crear desde plantilla
             await EnsureChecklistFromTemplateDbAsync(id, first.Type, first.Id);
             await _db.SaveChangesAsync();
 
@@ -244,10 +244,10 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAddWorkItemAsync(Guid id)
     {
-        // IMPORTANTÍSIMO:
-        // Al postear desde el form de actividades, el route-param "id" puede ligar a Input.Id y disparar validación
-        // de otros campos requeridos (Title/Status/etc) y entonces parece que el botón “no hace nada”.
-        // Aquí validamos SOLO NewWorkItem.
+        // IMPORTANTÃSIMO:
+        // Al postear desde el form de actividades, el route-param "id" puede ligar a Input.Id y disparar validaciÃ³n
+        // de otros campos requeridos (Title/Status/etc) y entonces parece que el botÃ³n â€œno hace nadaâ€.
+        // AquÃ­ validamos SOLO NewWorkItem.
         ModelState.Clear();
         TryValidateModel(NewWorkItem, nameof(NewWorkItem));
         if (!ModelState.IsValid)
@@ -331,7 +331,7 @@ public class EditModel : PageModel
         catch (DbUpdateConcurrencyException)
         {
             await tx.RollbackAsync();
-            Error = "La orden cambió mientras agregabas la actividad. Recarga e inténtalo de nuevo.";
+            Error = "La orden cambio mientras agregabas la actividad. Recarga e intentalo de nuevo.";
             return await ReloadAndShowAsync(id);
         }
         catch
@@ -378,7 +378,7 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteWorkItemAsync(Guid id, Guid workItemId)
     {
-        // borramos checklist de esa actividad primero (por si tu DB aún no tiene FK cascade)
+        // borramos checklist de esa actividad primero (por si tu DB aÃºn no tiene FK cascade)
         var its = await _db.ServiceOrderChecklistItems
             .Where(x => x.OrderId == id && x.WorkItemId == workItemId)
             .ToListAsync();
@@ -419,8 +419,8 @@ public class EditModel : PageModel
             .Select(c => new
             {
                 id = c.Id,
-                text = $"{c.ServiceType} · {c.Label}" +
-                       (c.ContractEndDate.HasValue ? $" · vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
+                text = $"{c.ServiceType} - {c.Label}" +
+                       (c.ContractEndDate.HasValue ? $" - vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
             })
             .ToListAsync();
 
@@ -519,3 +519,6 @@ public class EditModel : PageModel
         ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
     }
 }
+
+
+

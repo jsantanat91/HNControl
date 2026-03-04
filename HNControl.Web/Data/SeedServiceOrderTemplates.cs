@@ -7,35 +7,48 @@ public static class SeedServiceOrderTemplates
 {
     public static async Task EnsureAsync(ApplicationDbContext db)
     {
-        // Si ya hay algo, no molestamos
-        if (await db.ServiceOrderChecklistTemplates.AnyAsync())
-            return;
-
         var templates = new List<ServiceOrderChecklistTemplate>
         {
-            Build(ServiceOrderType.NuevaInstalacion, "Instalación CCTV (base)", new []
+            Build(ServiceOrderType.NuevaInstalacion, "Instalacion CCTV (base)", new []
             {
-                ("Levantamiento", true, new []{ "Levantamiento técnico", "Materiales / Accesorios" }),
-                ("Cableado", true, new []{ "Ruta de cableado", "Etiquetado y terminaciones", "Canalización / tubería" }),
-                ("Equipo", true, new []{ "Cámaras (montaje y enfoque)", "DVR/NVR (configuración)", "Almacenamiento (prueba)" }),
+                ("Levantamiento", true, new []{ "Levantamiento tecnico", "Materiales / Accesorios" }),
+                ("Cableado", true, new []{ "Ruta de cableado", "Etiquetado y terminaciones", "Canalizacion / tuberia" }),
+                ("Equipo", true, new []{ "Camaras (montaje y enfoque)", "DVR/NVR (configuracion)", "Almacenamiento (prueba)" }),
                 ("Red", false, new []{ "WiFi / VLAN / SSID (si aplica)", "Acceso remoto (si aplica)" }),
-                ("Pruebas", true, new []{ "Grabación / playback", "Validación con cliente", "Entrega y capacitación" }),
+                ("Pruebas", true, new []{ "Grabacion / playback", "Validacion con cliente", "Entrega y capacitacion" }),
             }),
             Build(ServiceOrderType.Preventivo, "Preventivo (base)", new []
             {
-                ("Diagnóstico", true, new []{ "Levantamiento / revisión general" }),
-                ("Mantenimiento", true, new []{ "Limpieza de equipo / racks", "Revisión de cableado y conectores", "Revisión energía / tierras" }),
-                ("Pruebas", true, new []{ "Pruebas de operación", "Recomendaciones" }),
+                ("Diagnostico", true, new []{ "Levantamiento / revision general" }),
+                ("Mantenimiento", true, new []{ "Limpieza de equipo / racks", "Revision de cableado y conectores", "Revision energia / tierras" }),
+                ("Pruebas", true, new []{ "Pruebas de operacion", "Recomendaciones" }),
+            }),
+            Build(ServiceOrderType.LevantamientoTecnico, "Levantamiento tecnico (base)", new []
+            {
+                ("Levantamiento", true, new []{ "Visita y revision inicial", "Levantamiento fotografico", "Levantamiento de infraestructura" }),
+                ("Materiales", true, new []{ "Materiales requeridos", "Herramientas y consumibles", "Estimacion de cantidades" }),
+                ("Entrega", true, new []{ "Resumen tecnico", "Riesgos y recomendaciones", "Aprobacion de alcance" }),
             }),
             Build(ServiceOrderType.Correctivo, "Correctivo (base)", new []
             {
-                ("Diagnóstico", true, new []{ "Diagnóstico", "Causa raíz (si aplica)" }),
-                ("Ejecución", true, new []{ "Acción correctiva / reparación" }),
-                ("Cierre", true, new []{ "Pruebas de verificación", "Validación con cliente" }),
+                ("Diagnostico", true, new []{ "Diagnostico", "Causa raiz (si aplica)" }),
+                ("Ejecucion", true, new []{ "Accion correctiva / reparacion" }),
+                ("Cierre", true, new []{ "Pruebas de verificacion", "Validacion con cliente" }),
             }),
         };
 
-        db.ServiceOrderChecklistTemplates.AddRange(templates);
+        var existing = await db.ServiceOrderChecklistTemplates
+            .AsNoTracking()
+            .Select(t => new { t.Type, t.Name })
+            .ToListAsync();
+
+        foreach (var template in templates)
+        {
+            var exists = existing.Any(x => x.Type == template.Type && x.Name == template.Name);
+            if (!exists)
+                db.ServiceOrderChecklistTemplates.Add(template);
+        }
+
         await db.SaveChangesAsync();
     }
 

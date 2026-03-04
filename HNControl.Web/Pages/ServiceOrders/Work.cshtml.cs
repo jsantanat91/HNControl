@@ -15,33 +15,33 @@ public class WorkModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
-    private readonly IConfiguration _cfg;
 
-    public WorkModel(ApplicationDbContext db, IFileStorage storage, IConfiguration cfg)
+    public WorkModel(ApplicationDbContext db, IFileStorage storage)
     {
         _db = db;
         _storage = storage;
-        _cfg = cfg;
     }
 
     public ServiceOrder? Order { get; set; }
     public string? Info { get; set; }
 
-    // ✅ Para que el id siempre esté disponible (GET y POST), incluso si la ruta/query falla.
     [BindProperty(SupportsGet = true)]
     public Guid Id { get; set; }
 
-    public string ClientDownloadUrl { get; set; } = "";
+    public bool IsReadOnly { get; set; }
+    public bool IsClaimedByCurrentUser { get; set; }
+    public bool CanTakeOwnership { get; set; }
 
     public string TechName { get; set; } = "";
-    public string ClientSignerName { get; set; } = "";
-
     public bool HasTechSignature { get; set; }
-    public bool HasClientSignature { get; set; }
 
     public string ChecklistCompletionPercent { get; set; } = "0%";
+    public string TotalChecklistCompletionPercent { get; set; } = "0%";
+    [BindProperty] public string AreaNotes { get; set; } = "";
 
     public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
+
+    public List<ServiceOrderWorkflowArea> WorkflowAreas { get; set; } = Enum.GetValues<ServiceOrderWorkflowArea>().OrderBy(x => (int)x).ToList();
 
     public class WorkItemPostVm
     {
@@ -95,23 +95,55 @@ public class WorkModel : PageModel
         return ok ? Page() : Forbid();
     }
 
+    public async Task<IActionResult> OnPostTakeAsync(Guid id)
+    {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound();
+
+        if (order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
+        {
+            TempData["Info"] = "La orden ya no acepta edicion.";
+            return RedirectToPage(new { id });
+        }
+
+        var userId = GetUserId();
+        order.ClaimedByUserId = userId;
+        order.ClaimedAt = DateTime.UtcNow;
+
+        if (order.Status == ServiceOrderStatus.Created)
+        {
+            order.Status = ServiceOrderStatus.InProgress;
+            order.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        TempData["Info"] = "Orden tomada."
+            ;
+        return RedirectToPage(new { id });
+    }
+
     public async Task<IActionResult> OnPostSaveChecklistAsync(Guid id)
     {
         id = ResolveId(id);
         if (id == Guid.Empty) return NotFound();
 
-        // En POST NO llamamos LoadAsync() porque sobre-escribe lo posteado (ItemsPost / WorkItemsPost).
         Order = await _db.ServiceOrders
             .Include(o => o.Client)
             .Include(o => o.Checklist)
             .Include(o => o.WorkItems)
             .Include(o => o.AssignedEmployee)
+            .Include(o => o.ClaimedByEmployee)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (Order == null) return NotFound();
-        if (!IsAdmin() && GetUserId() != Order.AssignedUserId) return Forbid();
+        if (!CanEditOrder(Order)) return Forbid();
 
-        // Checklist
+        if (Order.CurrentArea != ServiceOrderWorkflowArea.Ejecucion)
+            return Forbid();
+
         foreach (var vm in ItemsPost ?? new())
         {
             var it = Order.Checklist.FirstOrDefault(x => x.Id == vm.Id);
@@ -121,7 +153,6 @@ public class WorkModel : PageModel
             it.Notes = (vm.Notes ?? "").Trim();
         }
 
-        // Campos abiertos por actividad
         if (Order.WorkItems != null && Order.WorkItems.Count > 0 && WorkItemsPost != null && WorkItemsPost.Count > 0)
         {
             foreach (var wvm in WorkItemsPost)
@@ -145,7 +176,43 @@ public class WorkModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        TempData["Info"] = "✅ Guardado.";
+        TempData["Info"] = "Guardado.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostSaveAreaNotesAsync(Guid id)
+    {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound();
+        if (!CanEditOrder(order)) return Forbid();
+
+        var notes = (AreaNotes ?? string.Empty).Trim();
+        if (notes.Length > 4000)
+            notes = notes[..4000];
+
+        switch (order.CurrentArea)
+        {
+            case ServiceOrderWorkflowArea.Levantamiento:
+                order.LevantamientoNotes = notes;
+                break;
+            case ServiceOrderWorkflowArea.Materiales:
+                order.MaterialesNotes = notes;
+                break;
+            default:
+                return Forbid();
+        }
+
+        if (order.Status == ServiceOrderStatus.Created)
+        {
+            order.Status = ServiceOrderStatus.InProgress;
+            order.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        TempData["Info"] = "Observaciones guardadas.";
         return RedirectToPage(new { id });
     }
 
@@ -156,6 +223,7 @@ public class WorkModel : PageModel
 
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
+        if (!CanEditOrder(Order)) return Forbid();
 
         if (EvidenceFile == null || EvidenceFile.Length == 0)
         {
@@ -165,7 +233,7 @@ public class WorkModel : PageModel
         }
 
         var allowed = new[] { ".png", ".jpg", ".jpeg", ".webp", ".pdf", ".heic", ".heif" };
-        var maxBytes = (_cfg.GetValue<int?>("Storage:MaxEvidenceMb") ?? 25) * 1024L * 1024L;
+        var maxBytes = 25 * 1024L * 1024L;
 
         var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
             EvidenceFile,
@@ -200,38 +268,68 @@ public class WorkModel : PageModel
         var order = await _db.ServiceOrders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == ev.OrderId);
         if (order == null) return NotFound();
 
-        if (!IsAdmin() && GetUserId() != order.AssignedUserId)
-            return Forbid();
-
         var (stream, contentType, originalName) = await _storage.OpenAsync(ev.StoragePath, ev.OriginalFileName);
         return File(stream, contentType, originalName);
     }
 
-    // ✅ Un botón: firma y envía
-    public async Task<IActionResult> OnPostSignAndSubmitAsync(
-        Guid id,
-        string? TechName,
-        string? ClientName,
-        string? TechSigDataUrl,
-        string? ClientSigDataUrl)
+    public async Task<IActionResult> OnPostNextAreaAsync(Guid id)
+    {
+        id = ResolveId(id);
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound();
+        if (!CanEditOrder(order)) return Forbid();
+
+        var current = (int)order.CurrentArea;
+        var max = WorkflowAreas.Max(x => (int)x);
+        if (current < max)
+            order.CurrentArea = (ServiceOrderWorkflowArea)(current + 1);
+
+        await _db.SaveChangesAsync();
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostPreviousAreaAsync(Guid id)
+    {
+        id = ResolveId(id);
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound();
+        if (!CanEditOrder(order)) return Forbid();
+
+        var current = (int)order.CurrentArea;
+        var min = WorkflowAreas.Min(x => (int)x);
+        if (current > min)
+            order.CurrentArea = (ServiceOrderWorkflowArea)(current - 1);
+
+        await _db.SaveChangesAsync();
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostSignAndSubmitAsync(Guid id, string? TechSigDataUrl)
     {
         id = ResolveId(id);
         if (id == Guid.Empty) return NotFound();
 
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
+        if (!CanEditOrder(Order)) return Forbid();
 
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
+        if (Order.CurrentArea != ServiceOrderWorkflowArea.CierreTecnico)
+        {
+            Info = "Para enviar la orden debes llegar al area final (Cierre tecnico).";
+            return Page();
+        }
+
+        var techName = await GetCurrentUserDisplayNameAsync();
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, techName, TechSigDataUrl);
 
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
 
         if (Order == null) return NotFound();
 
-        if (!HasTechSignature || !HasClientSignature)
+        if (!HasTechSignature)
         {
-            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
+            Info = "Se requiere la firma del tecnico para enviar a revision.";
             return Page();
         }
 
@@ -247,64 +345,7 @@ WHERE ""Id"" = {id};
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
 
-        Info = "✅ Firmas guardadas y enviado a revisión.";
-        return Page();
-    }
-
-    // Compatibilidad: handlers viejos (ya sin EF SaveChanges para firmas)
-    public async Task<IActionResult> OnPostSaveSignaturesAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
-    {
-        id = ResolveId(id);
-        if (id == Guid.Empty) return NotFound();
-
-        var ok = await LoadAsync(id);
-        if (!ok || Order == null) return Forbid();
-
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
-
-        _db.ChangeTracker.Clear();
-        await LoadAsync(id);
-
-        Info = "Firmas guardadas.";
-        return Page();
-    }
-
-    public async Task<IActionResult> OnPostSubmitForReviewAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
-    {
-        id = ResolveId(id);
-        if (id == Guid.Empty) return NotFound();
-
-        var ok = await LoadAsync(id);
-        if (!ok || Order == null) return Forbid();
-
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, Order.AssignedEmployee?.FullName ?? (TechName ?? ""), TechSigDataUrl);
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, ClientName, ClientSigDataUrl);
-
-        _db.ChangeTracker.Clear();
-        await LoadAsync(id);
-
-        if (Order == null) return NotFound();
-
-        if (!HasTechSignature || !HasClientSignature)
-        {
-            Info = "Para enviar a revisión se requieren ambas firmas (técnico y cliente).";
-            return Page();
-        }
-
-        await _db.Database.ExecuteSqlInterpolatedAsync($@"
-UPDATE ""ServiceOrders""
-SET ""Status"" = {ServiceOrderStatus.InReview},
-    ""SubmittedForReviewAt"" = {DateTime.UtcNow},
-    ""PdfStoragePath"" = NULL,
-    ""PdfGeneratedAt"" = NULL
-WHERE ""Id"" = {id};
-");
-
-        _db.ChangeTracker.Clear();
-        await LoadAsync(id);
-
-        Info = "Enviado a revisión. El admin podrá aprobar/rechazar y generar el PDF.";
+        Info = "Firmada y enviada a revision.";
         return Page();
     }
 
@@ -315,7 +356,6 @@ WHERE ""Id"" = {id};
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null) return NotFound();
-        if (!IsAdmin() && GetUserId() != order.AssignedUserId) return Forbid();
 
         var r = role.Equals("Client", StringComparison.OrdinalIgnoreCase)
             ? SignatureRole.Client
@@ -337,25 +377,16 @@ WHERE ""Id"" = {id};
             .Include(o => o.Signatures)
             .Include(o => o.WorkItems)
             .Include(o => o.AssignedEmployee)
+            .Include(o => o.ClaimedByEmployee)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (Order == null) return true;
 
-        if (!IsAdmin() && GetUserId() != Order.AssignedUserId)
-            return false;
-
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
-        if (!string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))
-            ClientDownloadUrl = $"{baseUrl}/Public/ServiceOrder/{Order.PublicToken}";
-
+        var added = false;
         WorkItems = Order.WorkItems.OrderBy(w => w.SortOrder).ToList();
 
-        // ✅ Autoreparación: si la orden no trae checklist (o faltan por actividad), lo generamos desde plantilla.
-        var added = false;
         if (Order.Type != ServiceOrderType.Global && Order.Checklist.Count == 0)
-        {
             added |= await EnsureChecklistFromTemplateAsync(Order, Order.Type, workItemId: null);
-        }
 
         foreach (var w in WorkItems)
         {
@@ -375,7 +406,6 @@ WHERE ""Id"" = {id};
             IsCompleted = w.IsCompleted
         }).ToList();
 
-        // Checklist plano pero agrupado por actividad
         var flat = new List<ItemVm>();
         var groups = new List<ChecklistGroupVm>();
 
@@ -407,27 +437,40 @@ WHERE ""Id"" = {id};
                 groups.Add(g);
         }
 
+        var checklistForCurrentArea = Order.Checklist
+            .Where(i => ResolveAreaFromCategory(i.Category) == Order.CurrentArea)
+            .ToList();
+
         if (WorkItems.Count == 0)
         {
-            AddGroup(null, "Checklist", Order.Type.ToString(), null, Order.Checklist);
+            AddGroup(null, "Checklist", Order.Type.GetDisplayName(), null, checklistForCurrentArea);
         }
         else
         {
-            var generalItems = Order.Checklist.Where(i => i.WorkItemId == null);
-            AddGroup(null, "Checklist general", "General", null, generalItems);
+            AddGroup(
+                null,
+                "Checklist general",
+                "General",
+                null,
+                checklistForCurrentArea.Where(i => i.WorkItemId == null));
 
             for (var wiIndex = 0; wiIndex < WorkItems.Count; wiIndex++)
             {
                 var w = WorkItems[wiIndex];
-                var wiItems = Order.Checklist.Where(i => i.WorkItemId == w.Id);
-                AddGroup(w.Id, w.Title, w.Type.ToString(), wiIndex, wiItems);
+                AddGroup(
+                    w.Id,
+                    w.Title,
+                    w.Type.GetDisplayName(),
+                    wiIndex,
+                    checklistForCurrentArea.Where(i => i.WorkItemId == w.Id));
             }
         }
 
         ItemsPost = flat;
         ChecklistGroups = groups;
 
-        ChecklistCompletionPercent = $"{(GetChecklistCompletion(Order) * 100m):0.#}%";
+        ChecklistCompletionPercent = $"{(GetChecklistCompletion(checklistForCurrentArea) * 100m):0.#}%";
+        TotalChecklistCompletionPercent = $"{(GetChecklistCompletion(Order.Checklist) * 100m):0.#}%";
 
         Evidences = Order.Evidences
             .OrderByDescending(e => e.UploadedAt)
@@ -439,25 +482,54 @@ WHERE ""Id"" = {id};
             }).ToList();
 
         var tech = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Technician);
-        var cli = Order.Signatures.FirstOrDefault(s => s.Role == SignatureRole.Client);
 
         TechName = !string.IsNullOrWhiteSpace(tech?.SignedByName)
             ? tech!.SignedByName
-            : (Order.AssignedEmployee?.FullName ?? "");
-
-        ClientSignerName = cli?.SignedByName ?? "";
+            : await GetCurrentUserDisplayNameAsync();
 
         HasTechSignature = tech != null && !string.IsNullOrWhiteSpace(tech.StoragePath);
-        HasClientSignature = cli != null && !string.IsNullOrWhiteSpace(cli.StoragePath);
+
+        AreaNotes = Order.CurrentArea switch
+        {
+            ServiceOrderWorkflowArea.Levantamiento => Order.LevantamientoNotes ?? string.Empty,
+            ServiceOrderWorkflowArea.Materiales => Order.MaterialesNotes ?? string.Empty,
+            _ => string.Empty
+        };
+
+        IsClaimedByCurrentUser = Order.ClaimedByUserId == GetUserId();
+        IsReadOnly = !IsAdmin() && !IsClaimedByCurrentUser;
+        var closed = Order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
+        CanTakeOwnership = !IsAdmin() && !closed;
 
         return true;
     }
 
-    private decimal GetChecklistCompletion(ServiceOrder order)
+    private decimal GetChecklistCompletion(IReadOnlyCollection<ServiceOrderChecklistItem> checklist)
     {
-        if (order.Checklist == null || order.Checklist.Count == 0) return 0m;
-        var done = order.Checklist.Count(x => x.IsDone);
-        return (decimal)done / order.Checklist.Count;
+        if (checklist == null || checklist.Count == 0) return 0m;
+        var done = checklist.Count(x => x.IsDone);
+        return (decimal)done / checklist.Count;
+    }
+
+    private static ServiceOrderWorkflowArea ResolveAreaFromCategory(string? category)
+    {
+        var c = (category ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(c))
+            return ServiceOrderWorkflowArea.Ejecucion;
+
+        if (c.Contains("levant") || c.Contains("diagnost"))
+            return ServiceOrderWorkflowArea.Levantamiento;
+
+        if (c.Contains("material"))
+            return ServiceOrderWorkflowArea.Materiales;
+
+        if (c.Contains("prueb") || c.Contains("cierre") || c.Contains("entrega") || c.Contains("validac") || c.Contains("recomend"))
+            return ServiceOrderWorkflowArea.CierreTecnico;
+
+        if (c.Contains("manten") || c.Contains("ejec") || c.Contains("instal") || c.Contains("cable") || c.Contains("equipo") || c.Contains("red"))
+            return ServiceOrderWorkflowArea.Ejecucion;
+
+        return ServiceOrderWorkflowArea.Ejecucion;
     }
 
     private async Task<bool> EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
@@ -492,7 +564,6 @@ WHERE ""Id"" = {id};
         return true;
     }
 
-    // ✅ SQL delete+insert = cero drama con concurrencia
     private async Task<bool> UpsertSignatureIfPresentAsync(Guid orderId, SignatureRole role, string? name, string? dataUrl)
     {
         name = (name ?? "").Trim();
@@ -525,6 +596,13 @@ VALUES
 
     private bool IsAdmin() => User.IsInRole(AppRoles.Admin);
 
+    private bool CanEditOrder(ServiceOrder order)
+    {
+        if (IsAdmin()) return true;
+        var userId = GetUserId();
+        return !string.IsNullOrWhiteSpace(userId) && order.ClaimedByUserId == userId;
+    }
+
     private Guid ResolveId(Guid id)
     {
         if (id != Guid.Empty) return id;
@@ -540,6 +618,22 @@ VALUES
         return Guid.Empty;
     }
 
-    private string GetUserId() =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+    private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+
+    private async Task<string> GetCurrentUserDisplayNameAsync()
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+            return User.Identity?.Name ?? "Tecnico";
+
+        var fullName = await _db.EmployeeProfiles
+            .Where(e => e.UserId == userId)
+            .Select(e => e.FullName)
+            .FirstOrDefaultAsync();
+
+        if (!string.IsNullOrWhiteSpace(fullName))
+            return fullName;
+
+        return User.Identity?.Name ?? "Tecnico";
+    }
 }

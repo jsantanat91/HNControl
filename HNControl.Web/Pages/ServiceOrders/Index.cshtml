@@ -6,8 +6,8 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Mis órdenes de servicio</h1>
-        <div class="text-muted small">Solo ves las órdenes asignadas a ti.</div>
+        <h1 class="h4 m-0">Ordenes de servicio</h1>
+        <div class="text-muted small">Todas las ordenes son visibles. Solo quien la toma puede editar.</div>
     </div>
 </div>
 
@@ -18,7 +18,7 @@
 
 @if (Model.Rows.Count == 0)
 {
-    <div class="alert alert-secondary">No tienes órdenes asignadas todavía.</div>
+    <div class="alert alert-secondary">No hay ordenes registradas.</div>
 }
 else
 {
@@ -28,9 +28,11 @@ else
                 <thead>
                     <tr>
                         <th>Cliente</th>
-                        <th>Título</th>
+                        <th>Titulo</th>
                         <th>Tipo</th>
                         <th>Status</th>
+                        <th>Area</th>
+                        <th>Tomada por</th>
                         <th>Creada</th>
                         <th>Entrega</th>
                         <th class="text-end"></th>
@@ -44,19 +46,31 @@ else
                             <td class="fw-semibold">@r.Title</td>
                             <td>@r.Type</td>
                             <td><span class="badge bg-light text-dark border">@r.Status</span></td>
+                            <td>@r.Area</td>
+                            <td class="text-muted">@r.ClaimedBy</td>
                             <td class="text-muted">@r.Created</td>
                             <td class="text-muted">@r.Due</td>
                             <td class="text-end">
                                 <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
-                                <a class="btn btn-sm btn-outline-secondary" href="@r.PublicUrl" target="_blank">Link cliente</a>
+
+                                @if (r.HasPdf)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/ServiceOrders/DownloadPdf" asp-route-id="@r.Id" target="_blank">Ver PDF</a>
+                                }
+
+                                @if (r.CanTake && !r.IsMine)
+                                {
+                                    <form method="post" asp-page-handler="Take" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <button class="btn btn-sm btn-success" type="submit">Tomar</button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <div class="text-muted small mt-2">
-                “Link cliente” abre la vista pública para firma del cliente (token).
-            </div>
         </div>
     </div>
 }

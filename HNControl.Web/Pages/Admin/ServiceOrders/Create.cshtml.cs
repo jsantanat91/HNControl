@@ -1,5 +1,4 @@
-using System.ComponentModel.DataAnnotations;
-using System;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -21,7 +20,6 @@ public class CreateModel : PageModel
     public SelectList EmployeeItems { get; set; } = default!;
     public SelectList TypeItems { get; set; } = default!;
 
-    // cargadas dinámicamente por JS (pero las dejamos para fallback)
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ContractItems { get; set; } = default!;
 
@@ -42,7 +40,7 @@ public class CreateModel : PageModel
 
         public Guid? ClientServiceContractId { get; set; }
 
-        [Required] public string AssignedUserId { get; set; } = "";
+        public string? AssignedUserId { get; set; }
 
         [DataType(DataType.Date)]
         public DateTime StartDate { get; set; } = DateTime.Today;
@@ -57,7 +55,6 @@ public class CreateModel : PageModel
     {
         await LoadListsAsync();
 
-        // defaults pro: si hay clientes, preselecciona el primero para que JS cargue proyectos/contratos
         if (Input.ClientId == Guid.Empty)
         {
             var firstClient = await _db.Clients.OrderBy(c => c.Name).Select(c => c.Id).FirstOrDefaultAsync();
@@ -71,7 +68,6 @@ public class CreateModel : PageModel
 
         if (!ModelState.IsValid) return Page();
 
-        // Validación de consistencia: contrato pertenece al cliente (y opcionalmente al proyecto)
         if (Input.ClientServiceContractId.HasValue)
         {
             var ok = await _db.ClientServiceContracts.AnyAsync(c =>
@@ -81,7 +77,7 @@ public class CreateModel : PageModel
 
             if (!ok)
             {
-                Error = "El contrato seleccionado no pertenece al cliente/proyecto. (Eso sí es trampa, no trazabilidad 😅)";
+                Error = "El contrato seleccionado no pertenece al cliente/proyecto.";
                 return Page();
             }
         }
@@ -96,7 +92,7 @@ public class CreateModel : PageModel
             ProjectId = Input.ProjectId,
             ClientServiceContractId = Input.ClientServiceContractId,
 
-            AssignedUserId = Input.AssignedUserId,
+            AssignedUserId = string.IsNullOrWhiteSpace(Input.AssignedUserId) ? null : Input.AssignedUserId.Trim(),
 
             StartedAt = TimeUtil.UtcDate(Input.StartDate),
             EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate),
@@ -104,12 +100,12 @@ public class CreateModel : PageModel
             Description = (Input.Description ?? "").Trim(),
 
             PublicToken = Guid.NewGuid().ToString("N"),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            CurrentArea = ServiceOrderWorkflowArea.Levantamiento
         };
 
         _db.ServiceOrders.Add(order);
 
-        // ✅ Checklist inicial desde plantilla (para que el técnico lo vea al instante)
         if (order.Type != ServiceOrderType.Global)
             await EnsureChecklistFromTemplateAsync(order, order.Type, workItemId: null);
 
@@ -118,9 +114,6 @@ public class CreateModel : PageModel
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
-    // -------------------------
-    // Handlers JSON para UI
-    // -------------------------
     public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
     {
         var items = await _db.Projects
@@ -145,8 +138,8 @@ public class CreateModel : PageModel
             .Select(c => new
             {
                 id = c.Id,
-                text = $"{c.ServiceType} · {c.Label}" +
-                       (c.ContractEndDate.HasValue ? $" · vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
+                text = $"{c.ServiceType} - {c.Label}" +
+                       (c.ContractEndDate.HasValue ? $" - vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
             })
             .ToListAsync();
 
@@ -162,7 +155,7 @@ public class CreateModel : PageModel
         EmployeeItems = new SelectList(employees, "UserId", "FullName");
 
         TypeItems = new SelectList(Enum.GetValues<ServiceOrderType>()
-            .Select(t => new { Id = t, Name = t.ToString() }), "Id", "Name");
+            .Select(t => new { Id = t, Name = t.GetDisplayName() }), "Id", "Name");
 
         ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
         ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
@@ -170,7 +163,6 @@ public class CreateModel : PageModel
 
     private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
     {
-        // Si ya hay checklist para ese scope, no duplicamos.
         if (order.Checklist.Any(x => x.WorkItemId == workItemId))
             return;
 

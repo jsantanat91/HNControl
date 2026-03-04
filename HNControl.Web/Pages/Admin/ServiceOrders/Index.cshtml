@@ -1,15 +1,15 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.ServiceOrders.IndexModel
 @{
     Layout = "_Layout";
 
-    ViewData["Title"] = "Órdenes";
+    ViewData["Title"] = "Ordenes";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Órdenes de Servicio</h1>
-        <div class="text-muted small">Admin crea · técnico/cliente llenan por link público</div>
+        <h1 class="h4 m-0">Ordenes de Servicio</h1>
+        <div class="text-muted small">Admin crea la orden general y los tecnicos la toman por etapas.</div>
     </div>
     <a class="btn btn-primary" asp-page="/Admin/ServiceOrders/Create">+ Nueva orden</a>
 </div>
@@ -22,11 +22,12 @@
                     <th>Cliente</th>
                     <th>Proyecto</th>
                     <th>Servicio</th>
-                    <th>Título</th>
+                    <th>Titulo</th>
                     <th>Tipo</th>
                     <th>Status</th>
                     <th>Asignado</th>
-                    <th>Link público</th>
+                    <th>Tomada por</th>
+                    <th>Link publico</th>
                     <th></th>
                 </tr>
             </thead>
@@ -41,6 +42,7 @@
                         <td>@o.Type</td>
                         <td><span class="fw-semibold">@o.Status</span></td>
                         <td class="text-muted">@o.Assigned</td>
+                        <td class="text-muted">@o.ClaimedBy</td>
                         <td>
                             <a href="@o.PublicUrl" target="_blank">Abrir</a>
                         </td>
@@ -53,3 +55,5 @@
         </table>
     </div>
 </div>
+
+
