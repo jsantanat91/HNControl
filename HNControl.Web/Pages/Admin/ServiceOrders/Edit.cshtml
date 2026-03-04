@@ -26,8 +26,10 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" asp-page="./Edit" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-hover">
+    @Html.AntiForgeryToken()
     <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger small mb-2"></div>
         <input type="hidden" asp-for="Input.Id" />
 
         <div class="row g-3">

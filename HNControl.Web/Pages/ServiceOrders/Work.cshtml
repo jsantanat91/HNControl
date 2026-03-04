@@ -40,8 +40,8 @@
 <div class="row g-3">
     <!-- Checklist -->
     <div class="col-12">
-        <form method="post" class="card shadow-sm border-0">
-            <input type="hidden" name="id" value="@Model.Order.Id" />
+        <form method="post" asp-page-handler="SaveChecklist" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+            @Html.AntiForgeryToken()
 
             <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
                 <div>
@@ -51,7 +51,7 @@
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(true)">Marcar todo</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hnChecklistMarkAll(false)">Limpiar</button>
-                    <button type="submit" class="btn btn-primary btn-sm" formaction="?handler=SaveChecklist">Guardar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
                 </div>
             </div>
 
@@ -217,12 +217,12 @@
 
     <!-- Evidencias -->
     <div class="col-12">
-        <form method="post" enctype="multipart/form-data" class="card shadow-sm border-0">
-            <input type="hidden" name="id" value="@Model.Order.Id" />
+        <form method="post" enctype="multipart/form-data" asp-page-handler="UploadEvidence" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+            @Html.AntiForgeryToken()
 
             <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
                 <div class="fw-semibold">Evidencias</div>
-                <button type="submit" class="btn btn-outline-primary btn-sm" formaction="?handler=UploadEvidence">Subir evidencia</button>
+                <button type="submit" class="btn btn-outline-primary btn-sm">Subir evidencia</button>
             </div>
 
             <div class="card-body">
@@ -259,8 +259,8 @@
 
     <!-- Firmas (abajo, grandes) -->
     <div class="col-12">
-        <form method="post" class="card shadow-sm border-0">
-            <input type="hidden" name="id" value="@Model.Order.Id" />
+        <form method="post" asp-page-handler="SignAndSubmit" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
+            @Html.AntiForgeryToken()
             <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
             <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
 
@@ -331,7 +331,6 @@
                 <div class="d-flex flex-wrap gap-2 justify-content-end">
                     <button type="submit"
                             class="btn btn-success px-4"
-                            formaction="?handler=SignAndSubmit"
                             onclick="hnCaptureSigs()"
                             @(disabled ? "disabled" : "")>
                         Firmar y enviar

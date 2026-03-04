@@ -27,6 +27,10 @@ public class WorkModel : PageModel
     public ServiceOrder? Order { get; set; }
     public string? Info { get; set; }
 
+    // ✅ Para que el id siempre esté disponible (GET y POST), incluso si la ruta/query falla.
+    [BindProperty(SupportsGet = true)]
+    public Guid Id { get; set; }
+
     public string ClientDownloadUrl { get; set; } = "";
 
     public string TechName { get; set; } = "";
@@ -85,12 +89,17 @@ public class WorkModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
+        id = ResolveId(id);
         var ok = await LoadAsync(id);
+        Info ??= TempData["Info"] as string;
         return ok ? Page() : Forbid();
     }
 
     public async Task<IActionResult> OnPostSaveChecklistAsync(Guid id)
     {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
         // En POST NO llamamos LoadAsync() porque sobre-escribe lo posteado (ItemsPost / WorkItemsPost).
         Order = await _db.ServiceOrders
             .Include(o => o.Client)
@@ -135,11 +144,16 @@ public class WorkModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+
+        TempData["Info"] = "✅ Guardado.";
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostUploadEvidenceAsync(Guid id)
     {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
@@ -201,6 +215,9 @@ public class WorkModel : PageModel
         string? TechSigDataUrl,
         string? ClientSigDataUrl)
     {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
@@ -237,6 +254,9 @@ WHERE ""Id"" = {id};
     // Compatibilidad: handlers viejos (ya sin EF SaveChanges para firmas)
     public async Task<IActionResult> OnPostSaveSignaturesAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
     {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
@@ -252,6 +272,9 @@ WHERE ""Id"" = {id};
 
     public async Task<IActionResult> OnPostSubmitForReviewAsync(Guid id, string? TechName, string? ClientName, string? TechSigDataUrl, string? ClientSigDataUrl)
     {
+        id = ResolveId(id);
+        if (id == Guid.Empty) return NotFound();
+
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
 
@@ -501,6 +524,21 @@ VALUES
     }
 
     private bool IsAdmin() => User.IsInRole(AppRoles.Admin);
+
+    private Guid ResolveId(Guid id)
+    {
+        if (id != Guid.Empty) return id;
+        if (Id != Guid.Empty) return Id;
+
+        if (RouteData.Values.TryGetValue("id", out var v) && Guid.TryParse(v?.ToString(), out var rid))
+            return rid;
+
+        var formId = Request?.Form["id"].ToString();
+        if (!string.IsNullOrWhiteSpace(formId) && Guid.TryParse(formId, out var fid))
+            return fid;
+
+        return Guid.Empty;
+    }
 
     private string GetUserId() =>
         User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";

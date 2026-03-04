@@ -108,7 +108,31 @@ public class EditModel : PageModel
         await LoadListsAsync();
 
         if (Input == null) return NotFound();
-        if (!ModelState.IsValid) return Page();
+
+        // ⚠️ Esta página tiene 2 forms (Editar orden / Agregar actividad).
+        // Al postear el form principal, el binder también intenta validar NewWorkItem (Title requerido)
+        // y eso hace que "parezca" que no guarda aunque el título de la orden sí venga.
+        // Solución: validamos SOLO Input aquí.
+        ModelState.Clear();
+        TryValidateModel(Input, nameof(Input));
+
+        if (!ModelState.IsValid)
+        {
+            // 👉 Antes esto se veía como “no hace nada” porque no había summary.
+            Error = "No se pudo guardar. " + string.Join(" | ",
+                ModelState
+                    .Where(kvp => kvp.Value?.Errors.Count > 0)
+                    .Select(kvp => $"{kvp.Key}: {string.Join(", ", kvp.Value!.Errors.Select(e => e.ErrorMessage))}"));
+
+            // Mantener la tabla de actividades visible aunque el model tenga errores.
+            WorkItems = await _db.ServiceOrderWorkItems
+                .Where(w => w.OrderId == Input.Id)
+                .OrderBy(w => w.SortOrder)
+                .ToListAsync();
+
+            NewWorkItem.Type = Input.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : Input.Type;
+            return Page();
+        }
 
         // Validación de consistencia
         if (Input.ClientServiceContractId.HasValue)
