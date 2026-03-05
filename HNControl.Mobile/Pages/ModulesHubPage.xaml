@@ -20,8 +20,8 @@
                         <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
                             <Grid ColumnDefinitions="*,Auto">
                                 <VerticalStackLayout Spacing="2">
-                                    <Label FontAttributes="Bold" FontSize="18" Text="{Binding Label}" />
-                                    <Label FontSize="12" Opacity="0.7" Text="{Binding Key}" />
+                                    <Label FontAttributes="Bold" FontSize="18" Text="{Binding Label}" TextColor="#0F172A" />
+                                    <Label FontSize="12" Opacity="0.85" Text="{Binding Key}" TextColor="#64748B" />
                                 </VerticalStackLayout>
                                 <Button Grid.Column="1"
                                         BackgroundColor="#2B5FD9"
