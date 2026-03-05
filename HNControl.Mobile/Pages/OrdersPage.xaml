@@ -3,43 +3,87 @@
     x:Class="HNControl.Mobile.Pages.OrdersPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Ordenes">
-    <Grid RowDefinitions="Auto,*" Padding="14">
-        <Border Grid.Row="0" Padding="12" StrokeShape="RoundRectangle 14">
+    Title="Ordenes"
+    Background="#E9EEF7">
+    <Grid RowDefinitions="Auto,*" Padding="14,12">
+        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                <Label FontAttributes="Bold" FontSize="22" Text="Ordenes de servicio" />
-                <Button Grid.Column="1" Clicked="OnRefreshClicked" Text="Actualizar" />
-                <Label Grid.Row="1" Grid.ColumnSpan="2" Opacity="0.7" Text="Visibles para todo el equipo. Solo quien la toma la edita." />
+                <Label FontAttributes="Bold" FontSize="24" Text="Ordenes de servicio" TextColor="White" />
+                <Button Grid.Column="1"
+                        BackgroundColor="#2B5FD9"
+                        Clicked="OnRefreshClicked"
+                        CornerRadius="10"
+                        HeightRequest="40"
+                        Padding="14,8"
+                        Text="Actualizar"
+                        TextColor="White" />
+                <Label Grid.Row="1"
+                       Grid.ColumnSpan="2"
+                       FontSize="12"
+                       Opacity="0.85"
+                       Text="Visibles para todo el equipo. Solo quien la toma puede editar."
+                       TextColor="#C5D5F0" />
             </Grid>
         </Border>
 
         <RefreshView x:Name="OrdersRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
             <CollectionView x:Name="OrdersCollection" Margin="0,12,0,0" SelectionMode="None">
                 <CollectionView.EmptyView>
-                    <VerticalStackLayout Padding="10" Spacing="8">
-                        <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Sin ordenes" />
-                        <Label HorizontalOptions="Center" Opacity="0.7" Text="Intenta recargar." />
-                    </VerticalStackLayout>
+                    <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                        <VerticalStackLayout Spacing="6">
+                            <Label FontAttributes="Bold" FontSize="19" HorizontalOptions="Center" Text="Sin ordenes" />
+                            <Label HorizontalOptions="Center" Opacity="0.7" Text="Desliza hacia abajo para recargar." />
+                        </VerticalStackLayout>
+                    </Border>
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
-                            <VerticalStackLayout Spacing="6">
+                        <Border Margin="0,0,0,12" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                            <VerticalStackLayout Spacing="7">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <Label FontAttributes="Bold" FontSize="18" Text="{Binding Title}" />
-                                    <Label Grid.Column="1" Opacity="0.7" Text="{Binding CreatedAt, StringFormat='{0:yyyy-MM-dd}'}" />
+                                    <VerticalStackLayout Spacing="0">
+                                        <Label FontAttributes="Bold" FontSize="19" Text="{Binding Title}" />
+                                        <Label FontSize="13" Opacity="0.75" Text="{Binding Client}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1"
+                                           FontSize="12"
+                                           Opacity="0.75"
+                                           Text="{Binding CreatedAt, StringFormat='{0:yyyy-MM-dd}'}"
+                                           VerticalTextAlignment="Start" />
                                 </Grid>
-                                <Label Opacity="0.8" Text="{Binding Client}" />
-                                <HorizontalStackLayout Spacing="8">
-                                    <Label BackgroundColor="#EEF4FF" Padding="8,3" Text="{Binding TypeLabel}" />
-                                    <Label BackgroundColor="#F2F4F7" Padding="8,3" Text="{Binding StatusLabel}" />
-                                    <Label BackgroundColor="#ECFDF3" Padding="8,3" Text="{Binding AreaLabel}" />
+
+                                <HorizontalStackLayout Spacing="6">
+                                    <Border BackgroundColor="{Binding TypeBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding TypeLabel}" />
+                                    </Border>
+                                    <Border BackgroundColor="{Binding StatusBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding StatusLabel}" />
+                                    </Border>
+                                    <Border BackgroundColor="{Binding AreaBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding AreaLabel}" />
+                                    </Border>
                                 </HorizontalStackLayout>
-                                <Label Opacity="0.75" Text="{Binding ClaimedBy, StringFormat='Tomada por: {0}'}" />
-                                <HorizontalStackLayout Spacing="10">
-                                    <Button Clicked="OnDetailClicked" CommandParameter="{Binding Id}" Text="Detalle" />
-                                    <Button Clicked="OnTakeClicked" CommandParameter="{Binding Id}" IsVisible="{Binding CanTake}" Text="Tomar orden" />
-                                </HorizontalStackLayout>
+
+                                <Label FontSize="13" Opacity="0.75" Text="{Binding ClaimedBy, StringFormat='Tomada por: {0}'}" />
+
+                                <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                    <Button Clicked="OnDetailClicked"
+                                            CommandParameter="{Binding Id}"
+                                            CornerRadius="10"
+                                            HeightRequest="38"
+                                            Padding="14,8"
+                                            Text="Detalle" />
+                                    <Button Grid.Column="1"
+                                            BackgroundColor="#2252D5"
+                                            Clicked="OnTakeClicked"
+                                            CommandParameter="{Binding Id}"
+                                            CornerRadius="10"
+                                            HeightRequest="38"
+                                            IsVisible="{Binding CanTake}"
+                                            Padding="14,8"
+                                            Text="Tomar orden"
+                                            TextColor="White" />
+                                </Grid>
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

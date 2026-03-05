@@ -3,7 +3,7 @@ namespace HNControl.Mobile.Services;
 public sealed class MobileApiSettings
 {
     private const string BaseUrlKey = "mobile_api_base_url";
-    private const string DefaultBaseUrl = "http://10.0.2.2:5128";
+    private const string DefaultBaseUrl = "https://control.hubnet-solutions.net";
 
     public string BaseUrl
     {

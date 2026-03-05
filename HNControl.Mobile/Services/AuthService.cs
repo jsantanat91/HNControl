@@ -23,14 +23,13 @@ public sealed class AuthService
 
     public AuthSession Session => _session;
 
-    public async Task LoginAsync(string baseUrl, string email, string password)
+    public async Task LoginAsync(string emailOrUser, string password)
     {
-        _settings.BaseUrl = baseUrl;
         var response = await _api.PostJsonAsync<LoginRequestDto, LoginResponseDto>(
             "api/mobile/auth/login",
             new LoginRequestDto
             {
-                Email = (email ?? "").Trim(),
+                Email = (emailOrUser ?? "").Trim(),
                 Password = password ?? ""
             },
             withAuth: false);

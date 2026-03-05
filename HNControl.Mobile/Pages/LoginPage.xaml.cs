@@ -10,8 +10,6 @@ public partial class LoginPage : ContentPage
     {
         InitializeComponent();
         _auth = auth;
-
-        ApiUrlEntry.Text = _auth.CurrentBaseUrl;
     }
 
     private async void OnLoginClicked(object sender, EventArgs e)
@@ -21,7 +19,6 @@ public partial class LoginPage : ContentPage
         try
         {
             await _auth.LoginAsync(
-                ApiUrlEntry.Text ?? "",
                 EmailEntry.Text ?? "",
                 PasswordEntry.Text ?? "");
 
@@ -45,6 +42,5 @@ public partial class LoginPage : ContentPage
         LoginButton.IsEnabled = !isBusy;
         EmailEntry.IsEnabled = !isBusy;
         PasswordEntry.IsEnabled = !isBusy;
-        ApiUrlEntry.IsEnabled = !isBusy;
     }
 }

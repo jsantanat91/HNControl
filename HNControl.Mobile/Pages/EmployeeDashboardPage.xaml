@@ -3,10 +3,11 @@
     x:Class="HNControl.Mobile.Pages.EmployeeDashboardPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Mi ficha">
+    Title="Mi ficha"
+    Background="#E9EEF7">
     <ScrollView>
         <VerticalStackLayout Padding="14,14,14,30" Spacing="12">
-            <Border Background="#0B1B35" Padding="16" StrokeShape="RoundRectangle 18">
+            <Border Background="#0E2242" Padding="16" StrokeShape="RoundRectangle 18">
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="FullNameLabel" FontAttributes="Bold" FontSize="24" TextColor="White" />
                     <Label x:Name="PositionLabel" Opacity="0.85" TextColor="#C8D3E8" />
@@ -14,7 +15,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="#F5F8FF" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="19" Text="Nomina quincenal" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
@@ -43,7 +44,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="#F7F7F8" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Deducciones y bonos" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
@@ -82,13 +83,13 @@
             </Border>
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Border Background="#F4FBF7" Padding="12" StrokeShape="RoundRectangle 14">
+                <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                     <VerticalStackLayout>
                         <Label FontAttributes="Bold" Text="Vacaciones" />
                         <Label x:Name="VacationSummaryLabel" FontSize="13" Opacity="0.8" />
                     </VerticalStackLayout>
                 </Border>
-                <Border Grid.Column="1" Background="#F7F9FF" Padding="12" StrokeShape="RoundRectangle 14">
+                <Border Grid.Column="1" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                     <VerticalStackLayout>
                         <Label FontAttributes="Bold" Text="Examenes" />
                         <Label x:Name="ExamsSummaryLabel" FontSize="13" Opacity="0.8" />
@@ -96,7 +97,7 @@
                 </Border>
             </Grid>
 
-            <Border Background="#F8FAFC" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Inventario - Mis solicitudes" />
                     <CollectionView x:Name="InventoryCollection" SelectionMode="None">

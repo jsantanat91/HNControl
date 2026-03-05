@@ -69,6 +69,39 @@ public sealed class ServiceOrderListItemDto
         4 => "Cierre tecnico",
         _ => "Area " + CurrentArea
     };
+
+    [JsonIgnore]
+    public string TypeBg => Type switch
+    {
+        1 => "#FFECD8",
+        2 => "#DDF8E8",
+        3 => "#D9E8FF",
+        4 => "#D7F2FF",
+        99 => "#EBECF0",
+        _ => "#EEF2F7"
+    };
+
+    [JsonIgnore]
+    public string StatusBg => Status switch
+    {
+        1 => "#EEF2FF",
+        2 => "#D9E8FF",
+        3 => "#FFF0D5",
+        4 => "#DDF8E8",
+        5 => "#FFF0D5",
+        6 => "#FDE7E7",
+        _ => "#EEF2F7"
+    };
+
+    [JsonIgnore]
+    public string AreaBg => CurrentArea switch
+    {
+        1 => "#D7F2FF",
+        2 => "#E8F5D7",
+        3 => "#E6EEFF",
+        4 => "#E9E3FF",
+        _ => "#EEF2F7"
+    };
 }
 
 public sealed class ServiceOrderDetailDto

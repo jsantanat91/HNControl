@@ -3,35 +3,51 @@
     x:Class="HNControl.Mobile.Pages.OrderDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Detalle orden">
+    Title="Detalle orden"
+    Background="#E9EEF7">
     <ScrollView>
-        <VerticalStackLayout Padding="14" Spacing="10">
-            <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="24" />
-            <Label x:Name="ClientLabel" Opacity="0.8" />
-            <HorizontalStackLayout Spacing="8">
-                <Label x:Name="TypeLabel" BackgroundColor="#EEF4FF" Padding="8,3" />
-                <Label x:Name="StatusLabel" BackgroundColor="#F2F4F7" Padding="8,3" />
-                <Label x:Name="AreaLabel" BackgroundColor="#ECFDF3" Padding="8,3" />
-            </HorizontalStackLayout>
-            <Label x:Name="ClaimedByLabel" Opacity="0.8" />
-            <Label x:Name="CreatedLabel" Opacity="0.75" />
-            <Label x:Name="EstimatedLabel" Opacity="0.75" />
+        <VerticalStackLayout Padding="14,12,14,28" Spacing="10">
+            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="24" TextColor="White" />
+                    <Label x:Name="ClientLabel" FontSize="13" Opacity="0.85" TextColor="#C5D5F0" />
+                    <HorizontalStackLayout Spacing="6">
+                        <Border x:Name="TypeChip" Background="#D9E8FF" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                            <Label x:Name="TypeLabel" FontAttributes="Bold" FontSize="11" />
+                        </Border>
+                        <Border x:Name="StatusChip" Background="#DDF8E8" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                            <Label x:Name="StatusLabel" FontAttributes="Bold" FontSize="11" />
+                        </Border>
+                        <Border x:Name="AreaChip" Background="#D7F2FF" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                            <Label x:Name="AreaLabel" FontAttributes="Bold" FontSize="11" />
+                        </Border>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
 
-            <Border Margin="0,8,0,0" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="ClaimedByLabel" FontSize="13" Opacity="0.8" />
+                    <Label x:Name="CreatedLabel" FontSize="13" Opacity="0.75" />
+                    <Label x:Name="EstimatedLabel" FontSize="13" Opacity="0.75" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Descripcion" />
                     <Label x:Name="DescriptionLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Levantamiento" />
                     <Label x:Name="LevantamientoLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Materiales" />
                     <Label x:Name="MaterialesLabel" />
