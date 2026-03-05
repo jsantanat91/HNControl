@@ -259,6 +259,59 @@ public sealed class CarrierClientDto
     public string CarriersSummary { get; set; } = "";
 }
 
+public sealed class ProjectModuleItemDto
+{
+    public Guid Id { get; set; }
+    public string Client { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime StartDate { get; set; }
+    public DateTime EstimatedEndDate { get; set; }
+}
+
+public sealed class KnowledgeModuleItemDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = "";
+    public string Category { get; set; } = "";
+    public string DocType { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime UpdatedAt { get; set; }
+    public string Url { get; set; } = "";
+}
+
+public sealed class LeaveModuleItemDto
+{
+    public Guid Id { get; set; }
+    public string Type { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public int TotalDays { get; set; }
+    public DateTime RequestedAt { get; set; }
+}
+
+public sealed class ExamModuleItemDto
+{
+    public Guid AssignmentId { get; set; }
+    public string Title { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime AssignedAt { get; set; }
+    public DateTime? DueAt { get; set; }
+    public decimal Score { get; set; }
+    public decimal MaxScore { get; set; }
+}
+
+public sealed class Eval360ModuleItemDto
+{
+    public Guid AssignmentId { get; set; }
+    public string Campaign { get; set; } = "";
+    public string Role { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+}
+
 public sealed class ViaticWeekListItemDto
 {
     public Guid Id { get; set; }

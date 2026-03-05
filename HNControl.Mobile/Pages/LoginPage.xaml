@@ -9,8 +9,15 @@
         <Grid Background="#0E2242" HeightRequest="180">
             <VerticalStackLayout Padding="24,56,24,24" Spacing="4">
                 <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                    <Border Background="White" Padding="6" StrokeShape="RoundRectangle 12" StrokeThickness="0">
-                        <Image HeightRequest="42" Source="hn_logo.png" WidthRequest="42" />
+                    <Border Background="#243A63" Padding="0" StrokeShape="RoundRectangle 14" Stroke="#35507F" StrokeThickness="1">
+                        <Grid HeightRequest="54" WidthRequest="54">
+                            <Label FontAttributes="Bold"
+                                   FontSize="24"
+                                   HorizontalOptions="Center"
+                                   Text="HN"
+                                   TextColor="White"
+                                   VerticalOptions="Center" />
+                        </Grid>
                     </Border>
                     <VerticalStackLayout Spacing="0">
                         <Label FontAttributes="Bold" FontSize="31" Text="HN Control" TextColor="White" />

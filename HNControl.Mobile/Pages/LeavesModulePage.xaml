@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.LeavesModulePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Vacaciones"
+    Background="#E9EEF7">
+    <CollectionView x:Name="ItemsCollection" Margin="14,12,14,12" SelectionMode="None">
+        <CollectionView.EmptyView>
+            <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                <Label HorizontalOptions="Center" Opacity="0.7" Text="Sin solicitudes registradas." />
+            </Border>
+        </CollectionView.EmptyView>
+        <CollectionView.ItemTemplate>
+            <DataTemplate>
+                <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                    <VerticalStackLayout Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label FontAttributes="Bold" FontSize="16" Text="{Binding Type}" />
+                            <Label Grid.Column="1" FontAttributes="Bold" FontSize="12" Text="{Binding Status}" />
+                        </Grid>
+                        <Label FontSize="12" Opacity="0.75" Text="{Binding Range}" />
+                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                    </VerticalStackLayout>
+                </Border>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+    </CollectionView>
+</ContentPage>

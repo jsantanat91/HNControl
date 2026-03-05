@@ -49,6 +49,11 @@ public static class MauiProgram
         builder.Services.AddTransient<CarriersModulePage>();
         builder.Services.AddTransient<ViaticosModulePage>();
         builder.Services.AddTransient<ViaticWeekPage>();
+        builder.Services.AddTransient<ProjectsModulePage>();
+        builder.Services.AddTransient<KnowledgeModulePage>();
+        builder.Services.AddTransient<LeavesModulePage>();
+        builder.Services.AddTransient<ExamsModulePage>();
+        builder.Services.AddTransient<Eval360ModulePage>();
         builder.Services.AddTransient<RootTabsPage>();
 
         return builder.Build();

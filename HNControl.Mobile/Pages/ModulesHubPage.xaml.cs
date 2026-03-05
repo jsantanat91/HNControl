@@ -39,6 +39,11 @@ public partial class ModulesHubPage : ContentPage
             "Inventory" => _services.GetRequiredService<InventoryModulePage>(),
             "Carriers" => _services.GetRequiredService<CarriersModulePage>(),
             "Viaticos" => _services.GetRequiredService<ViaticosModulePage>(),
+            "Projects" => _services.GetRequiredService<ProjectsModulePage>(),
+            "Knowledge" => _services.GetRequiredService<KnowledgeModulePage>(),
+            "Leaves" => _services.GetRequiredService<LeavesModulePage>(),
+            "Exams" => _services.GetRequiredService<ExamsModulePage>(),
+            "Eval360" => _services.GetRequiredService<Eval360ModulePage>(),
             _ => null
         };
 
