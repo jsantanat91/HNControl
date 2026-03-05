@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -15,8 +16,13 @@ public class EditModel : PageModel
     private readonly ApplicationDbContext _db;
     public EditModel(ApplicationDbContext db) => _db = db;
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? ClientId { get; set; }
+
     public List<SelectListItem> ClientOptions { get; set; } = new();
     public List<SelectListItem> CarrierOptions { get; set; } = new();
+    public List<SelectListItem> ContractOptions { get; set; } = new();
+    public string ContractMapJson { get; set; } = "{}";
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -30,6 +36,8 @@ public class EditModel : PageModel
 
         [Required]
         public Guid CarrierId { get; set; }
+
+        public Guid? ClientServiceContractId { get; set; }
 
         [Required, MaxLength(140)]
         public string ServiceLabel { get; set; } = "";
@@ -47,16 +55,18 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        await LoadListsAsync();
-
         var svc = await _db.ClientCarrierServices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (svc == null) return NotFound();
+
+        var loadClientId = ClientId.HasValue && ClientId.Value != Guid.Empty ? ClientId.Value : svc.ClientId;
+        await LoadListsAsync(loadClientId);
 
         Input = new InputModel
         {
             Id = svc.Id,
-            ClientId = svc.ClientId,
+            ClientId = loadClientId,
             CarrierId = svc.CarrierId,
+            ClientServiceContractId = svc.ClientServiceContractId,
             ServiceLabel = svc.ServiceLabel,
             Plan = svc.Plan,
             AccountNumber = svc.AccountNumber,
@@ -73,14 +83,29 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        await LoadListsAsync();
+        await LoadListsAsync(Input.ClientId);
         if (!ModelState.IsValid) return Page();
+
+        if (Input.ClientServiceContractId.HasValue)
+        {
+            var contract = await _db.ClientServiceContracts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == Input.ClientServiceContractId.Value && c.ClientId == Input.ClientId);
+
+            if (contract != null)
+            {
+                if (string.IsNullOrWhiteSpace(Input.ServiceLabel)) Input.ServiceLabel = contract.Label;
+                if (string.IsNullOrWhiteSpace(Input.AccountNumber)) Input.AccountNumber = contract.AccountNumber;
+                if (string.IsNullOrWhiteSpace(Input.ContractNumber)) Input.ContractNumber = contract.ContractNumber;
+            }
+        }
 
         var svc = await _db.ClientCarrierServices.FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (svc == null) return NotFound();
 
         svc.ClientId = Input.ClientId;
         svc.CarrierId = Input.CarrierId;
+        svc.ClientServiceContractId = Input.ClientServiceContractId;
         svc.ServiceLabel = Input.ServiceLabel.Trim();
         svc.Plan = (Input.Plan ?? "").Trim();
         svc.AccountNumber = (Input.AccountNumber ?? "").Trim();
@@ -97,12 +122,37 @@ public class EditModel : PageModel
         return RedirectToPage("./Index", new { clientId = svc.ClientId });
     }
 
-    private async Task LoadListsAsync()
+    private async Task LoadListsAsync(Guid? clientId = null)
     {
         var clients = await _db.Clients.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
         ClientOptions = clients.Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name }).ToList();
 
         var carriers = await _db.InternetCarriers.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
         CarrierOptions = carriers.Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name }).ToList();
+
+        ContractOptions = new();
+        if (clientId.HasValue && clientId.Value != Guid.Empty)
+        {
+            var contracts = await _db.ClientServiceContracts
+                .AsNoTracking()
+                .Where(x => x.ClientId == clientId.Value)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            ContractOptions = contracts
+                .Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Label })
+                .ToList();
+
+            var map = contracts.ToDictionary(
+                c => c.Id.ToString(),
+                c => new
+                {
+                    label = c.Label,
+                    provider = c.Provider,
+                    accountNumber = c.AccountNumber,
+                    contractNumber = c.ContractNumber
+                });
+            ContractMapJson = JsonSerializer.Serialize(map);
+        }
     }
 }

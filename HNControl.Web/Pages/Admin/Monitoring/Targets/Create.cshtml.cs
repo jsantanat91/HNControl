@@ -1,4 +1,5 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,8 @@ public class CreateModel : PageModel
 
     public List<SelectListItem> Clients { get; private set; } = new();
     public List<SelectListItem> Contracts { get; private set; } = new();
+    public List<SelectListItem> CarrierServices { get; private set; } = new();
+    public string CarrierServiceMapJson { get; private set; } = "{}";
 
     public async Task OnGetAsync(Guid? clientId = null)
     {
@@ -37,11 +40,26 @@ public class CreateModel : PageModel
         if (!ModelState.IsValid)
             return Page();
 
+        if (Input.ClientCarrierServiceId != Guid.Empty)
+        {
+            var svc = await _db.ClientCarrierServices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == Input.ClientCarrierServiceId && s.ClientId == Input.ClientId);
+            if (svc != null)
+            {
+                if (Input.ClientServiceContractId == Guid.Empty && svc.ClientServiceContractId.HasValue)
+                    Input.ClientServiceContractId = svc.ClientServiceContractId.Value;
+                if (string.IsNullOrWhiteSpace(Input.Name)) Input.Name = svc.ServiceLabel;
+                if (string.IsNullOrWhiteSpace(Input.IpAddress)) Input.IpAddress = svc.IpInfo;
+            }
+        }
+
         var now = DateTime.UtcNow;
         var target = new MonitorTarget
         {
             ClientId = Input.ClientId,
             ClientServiceContractId = Input.ClientServiceContractId == Guid.Empty ? null : Input.ClientServiceContractId,
+            ClientCarrierServiceId = Input.ClientCarrierServiceId == Guid.Empty ? null : Input.ClientCarrierServiceId,
             Name = Input.Name.Trim(),
             Fqdn = (Input.Fqdn ?? "").Trim(),
             IpAddress = (Input.IpAddress ?? "").Trim(),
@@ -74,6 +92,8 @@ public class CreateModel : PageModel
             .ToListAsync();
 
         Contracts = new List<SelectListItem>();
+        CarrierServices = new List<SelectListItem>();
+
         if (clientId != null && clientId != Guid.Empty)
         {
             Contracts = await _db.ClientServiceContracts
@@ -81,6 +101,28 @@ public class CreateModel : PageModel
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new SelectListItem(x.Label, x.Id.ToString()))
                 .ToListAsync();
+
+            var services = await _db.ClientCarrierServices
+                .AsNoTracking()
+                .Include(x => x.Carrier)
+                .Where(x => x.ClientId == clientId && x.IsActive)
+                .OrderBy(x => x.ServiceLabel)
+                .ToListAsync();
+
+            CarrierServices = services
+                .Select(s => new SelectListItem($"{s.ServiceLabel} · {(s.Carrier != null ? s.Carrier.Name : "Carrier")}", s.Id.ToString()))
+                .ToList();
+
+            var map = services.ToDictionary(
+                s => s.Id.ToString(),
+                s => new
+                {
+                    name = s.ServiceLabel,
+                    ipInfo = s.IpInfo,
+                    contractId = s.ClientServiceContractId?.ToString() ?? "",
+                    notes = s.Notes
+                });
+            CarrierServiceMapJson = JsonSerializer.Serialize(map);
         }
     }
 
@@ -90,6 +132,7 @@ public class CreateModel : PageModel
         public Guid ClientId { get; set; }
 
         public Guid ClientServiceContractId { get; set; }
+        public Guid ClientCarrierServiceId { get; set; }
 
         [Required, MaxLength(200)]
         public string Name { get; set; } = "";

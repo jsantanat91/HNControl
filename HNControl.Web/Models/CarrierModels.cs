@@ -63,6 +63,9 @@ public class ClientCarrierService
     public Guid CarrierId { get; set; }
     public InternetCarrier? Carrier { get; set; }
 
+    public Guid? ClientServiceContractId { get; set; }
+    public ClientServiceContract? ClientServiceContract { get; set; }
+
     [Required, MaxLength(140)]
     public string ServiceLabel { get; set; } = ""; // Nombre interno: "Matriz - Dedicado"
 

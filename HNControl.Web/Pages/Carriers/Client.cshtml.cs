@@ -96,6 +96,7 @@ public class ClientModel : PageModel
         var services = await _db.ClientCarrierServices
             .AsNoTracking()
             .Include(s => s.Carrier)
+            .Include(s => s.ClientServiceContract)
             .Where(s => s.ClientId == clientId && s.IsActive)
             .OrderBy(s => s.ServiceLabel)
             .ToListAsync();

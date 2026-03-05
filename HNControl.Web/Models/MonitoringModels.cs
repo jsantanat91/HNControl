@@ -32,6 +32,9 @@ public class MonitorTarget
     public Guid? ClientServiceContractId { get; set; }
     public ClientServiceContract? ClientServiceContract { get; set; }
 
+    public Guid? ClientCarrierServiceId { get; set; }
+    public ClientCarrierService? ClientCarrierService { get; set; }
+
     [Required, MaxLength(200)]
     public string Name { get; set; } = "";
 

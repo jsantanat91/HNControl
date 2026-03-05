@@ -22,6 +22,7 @@ public class IndexModel : PageModel
         var targets = await _db.MonitorTargets
             .Include(t => t.Client)
             .Include(t => t.ClientServiceContract)
+            .Include(t => t.ClientCarrierService)
             .OrderBy(t => t.Client!.Name)
             .ThenBy(t => t.Name)
             .ToListAsync();
@@ -32,6 +33,7 @@ public class IndexModel : PageModel
             Client = t.Client?.Name ?? "(Sin cliente)",
             Name = t.Name,
             Contract = t.ClientServiceContract?.Label ?? "",
+            CarrierService = t.ClientCarrierService?.ServiceLabel ?? "",
             Probe = t.ProbeType.ToString(),
             Address = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn,
             IntervalSeconds = t.CheckIntervalSeconds,
@@ -59,6 +61,7 @@ public class IndexModel : PageModel
         public string Client { get; set; } = "";
         public string Name { get; set; } = "";
         public string Contract { get; set; } = "";
+        public string CarrierService { get; set; } = "";
         public string Probe { get; set; } = "";
         public string Address { get; set; } = "";
         public int IntervalSeconds { get; set; }

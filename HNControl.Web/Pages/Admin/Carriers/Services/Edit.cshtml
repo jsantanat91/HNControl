@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Carriers.Services.EditModel
 @{
     Layout = "_Layout";
@@ -6,48 +6,55 @@
 }
 
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-    <h1 class="h4 mb-0">Editar servicio</h1>
-    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+    <h1 class="h4 mb-0">Editar servicio carrier</h1>
+    <a class="btn btn-outline-secondary" asp-page="./Index">&larr; Volver</a>
 </div>
 
-<form method="post" class="card">
+<form method="post" class="card shadow-soft hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
 
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Cliente</label>
-                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientOptions"></select>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientOptions" id="clientSel"></select>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Carrier</label>
-                <select class="form-select" asp-for="Input.CarrierId" asp-items="Model.CarrierOptions"></select>
+                <select class="form-select" asp-for="Input.CarrierId" asp-items="Model.CarrierOptions" id="carrierSel"></select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Contrato del cliente (opcional)</label>
+                <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractOptions" id="contractSel">
+                    <option value="">(Sin ligar)</option>
+                </select>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Nombre del servicio</label>
-                <input class="form-control" asp-for="Input.ServiceLabel" />
+                <input class="form-control" asp-for="Input.ServiceLabel" id="serviceLabel" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Plan</label>
+                <label class="form-label">Plan / ancho de banda</label>
                 <input class="form-control" asp-for="Input.Plan" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Dirección del servicio</label>
+                <label class="form-label">Direccion del servicio</label>
                 <input class="form-control" asp-for="Input.ServiceAddress" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label"># Cuenta</label>
-                <input class="form-control" asp-for="Input.AccountNumber" />
+                <label class="form-label">Numero de cuenta</label>
+                <input class="form-control" asp-for="Input.AccountNumber" id="accountNumber" />
             </div>
             <div class="col-md-4">
-                <label class="form-label"># Contrato</label>
-                <input class="form-control" asp-for="Input.ContractNumber" />
+                <label class="form-label">Numero de contrato</label>
+                <input class="form-control" asp-for="Input.ContractNumber" id="contractNumber" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Circuit ID</label>
+                <label class="form-label">Numero de servicio / Circuit ID</label>
                 <input class="form-control" asp-for="Input.CircuitId" />
             </div>
 
@@ -56,7 +63,7 @@
                 <input class="form-control" asp-for="Input.IpInfo" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Tel soporte override</label>
+                <label class="form-label">Telefono soporte override</label>
                 <input class="form-control" asp-for="Input.SupportPhoneOverride" />
             </div>
 
@@ -74,7 +81,7 @@
         </div>
     </div>
 
-    <div class="card-footer d-flex gap-2">
+    <div class="card-footer d-flex gap-2 justify-content-end">
         <button class="btn btn-primary" type="submit">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
     </div>
@@ -82,4 +89,42 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const clientSel = document.getElementById('clientSel');
+            const contractSel = document.getElementById('contractSel');
+            const carrierSel = document.getElementById('carrierSel');
+            const serviceLabel = document.getElementById('serviceLabel');
+            const accountNumber = document.getElementById('accountNumber');
+            const contractNumber = document.getElementById('contractNumber');
+
+            const map = @Html.Raw(Model.ContractMapJson);
+            const carrierOptions = Array.from((carrierSel && carrierSel.options) || []).map(o => ({ value: o.value, text: (o.text || '').toLowerCase() }));
+
+            if (clientSel) {
+                clientSel.addEventListener('change', () => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('clientId', clientSel.value);
+                    window.location.href = url.toString();
+                });
+            }
+
+            if (contractSel) {
+                contractSel.addEventListener('change', () => {
+                    const c = map[contractSel.value];
+                    if (!c) return;
+
+                    if (serviceLabel && !serviceLabel.value) serviceLabel.value = c.label || '';
+                    if (accountNumber && !accountNumber.value) accountNumber.value = c.accountNumber || '';
+                    if (contractNumber && !contractNumber.value) contractNumber.value = c.contractNumber || '';
+
+                    if (carrierSel && c.provider) {
+                        const p = String(c.provider).toLowerCase();
+                        const found = carrierOptions.find(x => x.text.includes(p));
+                        if (found) carrierSel.value = found.value;
+                    }
+                });
+            }
+        })();
+    </script>
 }

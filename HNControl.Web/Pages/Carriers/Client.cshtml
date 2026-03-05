@@ -67,6 +67,10 @@
                                         <img src="@s.CarrierLogoUrl" alt="logo" style="height:20px; width:44px; object-fit:contain;" class="border rounded bg-white p-1" />
                                     }
                                     <span class="badge rounded-pill bg-light text-dark border">@s.CarrierName</span>
+                                    @if (s.Service.ClientServiceContract != null)
+                                    {
+                                        <span class="badge rounded-pill bg-info-subtle text-info border border-info-subtle">Contrato: @s.Service.ClientServiceContract.Label</span>
+                                    }
                                     @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
                                     {
                                         <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle">@s.Service.Plan</span>

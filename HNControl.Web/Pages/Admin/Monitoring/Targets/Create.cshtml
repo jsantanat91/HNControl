@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Monitoring.Targets.CreateModel
 @{
     ViewData["Title"] = "Nuevo target";
@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Nuevo target</h1>
-        <div class="text-muted small">Tip: selecciona primero el cliente para cargar sus servicios.</div>
+        <div class="text-muted small">Ligalo a contrato/servicio carrier para trazabilidad completa.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="Index">Volver</a>
 </div>
@@ -24,15 +24,22 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Servicio contratado (opcional)</label>
-                        <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.Contracts">
+                        <label class="form-label">Servicio carrier (opcional)</label>
+                        <select class="form-select" asp-for="Input.ClientCarrierServiceId" asp-items="Model.CarrierServices" id="carrierServiceSel">
+                            <option value="">(Sin ligar)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Contrato cliente (opcional)</label>
+                        <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.Contracts" id="contractSel">
                             <option value="">(Sin ligar)</option>
                         </select>
                     </div>
 
                     <div class="col-12">
                         <label class="form-label">Nombre del target</label>
-                        <input class="form-control" asp-for="Input.Name" />
+                        <input class="form-control" asp-for="Input.Name" id="targetName" />
                         <span class="text-danger small" asp-validation-for="Input.Name"></span>
                     </div>
 
@@ -47,11 +54,11 @@
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label">IP fija</label>
-                        <input class="form-control" asp-for="Input.IpAddress" placeholder="ej: 189.10.10.2" />
+                        <input class="form-control" asp-for="Input.IpAddress" id="ipAddress" placeholder="ej: 189.10.10.2" />
                     </div>
 
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Máscara</label>
+                        <label class="form-label">Mascara</label>
                         <input class="form-control" asp-for="Input.SubnetMask" placeholder="255.255.255.0" />
                     </div>
                     <div class="col-12 col-md-6">
@@ -107,15 +114,32 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         (function () {
-            const sel = document.getElementById('clientSel');
-            if (!sel) return;
-            sel.addEventListener('change', () => {
-                const v = sel.value;
-                if (!v) return;
-                const url = new URL(window.location.href);
-                url.searchParams.set('clientId', v);
-                window.location.href = url.toString();
-            });
+            const clientSel = document.getElementById('clientSel');
+            const serviceSel = document.getElementById('carrierServiceSel');
+            const contractSel = document.getElementById('contractSel');
+            const targetName = document.getElementById('targetName');
+            const ipAddress = document.getElementById('ipAddress');
+            const map = @Html.Raw(Model.CarrierServiceMapJson);
+
+            if (clientSel) {
+                clientSel.addEventListener('change', () => {
+                    const v = clientSel.value;
+                    if (!v) return;
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('clientId', v);
+                    window.location.href = url.toString();
+                });
+            }
+
+            if (serviceSel) {
+                serviceSel.addEventListener('change', () => {
+                    const s = map[serviceSel.value];
+                    if (!s) return;
+                    if (targetName && !targetName.value) targetName.value = s.name || '';
+                    if (ipAddress && !ipAddress.value && s.ipInfo) ipAddress.value = s.ipInfo;
+                    if (contractSel && s.contractId) contractSel.value = s.contractId;
+                });
+            }
         })();
     </script>
 }

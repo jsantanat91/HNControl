@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Carriers.Services.IndexModel
 @{
     Layout = "_Layout";
@@ -8,7 +8,7 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Servicios por cliente</h1>
-        <div class="text-muted small">Cada fila es un servicio (circuito, plan, cuenta, etc.).</div>
+        <div class="text-muted small">Servicios carrier ligados a contratos y datos operativos.</div>
     </div>
 
     <div class="d-flex gap-2">
@@ -17,7 +17,7 @@
     </div>
 </div>
 
-<form method="get" class="card mb-3">
+<form method="get" class="card mb-3 shadow-soft hn-hover">
     <div class="card-body">
         <div class="row g-2 align-items-end">
             <div class="col-md-5">
@@ -32,7 +32,7 @@
             </div>
             <div class="col-md-5">
                 <label class="form-label small text-muted">Buscar</label>
-                <input class="form-control" name="q" value="@Model.Q" placeholder="Servicio, cuenta, circuito, carrier..." />
+                <input class="form-control" name="q" value="@Model.Q" placeholder="Servicio, contrato, cuenta, circuito, carrier..." />
             </div>
             <div class="col-md-2 d-flex gap-2">
                 <button class="btn btn-primary w-100" type="submit">Filtrar</button>
@@ -42,7 +42,7 @@
     </div>
 </form>
 
-<div class="card">
+<div class="card shadow-soft hn-hover">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table align-middle">
@@ -50,6 +50,7 @@
                     <tr>
                         <th>Cliente</th>
                         <th>Servicio</th>
+                        <th>Contrato ligado</th>
                         <th>Carrier</th>
                         <th># Cuenta</th>
                         <th>Circuit</th>
@@ -65,9 +66,10 @@
                             <div class="fw-semibold">@s.ServiceLabel</div>
                             <div class="text-muted small">@(string.IsNullOrWhiteSpace(s.Plan) ? "" : s.Plan)</div>
                         </td>
+                        <td>@(s.ClientServiceContract?.Label ?? "-")</td>
                         <td>@s.Carrier?.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(s.AccountNumber) ? "—" : s.AccountNumber)</td>
-                        <td>@(string.IsNullOrWhiteSpace(s.CircuitId) ? "—" : s.CircuitId)</td>
+                        <td>@(string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)</td>
+                        <td>@(string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@s.Id">Editar</a>
                             <a class="btn btn-sm btn-outline-secondary" asp-page="/Carriers/Client" asp-route-id="@s.ClientId">Ver</a>

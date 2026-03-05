@@ -30,6 +30,7 @@ public class IndexModel : PageModel
             .AsNoTracking()
             .Include(s => s.Client)
             .Include(s => s.Carrier)
+            .Include(s => s.ClientServiceContract)
             .OrderBy(s => s.Client!.Name)
             .ThenBy(s => s.ServiceLabel)
             .AsQueryable();
@@ -43,7 +44,9 @@ public class IndexModel : PageModel
             query = query.Where(s =>
                 (s.ServiceLabel ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.AccountNumber ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.ContractNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.CircuitId ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.ClientServiceContract != null && (s.ClientServiceContract.Label ?? "").ToLower().Contains(q.ToLower())) ||
                 (s.Client!.Name ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.Carrier!.Name ?? "").ToLower().Contains(q.ToLower()));
         }

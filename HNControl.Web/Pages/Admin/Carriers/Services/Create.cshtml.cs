@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,8 @@ public class CreateModel : PageModel
 
     public List<SelectListItem> ClientOptions { get; set; } = new();
     public List<SelectListItem> CarrierOptions { get; set; } = new();
+    public List<SelectListItem> ContractOptions { get; set; } = new();
+    public string ContractMapJson { get; set; } = "{}";
 
     [BindProperty(SupportsGet = true)]
     public Guid? ClientId { get; set; }
@@ -31,6 +34,8 @@ public class CreateModel : PageModel
 
         [Required]
         public Guid CarrierId { get; set; }
+
+        public Guid? ClientServiceContractId { get; set; }
 
         [Required, MaxLength(140)]
         public string ServiceLabel { get; set; } = "";
@@ -58,10 +63,35 @@ public class CreateModel : PageModel
         await LoadListsAsync();
         if (!ModelState.IsValid) return Page();
 
+        if (Input.ClientServiceContractId.HasValue)
+        {
+            var contract = await _db.ClientServiceContracts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == Input.ClientServiceContractId.Value && c.ClientId == Input.ClientId);
+
+            if (contract != null)
+            {
+                if (string.IsNullOrWhiteSpace(Input.ServiceLabel)) Input.ServiceLabel = contract.Label;
+                if (string.IsNullOrWhiteSpace(Input.AccountNumber)) Input.AccountNumber = contract.AccountNumber;
+                if (string.IsNullOrWhiteSpace(Input.ContractNumber)) Input.ContractNumber = contract.ContractNumber;
+
+                if (Input.CarrierId == Guid.Empty && !string.IsNullOrWhiteSpace(contract.Provider))
+                {
+                    var provider = contract.Provider.Trim().ToLower();
+                    var carrier = await _db.InternetCarriers
+                        .AsNoTracking()
+                        .Where(c => c.IsActive)
+                        .FirstOrDefaultAsync(c => c.Name.ToLower().Contains(provider));
+                    if (carrier != null) Input.CarrierId = carrier.Id;
+                }
+            }
+        }
+
         var svc = new ClientCarrierService
         {
             ClientId = Input.ClientId,
             CarrierId = Input.CarrierId,
+            ClientServiceContractId = Input.ClientServiceContractId,
             ServiceLabel = Input.ServiceLabel.Trim(),
             Plan = (Input.Plan ?? "").Trim(),
             AccountNumber = (Input.AccountNumber ?? "").Trim(),
@@ -93,5 +123,31 @@ public class CreateModel : PageModel
         CarrierOptions = carriers
             .Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name })
             .ToList();
+
+        ContractOptions = new();
+        if (Input.ClientId != Guid.Empty || ClientId.HasValue)
+        {
+            var currentClientId = Input.ClientId != Guid.Empty ? Input.ClientId : ClientId!.Value;
+            var contracts = await _db.ClientServiceContracts
+                .AsNoTracking()
+                .Where(x => x.ClientId == currentClientId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            ContractOptions = contracts
+                .Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Label })
+                .ToList();
+
+            var map = contracts.ToDictionary(
+                c => c.Id.ToString(),
+                c => new
+                {
+                    label = c.Label,
+                    provider = c.Provider,
+                    accountNumber = c.AccountNumber,
+                    contractNumber = c.ContractNumber
+                });
+            ContractMapJson = JsonSerializer.Serialize(map);
+        }
     }
 }

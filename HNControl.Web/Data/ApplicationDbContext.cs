@@ -353,6 +353,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Notes).HasMaxLength(2000);
 
             e.HasIndex(x => new { x.ClientId, x.CarrierId });
+            e.HasIndex(x => x.ClientServiceContractId);
 
             e.HasOne(x => x.Client)
                 .WithMany()
@@ -363,6 +364,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany(c => c.Services)
                 .HasForeignKey(x => x.CarrierId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             e.HasMany(x => x.CarrierNotes)
                 .WithOne(n => n.Service!)
@@ -478,6 +484,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasIndex(x => new { x.IsActive, x.NextCheckAt });
             e.HasIndex(x => x.ClientId);
             e.HasIndex(x => x.ClientServiceContractId);
+            e.HasIndex(x => x.ClientCarrierServiceId);
 
             e.HasOne(x => x.Client)
                 .WithMany()
@@ -487,6 +494,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasOne(x => x.ClientServiceContract)
                 .WithMany()
                 .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.ClientCarrierService)
+                .WithMany()
+                .HasForeignKey(x => x.ClientCarrierServiceId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             e.HasMany(x => x.Checks)
