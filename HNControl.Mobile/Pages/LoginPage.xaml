@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.LoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Login"
+    Background="#F1F5FF">
+    <Grid RowDefinitions="*,Auto,*">
+        <VerticalStackLayout Grid.Row="1" Padding="20" Spacing="12">
+            <Border Background="#0B1B35" Padding="20" StrokeShape="RoundRectangle 20">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" FontSize="30" Text="HN Control" TextColor="White" />
+                    <Label Opacity="0.88" Text="App movil de operaciones" TextColor="#C7D4EB" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="16" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="10">
+                    <Label FontAttributes="Bold" Text="API URL" />
+                    <Entry x:Name="ApiUrlEntry" Placeholder="http://10.0.2.2:5128" />
+                    <Label FontSize="12" Opacity="0.65" Text="Emulador: 10.0.2.2. Celular fisico: IP local del servidor." />
+
+                    <Label FontAttributes="Bold" Text="Correo" />
+                    <Entry x:Name="EmailEntry" Keyboard="Email" Placeholder="admin@hn.local" />
+
+                    <Label FontAttributes="Bold" Text="Password" />
+                    <Entry x:Name="PasswordEntry" IsPassword="True" Placeholder="********" />
+
+                    <Button x:Name="LoginButton" BackgroundColor="#2252D5" Clicked="OnLoginClicked" CornerRadius="12" Text="Entrar" TextColor="White" />
+                    <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" />
+                    <Label x:Name="ErrorLabel" FontAttributes="Bold" IsVisible="False" TextColor="#B42318" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

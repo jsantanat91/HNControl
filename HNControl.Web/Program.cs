@@ -2,11 +2,15 @@ using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using HNControl.Web.Services.Monitoring;
+using HNControl.Web.Services.Mobile;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +48,26 @@ builder.Services.ConfigureApplicationCookie(opt =>
     opt.Cookie.Name = "HNControl.Auth";
 });
 
+builder.Services.AddAuthentication()
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opt =>
+    {
+        var issuer = builder.Configuration["Jwt:Issuer"] ?? "HNControl.Mobile";
+        var audience = builder.Configuration["Jwt:Audience"] ?? "HNControl.Mobile";
+        var key = builder.Configuration["Jwt:Key"] ?? "DEV_ONLY_CHANGE_THIS_KEY_32_CHARS_MIN";
+
+        opt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
 // --------------------
 // Authorization policies
 // --------------------
@@ -52,6 +76,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole(AppRoles.Admin));
     options.AddPolicy("EmployeeOnly", policy => policy.RequireRole(AppRoles.Employee, AppRoles.Admin));
 });
+builder.Services.AddControllers();
+builder.Services.AddScoped<MobileJwtTokenService>();
 
 // --------------------
 // Permisos por módulo (Employee)
@@ -226,6 +252,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapRazorPages();
 
 using (var scope = app.Services.CreateScope())

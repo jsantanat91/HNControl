@@ -1,0 +1,20 @@
+# Build
+bin/
+obj/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# MAUI / Android local artifacts
+*.apk
+*.aab
+*.ap_
+*.keystore
+*.jks
+*.pfx
+*.mobileprovision
+
+# Logs
+*.log

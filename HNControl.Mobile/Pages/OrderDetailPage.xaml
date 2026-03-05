@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.OrderDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Detalle orden">
+    <ScrollView>
+        <VerticalStackLayout Padding="14" Spacing="10">
+            <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="24" />
+            <Label x:Name="ClientLabel" Opacity="0.8" />
+            <HorizontalStackLayout Spacing="8">
+                <Label x:Name="TypeLabel" BackgroundColor="#EEF4FF" Padding="8,3" />
+                <Label x:Name="StatusLabel" BackgroundColor="#F2F4F7" Padding="8,3" />
+                <Label x:Name="AreaLabel" BackgroundColor="#ECFDF3" Padding="8,3" />
+            </HorizontalStackLayout>
+            <Label x:Name="ClaimedByLabel" Opacity="0.8" />
+            <Label x:Name="CreatedLabel" Opacity="0.75" />
+            <Label x:Name="EstimatedLabel" Opacity="0.75" />
+
+            <Border Margin="0,8,0,0" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" Text="Descripcion" />
+                    <Label x:Name="DescriptionLabel" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" Text="Levantamiento" />
+                    <Label x:Name="LevantamientoLabel" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" Text="Materiales" />
+                    <Label x:Name="MaterialesLabel" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
