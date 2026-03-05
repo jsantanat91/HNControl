@@ -9,10 +9,13 @@
         <h1 class="h4 mb-1">Monitoreo</h1>
         <div class="text-muted small">Ping, TCP y HTTP por cliente con estado actual.</div>
     </div>
-    @if (Model.IsAdmin)
-    {
-        <a class="btn btn-primary" asp-page="/Admin/Monitoring/Targets/Index">Administrar targets</a>
-    }
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" asp-page="/Monitoring/CreateTarget">+ Nuevo target</a>
+        @if (Model.IsAdmin)
+        {
+            <a class="btn btn-outline-primary" asp-page="/Admin/Monitoring/Targets/Index">Administrar targets</a>
+        }
+    </div>
 </div>
 
 <div class="row g-3 mb-3">

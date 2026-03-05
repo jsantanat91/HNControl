@@ -1,12 +1,16 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Employees.Deductions.IndexModel
+@using HNControl.Web.Models
 @{
     ViewData["Title"] = "Ajustes";
+    var activeCount = Model.Items.Count(x => x.IsActive);
+    var inactiveCount = Model.Items.Count(x => !x.IsActive);
+    var netImpact = Model.BonusTotal - Model.DeductTotal;
 }
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Ajustes</h1>
+        <h1 class="h4 mb-0">Ajustes de n&oacute;mina</h1>
         <div class="text-muted small">@Model.Employee?.FullName</div>
     </div>
     <div class="d-flex gap-2">
@@ -15,58 +19,77 @@
     </div>
 </div>
 
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Activos</div><div class="h4 mb-0">@activeCount</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Inactivos</div><div class="h4 mb-0">@inactiveCount</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Deducci&oacute;n por periodo</div><div class="h4 mb-0">@Model.DeductTotal.ToString("C")</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Impacto neto</div><div class="h4 mb-0 @(netImpact >= 0 ? "text-success" : "text-warning-emphasis")">@netImpact.ToString("C")</div></div></div>
+    </div>
+</div>
+
 @if (!Model.Items.Any())
 {
-    <div class="alert alert-info">Sin ajustes aún. (Tu nómina está demasiado tranquila… sospechoso.)</div>
+    <div class="alert alert-light border">Sin ajustes todav&iacute;a.</div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-            <tr>
-                <th>Concepto</th>
-                <th>Tipo</th>
-                <th>Movimiento</th>
-                <th>Frecuencia</th>
-                <th>Cálculo</th>
-                <th>Importe</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Saldo</th>
-                <th class="text-end"></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var d in Model.Items)
-            {
-                <tr>
-                    <td class="fw-semibold">@d.Concept</td>
-                    <td class="text-muted small">@d.Type.GetDisplayName()</td>
-                    <td>
-                        @if (d.Direction == HNControl.Web.Models.EmployeeDeductionDirection.Bonus)
+    <div class="row row-cols-1 row-cols-lg-2 g-3">
+        @foreach (var d in Model.Items)
+        {
+            var directionClass = d.Direction == EmployeeDeductionDirection.Bonus ? "hn-badge-green" : "hn-badge-amber";
+            var statusClass = d.IsActive ? "hn-badge-blue" : "hn-badge-slate";
+            var hasProgress = d.PaidPeriods.HasValue && d.TotalPeriods.HasValue && d.TotalPeriods.Value > 0;
+            var progressPct = hasProgress ? Math.Round((d.PaidPeriods!.Value * 100m) / d.TotalPeriods!.Value, 0) : 0;
+
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-semibold fs-5">@d.Concept</div>
+                                <div class="small text-muted">@d.Type.GetDisplayName() &middot; @d.Mode.GetDisplayName()</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="hn-badge @statusClass">@(d.IsActive ? "Activo" : "Inactivo")</span>
+                                <span class="hn-badge @directionClass">@d.Direction.GetDisplayName()</span>
+                            </div>
+                        </div>
+
+                        <div class="small mt-2">Frecuencia: <b>@d.Frequency.GetDisplayName()</b></div>
+                        @if (d.Frequency == EmployeeDeductionFrequency.Monthly)
                         {
-                            <span class="badge text-bg-success">@d.Direction.GetDisplayName()</span>
+                            <div class="small text-muted">Aplica en: @((d.ApplyOnHalf ?? EmployeeDeductionApplyOnHalf.First).GetDisplayName())</div>
                         }
-                        else
+
+                        <div class="small mt-1">Importe: <b>@d.AmountLabel</b></div>
+                        <div class="small text-muted">Inicio: @(d.StartDate?.ToString("dd/MM/yyyy") ?? "-") &middot; Fin: @(d.EndDate?.ToString("dd/MM/yyyy") ?? "-")</div>
+
+                        @if (d.TotalAmount.HasValue || d.RemainingAmount.HasValue)
                         {
-                            <span class="badge text-bg-warning">@d.Direction.GetDisplayName()</span>
+                            <div class="small mt-1">Monto total: <b>@(d.TotalAmount?.ToString("C") ?? "-")</b> &middot; Saldo: <b>@(d.RemainingAmount?.ToString("C") ?? "-")</b></div>
                         }
-                    </td>
-                    <td class="text-muted small">
-                        @d.Frequency.GetDisplayName()
-                        @if (d.Frequency == HNControl.Web.Models.EmployeeDeductionFrequency.Monthly)
+
+                        @if (hasProgress)
                         {
-                            <span> · @((d.ApplyOnHalf ?? HNControl.Web.Models.EmployeeDeductionApplyOnHalf.First).GetDisplayName())</span>
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between small">
+                                    <span>Progreso de pago</span>
+                                    <span>Pago @d.PaidPeriods de @d.TotalPeriods</span>
+                                </div>
+                                <div class="progress" style="height:6px;">
+                                    <div class="progress-bar" role="progressbar" style="width:@progressPct%"></div>
+                                </div>
+                            </div>
                         }
-                    </td>
-                    <td class="text-muted small">@d.Mode.GetDisplayName()</td>
-                    <td>@d.AmountLabel</td>
-                    <td class="text-muted small">@(d.StartDate?.ToString("dd/MM/yyyy") ?? "—")</td>
-                    <td class="text-muted small">@(d.EndDate?.ToString("dd/MM/yyyy") ?? "—")</td>
-                    <td class="text-muted small">@(d.RemainingAmount?.ToString("N2") ?? "—")</td>
-                    <td class="text-end">
-                        <div class="d-inline-flex gap-2">
+
+                        <div class="mt-auto pt-3 d-flex gap-2 justify-content-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@d.Id" asp-route-userId="@Model.UserId">Editar</a>
                             @if (d.IsActive)
                             {
@@ -77,10 +100,9 @@ else
                                 </form>
                             }
                         </div>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 }

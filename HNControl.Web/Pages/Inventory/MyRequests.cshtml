@@ -1,71 +1,91 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Inventory.MyRequestsModel
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Mis solicitudes";
+
+    var inCount = Model.Orders.Count(x => x.Type == InventoryMovementType.In);
+    var outCount = Model.Orders.Count(x => x.Type == InventoryMovementType.Out);
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Mis solicitudes</h1>
-        <div class="text-muted small">Tus solicitudes, agrupadas por orden (ya no por pieza suelta).</div>
+        <div class="text-muted small">Tus solicitudes agrupadas por orden.</div>
     </div>
 
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="./Index">← Inventario</a>
+        <a class="btn btn-outline-secondary" asp-page="./Index">&larr; Inventario</a>
         <a class="btn btn-outline-secondary" asp-page="./ExportMyRequests">Exportar (Excel)</a>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Resumen</th>
-                    <th>Proyecto</th>
-                    <th>Responsable</th>
-                    <th>Status</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach (var o in Model.Orders)
-                {
-                    <tr>
-                        <td class="text-muted small">@o.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                        <td>
-                            <span class="badge text-bg-light">@(o.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
-                            <span class="badge text-bg-secondary">@o.LinesCount líneas</span>
-                        </td>
-                        <td>
-                            <div class="fw-semibold">@o.ItemsPreview</div>
-                        </td>
-                        <td>@(string.IsNullOrWhiteSpace(o.ProjectTitle) ? "—" : o.ProjectTitle)</td>
-                        <td>@o.ResponsibleName</td>
-                        <td>
-                            <span class="badge @o.StatusCss">@o.StatusLabel</span>
-                        </td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="./RequestDetails" asp-route-id="@o.AnchorId">Ver</a>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total &oacute;rdenes</div>
+                <div class="h3 mb-0">@Model.Orders.Count</div>
+            </div>
         </div>
-
-        @if (Model.Orders.Count == 0)
-        {
-            <div class="text-muted">Sin solicitudes.</div>
-        }
-        else
-        {
-            <div class="text-muted small mt-2">Mostrando hasta 300 órdenes.</div>
-        }
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Entradas</div>
+                <div class="h3 mb-0">@inCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Salidas</div>
+                <div class="h3 mb-0">@outCount</div>
+            </div>
+        </div>
     </div>
 </div>
+
+@if (!Model.Orders.Any())
+{
+    <div class="alert alert-light border">Sin solicitudes.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+        @foreach (var o in Model.Orders)
+        {
+            var typeClass = o.Type == InventoryMovementType.In ? "hn-badge-green" : "hn-badge-blue";
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <span class="hn-badge @typeClass">@(o.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
+                                <span class="hn-badge hn-badge-slate">@o.LinesCount l&iacute;neas</span>
+                            </div>
+                            <div class="small text-muted">@o.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+
+                        <div class="fw-semibold mt-2">@o.ItemsPreview</div>
+
+                        <div class="small text-muted mt-2">Proyecto: @(string.IsNullOrWhiteSpace(o.ProjectTitle) ? "-" : o.ProjectTitle)</div>
+                        <div class="small text-muted">Responsable: @o.ResponsibleName</div>
+
+                        <div class="mt-2">
+                            <span class="badge @o.StatusCss">@o.StatusLabel</span>
+                        </div>
+
+                        <div class="mt-auto pt-3 d-flex justify-content-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="./RequestDetails" asp-route-id="@o.AnchorId">Ver detalle</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-muted small mt-3">Mostrando hasta 300 &oacute;rdenes.</div>
+}

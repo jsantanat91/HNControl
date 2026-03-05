@@ -36,8 +36,14 @@ public class MyProfileModel : PageModel
         EmployeeDeductionType Type,
         EmployeeDeductionMode Mode,
         EmployeeDeductionDirection Direction,
+        EmployeeDeductionFrequency Frequency,
+        EmployeeDeductionApplyOnHalf? ApplyOnHalf,
         decimal PeriodAmount,
+        int? TermCount,
         decimal? RemainingAmount,
+        decimal? TotalAmount,
+        int? ProgressPaidPeriods,
+        int? ProgressTotalPeriods,
         DateTime StartDate,
         DateTime? EndDate
     );
@@ -70,6 +76,8 @@ public class MyProfileModel : PageModel
 
     public string ExamsLabelsJson { get; set; } = "[]";
     public string ExamsValuesJson { get; set; } = "[]";
+    public string PayrollLabelsJson { get; set; } = "[]";
+    public string PayrollValuesJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -159,6 +167,11 @@ public class MyProfileModel : PageModel
             : $"{review.PeriodStart:yyyy-MM-dd} a {review.PeriodEnd:yyyy-MM-dd}";
 
         CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, BonusesTotal, net);
+
+        var payLabels = new[] { "Neto", "Deducciones", "Bonos" };
+        var payValues = new[] { net, DeductionsTotal, BonusesTotal };
+        PayrollLabelsJson = JsonSerializer.Serialize(payLabels);
+        PayrollValuesJson = JsonSerializer.Serialize(payValues);
     }
 
     private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal)
@@ -229,8 +242,14 @@ public class MyProfileModel : PageModel
                     d.Type,
                     d.Mode,
                     d.Direction,
+                    d.Frequency,
+                    d.ApplyOnHalf,
                     amount,
+                    d.TermCount,
                     d.RemainingAmount,
+                    d.TotalAmount,
+                    CalcPaidPeriods(d, amount),
+                    CalcTotalPeriods(d, amount),
                     d.StartDate,
                     d.EndDate
                 ));
@@ -396,5 +415,68 @@ public class MyProfileModel : PageModel
         var date = d.Date;
         var diff = (7 + (int)date.DayOfWeek - (int)DayOfWeek.Monday) % 7;
         return date.AddDays(-diff);
+    }
+
+    private static int? CalcTotalPeriods(EmployeeDeduction d, decimal periodAmount)
+    {
+        if (d.TermCount.HasValue && d.TermCount.Value > 0)
+            return d.TermCount.Value;
+
+        if (d.TotalAmount.HasValue && d.TotalAmount.Value > 0m && periodAmount > 0m)
+            return (int)Math.Ceiling(d.TotalAmount.Value / periodAmount);
+
+        return null;
+    }
+
+    private static int? CalcPaidPeriods(EmployeeDeduction d, decimal periodAmount)
+    {
+        var total = CalcTotalPeriods(d, periodAmount);
+        if (!total.HasValue || total.Value <= 0)
+            return null;
+
+        if (d.RemainingAmount.HasValue && d.TotalAmount.HasValue && d.TotalAmount.Value > 0m && periodAmount > 0m)
+        {
+            var remainingPeriods = (int)Math.Ceiling(Math.Max(0m, d.RemainingAmount.Value) / periodAmount);
+            var paid = total.Value - remainingPeriods;
+            if (paid < 0) paid = 0;
+            if (paid > total.Value) paid = total.Value;
+            return paid;
+        }
+
+        var occurred = CountPeriodsOccurred(d.StartDate, DateTime.UtcNow.Date, d.Frequency, d.ApplyOnHalf);
+        if (occurred < 0) occurred = 0;
+        if (occurred > total.Value) occurred = total.Value;
+        return occurred;
+    }
+
+    private static int CountPeriodsOccurred(DateTime start, DateTime end, EmployeeDeductionFrequency freq, EmployeeDeductionApplyOnHalf? applyOnHalf)
+    {
+        if (end < start) return 0;
+
+        if (freq == EmployeeDeductionFrequency.Biweekly)
+        {
+            var count = 0;
+            var cursor = start;
+            while (cursor <= end)
+            {
+                count++;
+                cursor = cursor.Day <= 15
+                    ? new DateTime(cursor.Year, cursor.Month, DateTime.DaysInMonth(cursor.Year, cursor.Month))
+                    : new DateTime(cursor.Year, cursor.Month, 15).AddMonths(1);
+            }
+            return count;
+        }
+
+        var half = applyOnHalf ?? EmployeeDeductionApplyOnHalf.First;
+        var monthCursor = new DateTime(start.Year, start.Month, 1);
+        var countMonthly = 0;
+        while (monthCursor <= end)
+        {
+            var day = half == EmployeeDeductionApplyOnHalf.First ? 15 : DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month);
+            var hit = new DateTime(monthCursor.Year, monthCursor.Month, day);
+            if (hit >= start && hit <= end) countMonthly++;
+            monthCursor = monthCursor.AddMonths(1);
+        }
+        return countMonthly;
     }
 }

@@ -1,0 +1,121 @@
+@page
+@model HNControl.Web.Pages.Monitoring.CreateTargetModel
+@{
+    ViewData["Title"] = "Nuevo target";
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Nuevo target</h1>
+        <div class="text-muted small">Alta operativa para monitoreo Ping/TCP/HTTP.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Monitoring/Index">Volver</a>
+</div>
+
+<form method="post" class="row g-3">
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" asp-for="Input.ClientId" asp-items="Model.Clients" id="clientSel"></select>
+                        <span class="text-danger small" asp-validation-for="Input.ClientId"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Servicio contratado (opcional)</label>
+                        <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.Contracts">
+                            <option value="">(Sin ligar)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Nombre del target</label>
+                        <input class="form-control" asp-for="Input.Name" />
+                        <span class="text-danger small" asp-validation-for="Input.Name"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Tipo de prueba</label>
+                        <select class="form-select" asp-for="Input.ProbeType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.MonitorProbeType>()"></select>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">FQDN</label>
+                        <input class="form-control" asp-for="Input.Fqdn" placeholder="ej: sap.cliente.com" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">IP fija</label>
+                        <input class="form-control" asp-for="Input.IpAddress" placeholder="ej: 189.10.10.2" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Mascara</label>
+                        <input class="form-control" asp-for="Input.SubnetMask" placeholder="255.255.255.0" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Gateway</label>
+                        <input class="form-control" asp-for="Input.Gateway" placeholder="189.10.10.1" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">TCP Port (si aplica)</label>
+                        <input class="form-control" asp-for="Input.TcpPort" type="number" min="1" max="65535" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">HTTP URL (si aplica)</label>
+                        <input class="form-control" asp-for="Input.HttpUrl" placeholder="https://..." />
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Intervalo (seg)</label>
+                        <input class="form-control" asp-for="Input.CheckIntervalSeconds" type="number" min="10" max="86400" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Timeout (ms)</label>
+                        <input class="form-control" asp-for="Input.TimeoutMs" type="number" min="250" max="60000" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Fail threshold</label>
+                        <input class="form-control" asp-for="Input.FailThreshold" type="number" min="1" max="50" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control" asp-for="Input.Notes" rows="6"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 d-flex justify-content-end gap-2">
+        <button class="btn btn-primary" type="submit">Guardar target</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const sel = document.getElementById('clientSel');
+            if (!sel) return;
+            sel.addEventListener('change', () => {
+                const v = sel.value;
+                if (!v) return;
+                const url = new URL(window.location.href);
+                url.searchParams.set('clientId', v);
+                window.location.href = url.toString();
+            });
+        })();
+    </script>
+}

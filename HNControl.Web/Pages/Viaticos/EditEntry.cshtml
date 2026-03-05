@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Viaticos.EditEntryModel
 @{
     Layout = "_Layout";
@@ -7,75 +7,90 @@
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
-  <div class="alert alert-warning">@Model.Error</div>
+    <div class="alert alert-warning">@Model.Error</div>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h1 class="h4 m-0">Editar gasto</h1>
-    <div class="text-muted small">Ajusta el gasto y/o sube el PDF.</div>
-  </div>
-  <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@(Model.Week?.Id)">Volver</a>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h1 class="h4 m-0">Editar gasto</h1>
+        <div class="text-muted small">Ajusta datos, monto y archivo PDF.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@(Model.Week?.Id)">Volver</a>
 </div>
 
-<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
-  <div class="card-body">
-    <input type="hidden" asp-for="EntryId" />
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <input type="hidden" asp-for="EntryId" />
 
-    <div class="row g-3">
-      <div class="col-md-3">
-        <label class="form-label fw-semibold">Día</label>
-        <input class="form-control" asp-for="DayDate" type="date" />
-        <span class="text-danger" asp-validation-for="DayDate"></span>
-      </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Dia</label>
+                        <input class="form-control" asp-for="DayDate" type="date" />
+                        <span class="text-danger" asp-validation-for="DayDate"></span>
+                    </div>
 
-      <div class="col-md-3">
-        <label class="form-label fw-semibold">Categoría</label>
-        <select class="form-select" asp-for="Category" asp-items="Model.CategoryItems"></select>
-      </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Categoria</label>
+                        <select class="form-select" asp-for="Category" asp-items="Model.CategoryItems"></select>
+                    </div>
 
-      <div class="col-md-6">
-        <label class="form-label fw-semibold">Descripción</label>
-        <input class="form-control" asp-for="Description" />
-        <span class="text-danger" asp-validation-for="Description"></span>
-      </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Monto</label>
+                        <input class="form-control" asp-for="Amount" type="number" step="0.01" />
+                        <span class="text-danger" asp-validation-for="Amount"></span>
+                    </div>
 
-      <div class="col-md-3">
-        <label class="form-label fw-semibold">Monto</label>
-        <input class="form-control" asp-for="Amount" type="number" step="0.01" />
-        <span class="text-danger" asp-validation-for="Amount"></span>
-      </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Descripcion</label>
+                        <input class="form-control" asp-for="Description" />
+                        <span class="text-danger" asp-validation-for="Description"></span>
+                    </div>
 
-      <div class="col-md-3 d-flex align-items-end">
-        <div class="form-check">
-          <input class="form-check-input" asp-for="IsBillable" />
-          <label class="form-check-label">Facturable</label>
-        </div>
-      </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="IsBillable" />
+                            <label class="form-check-label">Facturable</label>
+                        </div>
+                    </div>
 
-      <div class="col-md-6">
-        <label class="form-label fw-semibold">PDF (factura/recibo)</label>
-        <input class="form-control" asp-for="PdfFile" type="file" accept="application/pdf" />
-        <span class="text-danger" asp-validation-for="PdfFile"></span>
-        <div class="form-text">Si marcas facturable, el PDF es obligatorio.</div>
-      </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">PDF (factura/recibo)</label>
+                        <input class="form-control" asp-for="PdfFile" type="file" accept="application/pdf" />
+                        <span class="text-danger" asp-validation-for="PdfFile"></span>
+                        <div class="form-text">Si marcas facturable, el PDF es obligatorio.</div>
+                    </div>
 
-      <div class="col-md-6">
-        <div class="form-check mt-4">
-          <input class="form-check-input" asp-for="RemovePdf" />
-          <label class="form-check-label">Eliminar PDF actual</label>
-        </div>
-        <span class="text-danger" asp-validation-for="RemovePdf"></span>
-      </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="RemovePdf" />
+                            <label class="form-check-label">Eliminar PDF actual</label>
+                        </div>
+                        <span class="text-danger" asp-validation-for="RemovePdf"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer d-flex gap-2 justify-content-end">
+                <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@(Model.Week?.Id)">Cancelar</a>
+                <button class="btn btn-primary" type="submit">Guardar</button>
+            </div>
+        </form>
     </div>
-  </div>
 
-  <div class="card-footer d-flex gap-2 justify-content-end">
-    <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@(Model.Week?.Id)">Cancelar</a>
-    <button class="btn btn-primary" type="submit">Guardar</button>
-  </div>
-</form>
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-body">
+                <div class="fw-semibold mb-2">Reglas rapidas</div>
+                <div class="small text-muted">1. El dia debe estar dentro de la semana.</div>
+                <div class="small text-muted">2. Si es facturable, sube PDF.</div>
+                <div class="small text-muted">3. Si quitas PDF, no puede quedar facturable.</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
-  <partial name="_ValidationScriptsPartial" />
+    <partial name="_ValidationScriptsPartial" />
 }

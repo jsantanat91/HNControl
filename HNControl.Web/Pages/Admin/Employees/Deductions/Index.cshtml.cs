@@ -20,6 +20,8 @@ public class IndexModel : PageModel
 
     public EmployeeProfile? Employee { get; private set; }
     public List<Row> Items { get; private set; } = new();
+    public decimal DeductTotal { get; private set; }
+    public decimal BonusTotal { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -53,8 +55,13 @@ public class IndexModel : PageModel
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             IsActive = d.IsActive,
-            RemainingAmount = d.RemainingAmount
+            RemainingAmount = d.RemainingAmount,
+            TotalAmount = d.TotalAmount,
+            TermCount = d.TermCount
         }).ToList();
+
+        DeductTotal = Items.Where(x => x.IsActive && x.Direction == EmployeeDeductionDirection.Deduct).Sum(x => x.PerPeriodAmount);
+        BonusTotal = Items.Where(x => x.IsActive && x.Direction == EmployeeDeductionDirection.Bonus).Sum(x => x.PerPeriodAmount);
 
         return Page();
     }
@@ -90,6 +97,21 @@ public class IndexModel : PageModel
         public DateTime? EndDate { get; set; }
         public bool IsActive { get; set; }
         public decimal? RemainingAmount { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public int? TermCount { get; set; }
+
+        public decimal PerPeriodAmount
+        {
+            get
+            {
+                var amount = Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => Amount,
+                    _ => Amount
+                };
+                return Math.Round(Math.Max(0m, amount), 2);
+            }
+        }
 
         public string AmountLabel
         {
@@ -102,6 +124,37 @@ public class IndexModel : PageModel
                 };
 
                 return Direction == EmployeeDeductionDirection.Bonus ? "+" + baseLabel : baseLabel;
+            }
+        }
+
+        public int? TotalPeriods
+        {
+            get
+            {
+                if (TermCount.HasValue && TermCount.Value > 0) return TermCount.Value;
+                if (TotalAmount.HasValue && TotalAmount.Value > 0m && PerPeriodAmount > 0m)
+                    return (int)Math.Ceiling(TotalAmount.Value / PerPeriodAmount);
+                return null;
+            }
+        }
+
+        public int? PaidPeriods
+        {
+            get
+            {
+                var total = TotalPeriods;
+                if (!total.HasValue) return null;
+
+                if (RemainingAmount.HasValue && TotalAmount.HasValue && TotalAmount.Value > 0m && PerPeriodAmount > 0m)
+                {
+                    var remainingPeriods = (int)Math.Ceiling(Math.Max(0m, RemainingAmount.Value) / PerPeriodAmount);
+                    var paid = total.Value - remainingPeriods;
+                    if (paid < 0) paid = 0;
+                    if (paid > total.Value) paid = total.Value;
+                    return paid;
+                }
+
+                return null;
             }
         }
     }
