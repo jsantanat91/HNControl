@@ -1,10 +1,11 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients;
 
@@ -48,6 +49,7 @@ public class CreateModel : PageModel
 
         var client = new Client
         {
+            ClientCode = await NextClientCodeAsync(),
             Kind = Input.Kind,
             Name = Input.Name.Trim(),
             Rfc = (Input.Rfc ?? "").Trim(),
@@ -60,7 +62,24 @@ public class CreateModel : PageModel
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
 
-        // ✅ Pro: al crear, te llevo a Detalles para que agregues contratos/servicios ya con el Id.
         return RedirectToPage("/Clients/Details", new { id = client.Id });
+    }
+
+    private async Task<string> NextClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+
+        return $"HN-{max + 1:0000}";
     }
 }

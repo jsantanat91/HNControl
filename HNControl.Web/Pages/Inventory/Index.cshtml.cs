@@ -46,6 +46,8 @@ public class IndexModel : PageModel
 
     public int TotalCount { get; private set; }
     public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+    public int LowStockCount { get; private set; }
+    public int ZeroStockCount { get; private set; }
 
     public int From => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
     public int To => Math.Min(Page * PageSize, TotalCount);
@@ -159,6 +161,8 @@ public class IndexModel : PageModel
         }
 
         TotalCount = await query.CountAsync();
+        LowStockCount = await query.CountAsync(i => i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel);
+        ZeroStockCount = await query.CountAsync(i => i.QuantityOnHand <= 0);
 
         if (Page < 1) Page = 1;
         var totalPages = TotalPages;

@@ -1,4 +1,4 @@
-@using HNControl.Web.Models
+﻿@using HNControl.Web.Models
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -9,7 +9,7 @@
     string Active(string startsWith)
         => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
 
-    // Permisos por módulo (solo aplica a Employees). Admin bypass.
+    // Permisos por m&oacute;dulo (solo aplica a Employees). Admin bypass.
     var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     if (SignInManager.IsSignedIn(User) && !User.IsInRole(AppRoles.Admin))
     {
@@ -40,9 +40,10 @@
     <link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
 
     <!-- Charts: algunos pages traen <script> inline (fuera de section Scripts),
-         así que Chart.js debe estar disponible antes de parsear el body. -->
+         as&iacute; que Chart.js debe estar disponible antes de parsear el body. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="~/js/hn-charts.js" asp-append-version="true"></script>
+    @RenderSection("Styles", required: false)
 </head>
 <body>
 @if (SignInManager.IsSignedIn(User))
@@ -54,12 +55,17 @@
                 <span class="hn-brand-mark">HN</span>
                 <span>
                     <div class="hn-brand-name">HN Control</div>
-                    <div class="hn-brand-sub">Operación · KPI · Órdenes</div>
+                    <div class="hn-brand-sub">Operaci&oacute;n &middot; KPI &middot; &Oacute;rdenes</div>
                 </span>
             </a>
+            <div class="hn-sidebar-toggle-wrap">
+                <button class="hn-sidebar-toggle" type="button" data-hn-sidebar-toggle title="Compactar men&uacute;">
+                    <i class="bi bi-layout-sidebar-inset"></i>
+                </button>
+            </div>
 
             <div class="hn-side-section">
-                <div class="hn-side-title">Menú</div>
+                <div class="hn-side-title">Men&uacute;</div>
 
                 @* ADMIN *@
                 @if (User.IsInRole(AppRoles.Admin))
@@ -82,11 +88,11 @@
                     </a>
                     <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index">
                         <span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span>
-                        <span class="hn-side-text">Órdenes</span>
+                        <span class="hn-side-text">&Oacute;rdenes</span>
                     </a>
                     <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index">
                         <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
-                        <span class="hn-side-text">Viáticos</span>
+                        <span class="hn-side-text">Vi&aacute;ticos</span>
                     </a>
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard">
                         <span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span>
@@ -94,7 +100,7 @@
                     </a>
                     <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index">
                         <span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span>
-                        <span class="hn-side-text">Evaluación 360</span>
+                        <span class="hn-side-text">Evaluaci&oacute;n 360</span>
                     </a>
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index">
                         <span class="hn-side-icon"><i class="bi bi-journal-text"></i></span>
@@ -118,7 +124,7 @@
                     </a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index">
                         <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
-                        <span class="hn-side-text">Exámenes</span>
+                        <span class="hn-side-text">Ex&aacute;menes</span>
                     </a>
                     <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">
                         <span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span>
@@ -137,21 +143,21 @@
                     {
                         <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index">
                             <span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span>
-                            <span class="hn-side-text">Mis órdenes</span>
+                            <span class="hn-side-text">Mis &oacute;rdenes</span>
                         </a>
                     }
                     @if (Has(AppModules.Viaticos))
                     {
                         <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index">
                             <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
-                            <span class="hn-side-text">Mis viáticos</span>
+                            <span class="hn-side-text">Mis vi&aacute;ticos</span>
                         </a>
                     }
                     @if (Has(AppModules.Eval360))
                     {
                         <a class="hn-side-link @Active("/Eval360")" asp-page="/Eval360/Index">
                             <span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span>
-                            <span class="hn-side-text">Evaluación 360</span>
+                            <span class="hn-side-text">Evaluaci&oacute;n 360</span>
                         </a>
                     }
                     @if (Has(AppModules.Projects))
@@ -200,7 +206,7 @@
                     {
                         <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index">
                             <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
-                            <span class="hn-side-text">Exámenes</span>
+                            <span class="hn-side-text">Ex&aacute;menes</span>
                         </a>
                     }
                 }
@@ -208,7 +214,7 @@
 
             <div class="hn-side-footer mt-auto">
                 <div class="hn-side-user">@User.Identity?.Name</div>
-                <div class="hn-side-user-sub">Sesión activa</div>
+                <div class="hn-side-user-sub">Sesi&oacute;n activa</div>
 
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
                     <button class="btn btn-sm hn-navbtn-danger w-100" type="submit">
@@ -222,8 +228,11 @@
         <div class="hn-content">
             <div class="hn-topbar">
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#hnMobileNav" aria-controls="hnMobileNav" aria-label="Menú">
+                    <button class="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#hnMobileNav" aria-controls="hnMobileNav" aria-label="Men&uacute;">
                         <i class="bi bi-list"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary d-none d-lg-inline-flex" type="button" data-hn-sidebar-toggle title="Compactar men&uacute;">
+                        <i class="bi bi-layout-sidebar-inset"></i>
                     </button>
                     <div>
                         <div class="hn-page-title">@pageTitle</div>
@@ -248,7 +257,7 @@
             </main>
 
             <footer class="hn-footer">
-                &copy; @DateTime.Now.Year · HN Control
+                &copy; @DateTime.Now.Year &middot; HN Control
             </footer>
         </div>
     </div>
@@ -260,7 +269,7 @@
                 <span class="hn-brand-mark">HN</span>
                 <span>
                     <div class="hn-brand-name">HN Control</div>
-                    <div class="hn-brand-sub">Menú</div>
+                    <div class="hn-brand-sub">Men&uacute;</div>
                 </span>
             </a>
             <button type="button" class="btn btn-outline-light" data-bs-dismiss="offcanvas" aria-label="Cerrar">
@@ -275,27 +284,27 @@
                     <a class="hn-side-link @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index"><span class="hn-side-icon"><i class="bi bi-people"></i></span><span class="hn-side-text">Empleados</span></a>
                     <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a>
                     <a class="hn-side-link @Active("/Projects")" asp-page="/Projects/Index"><span class="hn-side-icon"><i class="bi bi-kanban"></i></span><span class="hn-side-text">Proyectos</span></a>
-                    <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Órdenes</span></a>
-                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Viáticos</span></a>
+                    <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">&Oacute;rdenes</span></a>
+                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Vi&aacute;ticos</span></a>
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">KPI (80/20)</span></a>
-                    <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluación 360</span></a>
+                    <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a>
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a>
                     <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></a>
                     <a class="hn-side-link @Active("/Inventory")" asp-page="/Inventory/Index"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></a>
                     <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
-                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Exámenes</span></a>
+                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a>
                     <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index"><span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span><span class="hn-side-text">Seguridad</span></a>
                 }
                 else
                 {
                     <a class="hn-side-link @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile"><span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span><span class="hn-side-text">Mi ficha</span></a>
                     @if (Has(AppModules.ServiceOrders))
-                    { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis órdenes</span></a> }
+                    { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span></a> }
                     @if (Has(AppModules.Viaticos))
-                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis viáticos</span></a> }
+                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis vi&aacute;ticos</span></a> }
                     @if (Has(AppModules.Eval360))
-                    { <a class="hn-side-link @Active("/Eval360")" asp-page="/Eval360/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluación 360</span></a> }
+                    { <a class="hn-side-link @Active("/Eval360")" asp-page="/Eval360/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a> }
                     @if (Has(AppModules.Projects))
                     { <a class="hn-side-link @Active("/Projects")" asp-page="/Projects/Index"><span class="hn-side-icon"><i class="bi bi-kanban"></i></span><span class="hn-side-text">Proyectos</span></a> }
                     @if (Has(AppModules.Knowledge))
@@ -309,7 +318,7 @@
                     @if (Has(AppModules.Leaves))
                     { <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a> }
                     @if (Has(AppModules.Exams))
-                    { <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Exámenes</span></a> }
+                    { <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a> }
                 }
 
                 <hr class="border-light opacity-25 my-3" />
@@ -324,7 +333,7 @@
 }
 else
 {
-    <!-- Sin sesión: se usa normalmente _AuthLayout, pero dejamos fallback -->
+    <!-- Sin sesi&oacute;n: se usa normalmente _AuthLayout, pero dejamos fallback -->
     <main class="container py-4">
         @RenderBody()
     </main>
@@ -336,3 +345,6 @@ else
     @RenderSection("Scripts", required: false)
 </body>
 </html>
+
+
+

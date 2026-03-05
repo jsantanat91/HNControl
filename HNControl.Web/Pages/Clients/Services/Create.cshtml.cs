@@ -26,6 +26,7 @@ public class CreateModel : PageModel
     public Guid ClientId { get; set; }
 
     public string ClientName { get; set; } = "";
+    public string ClientCode { get; set; } = "";
 
     public SelectList ServiceTypeItems =>
         new(Enum.GetValues<ClientServiceType>().Select(x => new { Id = x, Name = x.ToString() }), "Id", "Name");
@@ -74,11 +75,25 @@ public class CreateModel : PageModel
         var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == ClientId);
         if (client == null) return NotFound();
 
+        if (string.IsNullOrWhiteSpace(client.ClientCode))
+        {
+            client.ClientCode = await NextClientCodeAsync();
+            await _db.SaveChangesAsync();
+        }
+
         ClientName = client.Name;
+        ClientCode = client.ClientCode;
         await LoadProjectsAsync();
 
         if (Input.ContractStartDate == null)
             Input.ContractStartDate = DateTime.Today;
+        if (string.IsNullOrWhiteSpace(Input.AccountNumber))
+            Input.AccountNumber = client.ClientCode;
+        if (string.IsNullOrWhiteSpace(Input.ContractNumber))
+        {
+            var count = await _db.ClientServiceContracts.CountAsync(c => c.ClientId == ClientId);
+            Input.ContractNumber = $"{client.ClientCode}-{count + 1:00}";
+        }
 
         return Page();
     }
@@ -88,7 +103,14 @@ public class CreateModel : PageModel
         var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == ClientId);
         if (client == null) return NotFound();
 
+        if (string.IsNullOrWhiteSpace(client.ClientCode))
+        {
+            client.ClientCode = await NextClientCodeAsync();
+            await _db.SaveChangesAsync();
+        }
+
         ClientName = client.Name;
+        ClientCode = client.ClientCode;
         await LoadProjectsAsync();
 
         if (!ModelState.IsValid) return Page();
@@ -100,8 +122,10 @@ public class CreateModel : PageModel
             ServiceType = Input.ServiceType,
             Label = (Input.Label ?? "").Trim(),
             Provider = (Input.Provider ?? "").Trim(),
-            AccountNumber = (Input.AccountNumber ?? "").Trim(),
-            ContractNumber = (Input.ContractNumber ?? "").Trim(),
+            AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? client.ClientCode : Input.AccountNumber.Trim(),
+            ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber)
+                ? $"{client.ClientCode}-{await _db.ClientServiceContracts.CountAsync(c => c.ClientId == ClientId) + 1:00}"
+                : Input.ContractNumber.Trim(),
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = (Input.Notes ?? "").Trim(),
@@ -140,6 +164,24 @@ public class CreateModel : PageModel
         }
 
         return RedirectToPage("/Clients/Details", new { id = ClientId });
+    }
+
+    private async Task<string> NextClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+
+        return $"HN-{max + 1:0000}";
     }
 
     private async Task LoadProjectsAsync()

@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -23,6 +23,14 @@ public class IndexModel : PageModel
     [BindProperty]
     public DateTime AnyDayInWeek { get; set; } = DateTime.Today;
 
+    [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
+    [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+
+    public int TotalCount { get; set; }
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+
     public string? Error { get; set; }
 
     public List<WeekRow> Weeks { get; set; } = new();
@@ -33,9 +41,29 @@ public class IndexModel : PageModel
     {
         var userId = _userMgr.GetUserId(User)!;
 
-        Weeks = await _db.ViaticWeeks
-            .Where(w => w.UserId == userId)
+        PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
+        Page = Page < 1 ? 1 : Page;
+
+        var q = _db.ViaticWeeks.Where(w => w.UserId == userId);
+
+        if (DateFrom.HasValue)
+        {
+            var from = DateFrom.Value.Date;
+            q = q.Where(w => w.WeekStartDate.Date >= from);
+        }
+
+        if (DateTo.HasValue)
+        {
+            var to = DateTo.Value.Date;
+            q = q.Where(w => w.WeekStartDate.Date <= to);
+        }
+
+        TotalCount = await q.CountAsync();
+
+        Weeks = await q
             .OrderByDescending(w => w.WeekStartDate)
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
             .Select(w => new WeekRow(
                 w.Id,
                 w.WeekStartDate,
@@ -72,7 +100,6 @@ public class IndexModel : PageModel
     private static DateTime ToMonday(DateTime anyDay)
     {
         var d = anyDay.Date;
-        // En .NET: Sunday=0 ... Saturday=6
         var diff = (7 + (int)d.DayOfWeek - (int)DayOfWeek.Monday) % 7;
         return d.AddDays(-diff);
     }

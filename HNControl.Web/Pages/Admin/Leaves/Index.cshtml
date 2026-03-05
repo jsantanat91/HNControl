@@ -1,48 +1,19 @@
-@page
+﻿@page
+@using HNControl.Web.Helpers
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Admin.Leaves.IndexModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Vacaciones (Admin)";
 
-    string TypeText(LeaveRequestType t) => t switch
-    {
-        LeaveRequestType.Vacation => "Vacaciones",
-        LeaveRequestType.Medical => "Médica",
-        LeaveRequestType.Personal => "Personal",
-        _ => t.ToString()
-    };
-
-    string TypeBadge(LeaveRequestType t) => t switch
-    {
-        LeaveRequestType.Vacation => "bg-primary text-white",
-        LeaveRequestType.Medical => "bg-danger text-white",
-        LeaveRequestType.Personal => "bg-dark text-white",
-        _ => "bg-secondary text-white"
-    };
-
-    string StatusText(LeaveRequestStatus s) => s switch
-    {
-        LeaveRequestStatus.Pending => "Pendiente",
-        LeaveRequestStatus.Approved => "Aprobada",
-        LeaveRequestStatus.Rejected => "Rechazada",
-        LeaveRequestStatus.Cancelled => "Cancelada",
-        _ => s.ToString()
-    };
-
-    string StatusBadge(LeaveRequestStatus s) => s switch
-    {
-        LeaveRequestStatus.Approved => "bg-success text-white",
-        LeaveRequestStatus.Rejected => "bg-danger text-white",
-        LeaveRequestStatus.Cancelled => "bg-secondary text-white",
-        _ => "bg-warning text-dark"
-    };
+    var approved = Model.Items.Count(x => x.Status == LeaveRequestStatus.Approved);
+    var rejected = Model.Items.Count(x => x.Status == LeaveRequestStatus.Rejected);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Vacaciones e incidencias</h1>
-        <div class="text-muted small">Pendientes: <b>@Model.PendingCount</b></div>
+        <div class="text-muted small">Gestion centralizada de solicitudes.</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-primary" asp-page="/Admin/Leaves/Create"><i class="bi bi-plus-lg me-1"></i> Capturar incidencia</a>
@@ -52,6 +23,12 @@
 
 @if (TempData["Success"] is string ok) { <div class="alert alert-success">@ok</div> }
 @if (TempData["Error"] is string err) { <div class="alert alert-danger">@err</div> }
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Pendientes</div><div class="fs-4 fw-bold">@Model.PendingCount</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Aprobadas (vista actual)</div><div class="fs-4 fw-bold">@approved</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Rechazadas (vista actual)</div><div class="fs-4 fw-bold">@rejected</div></div></div></div>
+</div>
 
 <div class="card shadow-soft hn-hover">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -71,55 +48,55 @@
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                    <tr>
-                        <th>Empleado</th>
-                        <th>Tipo</th>
-                        <th>Fechas</th>
-                        <th class="text-end">Días</th>
-                        <th>Estatus</th>
-                        <th class="text-end">Evidencias</th>
-                        <th class="text-end"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var r in Model.Items)
-                    {
-                        var typeText = TypeText(r.Type);
-                        var typeCss = TypeBadge(r.Type);
+            <div class="row row-cols-1 row-cols-xl-2 g-3">
+                @foreach (var r in Model.Items)
+                {
+                    var type = UiBadges.LeaveType(r.Type);
+                    var status = UiBadges.LeaveStatus(r.Status);
+                    <div class="col d-flex">
+                        <div class="card shadow-sm hn-hover w-100 hn-admin-leave-card">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="fw-bold">@(r.EmployeeProfile?.FullName ?? r.UserId)</div>
+                                        <div class="text-muted small">@(r.EmployeeProfile?.Position ?? "")</div>
+                                        <div class="mt-1">
+                                            <span class="badge rounded-pill @type.css">@type.text</span>
+                                            <span class="badge rounded-pill @status.css ms-1">@status.text</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-muted small">Dias</div>
+                                        <div class="fs-5 fw-bold">@r.TotalDays</div>
+                                    </div>
+                                </div>
 
-                        var stText = StatusText(r.Status);
-                        var stCss = StatusBadge(r.Status);
+                                <div class="small mt-2 text-muted">
+                                    @r.StartDate.ToString("yyyy-MM-dd") &rarr; @r.EndDate.ToString("yyyy-MM-dd")
+                                </div>
+                                <div class="small text-muted">Solicitado: @r.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
 
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">@(r.EmployeeProfile?.FullName ?? r.UserId)</div>
-                                <div class="text-muted small">@(r.EmployeeProfile?.Position ?? "")</div>
-                            </td>
-                            <td>
-                                <span class="badge rounded-pill @typeCss">@typeText</span>
                                 @if (!string.IsNullOrWhiteSpace(r.Reason))
                                 {
-                                    <div class="text-muted small mt-1">@r.Reason</div>
+                                    <div class="small mt-2 p-2 rounded-3 border bg-light-subtle">@r.Reason</div>
                                 }
-                            </td>
-                            <td>
-                                <div class="small">@r.StartDate.ToString("yyyy-MM-dd") → @r.EndDate.ToString("yyyy-MM-dd")</div>
-                                <div class="text-muted small">Solicitado: @r.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                            </td>
-                            <td class="text-end fw-semibold">@r.TotalDays</td>
-                            <td><span class="badge rounded-pill @stCss">@stText</span></td>
-                            <td class="text-end">@(r.Evidences?.Count ?? 0)</td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Leaves/Details" asp-route-id="@r.Id">Detalles</a>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+
+                                <div class="mt-2 small text-muted">Evidencias: @(r.Evidences?.Count ?? 0)</div>
+
+                                <div class="mt-auto pt-3 text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Leaves/Details" asp-route-id="@r.Id">Detalles</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         }
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .hn-admin-leave-card { border-radius: 16px !important; }
+    </style>
+}

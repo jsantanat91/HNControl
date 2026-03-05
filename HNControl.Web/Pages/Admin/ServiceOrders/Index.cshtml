@@ -1,59 +1,76 @@
 ﻿@page
+@using HNControl.Web.Helpers
 @model HNControl.Web.Pages.Admin.ServiceOrders.IndexModel
 @{
     Layout = "_Layout";
-
     ViewData["Title"] = "Ordenes";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Ordenes de Servicio</h1>
-        <div class="text-muted small">Admin crea la orden general y los tecnicos la toman por etapas.</div>
+        <div class="text-muted small">Vista operativa con tipo, estado y responsable actual.</div>
     </div>
     <a class="btn btn-primary" asp-page="/Admin/ServiceOrders/Create">+ Nueva orden</a>
 </div>
 
-<div class="card shadow-soft hn-hover">
-    <div class="card-body table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>Proyecto</th>
-                    <th>Servicio</th>
-                    <th>Titulo</th>
-                    <th>Tipo</th>
-                    <th>Status</th>
-                    <th>Asignado</th>
-                    <th>Tomada por</th>
-                    <th>Link publico</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var o in Model.Rows)
-                {
-                    <tr>
-                        <td>@o.ClientName</td>
-                        <td class="text-muted">@o.ProjectTitle</td>
-                        <td class="text-muted">@o.ContractLabel</td>
-                        <td>@o.Title</td>
-                        <td>@o.Type</td>
-                        <td><span class="fw-semibold">@o.Status</span></td>
-                        <td class="text-muted">@o.Assigned</td>
-                        <td class="text-muted">@o.ClaimedBy</td>
-                        <td>
-                            <a href="@o.PublicUrl" target="_blank">Abrir</a>
-                        </td>
-                        <td class="text-end">
+<form method="get" class="card shadow-soft hn-hover mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-2"><label class="form-label">Por p&aacute;gina</label><select class="form-select" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
+        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Limpiar</a></div>
+    </div>
+</form>
+
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-light border">No hay ordenes para los filtros seleccionados.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+        @foreach (var o in Model.Rows)
+        {
+            var type = UiBadges.ServiceOrderTypeBadge(o.Type);
+            var status = UiBadges.ServiceOrderStatusBadge(o.Status);
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-bold fs-5 lh-sm">@o.Title</div>
+                                <div class="text-muted small">@o.ClientName</div>
+                            </div>
+                            <div class="text-muted small">@o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                        </div>
+                        <div class="small mt-2">Proyecto: @o.ProjectTitle</div>
+                        <div class="small text-muted">Servicio: @o.ContractLabel</div>
+                        <div class="mt-2 d-flex flex-wrap gap-1">
+                            <span class="badge @type.css">@type.text</span>
+                            <span class="badge @status.css">@status.text</span>
+                        </div>
+                        <div class="small mt-2 text-muted">Asignado: @o.Assigned</div>
+                        <div class="small text-muted">Tomada por: @o.ClaimedBy</div>
+                        @if (o.ClaimedAt.HasValue)
+                        {
+                            <div class="small text-muted">@o.ClaimedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        }
+                        <div class="mt-auto pt-3 d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/ServiceOrders/DownloadPdf" asp-route-id="@o.Id" asp-route-inline="false">Orden PDF</a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@o.Id">Admin</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted small">Total: @Model.TotalCount · P&aacute;gina @Model.Page de @Model.TotalPages</div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
 </div>
-
-

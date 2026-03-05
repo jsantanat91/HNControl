@@ -9,11 +9,11 @@
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-1">@Model.Client?.Name</h1>
-        <div class="text-muted small">Bitácora y datos del carrier por servicio.</div>
+        <div class="text-muted small">Bit&aacute;cora y datos del carrier por servicio.</div>
     </div>
 
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
+        <a class="btn btn-outline-secondary" asp-page="./Index">&larr; Volver</a>
         @if (Model.IsAdmin)
         {
             <a class="btn btn-outline-primary" asp-page="/Admin/Carriers/Services/Create" asp-route-clientId="@Model.Client?.Id">+ Servicio</a>
@@ -23,24 +23,24 @@
 
 @if (Model.Client != null)
 {
-    <div class="card mb-4">
+    <div class="card shadow-soft hn-hover mb-4">
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-3">
                     <div class="text-muted small">RFC</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Rfc) ? "—" : Model.Client.Rfc)</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Rfc) ? "-" : Model.Client.Rfc)</div>
                 </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Teléfono</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Phone) ? "—" : Model.Client.Phone)</div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-muted small">Tel&eacute;fono</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Phone) ? "-" : Model.Client.Phone)</div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-6 col-xl-3">
                     <div class="text-muted small">Email</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Email) ? "—" : Model.Client.Email)</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Email) ? "-" : Model.Client.Email)</div>
                 </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Dirección</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Address) ? "—" : Model.Client.Address)</div>
+                <div class="col-md-6 col-xl-3">
+                    <div class="text-muted small">Direcci&oacute;n</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Client.Address) ? "-" : Model.Client.Address)</div>
                 </div>
             </div>
         </div>
@@ -51,31 +51,25 @@
         <div class="alert alert-light border">Este cliente no tiene servicios cargados.</div>
     }
 
-    <div class="row row-cols-1 g-4">
+    <div class="row row-cols-1 row-cols-xl-2 g-3">
         @foreach (var s in Model.Services)
         {
             var collapseId = "note_" + s.Service.Id.ToString("N");
-            <div class="col">
-                <div class="card hn-module accent-blue">
-                    <div class="card-body">
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100 hn-carrier-service-card">
+                    <div class="card-body d-flex flex-column">
                         <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
                             <div>
-                                <div class="hn-module-title mb-1">@s.Service.ServiceLabel</div>
-                                <div class="text-muted small">
-                                    <span class="d-inline-flex align-items-center gap-2">
-                                        @if (!string.IsNullOrWhiteSpace(s.CarrierLogoUrl))
-                                        {
-                                            <img src="@s.CarrierLogoUrl" alt="logo" style="height:22px; width:48px; object-fit:contain;" class="border rounded bg-white p-1" />
-                                        }
-                                        <strong>@s.CarrierName</strong>
-                                    </span>
+                                <div class="fw-bold fs-5 lh-sm">@s.Service.ServiceLabel</div>
+                                <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                    @if (!string.IsNullOrWhiteSpace(s.CarrierLogoUrl))
+                                    {
+                                        <img src="@s.CarrierLogoUrl" alt="logo" style="height:20px; width:44px; object-fit:contain;" class="border rounded bg-white p-1" />
+                                    }
+                                    <span class="badge rounded-pill bg-light text-dark border">@s.CarrierName</span>
                                     @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
                                     {
-                                        <span> • @s.Service.Plan</span>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(s.CarrierExecutive))
-                                    {
-                                        <span> • Ejecutivo: <b>@s.CarrierExecutive</b></span>
+                                        <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle">@s.Service.Plan</span>
                                     }
                                 </div>
                             </div>
@@ -89,60 +83,33 @@
                             </div>
                         </div>
 
-                        <hr class="my-3" />
-
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="text-muted small"># Cuenta</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.AccountNumber) ? "—" : s.Service.AccountNumber)</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="text-muted small"># Contrato</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ContractNumber) ? "—" : s.Service.ContractNumber)</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="text-muted small">Circuit ID</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.CircuitId) ? "—" : s.Service.CircuitId)</div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="text-muted small">Dirección del servicio</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ServiceAddress) ? "—" : s.Service.ServiceAddress)</div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="text-muted small">IP info</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.IpInfo) ? "—" : s.Service.IpInfo)</div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="text-muted small">Ejecutivo</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CarrierExecutive) ? "—" : s.CarrierExecutive)</div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="text-muted small">Soporte Tel</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportPhone) ? "—" : s.SupportPhone)</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="text-muted small">Soporte Email</div>
-                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportEmail) ? "—" : s.SupportEmail)</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="text-muted small">Portal</div>
-                                @if (!string.IsNullOrWhiteSpace(s.SupportPortalUrl))
-                                {
-                                    <a class="hn-link" href="@s.SupportPortalUrl" target="_blank" rel="noopener">Abrir</a>
-                                }
-                                else
-                                {
-                                    <span class="fw-semibold">—</span>
-                                }
+                        <div class="hn-carrier-grid mt-3">
+                            <div><span class="text-muted small">Cuenta</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.AccountNumber) ? "-" : s.Service.AccountNumber)</div></div>
+                            <div><span class="text-muted small">Contrato</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ContractNumber) ? "-" : s.Service.ContractNumber)</div></div>
+                            <div><span class="text-muted small">Circuit ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.CircuitId) ? "-" : s.Service.CircuitId)</div></div>
+                            <div><span class="text-muted small">Direcci&oacute;n servicio</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ServiceAddress) ? "-" : s.Service.ServiceAddress)</div></div>
+                            <div><span class="text-muted small">IP info</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.IpInfo) ? "-" : s.Service.IpInfo)</div></div>
+                            <div><span class="text-muted small">Ejecutivo</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CarrierExecutive) ? "-" : s.CarrierExecutive)</div></div>
+                            <div><span class="text-muted small">Soporte tel</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportPhone) ? "-" : s.SupportPhone)</div></div>
+                            <div><span class="text-muted small">Soporte email</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SupportEmail) ? "-" : s.SupportEmail)</div></div>
+                            <div>
+                                <span class="text-muted small">Portal</span>
+                                <div>
+                                    @if (!string.IsNullOrWhiteSpace(s.SupportPortalUrl))
+                                    {
+                                        <a class="hn-link" href="@s.SupportPortalUrl" target="_blank" rel="noopener">Abrir</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-semibold">-</span>
+                                    }
+                                </div>
                             </div>
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(s.Service.Notes))
                         {
-                            <div class="mt-3">
+                            <div class="mt-3 p-2 rounded-3 border bg-light-subtle">
                                 <div class="text-muted small">Notas del servicio</div>
                                 <div>@s.Service.Notes</div>
                             </div>
@@ -169,7 +136,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label small text-muted">Nota</label>
-                                                <input class="form-control" asp-for="Input.Message" placeholder="Qué pasó, con quién hablaste, siguiente paso..." />
+                                                <input class="form-control" asp-for="Input.Message" placeholder="Que paso, con quien hablaste, siguiente paso..." />
                                             </div>
                                             <div class="col-12 d-flex gap-2 mt-2">
                                                 <button class="btn btn-primary" type="submit">Guardar nota</button>
@@ -181,24 +148,24 @@
                             </div>
                         </div>
 
-                        <div class="mt-4">
+                        <div class="mt-3 pt-3 border-top">
                             <div class="d-flex align-items-center justify-content-between">
-                                <div class="fw-semibold">Bitácora reciente</div>
-                                <span class="text-muted small">Últimas @s.RecentNotes.Count</span>
+                                <div class="fw-semibold">Bit&aacute;cora reciente</div>
+                                <span class="text-muted small">Ultimas @s.RecentNotes.Count</span>
                             </div>
 
                             @if (s.RecentNotes.Count == 0)
                             {
-                                <div class="text-muted small mt-2">Sin notas aún.</div>
+                                <div class="text-muted small mt-2">Sin notas aun.</div>
                             }
                             else
                             {
-                                <div class="list-group list-group-flush mt-2">
+                                <div class="d-flex flex-column gap-2 mt-2">
                                     @foreach (var n in s.RecentNotes)
                                     {
-                                        <div class="list-group-item px-0">
+                                        <div class="hn-note-item">
                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                                <div class="small">
+                                                <div class="small d-flex align-items-center gap-1">
                                                     <span class="badge text-bg-light">@n.NoteType</span>
                                                     @if (!string.IsNullOrWhiteSpace(n.TicketNumber))
                                                     {
@@ -219,6 +186,34 @@
             </div>
         }
     </div>
+}
+
+@section Styles {
+    <style>
+        .hn-carrier-service-card {
+            border-radius: 18px !important;
+            background: linear-gradient(150deg, rgba(255,255,255,.98), rgba(248,251,255,.92));
+        }
+
+        .hn-carrier-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .75rem 1rem;
+        }
+
+        .hn-note-item {
+            border: 1px solid rgba(15,23,42,.08);
+            border-radius: 12px;
+            padding: .55rem .65rem;
+            background: rgba(255,255,255,.8);
+        }
+
+        @@media (max-width: 991.98px) {
+            .hn-carrier-grid {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+        }
+    </style>
 }
 
 @section Scripts {

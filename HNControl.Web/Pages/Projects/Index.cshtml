@@ -1,4 +1,5 @@
 ﻿@page
+@using HNControl.Web.Helpers
 @model HNControl.Web.Pages.Projects.IndexModel
 @{
     Layout = "_Layout";
@@ -16,38 +17,79 @@
     }
 </div>
 
-<div class="card shadow-soft hn-hover">
-    <div class="card-body table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Título</th>
-                    <th>Cliente</th>
-                    <th>Responsable</th>
-                    <th>Inicio</th>
-                    <th>Estimado</th>
-                    <th>Status</th>
-                    <th>SLA</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in Model.Rows)
+<form method="get" class="card shadow-soft hn-hover mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Desde</label>
+            <input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Hasta</label>
+            <input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Por p&aacute;gina</label>
+            <select class="form-select" name="PageSize">
+                @foreach (var s in new[] { 10, 20, 50, 100 })
                 {
-                    <tr class="@(p.IsOverdue ? "table-warning" : "")">
-                        <td>@p.Title</td>
-                        <td>@p.ClientName</td>
-                        <td>@p.Responsible</td>
-                        <td>@p.StartDate</td>
-                        <td>@p.EstEnd</td>
-                        <td>@p.Status</td>
-                        <td>@(p.IsOverdue ? "Vencido" : "OK")</td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
-                        </td>
-                    </tr>
+                    <option value="@s" selected="@(Model.PageSize == s)">@s</option>
                 }
-            </tbody>
-        </table>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-light border">No hay proyectos para los filtros seleccionados.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+        @foreach (var p in Model.Rows)
+        {
+            var st = UiBadges.ProjectStatusBadge(p.Status);
+            var sla = UiBadges.ProjectSlaBadge(p.Status, p.EstEnd);
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="fw-bold fs-5 lh-sm">@p.Title</div>
+                            <span class="badge @st.css">@st.text</span>
+                        </div>
+                        <div class="small text-muted mt-1">Cliente: @p.ClientName</div>
+                        <div class="small text-muted">Responsable: @p.Responsible</div>
+                        <div class="small mt-2">Inicio: @p.StartDate.ToString("yyyy-MM-dd")</div>
+                        <div class="small">Estimado: @p.EstEnd.ToString("yyyy-MM-dd")</div>
+                        <div class="mt-2"><span class="badge @sla.css">@sla.text</span></div>
+                        <div class="mt-auto pt-3">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted small">Total: @Model.TotalCount · P&aacute;gina @Model.Page de @Model.TotalPages</div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")"
+           asp-page="/Projects/Index"
+           asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")"
+           asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")"
+           asp-route-PageSize="@Model.PageSize"
+           asp-route-Page="@(Model.Page - 1)">Anterior</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")"
+           asp-page="/Projects/Index"
+           asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")"
+           asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")"
+           asp-route-PageSize="@Model.PageSize"
+           asp-route-Page="@(Model.Page + 1)">Siguiente</a>
     </div>
 </div>

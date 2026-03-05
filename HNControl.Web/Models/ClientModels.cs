@@ -20,6 +20,9 @@ public class Client
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    [MaxLength(20)]
+    public string ClientCode { get; set; } = "";
+
     [Required, MaxLength(200)]
     [Display(Name = "Razón Social / Nombre")]
     public string Name { get; set; } = "";

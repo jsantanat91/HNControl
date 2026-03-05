@@ -24,6 +24,7 @@ public class EditModel : PageModel
     public class InputModel
     {
         [Required] public Guid Id { get; set; }
+        public string ClientCode { get; set; } = "";
 
         [Required] public ClientKind Kind { get; set; }
 
@@ -51,6 +52,7 @@ public class EditModel : PageModel
         Input = new InputModel
         {
             Id = client.Id,
+            ClientCode = client.ClientCode,
             Kind = client.Kind,
             Name = client.Name,
             Rfc = client.Rfc ?? "",

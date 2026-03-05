@@ -1,16 +1,15 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Carriers.IndexModel
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Carriers";
-    var accents = new[] { "accent-cyan", "accent-blue", "accent-green", "accent-purple", "accent-amber" };
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-1">Carriers de Internet</h1>
-        <div class="text-muted">Servicios ligados a clientes + bitácora interna (tickets, incidentes, notas).</div>
+        <div class="text-muted">Servicios ligados a clientes y bit&aacute;cora interna (tickets, incidentes, notas).</div>
     </div>
 
     @if (User.IsInRole(AppRoles.Admin))
@@ -22,45 +21,64 @@
     }
 </div>
 
-<form method="get" class="d-flex gap-2 mb-3">
-    <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar cliente (nombre o RFC)..." />
-    <button class="btn btn-primary" type="submit">Buscar</button>
-    <a class="btn btn-outline-secondary" asp-page="./Index">Limpiar</a>
+<form method="get" class="card shadow-soft hn-hover mb-3">
+    <div class="card-body d-flex gap-2">
+        <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar cliente (nombre o RFC)..." />
+        <button class="btn btn-primary" type="submit">Buscar</button>
+        <a class="btn btn-outline-secondary" asp-page="./Index">Limpiar</a>
+    </div>
 </form>
-
-<div class="row row-cols-1 row-cols-lg-2 g-4">
-    @foreach (var c in Model.Clients)
-    {
-        var accent = accents[Math.Abs(c.ClientId.GetHashCode()) % accents.Length];
-        <div class="col d-flex">
-            <div class="card hn-module @accent w-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div>
-                            <div class="hn-module-title mb-1">@c.Name</div>
-                            @if (c.ServicesCount > 0)
-                            {
-                                <div class="text-muted small">@c.ServicesCount servicio(s) • @c.CarriersSummary</div>
-                            }
-                            else
-                            {
-                                <div class="text-muted small">Sin servicios cargados</div>
-                            }
-                        </div>
-
-                        <span class="badge text-bg-light">@c.ServicesCount</span>
-                    </div>
-
-                    <div class="mt-3">
-                        <a class="stretched-link hn-link" asp-page="./Client" asp-route-id="@c.ClientId">Ver detalle →</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div>
 
 @if (Model.Clients.Count == 0)
 {
     <div class="alert alert-light border mt-3">No hay resultados.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+        @foreach (var c in Model.Clients)
+        {
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100 hn-carrier-client-card">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div>
+                                <div class="fw-bold fs-5 lh-sm">@c.Name</div>
+                                @if (c.ServicesCount > 0)
+                                {
+                                    <div class="text-muted small mt-1">@c.ServicesCount servicio(s)</div>
+                                    <div class="small mt-1">
+                                        @foreach (var carrier in (c.CarriersSummary ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <span class="badge rounded-pill bg-light text-dark border me-1 mb-1">@carrier</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted small mt-1">Sin servicios cargados</div>
+                                }
+                            </div>
+
+                            <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">@c.ServicesCount</span>
+                        </div>
+
+                        <div class="mt-auto pt-3">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="./Client" asp-route-id="@c.ClientId">Ver detalle</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Styles {
+    <style>
+        .hn-carrier-client-card {
+            border-radius: 18px !important;
+            background: linear-gradient(150deg, rgba(255,255,255,.96), rgba(248,251,255,.9));
+            min-height: 180px;
+        }
+    </style>
 }

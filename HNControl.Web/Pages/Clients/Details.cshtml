@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.DetailsModel
 @{
     Layout = "_Layout";
@@ -14,9 +14,12 @@
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">@Model.Client.Name</h1>
+        <div class="mt-1">
+            <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.Client.ClientCode</span>
+        </div>
         <div class="text-muted small">
-            @(Model.Client.Kind.ToString()) · RFC: <b>@(Model.Client.Rfc ?? "—")</b>
-            · <span class="text-muted">@(Model.Client.Email ?? "—")</span>
+            @(Model.Client.Kind.ToString()) &middot; RFC: <b>@(Model.Client.Rfc ?? "-")</b>
+            &middot; <span class="text-muted">@(Model.Client.Email ?? "-")</span>
         </div>
     </div>
 
@@ -39,7 +42,7 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>Categoría</th>
+                            <th>Categor&iacute;a</th>
                             <th>Contrato</th>
                             <th>Proveedor</th>
                             <th class="text-nowrap">Vence</th>
@@ -50,7 +53,7 @@
                     <tbody>
                     @if (!Model.Contracts.Any())
                     {
-                        <tr><td colspan="6" class="text-muted">Aún no hay contratos. Dale al botón “Agregar contrato” (sí, ese de arriba 😄).</td></tr>
+                        <tr><td colspan="6" class="text-muted">A&uacute;n no hay contratos. Dale al bot&oacute;n "Agregar contrato".</td></tr>
                     }
                     else
                     {
@@ -63,15 +66,15 @@
                                 <td>
                                     <div class="fw-semibold">@c.Label</div>
                                     <div class="text-muted small">
-                                        Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "—" : c.AccountNumber)
-                                        · #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "—" : c.ContractNumber)
+                                        Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "-" : c.AccountNumber)
+                                        &middot; #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "-" : c.ContractNumber)
                                         @if (c.MonthlyAmount.HasValue)
                                         {
-                                            <span> · Mensual: <b>@c.MonthlyAmount.Value.ToString("C")</b></span>
+                                            <span> &middot; Mensual: <b>@c.MonthlyAmount.Value.ToString("C")</b></span>
                                         }
                                     </div>
                                 </td>
-                                <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "—" : c.Provider)</td>
+                                <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "-" : c.Provider)</td>
                                 <td class="text-nowrap">
                                     <div>@(c.ContractEndDateText)</div>
                                     <div>
@@ -98,7 +101,7 @@
             </div>
 
             <div class="card-footer text-muted small">
-                Tip pro: liga el contrato a un <b>Proyecto</b> para que las Órdenes de Servicio queden trazables (mantenimientos vs servicio específico).
+                Tip pro: liga el contrato a un <b>Proyecto</b> para que las &Oacute;rdenes de Servicio queden trazables (mantenimientos vs servicio espec&iacute;fico).
             </div>
         </div>
     </div>
@@ -108,8 +111,8 @@
             <div class="card-body">
                 <div class="fw-semibold mb-1">Contacto</div>
                 <div class="text-muted small">
-                    Tel: <b>@(Model.Client.Phone ?? "—")</b><br />
-                    Dirección: @(Model.Client.Address ?? "—")
+                    Tel: <b>@(Model.Client.Phone ?? "-")</b><br />
+                    Direcci&oacute;n: @(Model.Client.Address ?? "-")
                 </div>
             </div>
         </div>
@@ -132,7 +135,7 @@
                     <tbody>
                     @if (!Model.Projects.Any())
                     {
-                        <tr><td colspan="3" class="text-muted">Sin proyectos todavía.</td></tr>
+                        <tr><td colspan="3" class="text-muted">Sin proyectos todav&iacute;a.</td></tr>
                     }
                     else
                     {
@@ -141,7 +144,7 @@
                             <tr>
                                 <td>
                                     <div class="fw-semibold">@p.Title</div>
-                                    <div class="text-muted small">@p.StartDate · Est: @p.EstEnd</div>
+                                    <div class="text-muted small">@p.StartDate &middot; Est: @p.EstEnd</div>
                                 </td>
                                 <td><span class="badge text-bg-light border">@p.Status</span></td>
                                 <td class="text-end">
@@ -156,3 +159,4 @@
         </div>
     </div>
 </div>
+

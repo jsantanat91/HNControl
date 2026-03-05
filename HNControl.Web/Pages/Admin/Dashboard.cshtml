@@ -1,103 +1,68 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.DashboardModel
 @{
     Layout = "_Layout";
-
     ViewData["Title"] = "Panel";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="hn-dashboard-hero mb-3">
     <div>
-        <h1 class="h4 m-0">Panel</h1>
-        <div class="text-muted small">KPIs · evaluaciones · operación</div>
+        <h1 class="h4 m-0">Panel ejecutivo</h1>
+        <div class="text-muted small">Operacion, KPI y seguimiento diario</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" asp-page="/Performance/Rate">Calificar</a>
-        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Exportar nómina</a>
+        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Exportar nomina</a>
     </div>
 </div>
 
 <div class="row g-3">
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Empleados</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.Employees</div>
-            </div>
-        </div>
+        <div class="card shadow-soft hn-hover hn-kpi-card"><div class="card-body"><div class="text-muted small">Empleados</div><div class="fs-3 fw-bold">@Model.Kpi.Employees</div></div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover hn-kpi-card"><div class="card-body"><div class="text-muted small">Ordenes en revision</div><div class="fs-3 fw-bold">@Model.Kpi.OrdersInReview</div></div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover hn-kpi-card"><div class="card-body"><div class="text-muted small">SLA vencidos (proyectos)</div><div class="fs-3 fw-bold">@Model.Kpi.OverdueProjects</div></div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover hn-kpi-card"><div class="card-body"><div class="text-muted small">Viaticos pendientes</div><div class="fs-3 fw-bold">@Model.Kpi.PendingViaticWeeks</div></div></div>
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Órdenes en revisión</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.OrdersInReview</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">SLA vencidos (proyectos)</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.OverdueProjects</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Viáticos pendientes</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.PendingViaticWeeks</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
             <div class="card-body">
                 <div class="text-muted small">Vacaciones pendientes</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.PendingLeaveRequests</div>
-                <div class="mt-2">
-                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Leaves/Index">Ver</a>
-                </div>
+                <div class="fs-3 fw-bold">@Model.Kpi.PendingLeaveRequests</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Leaves/Index">Ver</a>
             </div>
         </div>
     </div>
-
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Exámenes por calificar</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.ExamsToGrade</div>
-                <div class="mt-2">
-                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Exams/Index">Ver</a>
-                </div>
+                <div class="text-muted small">Examenes por calificar</div>
+                <div class="fs-3 fw-bold">@Model.Kpi.ExamsToGrade</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Exams/Index">Ver</a>
             </div>
         </div>
     </div>
-
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Inventario · órdenes pendientes</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.PendingInventoryOrders</div>
-                <div class="mt-2">
-                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Ver</a>
-                </div>
+                <div class="text-muted small">Inventario · ordenes pendientes</div>
+                <div class="fs-3 fw-bold">@Model.Kpi.PendingInventoryOrders</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Inventory/Approvals/Index">Ver</a>
             </div>
         </div>
     </div>
-
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
             <div class="card-body">
                 <div class="text-muted small">Inventario · bajo stock</div>
-                <div class="fs-4 fw-semibold">@Model.Kpi.LowStockItems</div>
-                <div class="mt-2">
-                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Ver</a>
-                </div>
+                <div class="fs-3 fw-bold">@Model.Kpi.LowStockItems</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Inventory/Items/Index">Ver</a>
             </div>
         </div>
     </div>
@@ -106,7 +71,7 @@
 <div class="row g-3 mt-1">
     <div class="col-lg-7">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Órdenes completadas (últimos 30 días)</div>
+            <div class="card-header fw-semibold">Ordenes completadas (ultimos 30 dias)</div>
             <div class="card-body">
                 <canvas id="ordersChart" height="110"></canvas>
             </div>
@@ -115,7 +80,7 @@
 
     <div class="col-lg-5">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Top variable % (última evaluación)</div>
+            <div class="card-header fw-semibold">Top variable % (ultima evaluacion)</div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
@@ -134,7 +99,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="text-muted small mt-2">Si aquí sale “0%”, es porque nadie ha sido calificado aún.</div>
+                <div class="text-muted small mt-2">Si aqui sale "0%" es porque aun no hay evaluaciones publicadas.</div>
             </div>
         </div>
     </div>
@@ -143,7 +108,7 @@
 <div class="row g-3 mt-3">
     <div class="col-lg-7">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Inventario · movimientos aprobados (últimos 30 días)</div>
+            <div class="card-header fw-semibold">Inventario · movimientos aprobados (ultimos 30 dias)</div>
             <div class="card-body">
                 <canvas id="invChart" height="130"></canvas>
             </div>
@@ -152,7 +117,7 @@
 
     <div class="col-lg-5">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Exámenes (estatus)</div>
+            <div class="card-header fw-semibold">Examenes (estatus)</div>
             <div class="card-body">
                 <canvas id="examAdminChart" height="160"></canvas>
             </div>
@@ -163,18 +128,36 @@
 <div class="row g-3 mt-3">
     <div class="col-lg-12">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Acciones rápidas</div>
+            <div class="card-header fw-semibold">Acciones rapidas</div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
-                    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Exámenes</a>
+                    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
                 </div>
-                <div class="text-muted small mt-2">Porque el mouse también merece propósito.</div>
             </div>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .hn-dashboard-hero {
+            border: 1px solid rgba(37, 99, 235, .18);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            background: linear-gradient(120deg, rgba(37,99,235,.10), rgba(6,182,212,.09));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .hn-kpi-card .card-body {
+            background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(250,252,255,.8));
+        }
+    </style>
+}
 
 <script>
     const labels = @Html.Raw(Model.OrdersLabelsJson);
@@ -194,7 +177,7 @@
 
     const exCfg = {
       type: 'doughnut',
-      data: { labels: examLabels, datasets: [{ label: 'Exámenes', data: examValues }] },
+      data: { labels: examLabels, datasets: [{ label: 'Examenes', data: examValues }] },
       options: { plugins: { legend: { position: 'bottom' } } }
     };
 

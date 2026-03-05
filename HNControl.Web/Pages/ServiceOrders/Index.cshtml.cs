@@ -1,7 +1,6 @@
 ﻿using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
-using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -19,17 +18,25 @@ public class IndexModel : PageModel
         _db = db;
     }
 
+    [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
+    [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+
+    public int TotalCount { get; set; }
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+
     public string? Info { get; set; }
 
     public record Row(
         Guid Id,
         string Client,
         string Title,
-        string Type,
-        string Status,
-        string Area,
+        ServiceOrderType Type,
+        ServiceOrderStatus Status,
+        ServiceOrderWorkflowArea Area,
         string ClaimedBy,
-        string Created,
+        DateTime CreatedAt,
         string Due,
         bool CanTake,
         bool IsMine,
@@ -45,11 +52,33 @@ public class IndexModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId)) return Forbid();
 
-        var orders = await _db.ServiceOrders
+        PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
+        Page = Page < 1 ? 1 : Page;
+
+        var q = _db.ServiceOrders
             .AsNoTracking()
             .Include(o => o.Client)
             .Include(o => o.ClaimedByEmployee)
+            .AsQueryable();
+
+        if (DateFrom.HasValue)
+        {
+            var from = DateFrom.Value.Date;
+            q = q.Where(o => o.CreatedAt.Date >= from);
+        }
+
+        if (DateTo.HasValue)
+        {
+            var to = DateTo.Value.Date;
+            q = q.Where(o => o.CreatedAt.Date <= to);
+        }
+
+        TotalCount = await q.CountAsync();
+
+        var orders = await q
             .OrderByDescending(o => o.CreatedAt)
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
             .ToListAsync();
 
         Rows = orders.Select(o =>
@@ -61,11 +90,11 @@ public class IndexModel : PageModel
                 o.Id,
                 o.Client?.Name ?? "-",
                 o.Title,
-                o.Type.GetDisplayName(),
-                o.Status.GetDisplayName(),
-                o.CurrentArea.GetDisplayName(),
+                o.Type,
+                o.Status,
+                o.CurrentArea,
                 o.ClaimedByEmployee?.FullName ?? "Sin tomar",
-                o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                o.CreatedAt,
                 o.EstimatedEndDate?.ToLocalTime().ToString("yyyy-MM-dd") ?? "-",
                 !closed,
                 isMine,

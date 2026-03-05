@@ -1,42 +1,191 @@
 ﻿@page
+@using HNControl.Web.Helpers
+@using HNControl.Web.Models
 @model HNControl.Web.Pages.Knowledge.IndexModel
 @{
     Layout = "_Layout";
-
-    ViewData["Title"] = "Documentos";
+    ViewData["Title"] = "Base de conocimiento";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Documentos</h1>
-        <div class="text-muted small">Base de conocimiento (links a Excel / docs)</div>
+        <h1 class="h4 m-0">Base de conocimiento</h1>
+        <div class="text-muted small">Manuales, accesos, procesos y documentos internos</div>
     </div>
 
     @if (User.IsInRole(AppRoles.Admin))
     {
-        <a class="btn btn-primary" asp-page="/Knowledge/Create">+ Nuevo link</a>
+        <a class="btn btn-primary" asp-page="/Knowledge/Create">+ Nuevo documento</a>
     }
 </div>
 
-@foreach (var g in Model.Grouped)
-{
-    <div class="card shadow-sm hn-hover mb-3">
-        <div class="card-header fw-semibold">@g.Category</div>
-        <div class="card-body">
-            <div class="list-group">
-                @foreach (var l in g.Links)
-                {
-                    <a class="list-group-item list-group-item-action" href="@l.Url" target="_blank">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="fw-semibold">@l.Title</div>
-                                <div class="text-muted small">@l.Description</div>
-                            </div>
-                            <div class="text-muted small">@l.CreatedAt</div>
-                        </div>
-                    </a>
-                }
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-2">
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Total</div><div class="h4 m-0">@Model.Stats.Total</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Publicados</div><div class="h4 m-0 text-success">@Model.Stats.Publicados</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Borradores</div><div class="h4 m-0 text-warning">@Model.Stats.Borradores</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Revision vencida</div><div class="h4 m-0 text-danger">@Model.Stats.Vencidos</div></div></div>
+    </div>
+    <div class="col-md-6 col-xl-4">
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Actualizados (7 dias)</div><div class="h4 m-0">@Model.Stats.ActualizadosSemana</div></div></div>
+    </div>
+</div>
+
+<form method="get" class="card shadow-soft hn-hover mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-lg-3">
+                <input class="form-control" name="Q" value="@Model.Q" placeholder="Buscar por titulo, tag o contenido" />
+            </div>
+            <div class="col-lg-2">
+                <select class="form-select" name="Category">
+                    <option value="">Categoria</option>
+                    @foreach (var c in Model.Categories)
+                    {
+                        <option value="@c" selected="@(Model.Category == c)">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="form-select" name="Type">
+                    <option value="">Tipo</option>
+                    @foreach (var t in Html.GetEnumSelectList<KnowledgeDocType>())
+                    {
+                        <option value="@t.Value" selected="@(Model.Type == t.Value)">@t.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="form-select" name="Status">
+                    <option value="">Estado</option>
+                    @foreach (var s in Html.GetEnumSelectList<KnowledgeStatus>())
+                    {
+                        <option value="@s.Value" selected="@(Model.Status == s.Value)">@s.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select class="form-select" name="Owner">
+                    <option value="">Responsable</option>
+                    @foreach (var o in Model.Owners)
+                    {
+                        <option value="@o" selected="@(Model.Owner == o)">@o</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-1">
+                <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+            </div>
+            <div class="col-lg-3">
+                <input class="form-control" name="Tag" value="@Model.Tag" placeholder="Tag (ej: vpn, crm, fortinet)" />
+            </div>
+            <div class="col-lg-2 d-flex align-items-center">
+                <input class="form-check-input me-2" type="checkbox" name="PinnedOnly" value="true" checked="@Model.PinnedOnly" id="pinnedOnly" />
+                <label for="pinnedOnly" class="form-check-label">Solo fijados</label>
+            </div>
+            <div class="col-lg-2 d-flex align-items-center">
+                <input class="form-check-input me-2" type="checkbox" name="DueOnly" value="true" checked="@Model.DueOnly" id="dueOnly" />
+                <label for="dueOnly" class="form-check-label">Solo vencidos</label>
+            </div>
+            <div class="col-lg-2">
+                <a class="btn btn-outline-secondary w-100" asp-page="/Knowledge/Index">Limpiar</a>
             </div>
         </div>
     </div>
-}
+</form>
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Titulo</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Responsable</th>
+                        <th>Revision</th>
+                        <th class="text-nowrap">Vistas</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr><td colspan="8" class="text-muted p-3">No hay documentos con los filtros actuales.</td></tr>
+                }
+                else
+                {
+                    foreach (var d in Model.Rows)
+                    {
+                        var status = UiBadges.KnowledgeStatusBadge(d.Status);
+                        var type = UiBadges.KnowledgeTypeBadge(d.DocType);
+                        var isOverdue = d.ReviewDueAt != null && d.ReviewDueAt < DateTime.UtcNow && d.Status != KnowledgeStatus.Archivado;
+
+                        <tr>
+                            <td>
+                                <div class="fw-semibold d-flex align-items-center gap-2">
+                                    @if (d.IsPinned)
+                                    {
+                                        <span class="badge rounded-pill text-bg-warning">Fijado</span>
+                                    }
+                                    @d.Title
+                                </div>
+                                <div class="text-muted small">@d.Description</div>
+                                <div class="small mt-1 d-flex flex-wrap gap-1">
+                                    @foreach (var tag in (d.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Take(6))
+                                    {
+                                        <span class="badge rounded-pill bg-light text-dark border">@tag</span>
+                                    }
+                                </div>
+                                <div class="text-muted small mt-1">v@d.Version · Act: @d.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            </td>
+                            <td>@d.Category</td>
+                            <td><span class="badge @type.css">@type.text</span></td>
+                            <td><span class="badge @status.css">@status.text</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(d.OwnerName) ? "-" : d.OwnerName)</td>
+                            <td>
+                                @if (d.ReviewDueAt == null)
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                                else if (isOverdue)
+                                {
+                                    <span class="badge bg-danger">@d.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@d.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                                }
+                            </td>
+                            <td class="text-nowrap">@d.ViewCount</td>
+                            <td class="text-end text-nowrap">
+                                @if (d.HasAttachment)
+                                {
+                                    <span class="badge rounded-pill bg-info text-dark me-1">Archivo</span>
+                                }
+                                @if (d.HasUrl)
+                                {
+                                    <span class="badge rounded-pill bg-primary me-1">Link</span>
+                                }
+                                @if (d.HasAccessData)
+                                {
+                                    <span class="badge rounded-pill bg-danger">Acceso</span>
+                                }
+                                <a class="btn btn-sm btn-outline-primary ms-2" asp-page="/Knowledge/Details" asp-route-id="@d.Id">Abrir</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

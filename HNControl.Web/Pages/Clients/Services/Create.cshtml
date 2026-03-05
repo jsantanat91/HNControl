@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Clients.Services.CreateModel
 @{
     Layout = "_Layout";
@@ -9,6 +9,7 @@
     <div>
         <h1 class="h4 m-0">Agregar contrato</h1>
         <div class="text-muted small">@Model.ClientName</div>
+            <div class="mt-1"><span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.ClientCode</span></div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Volver</a>
 </div>
@@ -24,19 +25,19 @@
 
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Categoría</label>
+                <label class="form-label">Categoria</label>
                 <select class="form-select" asp-for="Input.ServiceType" asp-items="Model.ServiceTypeItems"></select>
             </div>
 
             <div class="col-md-8">
                 <label class="form-label">Nombre del contrato</label>
                 <input class="form-control" asp-for="Input.Label" placeholder="Ej: Internet corporativo / CCTV Matamoros" />
-                <div class="form-text">Este será el texto que verás en Órdenes de Servicio y reportes.</div>
+                <div class="form-text">Se usa en Ordenes de Servicio y reportes.</div>
             </div>
 
             <div class="col-md-4">
                 <label class="form-label">Proveedor</label>
-                <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay / Metrocarrier" />
+                <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay" />
                 <datalist id="providers">
                     <option value="Telmex"></option>
                     <option value="Totalplay"></option>
@@ -47,12 +48,13 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Número de cuenta</label>
+                <label class="form-label">Numero de cuenta</label>
                 <input class="form-control" asp-for="Input.AccountNumber" />
+                <div class="form-text">Sugerido: @Model.ClientCode</div>
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Número de contrato</label>
+                <label class="form-label">Numero de contrato</label>
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
@@ -75,20 +77,19 @@
             <div class="col-12">
                 <label class="form-label">Proyecto ligado (opcional)</label>
                 <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
-                    <option value="">— Sin proyecto —</option>
+                    <option value="">-- Sin proyecto --</option>
                 </select>
-                <div class="form-text">Si lo ligas a un proyecto, las Órdenes de Servicio se podrán filtrar por sitio/implementación.</div>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Contrato firmado (PDF)</label>
                 <input class="form-control" type="file" asp-for="Input.SignedContract" accept="application/pdf,.pdf" />
-                <div class="form-text">Recomendado: PDF. Máx 20 MB.</div>
+                <div class="form-text">Maximo 20 MB.</div>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Notas</label>
-                <textarea class="form-control" rows="3" asp-for="Input.Notes" placeholder="Ej: observaciones, SLA, plan contratado, ancho de banda, IPs, etc."></textarea>
+                <textarea class="form-control" rows="3" asp-for="Input.Notes" placeholder="Observaciones, SLA, plan contratado, etc."></textarea>
             </div>
         </div>
     </div>

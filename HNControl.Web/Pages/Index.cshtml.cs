@@ -1,24 +1,19 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly ApplicationDbContext _db;
-
-    public IndexModel(ApplicationDbContext db)
+    public IActionResult OnGet()
     {
-        _db = db;
-    }
+        if (User.IsInRole(AppRoles.Admin))
+            return RedirectToPage("/Admin/Dashboard");
 
-    public int EmployeeCount { get; set; }
-    public int ViaticWeekCount { get; set; }
+        if (User.IsInRole(AppRoles.Employee))
+            return RedirectToPage("/Employees/MyProfile");
 
-    public async Task OnGetAsync()
-    {
-        EmployeeCount = await _db.EmployeeProfiles.CountAsync();
-        ViaticWeekCount = await _db.ViaticWeeks.CountAsync();
+        return RedirectToPage("/Account/Login");
     }
 }

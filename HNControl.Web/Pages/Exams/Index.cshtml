@@ -1,120 +1,139 @@
-@page
+﻿@page
+@using HNControl.Web.Helpers
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Exams.IndexModel
 @{
-    ViewData["Title"] = "Exámenes";
+    ViewData["Title"] = "Ex&aacute;menes";
 
-    string StatusText(ExamAssignmentStatus s) => s switch
-    {
-        ExamAssignmentStatus.Assigned => "Asignado",
-        ExamAssignmentStatus.InProgress => "En progreso",
-        ExamAssignmentStatus.Submitted => "En revisión",
-        ExamAssignmentStatus.Graded => "Calificado",
-        _ => "—"
-    };
-
-    string StatusBadge(ExamAssignmentStatus s) => s switch
-    {
-        ExamAssignmentStatus.Graded => "bg-success text-white",
-        ExamAssignmentStatus.Submitted => "bg-info text-dark",
-        ExamAssignmentStatus.InProgress => "bg-warning text-dark",
-        ExamAssignmentStatus.Assigned => "bg-secondary text-white",
-        _ => "bg-light text-dark"
-    };
-
-    (string text, string css) ResultBadge(decimal score, decimal maxScore, decimal passingPct = 80m)
-    {
-        if (maxScore <= 0) return ("Sin score", "bg-secondary text-white");
-        var pct = Math.Round((score / maxScore) * 100m, 1);
-        var pass = pct >= passingPct;
-        return (pass ? $"Aprobado {pct}%" : $"Reprobado {pct}%", pass ? "bg-success text-white" : "bg-danger text-white");
-    }
+    var assigned = Model.Items.Count(x => x.Status == ExamAssignmentStatus.Assigned);
+    var inProgress = Model.Items.Count(x => x.Status == ExamAssignmentStatus.InProgress);
+    var submitted = Model.Items.Count(x => x.Status == ExamAssignmentStatus.Submitted);
+    var graded = Model.Items.Count(x => x.Status == ExamAssignmentStatus.Graded);
+    var view = (Request.Query["view"].ToString() ?? "").Trim().ToLowerInvariant();
+    var isTable = view == "table";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Exámenes</h1>
-        <div class="text-muted small">Asignados, en progreso y calificados</div>
+        <h1 class="h4 m-0">Ex&aacute;menes</h1>
+        <div class="text-muted small">Asignados, en progreso y calificados.</div>
+    </div>
+    <div class="btn-group">
+        <a class="btn btn-outline-secondary btn-sm @(isTable ? "" : "active")" asp-page="./Index" asp-route-view="cards">Cards</a>
+        <a class="btn btn-outline-secondary btn-sm @(isTable ? "active" : "")" asp-page="./Index" asp-route-view="table">Tabla</a>
     </div>
 </div>
 
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Asignados</div><div class="fs-4 fw-bold">@assigned</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">En progreso</div><div class="fs-4 fw-bold">@inProgress</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">En revisi&oacute;n</div><div class="fs-4 fw-bold">@submitted</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Calificados</div><div class="fs-4 fw-bold">@graded</div></div></div></div>
+</div>
+
 <div class="row g-3">
-    <div class="col-lg-5">
-        <div class="card shadow-soft hn-hover">
+    <div class="col-lg-4">
+        <div class="card shadow-soft hn-hover h-100">
             <div class="card-header fw-semibold">Estatus</div>
             <div class="card-body">
-                <div style="height:220px;">
-                    <canvas id="examStatusChart"></canvas>
-                </div>
-                <div class="text-muted small mt-2">* “Calificado” no es “aprobado”: aprobación depende del porcentaje.</div>
+                <div style="height:220px;"><canvas id="examStatusChart"></canvas></div>
+                <div class="text-muted small mt-2">Calificado no implica aprobado; depende del porcentaje final.</div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-7">
+    <div class="col-lg-8">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Mis exámenes</div>
+            <div class="card-header fw-semibold">Mis ex&aacute;menes</div>
             <div class="card-body">
                 @if (!Model.Items.Any())
                 {
-                    <div class="text-muted">No tienes exámenes asignados (todavía).</div>
+                    <div class="text-muted">No tienes ex&aacute;menes asignados todav&iacute;a.</div>
+                }
+                else if (!isTable)
+                {
+                    <div class="row row-cols-1 row-cols-xl-2 g-3">
+                        @foreach (var a in Model.Items)
+                        {
+                            var st = UiBadges.ExamStatus(a.Status);
+                            var scoreText = $"{a.Score:0.##} / {a.MaxScore:0.##}";
+                            var dueText = a.DueAt.HasValue ? a.DueAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "Sin limite";
+                            var (resultText, resultCss) = a.Status == ExamAssignmentStatus.Graded
+                                ? UiBadges.ExamResult(a.Score, a.MaxScore, 80m)
+                                : ("", "");
+
+                            <div class="col d-flex">
+                                <div class="card shadow-sm hn-hover w-100 hn-exam-card">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div>
+                                                <div class="fw-bold">@a.Exam?.Title</div>
+                                                <div class="text-muted small">Asignado: @a.AssignedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                                                <div class="text-muted small">L&iacute;mite: @dueText</div>
+                                            </div>
+                                            <span class="badge rounded-pill @st.css">@st.text</span>
+                                        </div>
+
+                                        <div class="mt-3 small">
+                                            <span class="text-muted">Puntaje:</span> <span class="fw-semibold">@scoreText</span>
+                                            @if (a.Status == ExamAssignmentStatus.Graded && !string.IsNullOrWhiteSpace(resultText))
+                                            {
+                                                <span class="badge rounded-pill @resultCss ms-2">@resultText</span>
+                                            }
+                                        </div>
+
+                                        <div class="mt-auto pt-3">
+                                            @if (a.Status == ExamAssignmentStatus.Assigned || a.Status == ExamAssignmentStatus.InProgress)
+                                            {
+                                                <a class="btn btn-sm btn-primary" asp-page="/Exams/Take" asp-route-id="@a.Id">Resolver</a>
+                                            }
+                                            else
+                                            {
+                                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Exams/Take" asp-route-id="@a.Id">Ver</a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 }
                 else
                 {
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead>
-                            <tr>
-                                <th>Examen</th>
-                                <th>Estatus</th>
-                                <th class="text-end">Puntaje</th>
-                                <th class="text-end"></th>
-                            </tr>
+                                <tr>
+                                    <th>Examen</th>
+                                    <th>Estatus</th>
+                                    <th class="text-end">Puntaje</th>
+                                    <th class="text-end"></th>
+                                </tr>
                             </thead>
                             <tbody>
-                            @foreach (var a in Model.Items)
-                            {
-                                var stText = StatusText(a.Status);
-                                var stCss = StatusBadge(a.Status);
-
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold">@a.Exam?.Title</div>
-                                        <div class="text-muted small">
-                                            Asignado: @a.AssignedAt.ToLocalTime().ToString("yyyy-MM-dd")
-                                            @if (a.DueAt.HasValue)
+                                @foreach (var a in Model.Items)
+                                {
+                                    var st = UiBadges.ExamStatus(a.Status);
+                                    var scoreText = $"{a.Score:0.##} / {a.MaxScore:0.##}";
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@a.Exam?.Title</div>
+                                            <div class="text-muted small">Asignado: @a.AssignedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                                        </td>
+                                        <td><span class="badge rounded-pill @st.css">@st.text</span></td>
+                                        <td class="text-end fw-semibold">@scoreText</td>
+                                        <td class="text-end">
+                                            @if (a.Status == ExamAssignmentStatus.Assigned || a.Status == ExamAssignmentStatus.InProgress)
                                             {
-                                                <span class="ms-2">| Límite: @a.DueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                                                <a class="btn btn-sm btn-primary" asp-page="/Exams/Take" asp-route-id="@a.Id">Resolver</a>
                                             }
-                                        </div>
-                                    </td>
-
-                                    <td>
-                                        <span class="badge rounded-pill @stCss">@stText</span>
-
-                                        @if (a.Status == ExamAssignmentStatus.Graded && a.MaxScore > 0)
-                                        {
-                                            var (rt, rc) = ResultBadge(a.Score, a.MaxScore, 80m);
-                                            <span class="badge rounded-pill @rc ms-2">@rt</span>
-                                        }
-                                    </td>
-
-                                    <td class="text-end fw-semibold">
-                                        @a.Score.ToString("0.##") / @a.MaxScore.ToString("0.##")
-                                    </td>
-
-                                    <td class="text-end">
-                                        @if (a.Status == ExamAssignmentStatus.Assigned || a.Status == ExamAssignmentStatus.InProgress)
-                                        {
-                                            <a class="btn btn-sm btn-primary" asp-page="/Exams/Take" asp-route-id="@a.Id">Resolver</a>
-                                        }
-                                        else
-                                        {
-                                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Exams/Take" asp-route-id="@a.Id">Ver</a>
-                                        }
-                                    </td>
-                                </tr>
-                            }
+                                            else
+                                            {
+                                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Exams/Take" asp-route-id="@a.Id">Ver</a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
                             </tbody>
                         </table>
                     </div>
@@ -123,6 +142,12 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .hn-exam-card { border-radius: 16px !important; }
+    </style>
+}
 
 @section Scripts {
     <script>
@@ -154,7 +179,7 @@
 
             const cfg = {
               type: 'doughnut',
-              data: { labels: pairs.map(x => x.l), datasets: [{ label: 'Exámenes', data: pairs.map(x => x.v) }] },
+              data: { labels: pairs.map(x => x.l), datasets: [{ label: 'Examenes', data: pairs.map(x => x.v) }] },
               options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             };
 
@@ -165,7 +190,7 @@
           const rawLabels = @Html.Raw(Model.StatusLabelsJson);
           const values = @Html.Raw(Model.StatusValuesJson);
 
-          const map = { "Assigned":"Asignado", "InProgress":"En progreso", "Submitted":"En revisión", "Graded":"Calificado" };
+          const map = { "Assigned":"Asignado", "InProgress":"En progreso", "Submitted":"En revision", "Graded":"Calificado" };
           const labels = (rawLabels || []).map(x => map[x] ?? x);
 
           doughnutFiltered("examStatusChart", labels, values);

@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.Services.EditModel
 @{
     Layout = "_Layout";
@@ -15,6 +15,7 @@
     <div>
         <h1 class="h4 m-0">Editar contrato</h1>
         <div class="text-muted small">@Model.ClientName</div>
+            <div class="mt-1"><span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.ClientCode</span></div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Volver</a>
 </div>
@@ -30,7 +31,7 @@
 
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Categoría</label>
+                <label class="form-label">Categoria</label>
                 <select class="form-select" asp-for="Input.ServiceType" asp-items="Model.ServiceTypeItems"></select>
             </div>
 
@@ -52,12 +53,12 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Número de cuenta</label>
+                <label class="form-label">Numero de cuenta</label>
                 <input class="form-control" asp-for="Input.AccountNumber" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Número de contrato</label>
+                <label class="form-label">Numero de contrato</label>
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
@@ -80,7 +81,7 @@
             <div class="col-12">
                 <label class="form-label">Proyecto ligado (opcional)</label>
                 <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
-                    <option value="">— Sin proyecto —</option>
+                    <option value="">-- Sin proyecto --</option>
                 </select>
             </div>
 
@@ -90,8 +91,8 @@
                 @if (Model.HasContractFile)
                 {
                     <div class="form-text">
-                        Ya hay un archivo cargado: <b>@Model.ContractFileName</b>
-                        · <a asp-page="/Clients/Services/Download" asp-route-id="@Model.Contract!.Id">Descargar</a>
+                        Archivo actual: <b>@Model.ContractFileName</b>
+                        - <a asp-page="/Clients/Services/Download" asp-route-id="@Model.Contract!.Id">Descargar</a>
                     </div>
                 }
             </div>

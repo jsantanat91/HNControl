@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Inventory.IndexModel
 @using System
 @using HNControl.Web.Models
@@ -10,7 +10,7 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-1">Inventarios</h1>
-        <div class="text-muted small">Consulta existencias + solicita entradas/salidas (aprobación admin).</div>
+        <div class="text-muted small">Consulta existencias + solicita entradas/salidas (aprobaci&oacute;n admin).</div>
     </div>
 
     <div class="d-flex flex-wrap gap-2">
@@ -26,21 +26,21 @@
     </div>
 </div>
 
-<form method="get" class="card mb-3">
+<form method="get" class="card mb-3 shadow-soft hn-hover">
     <div class="card-body p-3">
         <input type="hidden" name="page" value="1" />
 
         <div class="row g-2 align-items-end">
             <div class="col-12 col-lg-4">
                 <label class="form-label small text-muted mb-1">Buscar</label>
-                <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por cualquier campo (nombre, SKU, categoría, ubicación, marca, modelo...)" />
+                <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por cualquier campo (nombre, SKU, categor&iacute;a, ubicaci&oacute;n, marca, modelo...)" />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-2">
-                <label class="form-label small text-muted mb-1">Categoría</label>
+                <label class="form-label small text-muted mb-1">Categor&iacute;a</label>
                 <select class="form-select" name="cat">
                     <option value="">Todas</option>
-                    <option value="__none" selected="@(Model.Cat == "__none")">Sin categoría</option>
+                    <option value="__none" selected="@(Model.Cat == "__none")">Sin categor&iacute;a</option>
                     @foreach (var c in Model.CategoryOptions.Where(x => !string.IsNullOrWhiteSpace(x)))
                     {
                         <option value="@c" selected="@(Model.Cat == c)">@c</option>
@@ -49,10 +49,10 @@
             </div>
 
             <div class="col-12 col-sm-6 col-lg-2">
-                <label class="form-label small text-muted mb-1">Ubicación</label>
+                <label class="form-label small text-muted mb-1">Ubicaci&oacute;n</label>
                 <select class="form-select" name="loc">
                     <option value="">Todas</option>
-                    <option value="__none" selected="@(Model.Loc == "__none")">Sin ubicación</option>
+                    <option value="__none" selected="@(Model.Loc == "__none")">Sin ubicaci&oacute;n</option>
                     @foreach (var l in Model.LocationOptions.Where(x => !string.IsNullOrWhiteSpace(x)))
                     {
                         <option value="@l" selected="@(Model.Loc == l)">@l</option>
@@ -76,9 +76,9 @@
                 <label class="form-label small text-muted mb-1">Ordenar</label>
                 <select class="form-select" name="sort">
                     <option value="name" selected="@(string.Equals(Model.Sort, "name", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Sort))">Item</option>
-                    <option value="category" selected="@(string.Equals(Model.Sort, "category", StringComparison.OrdinalIgnoreCase))">Categoría</option>
+                    <option value="category" selected="@(string.Equals(Model.Sort, "category", StringComparison.OrdinalIgnoreCase))">Categor&iacute;a</option>
                     <option value="brand" selected="@(string.Equals(Model.Sort, "brand", StringComparison.OrdinalIgnoreCase))">Marca</option>
-                    <option value="location" selected="@(string.Equals(Model.Sort, "location", StringComparison.OrdinalIgnoreCase))">Ubicación</option>
+                    <option value="location" selected="@(string.Equals(Model.Sort, "location", StringComparison.OrdinalIgnoreCase))">Ubicaci&oacute;n</option>
                     <option value="stock" selected="@(string.Equals(Model.Sort, "stock", StringComparison.OrdinalIgnoreCase))">Existencia</option>
                 </select>
             </div>
@@ -86,8 +86,8 @@
             <div class="col-4 col-sm-2 col-lg-1">
                 <label class="form-label small text-muted mb-1">Dir</label>
                 <select class="form-select" name="dir">
-                    <option value="asc" selected="@(string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Dir))">↑</option>
-                    <option value="desc" selected="@(string.Equals(Model.Dir, "desc", StringComparison.OrdinalIgnoreCase))">↓</option>
+                    <option value="asc" selected="@(string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Dir))">&uarr;</option>
+                    <option value="desc" selected="@(string.Equals(Model.Dir, "desc", StringComparison.OrdinalIgnoreCase))">&darr;</option>
                 </select>
             </div>
 
@@ -102,7 +102,34 @@
     </div>
 </form>
 
-<div class="card">
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Items filtrados</div>
+                <div class="h3 mb-0">@Model.TotalCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100 border-warning-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Bajo stock</div>
+                <div class="h3 mb-0">@Model.LowStockCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100 border-danger-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Sin stock</div>
+                <div class="h3 mb-0">@Model.ZeroStockCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover">
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
             <div class="text-muted small">
@@ -115,20 +142,20 @@
                     <span>Mostrando <strong>@Model.From</strong>-<strong>@Model.To</strong> de <strong>@Model.TotalCount</strong></span>
                 }
             </div>
-            <div class="text-muted small">50 por página</div>
+            <div class="text-muted small">50 por p&aacute;gina</div>
         </div>
 
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead>
                     <tr>
-                        <th>Categoría</th>
+                        <th>Categor&iacute;a</th>
                         <th>Item</th>
                         <th>SKU</th>
                         <th>Marca / Modelo</th>
-                        <th>Ubicación</th>
+                        <th>Ubicaci&oacute;n</th>
                         <th class="text-end">Existencia</th>
-                        <th class="text-end">Stock mínimo</th>
+                        <th class="text-end">Stock m&iacute;nimo</th>
                         <th class="text-end">Estado</th>
                     </tr>
                 </thead>
@@ -139,18 +166,18 @@
                     <tr>
                         <td>
                             @{
-                                var catLabel = string.IsNullOrWhiteSpace(i.Category) ? "Sin categoría" : i.Category;
+                                var catLabel = string.IsNullOrWhiteSpace(i.Category) ? "Sin categor&iacute;a" : i.Category;
                                 var badge = Model.GetCategoryBadgeClass(i.Category);
                             }
                             <span class="hn-badge @badge">@catLabel</span>
                         </td>
                         <td class="fw-semibold">@i.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "—" : i.Sku)</td>
+                        <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "-" : i.Sku)</td>
                         <td>
-                            <div class="fw-semibold">@(i.Brand?.Name ?? "—")</div>
-                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(i.Model) ? "—" : i.Model)</div>
+                            <div class="fw-semibold">@(i.Brand?.Name ?? "-")</div>
+                            <div class="text-muted small">@(string.IsNullOrWhiteSpace(i.Model) ? "-" : i.Model)</div>
                         </td>
-                        <td>@(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)</td>
+                        <td>@(string.IsNullOrWhiteSpace(i.Location) ? "-" : i.Location)</td>
                         <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
                         <td class="text-end">@i.ReorderLevel</td>
                         <td class="text-end">
@@ -200,7 +227,7 @@
                         </li>
                         @if (start > 2)
                         {
-                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
                         }
                     }
 
@@ -218,7 +245,7 @@
                     {
                         @if (end < total - 1)
                         {
-                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
                         }
                         <li class="page-item">
                             <a class="page-link" asp-page="./Index"

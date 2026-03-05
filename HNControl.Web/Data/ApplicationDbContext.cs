@@ -183,10 +183,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         b.Entity<Client>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.ClientCode).HasMaxLength(20);
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.Address).HasMaxLength(400);
+            e.HasIndex(x => x.ClientCode).IsUnique();
             e.HasMany(x => x.Contracts)
              .WithOne(s => s.Client!)
              .HasForeignKey(s => s.ClientId)
@@ -252,6 +254,27 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Category).HasMaxLength(100);
             e.Property(x => x.Url).HasMaxLength(600);
             e.Property(x => x.Description).HasMaxLength(600);
+            e.Property(x => x.Tags).HasMaxLength(500);
+            e.Property(x => x.Body).HasMaxLength(8000);
+            e.Property(x => x.OwnerUserId).HasMaxLength(64);
+            e.Property(x => x.OwnerName).HasMaxLength(200);
+            e.Property(x => x.ReviewerName).HasMaxLength(200);
+            e.Property(x => x.AttachmentStoragePath).HasMaxLength(500);
+            e.Property(x => x.AttachmentOriginalFileName).HasMaxLength(255);
+            e.Property(x => x.AttachmentContentType).HasMaxLength(100);
+            e.Property(x => x.AccessUsername).HasMaxLength(160);
+            e.Property(x => x.AccessSecretProtected).HasMaxLength(2000);
+            e.Property(x => x.AccessNotes).HasMaxLength(1200);
+            e.Property(x => x.UpdatedByName).HasMaxLength(200);
+            e.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.PublishedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.LastViewedAt).HasColumnType("timestamp with time zone");
+            e.Property(x => x.ReviewDueAt).HasColumnType("timestamp with time zone");
+
+            e.HasIndex(x => new { x.Status, x.DocType, x.Category });
+            e.HasIndex(x => x.ReviewDueAt);
+            e.HasIndex(x => x.IsPinned);
         });
 
         b.Entity<PerformanceReview>(e =>

@@ -1,5 +1,6 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +11,22 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    public record Row(Guid Id, string Title, string ClientName, string Responsible, string StartDate, string EstEnd, string Status, bool IsOverdue);
+    [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
+    [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+
+    public int TotalCount { get; set; }
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+
+    public record Row(Guid Id, string Title, string ClientName, string Responsible, DateTime StartDate, DateTime EstEnd, ProjectStatus Status, bool IsOverdue);
     public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
     {
+        PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
+        Page = Page < 1 ? 1 : Page;
+
         var isAdmin = User.IsInRole(AppRoles.Admin);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
@@ -26,7 +38,25 @@ public class IndexModel : PageModel
         if (!isAdmin && userId != null)
             q = q.Where(p => p.AssignedUserId == userId);
 
-        var list = await q.OrderByDescending(p => p.StartDate).ToListAsync();
+        if (DateFrom.HasValue)
+        {
+            var from = DateFrom.Value.Date;
+            q = q.Where(p => p.StartDate.Date >= from);
+        }
+
+        if (DateTo.HasValue)
+        {
+            var to = DateTo.Value.Date;
+            q = q.Where(p => p.StartDate.Date <= to);
+        }
+
+        TotalCount = await q.CountAsync();
+
+        var list = await q
+            .OrderByDescending(p => p.StartDate)
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
+            .ToListAsync();
 
         Rows = list.Select(p =>
         {
@@ -36,9 +66,9 @@ public class IndexModel : PageModel
                 p.Title,
                 p.Client?.Name ?? "",
                 p.AssignedEmployee?.FullName ?? p.AssignedUserId,
-                p.StartDate.ToString("yyyy-MM-dd"),
-                p.EstimatedEndDate.ToString("yyyy-MM-dd"),
-                p.Status.ToString(),
+                p.StartDate,
+                p.EstimatedEndDate,
+                p.Status,
                 overdue
             );
         }).ToList();

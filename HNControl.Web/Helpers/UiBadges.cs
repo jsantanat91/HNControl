@@ -38,4 +38,71 @@ public static class UiBadges
         LeaveRequestType.Personal => ("Personal", "bg-dark"),
         _ => ("Otra", "bg-secondary")
     };
+
+    public static (string text, string css) ServiceOrderStatusBadge(ServiceOrderStatus s) => s switch
+    {
+        ServiceOrderStatus.Created => ("Creada", "bg-secondary"),
+        ServiceOrderStatus.InProgress => ("En proceso", "bg-primary"),
+        ServiceOrderStatus.InReview => ("En revision", "bg-warning text-dark"),
+        ServiceOrderStatus.Finalized => ("Finalizada", "bg-success"),
+        ServiceOrderStatus.Rejected => ("Rechazada", "bg-danger"),
+        ServiceOrderStatus.PendingClientSignature => ("Firma cliente", "bg-info text-dark"),
+        _ => ("-", "bg-light text-dark")
+    };
+
+    public static (string text, string css) ServiceOrderTypeBadge(ServiceOrderType t) => t switch
+    {
+        ServiceOrderType.Correctivo => ("Correctivo", "bg-danger"),
+        ServiceOrderType.Preventivo => ("Preventivo", "bg-success"),
+        ServiceOrderType.NuevaInstalacion => ("Nueva instalacion", "bg-primary"),
+        ServiceOrderType.LevantamientoTecnico => ("Levantamiento", "bg-info text-dark"),
+        ServiceOrderType.Global => ("Global", "bg-dark"),
+        _ => ("Otro", "bg-secondary")
+    };
+
+    public static (string text, string css) ServiceOrderAreaBadge(ServiceOrderWorkflowArea a) => a switch
+    {
+        ServiceOrderWorkflowArea.Levantamiento => ("Levantamiento", "bg-info text-dark"),
+        ServiceOrderWorkflowArea.Materiales => ("Materiales", "bg-warning text-dark"),
+        ServiceOrderWorkflowArea.Ejecucion => ("Ejecucion", "bg-primary"),
+        ServiceOrderWorkflowArea.CierreTecnico => ("Cierre tecnico", "bg-success"),
+        _ => ("-", "bg-light text-dark")
+    };
+
+    public static (string text, string css) ProjectStatusBadge(ProjectStatus s) => s switch
+    {
+        ProjectStatus.Open => ("Abierto", "bg-primary"),
+        ProjectStatus.Closed => ("Cerrado", "bg-secondary"),
+        _ => ("-", "bg-light text-dark")
+    };
+
+    public static (string text, string css) ProjectSlaBadge(ProjectStatus status, DateTime estimatedEndDate)
+    {
+        if (status == ProjectStatus.Closed)
+            return ("Cerrado", "bg-secondary");
+
+        var days = (estimatedEndDate.Date - DateTime.Today).Days;
+        if (days < 0) return ("Vencido", "bg-danger");
+        if (days <= 3) return ("Por vencer", "bg-warning text-dark");
+        return ("En tiempo", "bg-success");
+    }
+
+    public static (string text, string css) KnowledgeStatusBadge(KnowledgeStatus s) => s switch
+    {
+        KnowledgeStatus.Borrador => ("Borrador", "bg-warning text-dark"),
+        KnowledgeStatus.Publicado => ("Publicado", "bg-success"),
+        KnowledgeStatus.Archivado => ("Archivado", "bg-secondary"),
+        _ => ("-", "bg-light text-dark")
+    };
+
+    public static (string text, string css) KnowledgeTypeBadge(KnowledgeDocType t) => t switch
+    {
+        KnowledgeDocType.ManualInterno => ("Manual", "bg-primary"),
+        KnowledgeDocType.AccesoPlataforma => ("Acceso", "bg-danger"),
+        KnowledgeDocType.Proceso => ("Proceso", "bg-info text-dark"),
+        KnowledgeDocType.Politica => ("Politica", "bg-dark"),
+        KnowledgeDocType.Plantilla => ("Plantilla", "bg-warning text-dark"),
+        KnowledgeDocType.Referencia => ("Referencia", "bg-secondary"),
+        _ => ("Otro", "bg-light text-dark")
+    };
 }

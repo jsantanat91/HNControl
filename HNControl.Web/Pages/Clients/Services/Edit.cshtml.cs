@@ -25,6 +25,7 @@ public class EditModel : PageModel
     public ClientServiceContract? Contract { get; set; }
     public Guid ClientId { get; set; }
     public string ClientName { get; set; } = "";
+    public string ClientCode { get; set; } = "";
 
     public bool HasContractFile => Contract != null && !string.IsNullOrWhiteSpace(Contract.SignedContractStoragePath);
     public string ContractFileName => Contract?.SignedContractOriginalFileName ?? "contrato.pdf";
@@ -81,8 +82,15 @@ public class EditModel : PageModel
 
         if (Contract == null) return NotFound();
 
+        if (string.IsNullOrWhiteSpace(Contract.Client?.ClientCode))
+        {
+            Contract.Client!.ClientCode = await NextClientCodeAsync();
+            await _db.SaveChangesAsync();
+        }
+
         ClientId = Contract.ClientId;
         ClientName = Contract.Client?.Name ?? "";
+        ClientCode = Contract.Client?.ClientCode ?? "";
 
         await LoadProjectsAsync(ClientId);
 
@@ -92,8 +100,8 @@ public class EditModel : PageModel
             ServiceType = Contract.ServiceType,
             Label = Contract.Label,
             Provider = Contract.Provider,
-            AccountNumber = Contract.AccountNumber,
-            ContractNumber = Contract.ContractNumber,
+            AccountNumber = string.IsNullOrWhiteSpace(Contract.AccountNumber) ? ClientCode : Contract.AccountNumber,
+            ContractNumber = string.IsNullOrWhiteSpace(Contract.ContractNumber) ? $"{ClientCode}-01" : Contract.ContractNumber,
             MonthlyAmount = Contract.MonthlyAmount,
             ContractStartDate = Contract.ContractStartDate?.Date,
             ContractEndDate = Contract.ContractEndDate?.Date,
@@ -112,8 +120,15 @@ public class EditModel : PageModel
 
         if (Contract == null) return NotFound();
 
+        if (string.IsNullOrWhiteSpace(Contract.Client?.ClientCode))
+        {
+            Contract.Client!.ClientCode = await NextClientCodeAsync();
+            await _db.SaveChangesAsync();
+        }
+
         ClientId = Contract.ClientId;
         ClientName = Contract.Client?.Name ?? "";
+        ClientCode = Contract.Client?.ClientCode ?? "";
 
         await LoadProjectsAsync(ClientId);
 
@@ -122,8 +137,8 @@ public class EditModel : PageModel
         Contract.ServiceType = Input.ServiceType;
         Contract.Label = (Input.Label ?? "").Trim();
         Contract.Provider = (Input.Provider ?? "").Trim();
-        Contract.AccountNumber = (Input.AccountNumber ?? "").Trim();
-        Contract.ContractNumber = (Input.ContractNumber ?? "").Trim();
+        Contract.AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? ClientCode : Input.AccountNumber.Trim();
+        Contract.ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber) ? $"{ClientCode}-01" : Input.ContractNumber.Trim();
         Contract.MonthlyAmount = Input.MonthlyAmount;
         Contract.ContractStartDate = Input.ContractStartDate?.Date;
         Contract.ContractEndDate = Input.ContractEndDate?.Date;
@@ -156,6 +171,24 @@ public class EditModel : PageModel
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Clients/Details", new { id = ClientId });
+    }
+
+    private async Task<string> NextClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+
+        return $"HN-{max + 1:0000}";
     }
 
     private async Task LoadProjectsAsync(Guid clientId)

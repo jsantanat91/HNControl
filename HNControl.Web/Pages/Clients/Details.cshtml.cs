@@ -42,6 +42,12 @@ public class DetailsModel : PageModel
 
         if (Client == null) return;
 
+        if (string.IsNullOrWhiteSpace(Client.ClientCode))
+        {
+            Client.ClientCode = await NextClientCodeAsync();
+            await _db.SaveChangesAsync();
+        }
+
         var projMap = await _db.Projects
             .Where(p => p.ClientId == id)
             .Select(p => new { p.Id, p.Title })
@@ -106,5 +112,23 @@ public class DetailsModel : PageModel
             p.EstimatedEndDate.ToString("yyyy-MM-dd"),
             p.Status.ToString()
         )).ToList();
+    }
+
+    private async Task<string> NextClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+
+        return $"HN-{max + 1:0000}";
     }
 }

@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.EditModel
 @{
     Layout = "_Layout";
@@ -30,6 +30,10 @@
     return;
 }
 
+<div class="mb-2">
+    <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.Input.ClientCode</span>
+</div>
+
 <form method="post" class="card shadow-soft hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
@@ -56,12 +60,12 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Teléfono</label>
+                <label class="form-label">Tel&eacute;fono</label>
                 <input class="form-control" asp-for="Input.Phone" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Dirección</label>
+                <label class="form-label">Direcci&oacute;n</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
         </div>
