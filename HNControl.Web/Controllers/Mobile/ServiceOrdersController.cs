@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +15,14 @@ namespace HNControl.Web.Controllers.Mobile;
 public class ServiceOrdersController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
+    private readonly IServiceOrderPdfRenderer _pdf;
 
-    public ServiceOrdersController(ApplicationDbContext db)
+    public ServiceOrdersController(ApplicationDbContext db, IFileStorage storage, IServiceOrderPdfRenderer pdf)
     {
         _db = db;
+        _storage = storage;
+        _pdf = pdf;
     }
 
     public record OrderListItem(
@@ -137,5 +142,31 @@ public class ServiceOrdersController : ControllerBase
 
         await _db.SaveChangesAsync();
         return Ok(new { message = "Orden tomada" });
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Pdf(Guid id)
+    {
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(o.PdfStoragePath))
+        {
+            var bytes = await _pdf.RenderAsync(o);
+            var fileName = $"orden_{o.Id:N}.pdf";
+            var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{o.Id}/pdf", fileName, "application/pdf");
+            o.PdfStoragePath = path;
+            o.PdfGeneratedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        if (string.IsNullOrWhiteSpace(o.PdfStoragePath))
+            return NotFound(new { message = "La orden no tiene PDF disponible." });
+
+        var downloadName = $"OrdenServicio_{o.Id:N}.pdf";
+        var (stream, contentType, _) = await _storage.OpenAsync(o.PdfStoragePath, downloadName);
+        return File(stream, contentType, downloadName);
     }
 }

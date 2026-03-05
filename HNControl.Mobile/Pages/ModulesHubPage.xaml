@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.ModulesHubPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Modulos"
+    Background="#E9EEF7">
+    <ScrollView>
+        <VerticalStackLayout Padding="14,12,14,26" Spacing="10">
+            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="4">
+                    <Label FontAttributes="Bold" FontSize="23" Text="Modulos operativos" TextColor="White" />
+                    <Label FontSize="12" Opacity="0.85" Text="Visibles segun permisos del usuario." TextColor="#C5D5F0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <CollectionView x:Name="ModulesCollection" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label FontAttributes="Bold" FontSize="18" Text="{Binding Label}" />
+                                    <Label FontSize="12" Opacity="0.7" Text="{Binding Key}" />
+                                </VerticalStackLayout>
+                                <Button Grid.Column="1"
+                                        BackgroundColor="#2B5FD9"
+                                        Clicked="OnOpenModuleClicked"
+                                        CommandParameter="{Binding Key}"
+                                        CornerRadius="10"
+                                        HeightRequest="38"
+                                        Padding="14,8"
+                                        Text="Abrir"
+                                        TextColor="White" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

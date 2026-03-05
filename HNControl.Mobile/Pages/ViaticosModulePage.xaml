@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.ViaticosModulePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Viaticos"
+    Background="#E9EEF7">
+    <Grid RowDefinitions="Auto,*" Padding="14,12">
+        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <Label FontAttributes="Bold" FontSize="23" Text="Mis viaticos" TextColor="White" />
+                <Button Grid.Column="1"
+                        BackgroundColor="#2B5FD9"
+                        Clicked="OnNewWeekClicked"
+                        CornerRadius="10"
+                        HeightRequest="40"
+                        Padding="14,8"
+                        Text="+ Semana"
+                        TextColor="White" />
+                <Label Grid.Row="1"
+                       Grid.ColumnSpan="2"
+                       FontSize="12"
+                       Opacity="0.85"
+                       Text="Carga semanal de gastos (vista movil)."
+                       TextColor="#C5D5F0" />
+            </Grid>
+        </Border>
+
+        <RefreshView x:Name="WeeksRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
+            <CollectionView x:Name="WeeksCollection" Margin="0,12,0,0" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                        <VerticalStackLayout Spacing="6">
+                            <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Sin semanas" />
+                            <Label HorizontalOptions="Center" Opacity="0.7" Text="Pulsa + Semana para iniciar." />
+                        </VerticalStackLayout>
+                    </Border>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,0,0,10" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                            <VerticalStackLayout Spacing="7">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label FontAttributes="Bold"
+                                           FontSize="18"
+                                           Text="{Binding WeekStartDate, StringFormat='Semana {0:yyyy-MM-dd}'}" />
+                                    <Label Grid.Column="1"
+                                           FontAttributes="Bold"
+                                           FontSize="12"
+                                           Text="{Binding StatusLabel}" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Border Grid.Column="0" BackgroundColor="#EEF3FF" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
+                                        <VerticalStackLayout Spacing="0">
+                                            <Label FontSize="11" Opacity="0.75" Text="Total" />
+                                            <Label FontAttributes="Bold" FontSize="16" Text="{Binding TotalAmount, StringFormat='${0:N2}'}" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                    <Border Grid.Column="1" BackgroundColor="#F3F7EC" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
+                                        <VerticalStackLayout Spacing="0">
+                                            <Label FontSize="11" Opacity="0.75" Text="Entradas" />
+                                            <Label FontAttributes="Bold" FontSize="16" Text="{Binding EntriesCount}" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </Grid>
+                                <Button BackgroundColor="#2252D5"
+                                        Clicked="OnOpenWeekClicked"
+                                        CommandParameter="{Binding Id}"
+                                        CornerRadius="10"
+                                        HeightRequest="38"
+                                        Text="Abrir semana"
+                                        TextColor="White" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

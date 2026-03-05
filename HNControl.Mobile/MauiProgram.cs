@@ -36,11 +36,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<AuthService>();
         builder.Services.AddSingleton<OrdersService>();
         builder.Services.AddSingleton<EmployeeService>();
+        builder.Services.AddSingleton<ModulesService>();
+        builder.Services.AddSingleton<ViaticosService>();
 
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<OrdersPage>();
         builder.Services.AddTransient<OrderDetailPage>();
         builder.Services.AddTransient<EmployeeDashboardPage>();
+        builder.Services.AddTransient<ModulesHubPage>();
+        builder.Services.AddTransient<MonitoringModulePage>();
+        builder.Services.AddTransient<InventoryModulePage>();
+        builder.Services.AddTransient<CarriersModulePage>();
+        builder.Services.AddTransient<ViaticosModulePage>();
+        builder.Services.AddTransient<ViaticWeekPage>();
         builder.Services.AddTransient<RootTabsPage>();
 
         return builder.Build();

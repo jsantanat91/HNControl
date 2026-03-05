@@ -69,6 +69,50 @@ public sealed class MobileApiClient
         }
     }
 
+    public async Task<TResponse> PutJsonAsync<TRequest, TResponse>(string relativeUrl, TRequest payload, bool withAuth = true)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Put, BuildUrl(relativeUrl))
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
+        };
+        AddAuth(req, withAuth);
+        using var res = await _http.SendAsync(req);
+        var raw = await res.Content.ReadAsStringAsync();
+        if (!res.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(ResolveError(raw, (int)res.StatusCode));
+        }
+
+        return JsonSerializer.Deserialize<TResponse>(raw, JsonOptions)
+            ?? throw new InvalidOperationException("No se pudo leer la respuesta del servidor.");
+    }
+
+    public async Task DeleteAsync(string relativeUrl, bool withAuth = true)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Delete, BuildUrl(relativeUrl));
+        AddAuth(req, withAuth);
+        using var res = await _http.SendAsync(req);
+        if (!res.IsSuccessStatusCode)
+        {
+            var raw = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(ResolveError(raw, (int)res.StatusCode));
+        }
+    }
+
+    public async Task<byte[]> GetBytesAsync(string relativeUrl, bool withAuth = true)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, BuildUrl(relativeUrl));
+        AddAuth(req, withAuth);
+        using var res = await _http.SendAsync(req);
+        if (!res.IsSuccessStatusCode)
+        {
+            var raw = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(ResolveError(raw, (int)res.StatusCode));
+        }
+
+        return await res.Content.ReadAsByteArrayAsync();
+    }
+
     private string BuildUrl(string relativeUrl)
     {
         var baseUrl = _settings.BaseUrl.TrimEnd('/');

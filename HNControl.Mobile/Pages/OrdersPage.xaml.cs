@@ -85,6 +85,28 @@ public partial class OrdersPage : ContentPage
         }
     }
 
+    private async void OnPdfClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.CommandParameter is not Guid id)
+            return;
+
+        try
+        {
+            var bytes = await _orders.GetPdfAsync(id);
+            var fileName = $"OrdenServicio_{id:N}.pdf";
+            var path = Path.Combine(FileSystem.CacheDirectory, fileName);
+            await File.WriteAllBytesAsync(path, bytes);
+            await Launcher.Default.OpenAsync(new OpenFileRequest
+            {
+                File = new ReadOnlyFile(path)
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("PDF", ex.Message, "OK");
+        }
+    }
+
     private async Task LoadOrdersAsync()
     {
         if (_isBusy)

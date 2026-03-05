@@ -2,7 +2,7 @@ namespace HNControl.Mobile.Pages;
 
 public class RootTabsPage : TabbedPage
 {
-    public RootTabsPage(OrdersPage ordersPage, EmployeeDashboardPage employeeDashboardPage)
+    public RootTabsPage(OrdersPage ordersPage, EmployeeDashboardPage employeeDashboardPage, ModulesHubPage modulesHubPage)
     {
         Title = "HN Control";
         BarBackgroundColor = Color.FromArgb("#FFFFFF");
@@ -20,6 +20,13 @@ public class RootTabsPage : TabbedPage
         Children.Add(new NavigationPage(employeeDashboardPage)
         {
             Title = "Mi ficha",
+            BarBackgroundColor = Color.FromArgb("#0E2242"),
+            BarTextColor = Colors.White
+        });
+
+        Children.Add(new NavigationPage(modulesHubPage)
+        {
+            Title = "Modulos",
             BarBackgroundColor = Color.FromArgb("#0E2242"),
             BarTextColor = Colors.White
         });

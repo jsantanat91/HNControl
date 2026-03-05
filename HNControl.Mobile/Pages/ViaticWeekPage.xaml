@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.ViaticWeekPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Semana"
+    Background="#E9EEF7">
+    <ScrollView>
+        <VerticalStackLayout Padding="14,12,14,20" Spacing="12">
+            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="WeekTitleLabel" FontAttributes="Bold" FontSize="22" Text="Semana" TextColor="White" />
+                    <Label x:Name="WeekStatusLabel" FontSize="13" Opacity="0.9" TextColor="#C5D5F0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Border Grid.Column="0" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                    <VerticalStackLayout Spacing="2">
+                        <Label FontSize="12" Opacity="0.7" Text="Total semana" />
+                        <Label x:Name="TotalLabel" FontAttributes="Bold" FontSize="24" Text="$0.00" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                    <VerticalStackLayout Spacing="2">
+                        <Label FontSize="12" Opacity="0.7" Text="Facturable" />
+                        <Label x:Name="BillableLabel" FontAttributes="Bold" FontSize="24" Text="$0.00" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <Border x:Name="FormCard" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label x:Name="FormTitleLabel" FontAttributes="Bold" FontSize="17" Text="Agregar gasto" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <DatePicker x:Name="DayDatePicker" Grid.Column="0" />
+                        <Picker x:Name="CategoryPicker" Grid.Column="1" ItemDisplayBinding="{Binding Label}" Title="Categoria" />
+                    </Grid>
+                    <Entry x:Name="DescriptionEntry" Placeholder="Descripcion del gasto" />
+                    <Entry x:Name="AmountEntry" Keyboard="Numeric" Placeholder="Monto (ej. 250.00)" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button x:Name="SaveEntryButton"
+                                Grid.Column="0"
+                                BackgroundColor="#2252D5"
+                                Clicked="OnSaveEntryClicked"
+                                CornerRadius="10"
+                                HeightRequest="40"
+                                Text="Guardar"
+                                TextColor="White" />
+                        <Button x:Name="CancelEditButton"
+                                Grid.Column="1"
+                                Clicked="OnCancelEditClicked"
+                                CornerRadius="10"
+                                HeightRequest="40"
+                                IsVisible="False"
+                                Text="Cancelar" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label FontAttributes="Bold" FontSize="18" Text="Gastos" />
+                        <Label x:Name="EntriesCountLabel" Grid.Column="1" FontSize="12" Opacity="0.75" />
+                    </Grid>
+                    <CollectionView x:Name="EntriesCollection" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.7" Text="Aun no agregas gastos en esta semana." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Background="#F9FBFF" Padding="10" StrokeShape="RoundRectangle 12" Stroke="#E5ECFA">
+                                    <VerticalStackLayout Spacing="5">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label FontAttributes="Bold" Text="{Binding Description}" />
+                                            <Label Grid.Column="1" FontAttributes="Bold" Text="{Binding Amount, StringFormat='${0:N2}'}" />
+                                        </Grid>
+                                        <Label FontSize="12" Opacity="0.75" Text="{Binding DayDate, StringFormat='{0:yyyy-MM-dd}'}" />
+                                        <Label FontSize="12" Opacity="0.75" Text="{Binding CategoryLabel}" />
+                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                            <Button Clicked="OnEditEntryClicked"
+                                                    CommandParameter="{Binding .}"
+                                                    CornerRadius="10"
+                                                    HeightRequest="34"
+                                                    Text="Editar" />
+                                            <Button Grid.Column="1"
+                                                    BackgroundColor="#D13A3A"
+                                                    Clicked="OnDeleteEntryClicked"
+                                                    CommandParameter="{Binding Id}"
+                                                    CornerRadius="10"
+                                                    HeightRequest="34"
+                                                    Text="Eliminar"
+                                                    TextColor="White" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Button x:Name="SubmitButton"
+                    BackgroundColor="#0E2242"
+                    Clicked="OnSubmitWeekClicked"
+                    CornerRadius="12"
+                    HeightRequest="44"
+                    Text="Enviar semana al admin"
+                    TextColor="White" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

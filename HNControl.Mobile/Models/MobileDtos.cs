@@ -219,3 +219,114 @@ public sealed class InventoryOrderDto
     public int LinesCount { get; set; }
     public string ItemsPreview { get; set; } = "";
 }
+
+public sealed class ModuleItemDto
+{
+    public string Key { get; set; } = "";
+    public string Label { get; set; } = "";
+}
+
+public sealed class MonitorItemDto
+{
+    public Guid Id { get; set; }
+    public string Client { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string ProbeType { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime? LastCheckedAt { get; set; }
+    public int? LastLatencyMs { get; set; }
+    public string LastError { get; set; } = "";
+}
+
+public sealed class InventoryModuleOrderDto
+{
+    public Guid AnchorId { get; set; }
+    public DateTime RequestedAt { get; set; }
+    public string Type { get; set; } = "";
+    public string ProjectTitle { get; set; } = "";
+    public string ResponsibleName { get; set; } = "";
+    public string StatusLabel { get; set; } = "";
+    public int LinesCount { get; set; }
+    public string ItemsPreview { get; set; } = "";
+}
+
+public sealed class CarrierClientDto
+{
+    public Guid ClientId { get; set; }
+    public string Name { get; set; } = "";
+    public int ServicesCount { get; set; }
+    public string CarriersSummary { get; set; } = "";
+}
+
+public sealed class ViaticWeekListItemDto
+{
+    public Guid Id { get; set; }
+    public DateTime WeekStartDate { get; set; }
+    public int Status { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal BillableAmount { get; set; }
+    public int EntriesCount { get; set; }
+
+    [JsonIgnore]
+    public string StatusLabel => Status switch
+    {
+        1 => "Borrador",
+        2 => "Enviado",
+        3 => "Aprobado",
+        4 => "Rechazado",
+        _ => "Estatus " + Status
+    };
+}
+
+public sealed class ViaticEntryDto
+{
+    public Guid Id { get; set; }
+    public DateTime DayDate { get; set; }
+    public int Category { get; set; }
+    public string Description { get; set; } = "";
+    public decimal Amount { get; set; }
+    public bool IsBillable { get; set; }
+    public bool HasAttachment { get; set; }
+
+    [JsonIgnore]
+    public string CategoryLabel => Category switch
+    {
+        1 => "Transporte",
+        2 => "Gasolina",
+        3 => "Material",
+        4 => "Otros",
+        _ => "Categoria " + Category
+    };
+}
+
+public sealed class ViaticWeekDetailDto
+{
+    public Guid Id { get; set; }
+    public DateTime WeekStartDate { get; set; }
+    public int Status { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal BillableAmount { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public List<ViaticEntryDto> Entries { get; set; } = new();
+}
+
+public sealed class ViaticUpsertEntryDto
+{
+    public DateTime DayDate { get; set; }
+    public int Category { get; set; }
+    public string Description { get; set; } = "";
+    public decimal Amount { get; set; }
+    public bool IsBillable { get; set; }
+}
+
+public sealed class ViaticEnsureWeekRequestDto
+{
+    public DateTime AnyDayInWeek { get; set; }
+}
+
+public sealed class ViaticEnsureWeekResponseDto
+{
+    public Guid Id { get; set; }
+}

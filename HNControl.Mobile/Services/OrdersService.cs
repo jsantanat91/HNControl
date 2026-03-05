@@ -26,4 +26,9 @@ public sealed class OrdersService
     {
         return _api.PostAsync($"api/mobile/orders/{id}/take");
     }
+
+    public Task<byte[]> GetPdfAsync(Guid id)
+    {
+        return _api.GetBytesAsync($"api/mobile/orders/{id}/pdf");
+    }
 }
