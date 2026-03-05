@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="HNControl.Mobile/HNControl.Mobile.csproj">
+    <Deploy />
+  </Project>
   <Project Path="HNControl.Web/HNControl.Web.csproj" />
 </Solution>
