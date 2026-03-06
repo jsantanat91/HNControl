@@ -40,6 +40,9 @@ public class EditModel : PageModel
         [MaxLength(40)]
         public string Phone { get; set; } = "";
 
+        [MaxLength(120)]
+        public string ContactName { get; set; } = "";
+
         [MaxLength(400)]
         public string Address { get; set; } = "";
     }
@@ -58,6 +61,7 @@ public class EditModel : PageModel
             Rfc = client.Rfc ?? "",
             Email = client.Email ?? "",
             Phone = client.Phone ?? "",
+            ContactName = client.ContactName ?? "",
             Address = client.Address ?? ""
         };
 
@@ -77,6 +81,7 @@ public class EditModel : PageModel
         client.Rfc = (Input.Rfc ?? "").Trim();
         client.Email = (Input.Email ?? "").Trim();
         client.Phone = (Input.Phone ?? "").Trim();
+        client.ContactName = (Input.ContactName ?? "").Trim();
         client.Address = (Input.Address ?? "").Trim();
 
         await _db.SaveChangesAsync();

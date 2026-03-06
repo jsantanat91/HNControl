@@ -53,8 +53,7 @@ public class CreateModel : PageModel
 
     public async Task OnGetAsync()
     {
-        if (string.IsNullOrWhiteSpace(Input.OwnerName))
-            Input.OwnerName = await ResolveCurrentUserNameAsync();
+        Input.OwnerName = await ResolveCurrentUserNameAsync();
 
         if (string.IsNullOrWhiteSpace(Input.Category))
             Input.Category = "General";
@@ -85,50 +84,58 @@ public class CreateModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var userName = await ResolveCurrentUserNameAsync();
 
-        var entity = new KnowledgeLink
+        try
         {
-            Title = Input.Title,
-            Category = string.IsNullOrWhiteSpace(Input.Category) ? "General" : Input.Category,
-            DocType = Input.DocType,
-            Status = Input.Status,
-            Url = Input.Url,
-            Description = Input.Description,
-            Body = Input.Body,
-            Tags = Input.Tags,
-            OwnerName = string.IsNullOrWhiteSpace(Input.OwnerName) ? userName : Input.OwnerName,
-            OwnerUserId = userId,
-            ReviewerName = Input.ReviewerName,
-            ReviewDueAt = Input.ReviewDueAt,
-            IsPinned = Input.IsPinned,
-            AccessUsername = Input.AccessUsername,
-            AccessSecretProtected = _protector.Protect(Input.AccessSecret),
-            AccessNotes = Input.AccessNotes,
-            Version = 1,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            UpdatedByName = userName,
-            PublishedAt = Input.Status == KnowledgeStatus.Publicado ? DateTime.UtcNow : null
-        };
+            var entity = new KnowledgeLink
+            {
+                Title = Input.Title,
+                Category = string.IsNullOrWhiteSpace(Input.Category) ? "General" : Input.Category,
+                DocType = Input.DocType,
+                Status = Input.Status,
+                Url = Input.Url,
+                Description = Input.Description,
+                Body = Input.Body,
+                Tags = Input.Tags,
+                OwnerName = userName,
+                OwnerUserId = userId,
+                ReviewerName = Input.ReviewerName,
+                ReviewDueAt = Input.ReviewDueAt,
+                IsPinned = Input.IsPinned,
+                AccessUsername = Input.AccessUsername,
+                AccessSecretProtected = _protector.Protect(Input.AccessSecret),
+                AccessNotes = Input.AccessNotes,
+                Version = 1,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                UpdatedByName = userName,
+                PublishedAt = Input.Status == KnowledgeStatus.Publicado ? DateTime.UtcNow : null
+            };
 
-        if (Attachment != null)
-        {
-            var stored = await _storage.SaveFileAsync(
-                Attachment,
-                subFolder: "knowledge/files",
-                fileNameNoExt: $"kb_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}",
-                allowedExtensions: new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".png", ".jpg", ".jpeg", ".webp" },
-                maxBytes: 25 * 1024 * 1024);
+            if (Attachment != null)
+            {
+                var stored = await _storage.SaveFileAsync(
+                    Attachment,
+                    subFolder: "knowledge/files",
+                    fileNameNoExt: $"kb_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}",
+                    allowedExtensions: new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv", ".png", ".jpg", ".jpeg", ".webp" },
+                    maxBytes: 25 * 1024 * 1024);
 
-            entity.AttachmentStoragePath = stored.storagePath;
-            entity.AttachmentSizeBytes = stored.sizeBytes;
-            entity.AttachmentContentType = stored.contentType;
-            entity.AttachmentOriginalFileName = stored.originalName;
+                entity.AttachmentStoragePath = stored.storagePath;
+                entity.AttachmentSizeBytes = stored.sizeBytes;
+                entity.AttachmentContentType = stored.contentType;
+                entity.AttachmentOriginalFileName = stored.originalName;
+            }
+
+            _db.KnowledgeLinks.Add(entity);
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage("/Knowledge/Details", new { id = entity.Id });
         }
-
-        _db.KnowledgeLinks.Add(entity);
-        await _db.SaveChangesAsync();
-
-        return RedirectToPage("/Knowledge/Details", new { id = entity.Id });
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, $"No se pudo guardar el documento: {ex.Message}");
+            return Page();
+        }
     }
 
     private static string NormalizeTags(string tags)

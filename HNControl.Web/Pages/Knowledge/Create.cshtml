@@ -41,20 +41,6 @@
                 <label class="form-label">Estado</label>
                 <select class="form-select" asp-for="Input.Status" asp-items="Html.GetEnumSelectList<KnowledgeStatus>()"></select>
             </div>
-            <div class="col-lg-3">
-                <label class="form-label">Responsable</label>
-                <input class="form-control" asp-for="Input.OwnerName" />
-            </div>
-            <div class="col-lg-3">
-                <label class="form-label">Revisor</label>
-                <input class="form-control" asp-for="Input.ReviewerName" />
-                <div class="form-text">Quien valida el documento antes o despues de publicarlo.</div>
-            </div>
-            <div class="col-lg-3">
-                <label class="form-label">Revision programada</label>
-                <input class="form-control" asp-for="Input.ReviewDueAt" type="date" />
-                <div class="form-text">Fecha para revisar si la info sigue vigente.</div>
-            </div>
 
             <div class="col-12">
                 <label class="form-label">Resumen</label>
@@ -80,16 +66,7 @@
                 <label class="form-label">Tags</label>
                 <input class="form-control" asp-for="Input.Tags" placeholder="vpn, crm, fortinet, onboarding" />
             </div>
-
-            <div class="col-lg-4">
-                <label class="form-label">Usuario de acceso (opcional)</label>
-                <input class="form-control" asp-for="Input.AccessUsername" />
-            </div>
-            <div class="col-lg-4">
-                <label class="form-label">Secreto (opcional)</label>
-                <input class="form-control" asp-for="Input.AccessSecret" placeholder="password/token" />
-            </div>
-            <div class="col-lg-4 d-flex align-items-center pt-4">
+            <div class="col-12 d-flex align-items-center">
                 <div class="form-check">
                     <input class="form-check-input" asp-for="Input.IsPinned" />
                     <label class="form-check-label" asp-for="Input.IsPinned">Fijar en la parte superior</label>

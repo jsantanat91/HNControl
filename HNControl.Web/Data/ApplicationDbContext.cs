@@ -187,6 +187,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.ContactName).HasMaxLength(120);
             e.Property(x => x.Address).HasMaxLength(400);
             e.HasIndex(x => x.ClientCode).IsUnique();
             e.HasMany(x => x.Contracts)
@@ -203,6 +204,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Provider).HasMaxLength(120);
             e.Property(x => x.AccountNumber).HasMaxLength(120);
             e.Property(x => x.ContractNumber).HasMaxLength(120);
+            e.Property(x => x.PortalUrl).HasMaxLength(300);
+            e.Property(x => x.PortalUsername).HasMaxLength(200);
+            e.Property(x => x.PortalPasswordProtected).HasMaxLength(2000);
 
             e.Property(x => x.ContractStartDate).HasColumnType("date");
             e.Property(x => x.ContractEndDate).HasColumnType("date");

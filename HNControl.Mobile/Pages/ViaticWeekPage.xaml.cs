@@ -17,6 +17,7 @@ public partial class ViaticWeekPage : ContentPage
     private Guid _weekId;
     private Guid? _editingEntryId;
     private ViaticWeekDetailDto? _current;
+    private FileResult? _selectedPdf;
     private bool _isBusy;
 
     public ViaticWeekPage(ViaticosService viaticos)
@@ -74,7 +75,7 @@ public partial class ViaticWeekPage : ContentPage
             Category = category,
             Description = description,
             Amount = amount,
-            IsBillable = false
+            IsBillable = IsBillableSwitch.IsToggled
         };
 
         _isBusy = true;
@@ -86,7 +87,26 @@ public partial class ViaticWeekPage : ContentPage
             }
             else
             {
-                await _viaticos.AddEntryAsync(_weekId, dto);
+                if (dto.IsBillable)
+                {
+                    if (_selectedPdf == null)
+                    {
+                        await DisplayAlertAsync("Viaticos", "Adjunta el PDF de factura para gasto facturable.", "OK");
+                        return;
+                    }
+
+                    await using var stream = await _selectedPdf.OpenReadAsync();
+                    await _viaticos.AddEntryWithAttachmentAsync(
+                        _weekId,
+                        dto,
+                        stream,
+                        _selectedPdf.FileName,
+                        _selectedPdf.ContentType);
+                }
+                else
+                {
+                    await _viaticos.AddEntryAsync(_weekId, dto);
+                }
             }
 
             ResetForm();
@@ -122,6 +142,34 @@ public partial class ViaticWeekPage : ContentPage
         CategoryPicker.SelectedItem = _categories.FirstOrDefault(x => x.Value == entry.Category) ?? _categories[0];
         DescriptionEntry.Text = entry.Description;
         AmountEntry.Text = entry.Amount.ToString("0.##");
+        IsBillableSwitch.IsToggled = entry.IsBillable;
+        _selectedPdf = null;
+        SelectedPdfLabel.Text = entry.HasAttachment ? "PDF existente cargado" : "Sin PDF adjunto";
+    }
+
+    private async void OnPickPdfClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var picked = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Selecciona factura PDF",
+                FileTypes = FilePickerFileType.Pdf
+            });
+
+            if (picked == null)
+            {
+                return;
+            }
+
+            _selectedPdf = picked;
+            SelectedPdfLabel.Text = $"PDF: {_selectedPdf.FileName}";
+            IsBillableSwitch.IsToggled = true;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Adjunto", ex.Message, "OK");
+        }
     }
 
     private async void OnDeleteEntryClicked(object sender, EventArgs e)
@@ -239,6 +287,9 @@ public partial class ViaticWeekPage : ContentPage
         DescriptionEntry.Text = "";
         AmountEntry.Text = "";
         CategoryPicker.SelectedIndex = 0;
+        IsBillableSwitch.IsToggled = false;
+        _selectedPdf = null;
+        SelectedPdfLabel.Text = "Sin PDF adjunto";
     }
 
     private static string ToStatusLabel(int status)

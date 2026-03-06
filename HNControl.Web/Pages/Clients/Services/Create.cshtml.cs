@@ -15,11 +15,13 @@ public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly ISecretProtector _protector;
 
-    public CreateModel(ApplicationDbContext db, IFileStorage storage)
+    public CreateModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector)
     {
         _db = db;
         _storage = storage;
+        _protector = protector;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -52,6 +54,15 @@ public class CreateModel : PageModel
 
         [MaxLength(120)]
         public string ContractNumber { get; set; } = "";
+
+        [MaxLength(300)]
+        public string PortalUrl { get; set; } = "";
+
+        [MaxLength(200)]
+        public string PortalUsername { get; set; } = "";
+
+        [MaxLength(300)]
+        public string PortalPassword { get; set; } = "";
 
         [DataType(DataType.Date)]
         public DateTime? ContractStartDate { get; set; }
@@ -126,6 +137,9 @@ public class CreateModel : PageModel
             ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber)
                 ? $"{client.ClientCode}-{await _db.ClientServiceContracts.CountAsync(c => c.ClientId == ClientId) + 1:00}"
                 : Input.ContractNumber.Trim(),
+            PortalUrl = (Input.PortalUrl ?? "").Trim(),
+            PortalUsername = (Input.PortalUsername ?? "").Trim(),
+            PortalPasswordProtected = _protector.Protect((Input.PortalPassword ?? "").Trim()),
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = (Input.Notes ?? "").Trim(),

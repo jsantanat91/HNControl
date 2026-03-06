@@ -51,6 +51,15 @@ public class ClientServiceContract
     [MaxLength(120)]
     public string ContractNumber { get; set; } = "";
 
+    [MaxLength(300)]
+    public string PortalUrl { get; set; } = "";
+
+    [MaxLength(200)]
+    public string PortalUsername { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string PortalPasswordProtected { get; set; } = "";
+
     public DateTime? ContractStartDate { get; set; }
     public DateTime? ContractEndDate { get; set; }
 

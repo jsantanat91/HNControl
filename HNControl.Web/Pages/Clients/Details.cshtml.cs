@@ -25,6 +25,7 @@ public class DetailsModel : PageModel
         string ContractEndDateText,
         string StatusText,
         string StatusBadgeClass,
+        bool HasPortalAccess,
         bool HasContractFile,
         string ProjectTitle
     );
@@ -93,6 +94,7 @@ public class DetailsModel : PageModel
                     endText,
                     status,
                     badge,
+                    !string.IsNullOrWhiteSpace(x.PortalUrl) || !string.IsNullOrWhiteSpace(x.PortalUsername),
                     !string.IsNullOrWhiteSpace(x.SignedContractStoragePath),
                     projTitle
                 );

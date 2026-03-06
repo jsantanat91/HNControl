@@ -37,6 +37,9 @@ public class CreateModel : PageModel
         [MaxLength(40)]
         public string Phone { get; set; } = "";
 
+        [MaxLength(120)]
+        public string ContactName { get; set; } = "";
+
         [MaxLength(400)]
         public string Address { get; set; } = "";
     }
@@ -55,6 +58,7 @@ public class CreateModel : PageModel
             Rfc = (Input.Rfc ?? "").Trim(),
             Email = (Input.Email ?? "").Trim(),
             Phone = (Input.Phone ?? "").Trim(),
+            ContactName = (Input.ContactName ?? "").Trim(),
             Address = (Input.Address ?? "").Trim(),
             CreatedAt = DateTime.UtcNow
         };

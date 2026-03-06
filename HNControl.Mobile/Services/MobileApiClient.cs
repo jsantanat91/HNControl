@@ -99,6 +99,45 @@ public sealed class MobileApiClient
         }
     }
 
+    public async Task<TResponse> PostMultipartAsync<TResponse>(
+        string relativeUrl,
+        Dictionary<string, string> fields,
+        Stream? fileStream,
+        string? fileName,
+        string fileFieldName,
+        string? fileContentType,
+        bool withAuth = true)
+    {
+        using var content = new MultipartFormDataContent();
+        foreach (var kv in fields)
+        {
+            content.Add(new StringContent(kv.Value ?? ""), kv.Key);
+        }
+
+        if (fileStream != null && !string.IsNullOrWhiteSpace(fileName))
+        {
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(fileContentType) ? "application/octet-stream" : fileContentType);
+            content.Add(fileContent, fileFieldName, fileName);
+        }
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, BuildUrl(relativeUrl))
+        {
+            Content = content
+        };
+        AddAuth(req, withAuth);
+
+        using var res = await _http.SendAsync(req);
+        var raw = await res.Content.ReadAsStringAsync();
+        if (!res.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(ResolveError(raw, (int)res.StatusCode));
+        }
+
+        return JsonSerializer.Deserialize<TResponse>(raw, JsonOptions)
+            ?? throw new InvalidOperationException("No se pudo leer la respuesta del servidor.");
+    }
+
     public async Task<byte[]> GetBytesAsync(string relativeUrl, bool withAuth = true)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, BuildUrl(relativeUrl));

@@ -37,6 +37,10 @@ public class Client
     [MaxLength(40)]
     public string? Phone { get; set; }
 
+    [MaxLength(120)]
+    [Display(Name = "Nombre de contacto")]
+    public string? ContactName { get; set; }
+
     [MaxLength(400)]
     public string? Address { get; set; }
 

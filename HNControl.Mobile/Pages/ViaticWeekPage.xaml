@@ -38,6 +38,16 @@
                     </Grid>
                     <Entry x:Name="DescriptionEntry" Placeholder="Descripcion del gasto" />
                     <Entry x:Name="AmountEntry" Keyboard="Numeric" Placeholder="Monto (ej. 250.00)" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <Switch x:Name="IsBillableSwitch" Grid.Column="0" />
+                        <Label Grid.Column="1" VerticalTextAlignment="Center" Text="Facturable (requiere PDF)" />
+                        <Button Grid.Column="2"
+                                Clicked="OnPickPdfClicked"
+                                CornerRadius="10"
+                                HeightRequest="36"
+                                Text="Adjuntar" />
+                    </Grid>
+                    <Label x:Name="SelectedPdfLabel" FontSize="12" Opacity="0.75" Text="Sin PDF adjunto" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button x:Name="SaveEntryButton"
                                 Grid.Column="0"

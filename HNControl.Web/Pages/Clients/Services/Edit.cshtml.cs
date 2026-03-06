@@ -15,11 +15,13 @@ public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly ISecretProtector _protector;
 
-    public EditModel(ApplicationDbContext db, IFileStorage storage)
+    public EditModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector)
     {
         _db = db;
         _storage = storage;
+        _protector = protector;
     }
 
     public ClientServiceContract? Contract { get; set; }
@@ -56,6 +58,15 @@ public class EditModel : PageModel
 
         [MaxLength(120)]
         public string ContractNumber { get; set; } = "";
+
+        [MaxLength(300)]
+        public string PortalUrl { get; set; } = "";
+
+        [MaxLength(200)]
+        public string PortalUsername { get; set; } = "";
+
+        [MaxLength(300)]
+        public string PortalPassword { get; set; } = "";
 
         [DataType(DataType.Date)]
         public DateTime? ContractStartDate { get; set; }
@@ -103,6 +114,9 @@ public class EditModel : PageModel
             AccountNumber = string.IsNullOrWhiteSpace(Contract.AccountNumber) ? ClientCode : Contract.AccountNumber,
             ContractNumber = string.IsNullOrWhiteSpace(Contract.ContractNumber) ? $"{ClientCode}-01" : Contract.ContractNumber,
             MonthlyAmount = Contract.MonthlyAmount,
+            PortalUrl = Contract.PortalUrl ?? "",
+            PortalUsername = Contract.PortalUsername ?? "",
+            PortalPassword = _protector.Unprotect(Contract.PortalPasswordProtected),
             ContractStartDate = Contract.ContractStartDate?.Date,
             ContractEndDate = Contract.ContractEndDate?.Date,
             ProjectId = Contract.ProjectId,
@@ -140,6 +154,9 @@ public class EditModel : PageModel
         Contract.AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? ClientCode : Input.AccountNumber.Trim();
         Contract.ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber) ? $"{ClientCode}-01" : Input.ContractNumber.Trim();
         Contract.MonthlyAmount = Input.MonthlyAmount;
+        Contract.PortalUrl = (Input.PortalUrl ?? "").Trim();
+        Contract.PortalUsername = (Input.PortalUsername ?? "").Trim();
+        Contract.PortalPasswordProtected = _protector.Protect((Input.PortalPassword ?? "").Trim());
         Contract.ContractStartDate = Input.ContractStartDate?.Date;
         Contract.ContractEndDate = Input.ContractEndDate?.Date;
         Contract.ProjectId = Input.ProjectId;

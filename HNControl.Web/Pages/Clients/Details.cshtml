@@ -72,6 +72,10 @@
                                         {
                                             <span> &middot; Mensual: <b>@c.MonthlyAmount.Value.ToString("C")</b></span>
                                         }
+                                        @if (c.HasPortalAccess)
+                                        {
+                                            <span> &middot; <span class="badge bg-info text-dark">Acceso portal</span></span>
+                                        }
                                     </div>
                                 </td>
                                 <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "-" : c.Provider)</td>
@@ -111,6 +115,7 @@
             <div class="card-body">
                 <div class="fw-semibold mb-1">Contacto</div>
                 <div class="text-muted small">
+                    Contacto: <b>@(string.IsNullOrWhiteSpace(Model.Client.ContactName) ? "-" : Model.Client.ContactName)</b><br />
                     Tel: <b>@(Model.Client.Phone ?? "-")</b><br />
                     Direcci&oacute;n: @(Model.Client.Address ?? "-")
                 </div>

@@ -68,6 +68,10 @@ else
                         <div class="mt-2"><span class="badge @sla.css">@sla.text</span></div>
                         <div class="mt-auto pt-3">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
+                            @if (User.IsInRole(AppRoles.Admin))
+                            {
+                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Edit" asp-route-id="@p.Id">Editar</a>
+                            }
                         </div>
                     </div>
                 </div>

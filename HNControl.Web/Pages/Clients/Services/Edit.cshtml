@@ -62,6 +62,21 @@
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
+            <div class="col-md-6">
+                <label class="form-label">Portal URL (opcional)</label>
+                <input class="form-control" asp-for="Input.PortalUrl" placeholder="https://portal.proveedor.com" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Portal usuario (opcional)</label>
+                <input class="form-control" asp-for="Input.PortalUsername" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Portal password (opcional)</label>
+                <input class="form-control" asp-for="Input.PortalPassword" />
+            </div>
+
             <div class="col-md-4">
                 <label class="form-label">Monto mensual</label>
                 <input class="form-control" asp-for="Input.MonthlyAmount" placeholder="$0.00" />

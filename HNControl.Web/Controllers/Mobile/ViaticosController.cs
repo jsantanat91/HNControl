@@ -17,11 +17,13 @@ public class ViaticosController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IModuleAccessService _moduleAccess;
+    private readonly IFileStorage _storage;
 
-    public ViaticosController(ApplicationDbContext db, IModuleAccessService moduleAccess)
+    public ViaticosController(ApplicationDbContext db, IModuleAccessService moduleAccess, IFileStorage storage)
     {
         _db = db;
         _moduleAccess = moduleAccess;
+        _storage = storage;
     }
 
     public record WeekListItem(Guid Id, DateTime WeekStartDate, ViaticWeekStatus Status, decimal TotalAmount, decimal BillableAmount, int EntriesCount);
@@ -35,6 +37,16 @@ public class ViaticosController : ControllerBase
         [Required, MaxLength(300)] public string Description { get; set; } = "";
         [Range(0.01, 9999999)] public decimal Amount { get; set; }
         public bool IsBillable { get; set; }
+    }
+
+    public class UpsertEntryMultipartRequest
+    {
+        [Required] public DateTime DayDate { get; set; }
+        [Required] public ViaticCategory Category { get; set; }
+        [Required, MaxLength(300)] public string Description { get; set; } = "";
+        [Range(0.01, 9999999)] public decimal Amount { get; set; }
+        public bool IsBillable { get; set; }
+        public IFormFile? PdfFile { get; set; }
     }
 
     [HttpGet("weeks")]
@@ -157,7 +169,7 @@ public class ViaticosController : ControllerBase
             return BadRequest(new { message = "Ese dia no cae dentro de la semana." });
 
         if (req.IsBillable)
-            return BadRequest(new { message = "En app movil, por ahora solo gastos no facturables (sin PDF)." });
+            return BadRequest(new { message = "Para facturable usa el endpoint con archivo PDF." });
 
         var entry = new ViaticEntry
         {
@@ -171,6 +183,71 @@ public class ViaticosController : ControllerBase
         };
 
         _db.ViaticEntries.Add(entry);
+        week.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        await ViaticTotalsHelper.RecalcWeekAsync(_db, week.Id);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Gasto agregado." });
+    }
+
+    [HttpPost("week/{id:guid}/entries/upload")]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    public async Task<IActionResult> AddEntryWithUpload(Guid id, [FromForm] UpsertEntryMultipartRequest req)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Viaticos))
+            return Forbid();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var week = await _db.ViaticWeeks.FirstOrDefaultAsync(w => w.Id == id && w.UserId == userId);
+        if (week == null) return NotFound();
+
+        if (week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+            return Conflict(new { message = "Semana enviada/aprobada: no se puede modificar." });
+
+        var start = week.WeekStartDate.Date;
+        var end = start.AddDays(6);
+        if (req.DayDate.Date < start || req.DayDate.Date > end)
+            return BadRequest(new { message = "Ese dia no cae dentro de la semana." });
+
+        if (req.IsBillable && (req.PdfFile == null || req.PdfFile.Length == 0))
+            return BadRequest(new { message = "Si es facturable, el PDF es obligatorio." });
+
+        if (!req.IsBillable && req.PdfFile != null && req.PdfFile.Length > 0)
+            return BadRequest(new { message = "El PDF solo aplica para gastos facturables." });
+
+        var entry = new ViaticEntry
+        {
+            WeekId = week.Id,
+            DayDate = req.DayDate.Date,
+            Category = req.Category,
+            Description = (req.Description ?? "").Trim(),
+            Amount = req.Amount,
+            IsBillable = req.IsBillable,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.ViaticEntries.Add(entry);
+
+        if (req.IsBillable && req.PdfFile != null)
+        {
+            var attachment = new ViaticAttachment
+            {
+                EntryId = entry.Id,
+                OriginalFileName = Path.GetFileName(req.PdfFile.FileName),
+                ContentType = "application/pdf",
+                UploadedAt = DateTime.UtcNow
+            };
+
+            var (path, size) = await _storage.SavePdfAsync(req.PdfFile, $"viaticos/{week.Id}", attachment.Id.ToString("N"));
+            attachment.StoragePath = path;
+            attachment.SizeBytes = size;
+            _db.ViaticAttachments.Add(attachment);
+        }
+
         week.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -198,8 +275,8 @@ public class ViaticosController : ControllerBase
         if (entry.Week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
             return Conflict(new { message = "Semana enviada/aprobada: no se puede modificar." });
 
-        if (req.IsBillable)
-            return BadRequest(new { message = "En app movil, por ahora solo gastos no facturables (sin PDF)." });
+        if (req.IsBillable && entry.Attachment == null)
+            return BadRequest(new { message = "Para marcar facturable necesitas adjuntar PDF." });
 
         var start = entry.Week.WeekStartDate.Date;
         var end = start.AddDays(6);
@@ -210,7 +287,7 @@ public class ViaticosController : ControllerBase
         entry.Category = req.Category;
         entry.Description = (req.Description ?? "").Trim();
         entry.Amount = req.Amount;
-        entry.IsBillable = false;
+        entry.IsBillable = req.IsBillable;
         entry.Week.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

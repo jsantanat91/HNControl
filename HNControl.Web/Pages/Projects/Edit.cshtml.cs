@@ -11,13 +11,13 @@ using Microsoft.EntityFrameworkCore;
 namespace HNControl.Web.Pages.Projects;
 
 [Authorize(Roles = AppRoles.Admin)]
-public class CreateModel : PageModel
+public class EditModel : PageModel
 {
     public record ContractOption(Guid Id, string Name);
 
     private readonly ApplicationDbContext _db;
 
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    public EditModel(ApplicationDbContext db) => _db = db;
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
@@ -25,11 +25,12 @@ public class CreateModel : PageModel
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
-    public string? Info { get; set; }
     public string? Error { get; set; }
 
     public class InputModel
     {
+        [Required] public Guid Id { get; set; }
+
         [Required(ErrorMessage = "Cliente es requerido.")]
         public Guid ClientId { get; set; }
 
@@ -46,6 +47,8 @@ public class CreateModel : PageModel
         [DataType(DataType.Date)]
         public DateTime? EstimatedEndDate { get; set; } = DateTime.UtcNow.Date.AddDays(7);
 
+        [Required] public ProjectStatus Status { get; set; } = ProjectStatus.Open;
+
         [MaxLength(400)]
         public string Objective { get; set; } = "";
 
@@ -58,12 +61,36 @@ public class CreateModel : PageModel
         public List<Guid> ContractIds { get; set; } = new();
     }
 
-    public async Task OnGetAsync(Guid? clientId = null)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
+        var p = await _db.Projects.FirstOrDefaultAsync(x => x.Id == id);
+        if (p == null) return NotFound();
+
+        var linkedContractIds = await _db.ClientServiceContracts
+            .Where(c => c.ProjectId == p.Id)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        Input = new InputModel
+        {
+            Id = p.Id,
+            ClientId = p.ClientId,
+            ResponsibleUserId = p.AssignedUserId,
+            Title = p.Title,
+            StartDate = p.StartDate.Date,
+            EstimatedEndDate = p.EstimatedEndDate.Date,
+            Status = p.Status,
+            Objective = p.Objective,
+            Scope = p.Scope,
+            Description = p.ActivityDescription,
+            AccessNotes = p.AccessNotes,
+            Comments = p.AdditionalComments,
+            ContractIds = linkedContractIds
+        };
+
         await LoadListsAsync();
-        if (clientId.HasValue)
-            Input.ClientId = clientId.Value;
-        await LoadContractItemsAsync(Input.ClientId);
+        await LoadContractItemsAsync(Input.ClientId, Input.ContractIds);
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -71,54 +98,47 @@ public class CreateModel : PageModel
         await LoadListsAsync();
         await LoadContractItemsAsync(Input.ClientId, Input.ContractIds);
 
-        if (string.IsNullOrWhiteSpace(Input.Title))
-            ModelState.AddModelError("Input.Title", "El nombre del proyecto es requerido.");
-
         if (!ModelState.IsValid)
-        {
-            // Diagnóstico útil para que NO adivines: te dice qué campo falló.
-            Error = "Validación falló: " + string.Join(" | ",
-                ModelState.Where(x => x.Value?.Errors.Count > 0)
-                          .Select(x => $"{x.Key} => {string.Join(", ", x.Value!.Errors.Select(e => e.ErrorMessage))}")
-            );
             return Page();
-        }
+
+        var p = await _db.Projects.FirstOrDefaultAsync(x => x.Id == Input.Id);
+        if (p == null) return NotFound();
 
         var end = Input.EstimatedEndDate ?? Input.StartDate.AddDays(7);
 
         var startUtc = TimeUtil.UtcDate(Input.StartDate);
         var endUtc = TimeUtil.UtcDate(end);
-
         if (endUtc < startUtc)
         {
             Error = "La fecha estimada no puede ser menor al inicio.";
             return Page();
         }
 
-        var p = new Project
+        p.ClientId = Input.ClientId;
+        p.AssignedUserId = Input.ResponsibleUserId;
+        p.Title = (Input.Title ?? "").Trim();
+        p.StartDate = startUtc;
+        p.EstimatedEndDate = endUtc;
+        p.Status = Input.Status;
+        p.Objective = (Input.Objective ?? "").Trim();
+        p.Scope = (Input.Scope ?? "").Trim();
+        p.ActivityDescription = (Input.Description ?? "").Trim();
+        p.AccessNotes = (Input.AccessNotes ?? "").Trim();
+        p.AdditionalComments = (Input.Comments ?? "").Trim();
+        p.UpdatedAt = DateTime.UtcNow;
+
+        if (p.Status == ProjectStatus.Closed && p.ClosedAt == null)
         {
-            ClientId = Input.ClientId,
-            AssignedUserId = Input.ResponsibleUserId,
-            Title = (Input.Title ?? "").Trim(),
+            p.ClosedAt = DateTime.UtcNow;
+            p.ClosedByUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+        else if (p.Status == ProjectStatus.Open)
+        {
+            p.ClosedAt = null;
+            p.ClosedByUserId = null;
+        }
 
-            StartDate = startUtc,
-            EstimatedEndDate = endUtc,
-
-            Objective = (Input.Objective ?? "").Trim(),
-            Scope = (Input.Scope ?? "").Trim(),
-
-            ActivityDescription = (Input.Description ?? "").Trim(),
-            AdditionalComments = (Input.Comments ?? "").Trim(),
-            AccessNotes = (Input.AccessNotes ?? "").Trim(),
-
-            Status = ProjectStatus.Open,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _db.Projects.Add(p);
         await _db.SaveChangesAsync();
-
         await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
 
         return RedirectToPage("/Projects/Details", new { id = p.Id });
@@ -141,21 +161,13 @@ public class CreateModel : PageModel
         return new JsonResult(rows);
     }
 
-    private async Task LoadListsAsync(Guid? selectedClientId = null)
+    private async Task LoadListsAsync()
     {
         var clients = await _db.Clients.OrderBy(c => c.Name).ToListAsync();
-        ClientItems = new SelectList(
-            clients,
-            "Id",
-            "Name",
-            selectedClientId ?? (Input.ClientId == Guid.Empty ? null : Input.ClientId));
+        ClientItems = new SelectList(clients, "Id", "Name", Input.ClientId);
 
         var emps = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
-        EmployeeItems = new SelectList(
-            emps,
-            "UserId",
-            "FullName",
-            string.IsNullOrWhiteSpace(Input.ResponsibleUserId) ? null : Input.ResponsibleUserId);
+        EmployeeItems = new SelectList(emps, "UserId", "FullName", Input.ResponsibleUserId);
     }
 
     private async Task LoadContractItemsAsync(Guid clientId, List<Guid>? selectedIds = null)
@@ -180,11 +192,11 @@ public class CreateModel : PageModel
         selectedIds ??= new List<Guid>();
         var selected = selectedIds.Distinct().ToHashSet();
 
-        var clientContracts = await _db.ClientServiceContracts
+        var contracts = await _db.ClientServiceContracts
             .Where(c => c.ClientId == clientId)
             .ToListAsync();
 
-        foreach (var c in clientContracts)
+        foreach (var c in contracts)
         {
             if (selected.Contains(c.Id))
                 c.ProjectId = projectId;

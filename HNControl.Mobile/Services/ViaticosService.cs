@@ -32,6 +32,31 @@ public sealed class ViaticosService
         return _api.PostJsonAsync<ViaticUpsertEntryDto, ApiMessageDto>($"api/mobile/viaticos/week/{weekId}/entries", dto);
     }
 
+    public async Task<ApiMessageDto> AddEntryWithAttachmentAsync(
+        Guid weekId,
+        ViaticUpsertEntryDto dto,
+        Stream fileStream,
+        string fileName,
+        string? fileContentType)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["DayDate"] = dto.DayDate.ToString("yyyy-MM-dd"),
+            ["Category"] = dto.Category.ToString(),
+            ["Description"] = dto.Description,
+            ["Amount"] = dto.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["IsBillable"] = dto.IsBillable ? "true" : "false"
+        };
+
+        return await _api.PostMultipartAsync<ApiMessageDto>(
+            $"api/mobile/viaticos/week/{weekId}/entries/upload",
+            fields,
+            fileStream,
+            fileName,
+            "PdfFile",
+            fileContentType);
+    }
+
     public Task<ApiMessageDto> EditEntryAsync(Guid entryId, ViaticUpsertEntryDto dto)
     {
         return _api.PutJsonAsync<ViaticUpsertEntryDto, ApiMessageDto>($"api/mobile/viaticos/entries/{entryId}", dto);

@@ -13,21 +13,21 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">@Model.Project.Title</h1>
-        <div class="text-muted small">
-            Cliente: <b>@Model.ClientName</b> · Responsable: <b>@Model.Responsible</b>
-            · Inicio: @Model.Project.StartDate.ToString("yyyy-MM-dd")
-            · Estimado: @Model.Project.EstimatedEndDate.ToString("yyyy-MM-dd")
-            · Status: <b>@Model.Project.Status</b>
-            @if (Model.IsOverdue)
-            {
-                <span class="badge text-bg-warning ms-2">SLA vencido</span>
-            }
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            <span class="badge bg-primary">Cliente: @Model.ClientName</span>
+            <span class="badge bg-dark">Responsable: @Model.Responsible</span>
+            <span class="badge @Model.SlaCss">@Model.SlaLabel</span>
+            <span class="badge @(Model.Project.Status == ProjectStatus.Closed ? "bg-secondary" : "bg-success")">@(Model.Project.Status == ProjectStatus.Closed ? "Cerrado" : "Abierto")</span>
         </div>
+        <div class="text-muted small mt-1">Inicio: @Model.Project.StartDate.ToString("yyyy-MM-dd") · Estimado: @Model.Project.EstimatedEndDate.ToString("yyyy-MM-dd")</div>
     </div>
 
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Projects/Index">Volver</a>
-
+        @if (User.IsInRole(AppRoles.Admin))
+        {
+            <a class="btn btn-outline-primary" asp-page="/Projects/Edit" asp-route-id="@Model.Project.Id">Editar</a>
+        }
         @if (User.IsInRole(AppRoles.Admin) && Model.Project.Status == ProjectStatus.Open)
         {
             <a class="btn btn-outline-danger" asp-page="/Projects/Close" asp-route-id="@Model.Project.Id">Cerrar</a>
@@ -37,19 +37,51 @@
 
 <div class="row g-3">
     <div class="col-lg-7">
-        <div class="card shadow-sm hn-hover mb-3">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Resumen tecnico</div>
             <div class="card-body">
-                <div class="text-muted small">Objetivo</div>
-                <div class="mb-3">@Model.Project.Objective</div>
+                <div class="mb-3">
+                    <div class="text-muted small">Objetivo</div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.Project.Objective) ? "-" : Model.Project.Objective)</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted small">Alcance</div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.Project.Scope) ? "-" : Model.Project.Scope)</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted small">Descripcion</div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.Project.ActivityDescription) ? "-" : Model.Project.ActivityDescription)</div>
+                </div>
+                <div>
+                    <div class="text-muted small">Comentarios</div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.Project.AdditionalComments) ? "-" : Model.Project.AdditionalComments)</div>
+                </div>
+            </div>
+        </div>
 
-                <div class="text-muted small">Alcance</div>
-                <div class="mb-3">@Model.Project.Scope</div>
-
-                <div class="text-muted small">Descripción</div>
-                <div class="mb-3">@Model.Project.ActivityDescription</div>
-
-                <div class="text-muted small">Comentarios</div>
-                <div>@Model.Project.AdditionalComments</div>
+        <div class="card shadow-soft hn-hover mt-3">
+            <div class="card-header fw-semibold">Contratos heredados del cliente</div>
+            <div class="card-body">
+                @if (!Model.LinkedContracts.Any())
+                {
+                    <div class="text-muted">Sin contratos ligados al proyecto.</div>
+                }
+                else
+                {
+                    <div class="row row-cols-1 row-cols-md-2 g-2">
+                        @foreach (var c in Model.LinkedContracts)
+                        {
+                            <div class="col">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="fw-semibold">@c.Label</div>
+                                    <div class="small text-muted">@c.ServiceType · @c.Provider</div>
+                                    <div class="small">Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "-" : c.AccountNumber)</div>
+                                    <div class="small">Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "-" : c.ContractNumber)</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -57,7 +89,7 @@
     <div class="col-lg-5">
         <div class="card shadow-soft hn-hover">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="fw-semibold">Accesos del cliente</div>
+                <div class="fw-semibold">Accesos (heredados + proyecto)</div>
                 @if (User.IsInRole(AppRoles.Admin))
                 {
                     <a class="btn btn-sm btn-primary" asp-page="/Projects/AddAccess" asp-route-id="@Model.Project.Id">+ Agregar</a>
@@ -67,6 +99,7 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
+                            <th>Origen</th>
                             <th>Etiqueta</th>
                             <th>Host/URL</th>
                             <th>User</th>
@@ -76,20 +109,27 @@
                     <tbody>
                         @if (!Model.AccessRows.Any())
                         {
-                            <tr><td colspan="4" class="text-muted">Sin accesos</td></tr>
+                            <tr><td colspan="5" class="text-muted">Sin accesos.</td></tr>
                         }
                         else
                         {
                             foreach (var a in Model.AccessRows)
                             {
                                 <tr>
-                                    <td>@a.Label</td>
-                                    <td class="text-muted">@a.HostOrUrl</td>
+                                    <td><span class="badge @(a.Source == "Contrato" ? "bg-info text-dark" : "bg-primary")">@a.Source</span></td>
+                                    <td>
+                                        <div class="fw-semibold">@a.Label</div>
+                                        @if (!string.IsNullOrWhiteSpace(a.Notes))
+                                        {
+                                            <div class="small text-muted">@a.Notes</div>
+                                        }
+                                    </td>
+                                    <td class="small text-muted">@a.HostOrUrl</td>
                                     <td>@a.Username</td>
                                     <td>
                                         @if (a.CanViewPassword)
                                         {
-                                            <code>@a.PasswordPlain</code>
+                                            <code>@(string.IsNullOrWhiteSpace(a.PasswordPlain) ? "-" : a.PasswordPlain)</code>
                                         }
                                         else
                                         {
@@ -101,9 +141,6 @@
                         }
                     </tbody>
                 </table>
-                <div class="text-muted small mt-2">
-                    Los passwords están cifrados en DB. Aquí solo se muestran si eres admin (o responsable).
-                </div>
             </div>
         </div>
     </div>
