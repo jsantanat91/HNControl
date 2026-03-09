@@ -121,12 +121,20 @@ public sealed class ServiceOrderDetailDto
     public DateTime? EstimatedEndDate { get; set; }
     public string LevantamientoNotes { get; set; } = "";
     public string MaterialesNotes { get; set; } = "";
+    public List<ServiceOrderEvidenceDto> Evidences { get; set; } = new();
 }
 
 public sealed class ServiceOrderNotesUpdateDto
 {
     public string LevantamientoNotes { get; set; } = "";
     public string MaterialesNotes { get; set; } = "";
+}
+
+public sealed class ServiceOrderEvidenceDto
+{
+    public Guid Id { get; set; }
+    public string OriginalFileName { get; set; } = "";
+    public string UploadedAtLocal { get; set; } = "";
 }
 
 public sealed class EmployeeDashboardDto

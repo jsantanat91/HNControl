@@ -62,6 +62,7 @@ public partial class OrderDetailPage : ContentPage
         DescriptionLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
         LevantamientoEditor.Text = d.LevantamientoNotes ?? "";
         MaterialesEditor.Text = d.MaterialesNotes ?? "";
+        EvidenceCollection.ItemsSource = d.Evidences.Select(e => $"{e.UploadedAtLocal} · {e.OriginalFileName}").ToList();
 
         var canEdit = d.CanEdit;
         LevantamientoEditor.IsReadOnly = !canEdit;
@@ -80,6 +81,12 @@ public partial class OrderDetailPage : ContentPage
         SubmitButton.IsEnabled = canSubmit;
         PreviousAreaButton.Text = isFirstArea ? "Primera área" : "Área anterior";
         NextAreaButton.Text = isLastArea ? "Última área" : "Siguiente área";
+        var canAttachEvidence = canEdit && d.CurrentArea == 1;
+        AttachEvidenceButton.IsEnabled = canAttachEvidence;
+        AttachEvidenceButton.IsVisible = canEdit;
+        EvidenceHintLabel.Text = canAttachEvidence
+            ? "Puedes subir foto o PDF."
+            : "Solo en Levantamiento se pueden adjuntar evidencias.";
         EditorCard.Opacity = canEdit ? 1 : 0.7;
         EditHintLabel.Text = canEdit
             ? (isLastArea
@@ -218,6 +225,52 @@ public partial class OrderDetailPage : ContentPage
             });
             var res = await _orders.SubmitAsync(_orderId);
             await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnAttachEvidenceClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
+            return;
+        }
+        if (_current.CurrentArea != 1)
+        {
+            await DisplayAlertAsync("Orden", "Las evidencias se adjuntan en el área de Levantamiento.", "OK");
+            return;
+        }
+
+        try
+        {
+            var picked = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Selecciona evidencia (foto o PDF)",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.Android, new[] { "image/*", "application/pdf" } },
+                    { DevicePlatform.iOS, new[] { "public.image", "com.adobe.pdf" } },
+                    { DevicePlatform.WinUI, new[] { ".png", ".jpg", ".jpeg", ".webp", ".heic", ".pdf" } },
+                    { DevicePlatform.MacCatalyst, new[] { "png", "jpg", "jpeg", "webp", "heic", "pdf" } }
+                })
+            });
+
+            if (picked == null) return;
+
+            _busy = true;
+            await using var stream = await picked.OpenReadAsync();
+            var res = await _orders.UploadEvidenceAsync(_orderId, stream, picked.FileName, picked.ContentType);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Evidencia adjuntada." : res.Message, "OK");
             await ReloadAsync();
         }
         catch (Exception ex)

@@ -53,12 +53,20 @@ public class ServiceOrdersController : ControllerBase
         DateTime? StartedAt,
         DateTime? EstimatedEndDate,
         string LevantamientoNotes,
-        string MaterialesNotes);
+        string MaterialesNotes,
+        List<OrderEvidenceItem> Evidences);
+
+    public record OrderEvidenceItem(Guid Id, string OriginalFileName, string UploadedAtLocal);
 
     public class OrderNotesUpdateRequest
     {
         public string? LevantamientoNotes { get; set; }
         public string? MaterialesNotes { get; set; }
+    }
+
+    public class UploadEvidenceRequest
+    {
+        public IFormFile? EvidenceFile { get; set; }
     }
 
     [HttpGet]
@@ -106,6 +114,7 @@ public class ServiceOrdersController : ControllerBase
             .AsNoTracking()
             .Include(x => x.Client)
             .Include(x => x.ClaimedByEmployee)
+            .Include(x => x.Evidences)
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (o == null) return NotFound();
@@ -125,7 +134,14 @@ public class ServiceOrdersController : ControllerBase
             o.StartedAt,
             o.EstimatedEndDate,
             o.LevantamientoNotes,
-            o.MaterialesNotes
+            o.MaterialesNotes,
+            o.Evidences
+                .OrderByDescending(e => e.UploadedAt)
+                .Select(e => new OrderEvidenceItem(
+                    e.Id,
+                    e.OriginalFileName,
+                    e.UploadedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")))
+                .ToList()
         ));
     }
 
@@ -262,6 +278,48 @@ public class ServiceOrdersController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { message = "Orden enviada a revisión." });
+    }
+
+    [HttpPost("{id:guid}/evidence")]
+    [RequestSizeLimit(25 * 1024 * 1024)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadEvidence(Guid id, [FromForm] UploadEvidenceRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        if (o.CurrentArea != ServiceOrderWorkflowArea.Levantamiento)
+            return BadRequest(new { message = "Solo puedes adjuntar evidencias en el área de Levantamiento." });
+
+        if (req.EvidenceFile == null || req.EvidenceFile.Length == 0)
+            return BadRequest(new { message = "Selecciona un archivo válido." });
+
+        var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
+            req.EvidenceFile,
+            $"serviceorders/{o.Id}/evidence",
+            Guid.NewGuid().ToString("N"),
+            new[] { ".png", ".jpg", ".jpeg", ".webp", ".pdf", ".heic", ".heif" },
+            25 * 1024L * 1024L);
+
+        _db.ServiceOrderEvidences.Add(new ServiceOrderEvidence
+        {
+            OrderId = o.Id,
+            OriginalFileName = originalName,
+            ContentType = contentType,
+            SizeBytes = size,
+            StoragePath = path,
+            UploadedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Evidencia adjuntada." });
     }
 
     [HttpGet("{id:guid}/pdf")]

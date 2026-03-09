@@ -51,4 +51,15 @@ public sealed class OrdersService
     {
         return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { });
     }
+
+    public async Task<ApiMessageDto> UploadEvidenceAsync(Guid id, Stream fileStream, string fileName, string? fileContentType)
+    {
+        return await _api.PostMultipartAsync<ApiMessageDto>(
+            $"api/mobile/orders/{id}/evidence",
+            new Dictionary<string, string>(),
+            fileStream,
+            fileName,
+            "EvidenceFile",
+            fileContentType);
+    }
 }
