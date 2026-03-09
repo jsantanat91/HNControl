@@ -46,10 +46,10 @@
                     <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
 
                     <Label FontAttributes="Bold" Text="Levantamiento" />
-                    <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
+                    <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
 
                     <Label FontAttributes="Bold" Text="Materiales" />
-                    <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
+                    <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />
