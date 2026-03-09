@@ -1,18 +1,17 @@
 ﻿using System.Collections.ObjectModel;
 using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
-using Microsoft.Maui.Graphics;
 
 namespace HNControl.Mobile.Pages;
 
 public partial class OrderDetailPage : ContentPage
 {
     private readonly OrdersService _orders;
-    private readonly SignatureDrawable _signature = new();
-    private readonly SignatureDrawable _clientSignature = new();
     private Guid _orderId;
     private ServiceOrderDetailDto? _current;
     private bool _busy;
+    private string? _techSigDataUrl;
+    private string? _clientSigDataUrl;
 
     public ObservableCollection<ChecklistEditItemVm> ChecklistItems { get; } = new();
 
@@ -21,8 +20,6 @@ public partial class OrderDetailPage : ContentPage
         InitializeComponent();
         _orders = orders;
         ChecklistCollection.ItemsSource = ChecklistItems;
-        SignaturePad.Drawable = _signature;
-        ClientSignaturePad.Drawable = _clientSignature;
     }
 
     public void SetOrderId(Guid orderId)
@@ -33,7 +30,6 @@ public partial class OrderDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        RootScroll.IsEnabled = true;
         if (_orderId == Guid.Empty) return;
         await ReloadAsync();
     }
@@ -124,15 +120,20 @@ public partial class OrderDetailPage : ContentPage
             ? "Puedes subir foto o PDF."
             : "Adjunta evidencias en la etapa de levantamiento.";
 
-        ClearSignatureButton.IsVisible = d.CurrentArea == 4;
-        ClearSignatureButton.IsEnabled = canEdit && d.CurrentArea == 4;
-        ClearClientSignatureButton.IsVisible = d.CurrentArea == 4;
-        ClearClientSignatureButton.IsEnabled = canEdit && d.CurrentArea == 4;
+        SignTechButton.IsVisible = d.CurrentArea == 4;
+        SignTechButton.IsEnabled = canEdit && d.CurrentArea == 4;
+        SignClientButton.IsVisible = d.CurrentArea == 4;
+        SignClientButton.IsEnabled = canEdit && d.CurrentArea == 4;
+
+        TechSignStatusLabel.Text = string.IsNullOrWhiteSpace(_techSigDataUrl) ? "Pendiente" : "Firma capturada";
+        TechSignStatusLabel.TextColor = string.IsNullOrWhiteSpace(_techSigDataUrl) ? Color.FromArgb("#B91C1C") : Color.FromArgb("#15803D");
+        ClientSignStatusLabel.Text = string.IsNullOrWhiteSpace(_clientSigDataUrl) ? "Pendiente" : "Firma capturada";
+        ClientSignStatusLabel.TextColor = string.IsNullOrWhiteSpace(_clientSigDataUrl) ? Color.FromArgb("#B91C1C") : Color.FromArgb("#15803D");
 
         EditorCard.Opacity = canEdit ? 1 : 0.75;
         EditHintLabel.Text = canEdit
             ? (isLastArea
-                ? "Última área: firma y envía a revisión."
+                ? "Última área: captura ambas firmas y envía a revisión."
                 : "Puedes capturar datos y mover la orden por áreas.")
             : BuildReadOnlyReason(d);
     }
@@ -290,6 +291,28 @@ public partial class OrderDetailPage : ContentPage
         }
     }
 
+    private async void OnSignTechClicked(object sender, EventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4) return;
+        var sig = await SignatureCapturePage.CaptureAsync(Navigation, "Firma del técnico", TechSignatureLabel.Text);
+        if (!string.IsNullOrWhiteSpace(sig))
+        {
+            _techSigDataUrl = sig;
+            Bind(_current);
+        }
+    }
+
+    private async void OnSignClientClicked(object sender, EventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4) return;
+        var sig = await SignatureCapturePage.CaptureAsync(Navigation, "Firma del cliente", "Cliente");
+        if (!string.IsNullOrWhiteSpace(sig))
+        {
+            _clientSigDataUrl = sig;
+            Bind(_current);
+        }
+    }
+
     private async void OnSubmitClicked(object sender, EventArgs e)
     {
         if (_busy || _current == null) return;
@@ -304,14 +327,14 @@ public partial class OrderDetailPage : ContentPage
             return;
         }
 
-        if (!_signature.HasStrokes)
+        if (string.IsNullOrWhiteSpace(_techSigDataUrl))
         {
-            await DisplayAlertAsync("Firma requerida", "Dibuja la firma del técnico antes de enviar.", "OK");
+            await DisplayAlertAsync("Firma requerida", "Captura la firma del técnico antes de enviar.", "OK");
             return;
         }
-        if (!_clientSignature.HasStrokes)
+        if (string.IsNullOrWhiteSpace(_clientSigDataUrl))
         {
-            await DisplayAlertAsync("Firma requerida", "Dibuja la firma del cliente antes de enviar.", "OK");
+            await DisplayAlertAsync("Firma requerida", "Captura la firma del cliente antes de enviar.", "OK");
             return;
         }
 
@@ -321,14 +344,10 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            var dataUrl = await CaptureSignatureDataUrlAsync();
-            var clientDataUrl = await CaptureClientSignatureDataUrlAsync();
-            var res = await _orders.SubmitAsync(_orderId, dataUrl, clientDataUrl);
+            var res = await _orders.SubmitAsync(_orderId, _techSigDataUrl, _clientSigDataUrl);
             await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
-            _signature.Clear();
-            _clientSignature.Clear();
-            SignaturePad.Invalidate();
-            ClientSignaturePad.Invalidate();
+            _techSigDataUrl = null;
+            _clientSigDataUrl = null;
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -339,96 +358,6 @@ public partial class OrderDetailPage : ContentPage
         {
             _busy = false;
         }
-    }
-
-    private async Task<string> CaptureSignatureDataUrlAsync()
-    {
-        var capture = await SignaturePad.CaptureAsync();
-        if (capture == null)
-            return string.Empty;
-        await using var stream = await capture.OpenReadAsync();
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
-    }
-
-    private async Task<string> CaptureClientSignatureDataUrlAsync()
-    {
-        var capture = await ClientSignaturePad.CaptureAsync();
-        if (capture == null)
-            return string.Empty;
-        await using var stream = await capture.OpenReadAsync();
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
-    }
-
-    private void OnClearSignatureClicked(object sender, EventArgs e)
-    {
-        _signature.Clear();
-        SignaturePad.Invalidate();
-    }
-
-    private void OnClearClientSignatureClicked(object sender, EventArgs e)
-    {
-        _clientSignature.Clear();
-        ClientSignaturePad.Invalidate();
-    }
-
-    private void OnSignatureStart(object? sender, TouchEventArgs e)
-    {
-        if (_current?.CanEdit != true || _current.CurrentArea != 4)
-            return;
-
-        var p = e.Touches.FirstOrDefault();
-        _signature.StartStroke(p);
-        RootScroll.IsEnabled = false;
-        SignaturePad.Invalidate();
-    }
-
-    private void OnSignatureDrag(object? sender, TouchEventArgs e)
-    {
-        if (_current?.CanEdit != true || _current.CurrentArea != 4)
-            return;
-
-        var p = e.Touches.FirstOrDefault();
-        _signature.AddPoint(p);
-        SignaturePad.Invalidate();
-    }
-
-    private void OnSignatureEnd(object? sender, TouchEventArgs e)
-    {
-        _signature.EndStroke();
-        RootScroll.IsEnabled = true;
-        SignaturePad.Invalidate();
-    }
-
-    private void OnClientSignatureStart(object? sender, TouchEventArgs e)
-    {
-        if (_current?.CanEdit != true || _current.CurrentArea != 4)
-            return;
-
-        var p = e.Touches.FirstOrDefault();
-        _clientSignature.StartStroke(p);
-        RootScroll.IsEnabled = false;
-        ClientSignaturePad.Invalidate();
-    }
-
-    private void OnClientSignatureDrag(object? sender, TouchEventArgs e)
-    {
-        if (_current?.CanEdit != true || _current.CurrentArea != 4)
-            return;
-
-        var p = e.Touches.FirstOrDefault();
-        _clientSignature.AddPoint(p);
-        ClientSignaturePad.Invalidate();
-    }
-
-    private void OnClientSignatureEnd(object? sender, TouchEventArgs e)
-    {
-        _clientSignature.EndStroke();
-        RootScroll.IsEnabled = true;
-        ClientSignaturePad.Invalidate();
     }
 
     private async void OnAttachEvidenceClicked(object sender, EventArgs e)
@@ -547,66 +476,4 @@ public class ChecklistEditItemVm
     public string Title { get; set; } = string.Empty;
     public bool IsDone { get; set; }
     public string Notes { get; set; } = string.Empty;
-}
-
-public sealed class SignatureDrawable : IDrawable
-{
-    private List<PointF> _currentStroke = new();
-    public List<List<PointF>> Strokes { get; } = new();
-
-    public bool HasStrokes => Strokes.Count > 0 || _currentStroke.Count > 1;
-
-    public void StartStroke(PointF p)
-    {
-        _currentStroke = new List<PointF> { p };
-    }
-
-    public void AddPoint(PointF p)
-    {
-        _currentStroke.Add(p);
-    }
-
-    public void EndStroke()
-    {
-        if (_currentStroke.Count > 1)
-            Strokes.Add(new List<PointF>(_currentStroke));
-        _currentStroke.Clear();
-    }
-
-    public void Clear()
-    {
-        Strokes.Clear();
-        _currentStroke.Clear();
-    }
-
-    public void Draw(ICanvas canvas, RectF dirtyRect)
-    {
-        canvas.FillColor = Colors.White;
-        canvas.FillRectangle(dirtyRect);
-        canvas.StrokeColor = Color.FromArgb("#0F172A");
-        canvas.StrokeSize = 2;
-        canvas.StrokeLineCap = LineCap.Round;
-        canvas.StrokeLineJoin = LineJoin.Round;
-
-        foreach (var stroke in Strokes)
-        {
-            DrawStroke(canvas, stroke);
-        }
-
-        if (_currentStroke.Count > 1)
-        {
-            DrawStroke(canvas, _currentStroke);
-        }
-    }
-
-    private static void DrawStroke(ICanvas canvas, List<PointF> stroke)
-    {
-        if (stroke.Count < 2) return;
-        for (var i = 1; i < stroke.Count; i++)
-        {
-            var p1 = stroke[i - 1];
-            var p2 = stroke[i];
-            canvas.DrawLine(p1.X, p1.Y, p2.X, p2.Y);
-        }
-    }
 }
