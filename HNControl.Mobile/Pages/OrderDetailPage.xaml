@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="HNControl.Mobile.Pages.OrderDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -41,33 +41,73 @@
             </Border>
 
             <Border x:Name="EditorCard" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
-                <VerticalStackLayout Spacing="8">
+                <VerticalStackLayout Spacing="10">
                     <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />
                     <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
 
-                    <Label FontAttributes="Bold" Text="Levantamiento" />
-                    <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <Button x:Name="AttachEvidenceButton"
-                                Grid.Column="0"
-                                Text="Adjuntar evidencia"
-                                CornerRadius="10"
-                                Clicked="OnAttachEvidenceClicked" />
-                        <Label x:Name="EvidenceHintLabel"
-                               Grid.Column="1"
-                               FontSize="12"
-                               Opacity="0.75"
-                               VerticalTextAlignment="Center"
-                               Text="Disponible en Levantamiento" />
-                    </Grid>
-                    <CollectionView x:Name="EvidenceCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin evidencias cargadas." />
-                        </CollectionView.EmptyView>
-                    </CollectionView>
+                    <VerticalStackLayout x:Name="NotesSection" Spacing="8">
+                        <Label FontAttributes="Bold" Text="Levantamiento" />
+                        <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
 
-                    <Label FontAttributes="Bold" Text="Materiales" />
-                    <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Button x:Name="AttachEvidenceButton"
+                                    Grid.Column="0"
+                                    Text="Adjuntar evidencia"
+                                    CornerRadius="10"
+                                    Clicked="OnAttachEvidenceClicked" />
+                            <Label x:Name="EvidenceHintLabel"
+                                   Grid.Column="1"
+                                   FontSize="12"
+                                   Opacity="0.75"
+                                   VerticalTextAlignment="Center"
+                                   Text="Puedes subir foto o PDF" />
+                        </Grid>
+
+                        <CollectionView x:Name="EvidenceCollection" SelectionMode="None">
+                            <CollectionView.EmptyView>
+                                <Label Opacity="0.7" Text="Sin evidencias cargadas." />
+                            </CollectionView.EmptyView>
+                        </CollectionView>
+
+                        <Label FontAttributes="Bold" Text="Materiales" />
+                        <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout x:Name="ChecklistSection" Spacing="8" IsVisible="False">
+                        <Label FontAttributes="Bold" Text="Checklist de ejecución" />
+                        <CollectionView x:Name="ChecklistCollection" SelectionMode="None">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F8FAFE" Padding="10" Margin="0,4" StrokeShape="RoundRectangle 12">
+                                        <VerticalStackLayout Spacing="6">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <VerticalStackLayout>
+                                                    <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                                    <Label Text="{Binding Category}" FontSize="11" Opacity="0.75" />
+                                                </VerticalStackLayout>
+                                                <Switch IsToggled="{Binding IsDone}" />
+                                            </Grid>
+                                            <Editor Text="{Binding Notes}" AutoSize="TextChanges" MinimumHeightRequest="60" Placeholder="Notas" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                            <CollectionView.EmptyView>
+                                <Label Opacity="0.7" Text="No hay checklist en esta etapa." />
+                            </CollectionView.EmptyView>
+                        </CollectionView>
+                        <Button x:Name="SaveChecklistButton"
+                                Text="Guardar checklist"
+                                Clicked="OnSaveChecklistClicked"
+                                CornerRadius="10"
+                                BackgroundColor="#0E2242"
+                                TextColor="White" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout x:Name="CloseSection" Spacing="8" IsVisible="False">
+                        <Label FontAttributes="Bold" Text="Cierre técnico" />
+                        <Label Text="La firma técnica se toma automáticamente del usuario autenticado." FontSize="12" Opacity="0.75" />
+                    </VerticalStackLayout>
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button x:Name="PreviousAreaButton" Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />

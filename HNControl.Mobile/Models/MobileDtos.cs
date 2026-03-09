@@ -121,7 +121,17 @@ public sealed class ServiceOrderDetailDto
     public DateTime? EstimatedEndDate { get; set; }
     public string LevantamientoNotes { get; set; } = "";
     public string MaterialesNotes { get; set; } = "";
+    public List<ServiceOrderChecklistItemDto> Checklist { get; set; } = new();
     public List<ServiceOrderEvidenceDto> Evidences { get; set; } = new();
+}
+
+public sealed class ServiceOrderChecklistItemDto
+{
+    public Guid Id { get; set; }
+    public string Category { get; set; } = "";
+    public string Title { get; set; } = "";
+    public bool IsDone { get; set; }
+    public string Notes { get; set; } = "";
 }
 
 public sealed class ServiceOrderNotesUpdateDto
@@ -135,6 +145,18 @@ public sealed class ServiceOrderEvidenceDto
     public Guid Id { get; set; }
     public string OriginalFileName { get; set; } = "";
     public string UploadedAtLocal { get; set; } = "";
+}
+
+public sealed class ServiceOrderChecklistUpdateDto
+{
+    public List<ServiceOrderChecklistUpdateItemDto> Items { get; set; } = new();
+}
+
+public sealed class ServiceOrderChecklistUpdateItemDto
+{
+    public Guid Id { get; set; }
+    public bool IsDone { get; set; }
+    public string Notes { get; set; } = "";
 }
 
 public sealed class EmployeeDashboardDto

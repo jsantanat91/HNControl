@@ -54,14 +54,28 @@ public class ServiceOrdersController : ControllerBase
         DateTime? EstimatedEndDate,
         string LevantamientoNotes,
         string MaterialesNotes,
+        List<OrderChecklistItem> Checklist,
         List<OrderEvidenceItem> Evidences);
 
+    public record OrderChecklistItem(Guid Id, string Category, string Title, bool IsDone, string Notes);
     public record OrderEvidenceItem(Guid Id, string OriginalFileName, string UploadedAtLocal);
 
     public class OrderNotesUpdateRequest
     {
         public string? LevantamientoNotes { get; set; }
         public string? MaterialesNotes { get; set; }
+    }
+
+    public class OrderChecklistUpdateRequest
+    {
+        public List<OrderChecklistUpdateItem> Items { get; set; } = new();
+    }
+
+    public class OrderChecklistUpdateItem
+    {
+        public Guid Id { get; set; }
+        public bool IsDone { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class UploadEvidenceRequest
@@ -111,13 +125,26 @@ public class ServiceOrdersController : ControllerBase
     public async Task<IActionResult> Detail(Guid id)
     {
         var o = await _db.ServiceOrders
-            .AsNoTracking()
             .Include(x => x.Client)
             .Include(x => x.ClaimedByEmployee)
+            .Include(x => x.Checklist)
             .Include(x => x.Evidences)
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (o == null) return NotFound();
+
+        if (o.Checklist.Count == 0 && o.Type != ServiceOrderType.Global)
+        {
+            var created = await EnsureChecklistFromTemplateAsync(o, o.Type);
+            if (created)
+                await _db.SaveChangesAsync();
+        }
+
+        var checklist = o.Checklist
+            .Where(i => ResolveAreaFromCategory(i.Category) == o.CurrentArea)
+            .OrderBy(i => i.SortOrder)
+            .Select(i => new OrderChecklistItem(i.Id, i.Category, i.Title, i.IsDone, i.Notes))
+            .ToList();
 
         return Ok(new OrderDetail(
             o.Id,
@@ -135,6 +162,7 @@ public class ServiceOrdersController : ControllerBase
             o.EstimatedEndDate,
             o.LevantamientoNotes,
             o.MaterialesNotes,
+            checklist,
             o.Evidences
                 .OrderByDescending(e => e.UploadedAt)
                 .Select(e => new OrderEvidenceItem(
@@ -199,6 +227,42 @@ public class ServiceOrdersController : ControllerBase
 
         await _db.SaveChangesAsync();
         return Ok(new { message = "Notas guardadas." });
+    }
+
+    [HttpPut("{id:guid}/checklist")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateChecklist(Guid id, [FromBody] OrderChecklistUpdateRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders
+            .Include(x => x.Checklist)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        if (o.CurrentArea != ServiceOrderWorkflowArea.Ejecucion)
+            return Forbid();
+
+        var byId = (req.Items ?? new List<OrderChecklistUpdateItem>()).ToDictionary(x => x.Id, x => x);
+        foreach (var item in o.Checklist.Where(i => ResolveAreaFromCategory(i.Category) == o.CurrentArea))
+        {
+            if (!byId.TryGetValue(item.Id, out var vm)) continue;
+            item.IsDone = vm.IsDone;
+            item.Notes = TrimMax(vm.Notes, 600);
+        }
+
+        if (o.Status == ServiceOrderStatus.Created)
+        {
+            o.Status = ServiceOrderStatus.InProgress;
+            o.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Checklist guardado." });
     }
 
     [HttpPost("{id:guid}/area/next")]
@@ -360,6 +424,58 @@ public class ServiceOrdersController : ControllerBase
     {
         var v = (value ?? string.Empty).Trim();
         return v.Length <= max ? v : v[..max];
+    }
+
+    private static ServiceOrderWorkflowArea ResolveAreaFromCategory(string? category)
+    {
+        var c = (category ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(c))
+            return ServiceOrderWorkflowArea.Ejecucion;
+
+        if (c.Contains("levant") || c.Contains("diagnost"))
+            return ServiceOrderWorkflowArea.Levantamiento;
+
+        if (c.Contains("material"))
+            return ServiceOrderWorkflowArea.Materiales;
+
+        if (c.Contains("prueb") || c.Contains("cierre") || c.Contains("entrega") || c.Contains("validac") || c.Contains("recomend"))
+            return ServiceOrderWorkflowArea.CierreTecnico;
+
+        if (c.Contains("manten") || c.Contains("ejec") || c.Contains("instal") || c.Contains("cable") || c.Contains("equipo") || c.Contains("red"))
+            return ServiceOrderWorkflowArea.Ejecucion;
+
+        return ServiceOrderWorkflowArea.Ejecucion;
+    }
+
+    private async Task<bool> EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type)
+    {
+        if (order.Checklist.Any())
+            return false;
+
+        var template = await _db.ServiceOrderChecklistTemplates
+            .Include(t => t.Items)
+            .Where(t => t.IsActive && t.Type == type)
+            .OrderBy(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        if (template == null || template.Items.Count == 0)
+            return false;
+
+        foreach (var it in template.Items.OrderBy(x => x.SortOrder))
+        {
+            order.Checklist.Add(new ServiceOrderChecklistItem
+            {
+                OrderId = order.Id,
+                SortOrder = it.SortOrder,
+                Category = it.Category,
+                Title = it.Title,
+                IsRequired = it.IsRequired,
+                IsDone = false,
+                Notes = ""
+            });
+        }
+
+        return true;
     }
 }
 

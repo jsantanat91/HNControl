@@ -37,6 +37,11 @@ public sealed class OrdersService
         return _api.PutJsonAsync<ServiceOrderNotesUpdateDto, ApiMessageDto>($"api/mobile/orders/{id}/notes", dto);
     }
 
+    public Task<ApiMessageDto> UpdateChecklistAsync(Guid id, ServiceOrderChecklistUpdateDto dto)
+    {
+        return _api.PutJsonAsync<ServiceOrderChecklistUpdateDto, ApiMessageDto>($"api/mobile/orders/{id}/checklist", dto);
+    }
+
     public Task<ApiMessageDto> NextAreaAsync(Guid id)
     {
         return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/area/next", new { });

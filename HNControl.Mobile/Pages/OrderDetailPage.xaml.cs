@@ -1,4 +1,5 @@
-﻿using HNControl.Mobile.Models;
+﻿using System.Collections.ObjectModel;
+using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
@@ -10,10 +11,13 @@ public partial class OrderDetailPage : ContentPage
     private ServiceOrderDetailDto? _current;
     private bool _busy;
 
+    public ObservableCollection<ChecklistEditItemVm> ChecklistItems { get; } = new();
+
     public OrderDetailPage(OrdersService orders)
     {
         InitializeComponent();
         _orders = orders;
+        ChecklistCollection.ItemsSource = ChecklistItems;
     }
 
     public void SetOrderId(Guid orderId)
@@ -62,15 +66,37 @@ public partial class OrderDetailPage : ContentPage
         DescriptionLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
         LevantamientoEditor.Text = d.LevantamientoNotes ?? "";
         MaterialesEditor.Text = d.MaterialesNotes ?? "";
-        EvidenceCollection.ItemsSource = d.Evidences.Select(e => $"{e.UploadedAtLocal} Â· {e.OriginalFileName}").ToList();
+        EvidenceCollection.ItemsSource = d.Evidences.Select(e => $"{e.UploadedAtLocal} · {e.OriginalFileName}").ToList();
+
+        ChecklistItems.Clear();
+        foreach (var i in d.Checklist)
+        {
+            ChecklistItems.Add(new ChecklistEditItemVm
+            {
+                Id = i.Id,
+                Category = i.Category,
+                Title = i.Title,
+                IsDone = i.IsDone,
+                Notes = i.Notes
+            });
+        }
 
         var canEdit = d.CanEdit;
-        LevantamientoEditor.IsReadOnly = !canEdit;
-        MaterialesEditor.IsReadOnly = !canEdit;
-        SaveButton.IsEnabled = canEdit;
         var isFirstArea = d.CurrentArea <= 1;
         var isLastArea = d.CurrentArea >= 4;
         var canSubmit = canEdit && isLastArea && d.Status is 1 or 2 or 6;
+
+        NotesSection.IsVisible = d.CurrentArea is 1 or 2;
+        ChecklistSection.IsVisible = d.CurrentArea == 3;
+        CloseSection.IsVisible = d.CurrentArea == 4;
+
+        LevantamientoEditor.IsReadOnly = !canEdit;
+        MaterialesEditor.IsReadOnly = !canEdit;
+        SaveButton.IsEnabled = canEdit && d.CurrentArea is 1 or 2;
+        SaveButton.IsVisible = d.CurrentArea is 1 or 2;
+
+        SaveChecklistButton.IsVisible = d.CurrentArea == 3;
+        SaveChecklistButton.IsEnabled = canEdit && d.CurrentArea == 3;
 
         PreviousAreaButton.IsVisible = canEdit;
         NextAreaButton.IsVisible = canEdit;
@@ -79,19 +105,22 @@ public partial class OrderDetailPage : ContentPage
         PreviousAreaButton.IsEnabled = canEdit && !isFirstArea;
         NextAreaButton.IsEnabled = canEdit && !isLastArea;
         SubmitButton.IsEnabled = canSubmit;
-        PreviousAreaButton.Text = isFirstArea ? "Primera Ã¡rea" : "Ãrea anterior";
-        NextAreaButton.Text = isLastArea ? "Ãšltima Ã¡rea" : "Siguiente Ã¡rea";
+
+        PreviousAreaButton.Text = isFirstArea ? "Primera área" : "Área anterior";
+        NextAreaButton.Text = isLastArea ? "Última área" : "Siguiente área";
+
         var canAttachEvidence = canEdit;
         AttachEvidenceButton.IsEnabled = canAttachEvidence;
         AttachEvidenceButton.IsVisible = canEdit;
         EvidenceHintLabel.Text = canAttachEvidence
             ? "Puedes subir foto o PDF."
             : "Solo quien tomó la orden (o admin global) puede adjuntar evidencias.";
-        EditorCard.Opacity = canEdit ? 1 : 0.7;
+
+        EditorCard.Opacity = canEdit ? 1 : 0.75;
         EditHintLabel.Text = canEdit
             ? (isLastArea
-                ? "Ãšltima Ã¡rea: guarda datos y cuando termines, envÃ­a a revisiÃ³n."
-                : "Puedes capturar datos y mover la orden por Ã¡reas.")
+                ? "Última área: cuando termines, envía a revisión."
+                : "Puedes capturar datos y mover la orden por áreas.")
             : BuildReadOnlyReason(d);
     }
 
@@ -101,11 +130,6 @@ public partial class OrderDetailPage : ContentPage
         if (!_current.CanEdit)
         {
             await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
-            return;
-        }
-        if (_current.CurrentArea >= 4)
-        {
-            await DisplayAlertAsync("Orden", "Ya estÃ¡s en Cierre tÃ©cnico. Usa 'Enviar revisiÃ³n (final)' cuando termines.", "OK");
             return;
         }
 
@@ -119,6 +143,47 @@ public partial class OrderDetailPage : ContentPage
             };
             var res = await _orders.UpdateNotesAsync(_orderId, dto);
             await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Guardado." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnSaveChecklistClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
+            return;
+        }
+        if (_current.CurrentArea != 3)
+        {
+            await DisplayAlertAsync("Orden", "El checklist solo se edita en Ejecución.", "OK");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var req = new ServiceOrderChecklistUpdateDto
+            {
+                Items = ChecklistItems.Select(x => new ServiceOrderChecklistUpdateItemDto
+                {
+                    Id = x.Id,
+                    IsDone = x.IsDone,
+                    Notes = x.Notes ?? string.Empty
+                }).ToList()
+            };
+
+            var res = await _orders.UpdateChecklistAsync(_orderId, req);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Checklist guardado." : res.Message, "OK");
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -148,13 +213,29 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
+            if (_current.CurrentArea is 1 or 2)
             {
-                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
-                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
-            });
+                await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
+                {
+                    LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
+                    MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
+                });
+            }
+            else if (_current.CurrentArea == 3)
+            {
+                await _orders.UpdateChecklistAsync(_orderId, new ServiceOrderChecklistUpdateDto
+                {
+                    Items = ChecklistItems.Select(x => new ServiceOrderChecklistUpdateItemDto
+                    {
+                        Id = x.Id,
+                        IsDone = x.IsDone,
+                        Notes = x.Notes ?? string.Empty
+                    }).ToList()
+                });
+            }
+
             var res = await _orders.NextAreaAsync(_orderId);
-            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Ãrea actualizada." : res.Message, "OK");
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -184,13 +265,8 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
-            {
-                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
-                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
-            });
             var res = await _orders.PreviousAreaAsync(_orderId);
-            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Ãrea actualizada." : res.Message, "OK");
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -212,19 +288,14 @@ public partial class OrderDetailPage : ContentPage
             return;
         }
 
-        var ok = await DisplayAlertAsync("Enviar revisiÃ³n", "Se enviarÃ¡ la orden para revisiÃ³n de admin. Â¿Continuar?", "Enviar", "Cancelar");
+        var ok = await DisplayAlertAsync("Enviar revisión", "Se enviará la orden para revisión de admin. ¿Continuar?", "Enviar", "Cancelar");
         if (!ok) return;
 
         _busy = true;
         try
         {
-            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
-            {
-                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
-                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
-            });
             var res = await _orders.SubmitAsync(_orderId);
-            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisiÃ³n." : res.Message, "OK");
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -245,6 +316,7 @@ public partial class OrderDetailPage : ContentPage
             await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
             return;
         }
+
         try
         {
             var picked = await FilePicker.Default.PickAsync(new PickOptions
@@ -281,8 +353,8 @@ public partial class OrderDetailPage : ContentPage
     {
         1 => "Correctivo",
         2 => "Preventivo",
-        3 => "Nueva instalaciÃ³n",
-        4 => "Levantamiento tÃ©cnico",
+        3 => "Nueva instalación",
+        4 => "Levantamiento técnico",
         99 => "Global",
         _ => "Tipo " + val
     };
@@ -291,7 +363,7 @@ public partial class OrderDetailPage : ContentPage
     {
         1 => "Creada",
         2 => "En proceso",
-        3 => "En revisiÃ³n",
+        3 => "En revisión",
         4 => "Finalizada",
         5 => "Pendiente firma cliente",
         6 => "Rechazada",
@@ -302,9 +374,9 @@ public partial class OrderDetailPage : ContentPage
     {
         1 => "Levantamiento",
         2 => "Materiales",
-        3 => "EjecuciÃ³n",
-        4 => "Cierre tÃ©cnico",
-        _ => "Ãrea " + val
+        3 => "Ejecución",
+        4 => "Cierre técnico",
+        _ => "Área " + val
     };
 
     private static string MapTypeBg(int val) => val switch
@@ -340,8 +412,16 @@ public partial class OrderDetailPage : ContentPage
     private static string BuildReadOnlyReason(ServiceOrderDetailDto d)
     {
         if (d.Status is 3 or 4 or 5)
-            return "La orden estÃ¡ en revisiÃ³n/finalizada. Un admin debe rechazarla o reabrirla para seguir editando.";
-        return "Solo quien tomÃ³ la orden (o admin global) puede editar.";
+            return "La orden está en revisión/finalizada. Un admin debe rechazarla o reabrirla para seguir editando.";
+        return "Solo quien tomó la orden (o admin global) puede editar.";
     }
 }
 
+public class ChecklistEditItemVm
+{
+    public Guid Id { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public bool IsDone { get; set; }
+    public string Notes { get; set; } = string.Empty;
+}
