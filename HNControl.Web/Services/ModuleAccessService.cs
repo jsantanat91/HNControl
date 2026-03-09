@@ -31,7 +31,7 @@ public class ModuleAccessService : IModuleAccessService
             return result;
         }
 
-        if (user.IsInRole(AppRoles.Admin))
+        if (AppRoles.IsGlobalAdmin(user))
         {
             foreach (var k in AppModules.AllKnown) result.Add(k);
             Store(httpCtx, result);
@@ -90,7 +90,7 @@ public class ModuleAccessService : IModuleAccessService
     {
         if (string.IsNullOrWhiteSpace(moduleKey)) return true;
         if (user?.Identity?.IsAuthenticated != true) return false;
-        if (user.IsInRole(AppRoles.Admin)) return true;
+        if (AppRoles.IsGlobalAdmin(user)) return true;
 
         var set = await GetAllowedModulesAsync(user);
         return set.Contains(moduleKey);

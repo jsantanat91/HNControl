@@ -11,11 +11,11 @@
 
     // Permisos por m&oacute;dulo (solo aplica a Employees). Admin bypass.
     var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    if (SignInManager.IsSignedIn(User) && !User.IsInRole(AppRoles.Admin))
+    if (SignInManager.IsSignedIn(User) && !AppRoles.IsGlobalAdmin(User))
     {
         allowedModules = await ModuleAccess.GetAllowedModulesAsync(User);
     }
-    bool Has(string key) => User.IsInRole(AppRoles.Admin) || allowedModules.Contains(key);
+    bool Has(string key) => AppRoles.IsGlobalAdmin(User) || allowedModules.Contains(key);
 
     var pageTitle = (ViewData["Title"] as string) ?? "HN Control";
 }
@@ -68,7 +68,7 @@
                 <div class="hn-side-title">Men&uacute;</div>
 
                 @* ADMIN *@
-                @if (User.IsInRole(AppRoles.Admin))
+                @if (AppRoles.IsGlobalAdmin(User))
                 {
                     <a class="hn-side-link @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard">
                         <span class="hn-side-icon"><i class="bi bi-speedometer2"></i></span>
@@ -278,7 +278,7 @@
         </div>
         <div class="offcanvas-body">
             <div class="hn-side-section">
-                @if (User.IsInRole(AppRoles.Admin))
+                @if (AppRoles.IsGlobalAdmin(User))
                 {
                     <a class="hn-side-link @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard"><span class="hn-side-icon"><i class="bi bi-speedometer2"></i></span><span class="hn-side-text">Panel</span></a>
                     <a class="hn-side-link @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index"><span class="hn-side-icon"><i class="bi bi-people"></i></span><span class="hn-side-text">Empleados</span></a>

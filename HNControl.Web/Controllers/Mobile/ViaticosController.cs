@@ -46,6 +46,7 @@ public class ViaticosController : ControllerBase
         [Required, MaxLength(300)] public string Description { get; set; } = "";
         [Range(0.01, 9999999)] public decimal Amount { get; set; }
         public bool IsBillable { get; set; }
+        public IFormFile? AttachmentFile { get; set; }
         public IFormFile? PdfFile { get; set; }
     }
 
@@ -213,11 +214,13 @@ public class ViaticosController : ControllerBase
         if (req.DayDate.Date < start || req.DayDate.Date > end)
             return BadRequest(new { message = "Ese dia no cae dentro de la semana." });
 
-        if (req.IsBillable && (req.PdfFile == null || req.PdfFile.Length == 0))
-            return BadRequest(new { message = "Si es facturable, el PDF es obligatorio." });
+        var uploadedFile = req.AttachmentFile ?? req.PdfFile;
 
-        if (!req.IsBillable && req.PdfFile != null && req.PdfFile.Length > 0)
-            return BadRequest(new { message = "El PDF solo aplica para gastos facturables." });
+        if (req.IsBillable && (uploadedFile == null || uploadedFile.Length == 0))
+            return BadRequest(new { message = "Si es facturable, adjunta factura (PDF o imagen)." });
+
+        if (!req.IsBillable && uploadedFile != null && uploadedFile.Length > 0)
+            return BadRequest(new { message = "El adjunto solo aplica para gastos facturables." });
 
         var entry = new ViaticEntry
         {
@@ -232,19 +235,25 @@ public class ViaticosController : ControllerBase
 
         _db.ViaticEntries.Add(entry);
 
-        if (req.IsBillable && req.PdfFile != null)
+        if (req.IsBillable && uploadedFile != null)
         {
             var attachment = new ViaticAttachment
             {
                 EntryId = entry.Id,
-                OriginalFileName = Path.GetFileName(req.PdfFile.FileName),
-                ContentType = "application/pdf",
+                OriginalFileName = Path.GetFileName(uploadedFile.FileName),
                 UploadedAt = DateTime.UtcNow
             };
 
-            var (path, size) = await _storage.SavePdfAsync(req.PdfFile, $"viaticos/{week.Id}", attachment.Id.ToString("N"));
+            var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
+                uploadedFile,
+                $"viaticos/{week.Id}",
+                attachment.Id.ToString("N"),
+                new[] { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif" },
+                20 * 1024L * 1024L);
             attachment.StoragePath = path;
             attachment.SizeBytes = size;
+            attachment.ContentType = contentType;
+            attachment.OriginalFileName = originalName;
             _db.ViaticAttachments.Add(attachment);
         }
 
@@ -276,7 +285,7 @@ public class ViaticosController : ControllerBase
             return Conflict(new { message = "Semana enviada/aprobada: no se puede modificar." });
 
         if (req.IsBillable && entry.Attachment == null)
-            return BadRequest(new { message = "Para marcar facturable necesitas adjuntar PDF." });
+            return BadRequest(new { message = "Para marcar facturable necesitas adjuntar factura (PDF o imagen)." });
 
         var start = entry.Week.WeekStartDate.Date;
         var end = start.AddDays(6);
@@ -344,7 +353,7 @@ public class ViaticosController : ControllerBase
         if (week.Status == ViaticWeekStatus.Approved) return Ok(new { message = "La semana ya esta aprobada." });
 
         var bad = week.Entries.Any(e => e.IsBillable && e.Attachment == null);
-        if (bad) return BadRequest(new { message = "Hay gastos facturables sin PDF." });
+        if (bad) return BadRequest(new { message = "Hay gastos facturables sin archivo adjunto." });
 
         await ViaticTotalsHelper.RecalcWeekAsync(_db, week.Id);
         week.Status = ViaticWeekStatus.Submitted;

@@ -53,7 +53,7 @@ public sealed class ViaticosService
             fields,
             fileStream,
             fileName,
-            "PdfFile",
+            "AttachmentFile",
             fileContentType);
     }
 

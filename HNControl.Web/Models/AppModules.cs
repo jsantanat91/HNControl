@@ -17,7 +17,7 @@ public static class AppModules
     public const string Leaves = "Leaves";   // Vacaciones e incidencias
     public const string Exams = "Exams";     // Exámenes
 
-    // Admin (solo para UI de permisos; Admin bypass en runtime)
+    // Admin (solo para UI de permisos; admin bypass en runtime)
     public const string Clients = "Clients";
     public const string Performance = "Performance";
     public const string Security = "Security";
@@ -79,7 +79,7 @@ public static class AppModules
     {
         if (string.IsNullOrWhiteSpace(viewEnginePath)) return null;
 
-        // Carpetas que no deberían bloquearse por módulos
+        // Carpetas que no deberían bloquearse por módulos.
         if (viewEnginePath.StartsWith("/Account", StringComparison.OrdinalIgnoreCase)) return null;
         if (viewEnginePath.StartsWith("/Public", StringComparison.OrdinalIgnoreCase)) return null;
         if (string.Equals(viewEnginePath, "/Index", StringComparison.OrdinalIgnoreCase)) return null;
@@ -106,7 +106,6 @@ public static class AppModules
 
     /// <summary>
     /// Lista para UI de roles/permisos.
-    /// OJO: los keys deben coincidir con lo que guardamos en PermissionRoleModules.ModuleKey.
     /// </summary>
     public static readonly IReadOnlyList<(string Key, string Label)> All =
         AllKnown.Select(k => (k, Label(k))).ToList();

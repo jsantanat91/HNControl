@@ -73,8 +73,8 @@ builder.Services.AddAuthentication()
 // --------------------
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole(AppRoles.Admin));
-    options.AddPolicy("EmployeeOnly", policy => policy.RequireRole(AppRoles.Employee, AppRoles.Admin));
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx => AppRoles.IsGlobalAdmin(ctx.User)));
+    options.AddPolicy("EmployeeOnly", policy => policy.RequireRole(AppRoles.Employee, AppRoles.Admin, AppRoles.SuperAdmin));
 });
 builder.Services.AddControllers();
 builder.Services.AddScoped<MobileJwtTokenService>();
@@ -269,7 +269,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
     var db = services.GetRequiredService<ApplicationDbContext>();
 
     // Roles
-    foreach (var r in new[] { AppRoles.Admin, AppRoles.Employee })
+    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee })
     {
         if (!await roleMgr.RoleExistsAsync(r))
             await roleMgr.CreateAsync(new IdentityRole(r));

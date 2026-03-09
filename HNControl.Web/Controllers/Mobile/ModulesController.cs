@@ -40,6 +40,7 @@ public class ModulesController : ControllerBase
         var set = await _moduleAccess.GetAllowedModulesAsync(User);
         var mobileEmployeeModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
+            AppModules.ServiceOrders,
             AppModules.Monitoring,
             AppModules.Inventory,
             AppModules.Carriers,
@@ -51,8 +52,10 @@ public class ModulesController : ControllerBase
             AppModules.Eval360
         };
 
+        var allowed = AppRoles.IsGlobalAdmin(User) ? set : set.Where(mobileEmployeeModules.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var data = AppModules.All
-            .Where(x => mobileEmployeeModules.Contains(x.Key) && set.Contains(x.Key))
+            .Where(x => allowed.Contains(x.Key))
             .Select(x => new ModuleItemDto(x.Key, x.Label))
             .ToList();
         return Ok(data);

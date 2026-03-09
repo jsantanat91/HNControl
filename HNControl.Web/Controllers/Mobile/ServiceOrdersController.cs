@@ -77,7 +77,10 @@ public class ServiceOrdersController : ControllerBase
                 o.CurrentArea,
                 o.ClaimedByEmployee != null ? o.ClaimedByEmployee.FullName : "Sin tomar",
                 o.ClaimedByUserId == userId,
-                o.Status != ServiceOrderStatus.InReview && o.Status != ServiceOrderStatus.Finalized && o.Status != ServiceOrderStatus.Completed,
+                (string.IsNullOrWhiteSpace(o.ClaimedByUserId) || o.ClaimedByUserId == userId) &&
+                o.Status != ServiceOrderStatus.InReview &&
+                o.Status != ServiceOrderStatus.Finalized &&
+                o.Status != ServiceOrderStatus.Completed,
                 o.CreatedAt,
                 o.EstimatedEndDate
             ))
@@ -130,6 +133,9 @@ public class ServiceOrdersController : ControllerBase
 
         if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
             return Conflict(new { message = "La orden ya no acepta edicion" });
+
+        if (!string.IsNullOrWhiteSpace(o.ClaimedByUserId) && o.ClaimedByUserId != userId)
+            return Conflict(new { message = "La orden ya fue tomada por otro técnico. Pide al admin desasignarla." });
 
         o.ClaimedByUserId = userId;
         o.ClaimedAt = DateTime.UtcNow;

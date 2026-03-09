@@ -59,6 +59,15 @@
                     @Html.AntiForgeryToken()
                     <button class="btn btn-outline-success" type="submit">Enviar PDF por correo</button>
                 </form>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Order.ClaimedByUserId))
+                {
+                    <form method="post" asp-page-handler="UnassignTechnician" asp-route-id="@Model.Order.Id"
+                          onsubmit="return confirm('¿Desasignar técnico tomado para que otro la pueda tomar?');">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-outline-warning" type="submit">Desasignar técnico</button>
+                    </form>
+                }
             </div>
 
         <div class="card shadow-sm border-0 mt-3">

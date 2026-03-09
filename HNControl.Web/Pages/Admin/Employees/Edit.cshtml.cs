@@ -67,7 +67,7 @@ public class EditModel : PageModel
         var email = user?.Email ?? Employee.Email ?? "";
 
         var roles = user != null ? await _userManager.GetRolesAsync(user) : new List<string>();
-        var appRole = roles.Contains(AppRoles.Admin) ? AppRoles.Admin : AppRoles.Employee;
+        var appRole = roles.Contains(AppRoles.Admin) || roles.Contains(AppRoles.SuperAdmin) ? AppRoles.Admin : AppRoles.Employee;
 
         var upr = await _db.UserPermissionRoles.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == userId);
 
@@ -180,7 +180,7 @@ public class EditModel : PageModel
             }
 
             // Update role principal (Admin/Employee)
-            var desiredRole = string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
+            var desiredRole = IsGlobalRole(Input.AppRole)
                 ? AppRoles.Admin
                 : AppRoles.Employee;
 
@@ -198,7 +198,7 @@ public class EditModel : PageModel
         await _db.SaveChangesAsync();
 
         // Permisos por módulo
-        if (string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        if (IsGlobalRole(Input.AppRole))
         {
             // Admin no necesita PermissionRole
             var existing = await _db.UserPermissionRoles.FirstOrDefaultAsync(x => x.UserId == Input.UserId);
@@ -240,4 +240,8 @@ public class EditModel : PageModel
 
         return RedirectToPage("./Details", new { userId = Input.UserId });
     }
+
+    private static bool IsGlobalRole(string? role)
+        => string.Equals(role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(role, AppRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
 }

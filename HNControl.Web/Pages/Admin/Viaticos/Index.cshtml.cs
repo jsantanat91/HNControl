@@ -33,6 +33,14 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
+        // Si no filtran rango, se toma mes actual por defecto.
+        if (!DateFrom.HasValue && !DateTo.HasValue)
+        {
+            var now = DateTime.Now.Date;
+            DateFrom = new DateTime(now.Year, now.Month, 1);
+            DateTo = DateFrom.Value.AddMonths(1).AddDays(-1);
+        }
+
         var q = _db.ViaticWeeks
             .Include(w => w.EmployeeProfile)
             .Include(w => w.Entries)

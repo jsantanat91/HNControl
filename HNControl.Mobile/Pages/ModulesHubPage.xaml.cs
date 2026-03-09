@@ -35,6 +35,7 @@ public partial class ModulesHubPage : ContentPage
 
         Page? page = key switch
         {
+            "ServiceOrders" => _services.GetRequiredService<OrdersPage>(),
             "Monitoring" => _services.GetRequiredService<MonitoringModulePage>(),
             "Inventory" => _services.GetRequiredService<InventoryModulePage>(),
             "Carriers" => _services.GetRequiredService<CarriersModulePage>(),

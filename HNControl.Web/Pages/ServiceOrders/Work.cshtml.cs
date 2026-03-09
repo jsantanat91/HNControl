@@ -110,6 +110,12 @@ public class WorkModel : PageModel
         }
 
         var userId = GetUserId();
+        if (!string.IsNullOrWhiteSpace(order.ClaimedByUserId) && order.ClaimedByUserId != userId)
+        {
+            TempData["Info"] = "La orden ya fue tomada por otro técnico. Pide al admin desasignarla.";
+            return RedirectToPage(new { id });
+        }
+
         order.ClaimedByUserId = userId;
         order.ClaimedAt = DateTime.UtcNow;
 
@@ -499,7 +505,7 @@ WHERE ""Id"" = {id};
         IsClaimedByCurrentUser = Order.ClaimedByUserId == GetUserId();
         IsReadOnly = !IsAdmin() && !IsClaimedByCurrentUser;
         var closed = Order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
-        CanTakeOwnership = !IsAdmin() && !closed;
+        CanTakeOwnership = !IsAdmin() && !closed && (string.IsNullOrWhiteSpace(Order.ClaimedByUserId) || IsClaimedByCurrentUser);
 
         return true;
     }
@@ -594,7 +600,7 @@ VALUES
         return true;
     }
 
-    private bool IsAdmin() => User.IsInRole(AppRoles.Admin);
+    private bool IsAdmin() => AppRoles.IsGlobalAdmin(User);
 
     private bool CanEditOrder(ServiceOrder order)
     {

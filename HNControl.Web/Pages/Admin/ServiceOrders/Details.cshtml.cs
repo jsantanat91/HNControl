@@ -163,6 +163,27 @@ public class DetailsModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostUnassignTechnicianAsync(Guid id)
+    {
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null) return NotFound();
+
+        if (order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
+        {
+            Info = "La orden ya no permite desasignar técnico.";
+            await LoadAsync(id);
+            return Page();
+        }
+
+        order.ClaimedByUserId = null;
+        order.ClaimedAt = null;
+        await _db.SaveChangesAsync();
+
+        Info = "Técnico desasignado. La orden quedó disponible para que otro la tome.";
+        await LoadAsync(id);
+        return Page();
+    }
+
     public async Task<IActionResult> OnPostApplyChecklistTemplateAsync(Guid id)
     {
         await LoadAsync(id);

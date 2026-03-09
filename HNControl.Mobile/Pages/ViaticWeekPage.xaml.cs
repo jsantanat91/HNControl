@@ -17,7 +17,7 @@ public partial class ViaticWeekPage : ContentPage
     private Guid _weekId;
     private Guid? _editingEntryId;
     private ViaticWeekDetailDto? _current;
-    private FileResult? _selectedPdf;
+    private FileResult? _selectedAttachment;
     private bool _isBusy;
 
     public ViaticWeekPage(ViaticosService viaticos)
@@ -89,19 +89,19 @@ public partial class ViaticWeekPage : ContentPage
             {
                 if (dto.IsBillable)
                 {
-                    if (_selectedPdf == null)
+                    if (_selectedAttachment == null)
                     {
-                        await DisplayAlertAsync("Viaticos", "Adjunta el PDF de factura para gasto facturable.", "OK");
+                        await DisplayAlertAsync("Viaticos", "Adjunta la factura (PDF o imagen) para gasto facturable.", "OK");
                         return;
                     }
 
-                    await using var stream = await _selectedPdf.OpenReadAsync();
+                    await using var stream = await _selectedAttachment.OpenReadAsync();
                     await _viaticos.AddEntryWithAttachmentAsync(
                         _weekId,
                         dto,
                         stream,
-                        _selectedPdf.FileName,
-                        _selectedPdf.ContentType);
+                        _selectedAttachment.FileName,
+                        _selectedAttachment.ContentType);
                 }
                 else
                 {
@@ -143,18 +143,24 @@ public partial class ViaticWeekPage : ContentPage
         DescriptionEntry.Text = entry.Description;
         AmountEntry.Text = entry.Amount.ToString("0.##");
         IsBillableSwitch.IsToggled = entry.IsBillable;
-        _selectedPdf = null;
-        SelectedPdfLabel.Text = entry.HasAttachment ? "PDF existente cargado" : "Sin PDF adjunto";
+        _selectedAttachment = null;
+        SelectedPdfLabel.Text = entry.HasAttachment ? "Archivo existente cargado" : "Sin archivo adjunto";
     }
 
-    private async void OnPickPdfClicked(object sender, EventArgs e)
+    private async void OnPickAttachmentClicked(object sender, EventArgs e)
     {
         try
         {
             var picked = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Selecciona factura PDF",
-                FileTypes = FilePickerFileType.Pdf
+                PickerTitle = "Selecciona factura (PDF o imagen)",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.Android, new[] { "application/pdf", "image/*" } },
+                    { DevicePlatform.iOS, new[] { "com.adobe.pdf", "public.image" } },
+                    { DevicePlatform.WinUI, new[] { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic" } },
+                    { DevicePlatform.MacCatalyst, new[] { "pdf", "png", "jpg", "jpeg", "webp", "heic" } }
+                })
             });
 
             if (picked == null)
@@ -162,8 +168,8 @@ public partial class ViaticWeekPage : ContentPage
                 return;
             }
 
-            _selectedPdf = picked;
-            SelectedPdfLabel.Text = $"PDF: {_selectedPdf.FileName}";
+            _selectedAttachment = picked;
+            SelectedPdfLabel.Text = $"Adjunto: {_selectedAttachment.FileName}";
             IsBillableSwitch.IsToggled = true;
         }
         catch (Exception ex)
@@ -288,8 +294,8 @@ public partial class ViaticWeekPage : ContentPage
         AmountEntry.Text = "";
         CategoryPicker.SelectedIndex = 0;
         IsBillableSwitch.IsToggled = false;
-        _selectedPdf = null;
-        SelectedPdfLabel.Text = "Sin PDF adjunto";
+        _selectedAttachment = null;
+        SelectedPdfLabel.Text = "Sin archivo adjunto";
     }
 
     private static string ToStatusLabel(int status)

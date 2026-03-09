@@ -120,7 +120,7 @@ public class CreateModel : PageModel
         }
 
         // Role principal (Admin/Employee)
-        if (string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        if (IsGlobalRole(Input.AppRole))
             await _userMgr.AddToRoleAsync(user, AppRoles.Admin);
         else
             await _userMgr.AddToRoleAsync(user, AppRoles.Employee);
@@ -151,7 +151,7 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
         await _db.SaveChangesAsync();
 
         // Asignación de rol de permisos por módulo (solo para Employee)
-        if (!string.Equals(Input.AppRole, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        if (!IsGlobalRole(Input.AppRole))
         {
             var roleId = Input.PermissionRoleId
                          ?? await _db.PermissionRoles
@@ -174,4 +174,8 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
         }
         return RedirectToPage("/Admin/Employees/Index");
     }
+
+    private static bool IsGlobalRole(string? role)
+        => string.Equals(role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(role, AppRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
 }

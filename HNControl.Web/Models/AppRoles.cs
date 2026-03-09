@@ -1,7 +1,13 @@
-﻿namespace HNControl.Web.Models;
+using System.Security.Claims;
+
+namespace HNControl.Web.Models;
 
 public static class AppRoles
 {
     public const string Admin = "Admin";
+    public const string SuperAdmin = "SuperAdmin";
     public const string Employee = "Employee";
+
+    public static bool IsGlobalAdmin(ClaimsPrincipal? user)
+        => user?.IsInRole(Admin) == true || user?.IsInRole(SuperAdmin) == true;
 }

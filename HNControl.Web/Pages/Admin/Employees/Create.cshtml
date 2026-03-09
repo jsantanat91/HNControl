@@ -70,29 +70,29 @@
             <div class="col-md-6">
                 <label class="form-label">Vacaciones (días por año)</label>
                 <input class="form-control" asp-for="Input.VacationAllowanceDays" type="number" min="0" max="60" />
-                <div class="form-text">Se calcula “usado” desde vacaciones aprobadas.</div>
+                <div class="form-text">Se calcula "usado" desde vacaciones aprobadas.</div>
             </div>
 
-                <div class="col-md-3">
-                    <label class="form-label">Rol (acceso global)</label>
-                    <select class="form-select" asp-for="Input.AppRole">
-                        <option value="Employee">Employee</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                    <div class="form-text">Admin ve/edita todo. Employee depende de permisos por módulo.</div>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Rol de permisos por módulo</label>
-                    <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions">
-                        <option value="">(sin asignar)</option>
-                    </select>
-                    <div class="form-text">Solo aplica a Employee. Se gestiona en <a asp-page="/Admin/Security/Roles/Index">Seguridad</a>.</div>
-                </div>
+            <div class="col-md-3">
+                <label class="form-label">Rol (acceso global)</label>
+                <select class="form-select" asp-for="Input.AppRole" id="appRoleSelect">
+                    <option value="Employee">Employee</option>
+                    <option value="Admin">SuperAdmin (Master)</option>
+                </select>
+                <div class="form-text">SuperAdmin tiene acceso total global. Employee depende de permisos por módulo.</div>
+            </div>
+            <div class="col-md-3" id="permissionRoleWrap">
+                <label class="form-label">Rol de permisos por módulo</label>
+                <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions" id="permissionRoleSelect">
+                    <option value="">(sin asignar)</option>
+                </select>
+                <div class="form-text">Solo aplica a Employee. Se gestiona en <a asp-page="/Admin/Security/Roles/Index">Seguridad</a>.</div>
+            </div>
 
             <div class="col-md-6">
                 <label class="form-label">Contraseña inicial</label>
                 <input class="form-control" asp-for="Input.Password" type="password" />
-                <div class="text-muted small">El empleado podrá cambiarla después (cuando metamos módulo de cuenta).</div>
+                <div class="text-muted small">El empleado podrá cambiarla después.</div>
             </div>
         </div>
     </div>
@@ -105,4 +105,19 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const role = document.getElementById('appRoleSelect');
+            const wrap = document.getElementById('permissionRoleWrap');
+            const select = document.getElementById('permissionRoleSelect');
+            if (!role || !wrap || !select) return;
+            const sync = () => {
+                const isGlobal = role.value === 'Admin' || role.value === 'SuperAdmin';
+                wrap.style.display = isGlobal ? 'none' : '';
+                if (isGlobal) select.value = '';
+            };
+            role.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 }
