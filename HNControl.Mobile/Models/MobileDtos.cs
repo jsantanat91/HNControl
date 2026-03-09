@@ -114,9 +114,17 @@ public sealed class ServiceOrderDetailDto
     public int Status { get; set; }
     public int CurrentArea { get; set; }
     public string ClaimedBy { get; set; } = "";
+    public bool IsMine { get; set; }
+    public bool CanEdit { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? EstimatedEndDate { get; set; }
+    public string LevantamientoNotes { get; set; } = "";
+    public string MaterialesNotes { get; set; } = "";
+}
+
+public sealed class ServiceOrderNotesUpdateDto
+{
     public string LevantamientoNotes { get; set; } = "";
     public string MaterialesNotes { get; set; } = "";
 }

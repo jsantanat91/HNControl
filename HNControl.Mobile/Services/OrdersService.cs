@@ -31,4 +31,24 @@ public sealed class OrdersService
     {
         return _api.GetBytesAsync($"api/mobile/orders/{id}/pdf");
     }
+
+    public Task<ApiMessageDto> UpdateNotesAsync(Guid id, ServiceOrderNotesUpdateDto dto)
+    {
+        return _api.PutJsonAsync<ServiceOrderNotesUpdateDto, ApiMessageDto>($"api/mobile/orders/{id}/notes", dto);
+    }
+
+    public Task<ApiMessageDto> NextAreaAsync(Guid id)
+    {
+        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/area/next", new { });
+    }
+
+    public Task<ApiMessageDto> PreviousAreaAsync(Guid id)
+    {
+        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/area/previous", new { });
+    }
+
+    public Task<ApiMessageDto> SubmitAsync(Guid id)
+    {
+        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { });
+    }
 }

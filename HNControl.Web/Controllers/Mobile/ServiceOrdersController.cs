@@ -47,11 +47,19 @@ public class ServiceOrdersController : ControllerBase
         ServiceOrderStatus Status,
         ServiceOrderWorkflowArea CurrentArea,
         string ClaimedBy,
+        bool IsMine,
+        bool CanEdit,
         DateTime CreatedAt,
         DateTime? StartedAt,
         DateTime? EstimatedEndDate,
         string LevantamientoNotes,
         string MaterialesNotes);
+
+    public class OrderNotesUpdateRequest
+    {
+        public string? LevantamientoNotes { get; set; }
+        public string? MaterialesNotes { get; set; }
+    }
 
     [HttpGet]
     [ProducesResponseType(typeof(List<OrderListItem>), StatusCodes.Status200OK)]
@@ -111,6 +119,8 @@ public class ServiceOrdersController : ControllerBase
             o.Status,
             o.CurrentArea,
             o.ClaimedByEmployee?.FullName ?? "Sin tomar",
+            o.ClaimedByUserId == (User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ""),
+            CanEdit(o, User.FindFirstValue(ClaimTypes.NameIdentifier) ?? ""),
             o.CreatedAt,
             o.StartedAt,
             o.EstimatedEndDate,
@@ -150,6 +160,110 @@ public class ServiceOrdersController : ControllerBase
         return Ok(new { message = "Orden tomada" });
     }
 
+    [HttpPut("{id:guid}/notes")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateNotes(Guid id, [FromBody] OrderNotesUpdateRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        o.LevantamientoNotes = TrimMax(req.LevantamientoNotes, 4000);
+        o.MaterialesNotes = TrimMax(req.MaterialesNotes, 4000);
+        if (o.Status == ServiceOrderStatus.Created)
+        {
+            o.Status = ServiceOrderStatus.InProgress;
+            o.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Notas guardadas." });
+    }
+
+    [HttpPost("{id:guid}/area/next")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> NextArea(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        var current = (int)o.CurrentArea;
+        var max = (int)ServiceOrderWorkflowArea.CierreTecnico;
+        if (current < max)
+            o.CurrentArea = (ServiceOrderWorkflowArea)(current + 1);
+
+        if (o.Status == ServiceOrderStatus.Created)
+        {
+            o.Status = ServiceOrderStatus.InProgress;
+            o.StartedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Área actualizada.", area = o.CurrentArea });
+    }
+
+    [HttpPost("{id:guid}/area/previous")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> PreviousArea(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        var current = (int)o.CurrentArea;
+        var min = (int)ServiceOrderWorkflowArea.Levantamiento;
+        if (current > min)
+            o.CurrentArea = (ServiceOrderWorkflowArea)(current - 1);
+
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Área actualizada.", area = o.CurrentArea });
+    }
+
+    [HttpPost("{id:guid}/submit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Submit(Guid id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (o == null) return NotFound();
+        if (!CanEdit(o, userId)) return Forbid();
+
+        if (o.CurrentArea != ServiceOrderWorkflowArea.CierreTecnico)
+            return Conflict(new { message = "Debes avanzar hasta Cierre técnico para enviar a revisión." });
+
+        if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
+            return Conflict(new { message = "La orden ya no permite envío a revisión." });
+
+        o.Status = ServiceOrderStatus.InReview;
+        o.SubmittedForReviewAt = DateTime.UtcNow;
+        o.PdfStoragePath = null;
+        o.PdfGeneratedAt = null;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Orden enviada a revisión." });
+    }
+
     [HttpGet("{id:guid}/pdf")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -174,5 +288,22 @@ public class ServiceOrdersController : ControllerBase
         var downloadName = $"OrdenServicio_{o.Id:N}.pdf";
         var (stream, contentType, _) = await _storage.OpenAsync(o.PdfStoragePath, downloadName);
         return File(stream, contentType, downloadName);
+    }
+
+    private bool CanEdit(ServiceOrder o, string userId)
+    {
+        if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
+            return false;
+
+        if (AppRoles.IsGlobalAdmin(User))
+            return true;
+
+        return !string.IsNullOrWhiteSpace(userId) && o.ClaimedByUserId == userId;
+    }
+
+    private static string TrimMax(string? value, int max)
+    {
+        var v = (value ?? string.Empty).Trim();
+        return v.Length <= max ? v : v[..max];
     }
 }

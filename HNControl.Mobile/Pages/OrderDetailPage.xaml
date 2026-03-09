@@ -35,22 +35,31 @@
 
             <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="6">
-                    <Label FontAttributes="Bold" Text="Descripcion" />
+                    <Label FontAttributes="Bold" Text="Descripción" />
                     <Label x:Name="DescriptionLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
-                <VerticalStackLayout Spacing="6">
-                    <Label FontAttributes="Bold" Text="Levantamiento" />
-                    <Label x:Name="LevantamientoLabel" />
-                </VerticalStackLayout>
-            </Border>
+            <Border x:Name="EditorCard" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />
+                    <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
-                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" Text="Levantamiento" />
+                    <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
+
                     <Label FontAttributes="Bold" Text="Materiales" />
-                    <Label x:Name="MaterialesLabel" />
+                    <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />
+                        <Button Grid.Column="1" Text="Siguiente área" Clicked="OnNextAreaClicked" CornerRadius="10" BackgroundColor="#2252D5" TextColor="White" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" CornerRadius="10" BackgroundColor="#0E2242" TextColor="White" />
+                        <Button Grid.Column="1" Text="Enviar revisión" Clicked="OnSubmitClicked" CornerRadius="10" />
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

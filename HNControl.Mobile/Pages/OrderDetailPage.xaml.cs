@@ -7,6 +7,8 @@ public partial class OrderDetailPage : ContentPage
 {
     private readonly OrdersService _orders;
     private Guid _orderId;
+    private ServiceOrderDetailDto? _current;
+    private bool _busy;
 
     public OrderDetailPage(OrdersService orders)
     {
@@ -22,14 +24,16 @@ public partial class OrderDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (_orderId == Guid.Empty)
-        {
-            return;
-        }
+        if (_orderId == Guid.Empty) return;
+        await ReloadAsync();
+    }
 
+    private async Task ReloadAsync()
+    {
         try
         {
             var detail = await _orders.DetailAsync(_orderId);
+            _current = detail;
             Bind(detail);
         }
         catch (Exception ex)
@@ -48,22 +52,159 @@ public partial class OrderDetailPage : ContentPage
         TypeChip.BackgroundColor = Color.FromArgb(MapTypeBg(d.Type));
         StatusChip.BackgroundColor = Color.FromArgb(MapStatusBg(d.Status));
         AreaChip.BackgroundColor = Color.FromArgb(MapAreaBg(d.CurrentArea));
+
         ClaimedByLabel.Text = "Tomada por: " + (string.IsNullOrWhiteSpace(d.ClaimedBy) ? "Sin tomar" : d.ClaimedBy);
         CreatedLabel.Text = "Creada: " + d.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
         EstimatedLabel.Text = d.EstimatedEndDate.HasValue
             ? "Entrega estimada: " + d.EstimatedEndDate.Value.ToLocalTime().ToString("yyyy-MM-dd")
             : "Entrega estimada: -";
+
         DescriptionLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
-        LevantamientoLabel.Text = string.IsNullOrWhiteSpace(d.LevantamientoNotes) ? "-" : d.LevantamientoNotes;
-        MaterialesLabel.Text = string.IsNullOrWhiteSpace(d.MaterialesNotes) ? "-" : d.MaterialesNotes;
+        LevantamientoEditor.Text = d.LevantamientoNotes ?? "";
+        MaterialesEditor.Text = d.MaterialesNotes ?? "";
+
+        var canEdit = d.CanEdit;
+        LevantamientoEditor.IsReadOnly = !canEdit;
+        MaterialesEditor.IsReadOnly = !canEdit;
+        EditorCard.Opacity = canEdit ? 1 : 0.7;
+        EditHintLabel.Text = canEdit
+            ? "Puedes capturar datos y mover la orden por áreas."
+            : "Solo quien tomó la orden (o admin global) puede editar.";
+    }
+
+    private async void OnSaveClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", "No tienes permiso para editar esta orden.", "OK");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var dto = new ServiceOrderNotesUpdateDto
+            {
+                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
+                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
+            };
+            var res = await _orders.UpdateNotesAsync(_orderId, dto);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Guardado." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnNextAreaClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", "No tienes permiso para mover áreas.", "OK");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
+            {
+                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
+                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
+            });
+            var res = await _orders.NextAreaAsync(_orderId);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnPreviousAreaClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", "No tienes permiso para mover áreas.", "OK");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
+            {
+                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
+                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
+            });
+            var res = await _orders.PreviousAreaAsync(_orderId);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnSubmitClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        if (!_current.CanEdit)
+        {
+            await DisplayAlertAsync("Orden", "No tienes permiso para enviar esta orden.", "OK");
+            return;
+        }
+
+        var ok = await DisplayAlertAsync("Enviar revisión", "Se enviará la orden para revisión de admin. ¿Continuar?", "Enviar", "Cancelar");
+        if (!ok) return;
+
+        _busy = true;
+        try
+        {
+            await _orders.UpdateNotesAsync(_orderId, new ServiceOrderNotesUpdateDto
+            {
+                LevantamientoNotes = (LevantamientoEditor.Text ?? "").Trim(),
+                MaterialesNotes = (MaterialesEditor.Text ?? "").Trim()
+            });
+            var res = await _orders.SubmitAsync(_orderId);
+            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string MapType(int val) => val switch
     {
         1 => "Correctivo",
         2 => "Preventivo",
-        3 => "Nueva instalacion",
-        4 => "Levantamiento tecnico",
+        3 => "Nueva instalación",
+        4 => "Levantamiento técnico",
         99 => "Global",
         _ => "Tipo " + val
     };
@@ -72,7 +213,7 @@ public partial class OrderDetailPage : ContentPage
     {
         1 => "Creada",
         2 => "En proceso",
-        3 => "En revision",
+        3 => "En revisión",
         4 => "Finalizada",
         5 => "Pendiente firma cliente",
         6 => "Rechazada",
@@ -83,9 +224,9 @@ public partial class OrderDetailPage : ContentPage
     {
         1 => "Levantamiento",
         2 => "Materiales",
-        3 => "Ejecucion",
-        4 => "Cierre tecnico",
-        _ => "Area " + val
+        3 => "Ejecución",
+        4 => "Cierre técnico",
+        _ => "Área " + val
     };
 
     private static string MapTypeBg(int val) => val switch
