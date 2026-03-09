@@ -151,14 +151,19 @@ public class DetailsModel : PageModel
         // La regresamos a “en proceso” por si quieren seguir trabajando y re-enviar
         Order.SubmittedForReviewAt = null;
         Order.FinalizedAt = null;
+        Order.CurrentArea = ServiceOrderWorkflowArea.Levantamiento;
 
         // ✅ Invalida PDF cacheado
         Order.PdfStoragePath = null;
         Order.PdfGeneratedAt = null;
 
+        // ✅ Fuerza nueva firma técnica después de rechazo (evita reenvío accidental con firma anterior)
+        if (Order.Signatures?.Count > 0)
+            _db.ServiceOrderSignatures.RemoveRange(Order.Signatures);
+
         await _db.SaveChangesAsync();
 
-        Info = "Orden rechazada. El técnico puede corregir y volver a enviar.";
+        Info = "Orden rechazada. Regresó a Levantamiento y requiere nueva firma técnica para reenviar.";
         await LoadAsync(id);
         return Page();
     }

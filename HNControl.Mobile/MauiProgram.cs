@@ -45,13 +45,16 @@ public static class MauiProgram
         builder.Services.AddTransient<EmployeeDashboardPage>();
         builder.Services.AddTransient<ModulesHubPage>();
         builder.Services.AddTransient<MonitoringModulePage>();
+        builder.Services.AddTransient<MonitoringTargetDetailPage>();
         builder.Services.AddTransient<InventoryModulePage>();
         builder.Services.AddTransient<CarriersModulePage>();
+        builder.Services.AddTransient<CarrierClientDetailPage>();
         builder.Services.AddTransient<ViaticosModulePage>();
         builder.Services.AddTransient<ViaticWeekPage>();
         builder.Services.AddTransient<ProjectsModulePage>();
         builder.Services.AddTransient<KnowledgeModulePage>();
         builder.Services.AddTransient<LeavesModulePage>();
+        builder.Services.AddTransient<LeaveDetailPage>();
         builder.Services.AddTransient<ExamsModulePage>();
         builder.Services.AddTransient<Eval360ModulePage>();
         builder.Services.AddTransient<RootTabsPage>();

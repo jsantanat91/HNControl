@@ -52,13 +52,13 @@
                     <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />
-                        <Button Grid.Column="1" Text="Siguiente área" Clicked="OnNextAreaClicked" CornerRadius="10" BackgroundColor="#2252D5" TextColor="White" />
+                        <Button x:Name="PreviousAreaButton" Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />
+                        <Button x:Name="NextAreaButton" Grid.Column="1" Text="Siguiente área" Clicked="OnNextAreaClicked" CornerRadius="10" BackgroundColor="#2252D5" TextColor="White" />
                     </Grid>
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" CornerRadius="10" BackgroundColor="#0E2242" TextColor="White" />
-                        <Button Grid.Column="1" Text="Enviar revisión" Clicked="OnSubmitClicked" CornerRadius="10" />
+                        <Button x:Name="SaveButton" Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" CornerRadius="10" BackgroundColor="#0E2242" TextColor="White" />
+                        <Button x:Name="SubmitButton" Grid.Column="1" Text="Enviar revisión (final)" Clicked="OnSubmitClicked" CornerRadius="10" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>

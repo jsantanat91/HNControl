@@ -30,8 +30,13 @@ public class ModulesController : ControllerBase
     public record ProjectItemDto(Guid Id, string Client, string Title, string Status, DateTime StartDate, DateTime EstimatedEndDate);
     public record KnowledgeItemDto(Guid Id, string Title, string Category, string DocType, string Status, DateTime UpdatedAt, string Url);
     public record LeaveItemDto(Guid Id, string Type, string Status, DateTime StartDate, DateTime EndDate, int TotalDays, DateTime RequestedAt);
+    public record LeaveDetailDto(Guid Id, string Type, string Status, DateTime StartDate, DateTime EndDate, int TotalDays, DateTime RequestedAt, DateTime? ReviewedAt, string Reason, string AdminComment, List<string> EvidenceFiles);
     public record ExamItemDto(Guid AssignmentId, string Title, string Status, DateTime AssignedAt, DateTime? DueAt, decimal Score, decimal MaxScore);
     public record Eval360ItemDto(Guid AssignmentId, string Campaign, string Role, string Status, DateTime CreatedAt, DateTime? SubmittedAt);
+    public record CarrierServiceDto(Guid Id, string Carrier, string ServiceLabel, string Plan, string AccountNumber, string ContractNumber, string CircuitId, string ServiceAddress, string IpInfo, string SupportPhone, string Notes, string LastNotesSummary);
+    public record CarrierClientDetailDto(Guid ClientId, string ClientName, string Rfc, string Email, string Phone, List<CarrierServiceDto> Services);
+    public record MonitorCheckDto(DateTime CheckedAt, bool Success, int? LatencyMs, string Error);
+    public record MonitorDetailDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError, string ContractLabel, string CarrierServiceLabel, string Notes, List<MonitorCheckDto> LastChecks);
 
     [HttpGet]
     [ProducesResponseType(typeof(List<ModuleItemDto>), StatusCodes.Status200OK)]
@@ -88,6 +93,49 @@ public class ModulesController : ControllerBase
             .ToListAsync();
 
         return Ok(rows);
+    }
+
+    [HttpGet("monitoring/{id:guid}")]
+    [ProducesResponseType(typeof(MonitorDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MonitoringDetail(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Monitoring))
+            return Forbid();
+
+        var target = await _db.MonitorTargets
+            .AsNoTracking()
+            .Include(t => t.Client)
+            .Include(t => t.ClientServiceContract)
+            .Include(t => t.ClientCarrierService)
+            .Include(t => t.Checks)
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (target == null) return NotFound();
+
+        var checks = target.Checks
+            .OrderByDescending(c => c.CheckedAt)
+            .Take(20)
+            .Select(c => new MonitorCheckDto(c.CheckedAt, c.Success, c.LatencyMs, c.Error))
+            .ToList();
+
+        var detail = new MonitorDetailDto(
+            target.Id,
+            target.Client?.Name ?? "-",
+            target.Name,
+            target.ProbeType.ToString(),
+            !string.IsNullOrWhiteSpace(target.IpAddress) ? target.IpAddress : target.Fqdn,
+            target.LastStatus.ToString(),
+            target.LastCheckedAt,
+            target.LastLatencyMs,
+            target.LastError,
+            target.ClientServiceContract?.Label ?? "-",
+            target.ClientCarrierService?.ServiceLabel ?? "-",
+            target.Notes,
+            checks);
+
+        return Ok(detail);
     }
 
     [HttpGet("inventory/my-requests")]
@@ -198,6 +246,57 @@ public class ModulesController : ControllerBase
         return Ok(data);
     }
 
+    [HttpGet("carriers/{clientId:guid}")]
+    [ProducesResponseType(typeof(CarrierClientDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CarrierClientDetail(Guid clientId)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Carriers))
+            return Forbid();
+
+        var client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId);
+        if (client == null) return NotFound();
+
+        var services = await _db.ClientCarrierServices
+            .AsNoTracking()
+            .Include(s => s.Carrier)
+            .Include(s => s.CarrierNotes)
+            .Where(s => s.ClientId == clientId && s.IsActive)
+            .OrderBy(s => s.ServiceLabel)
+            .ToListAsync();
+
+        var rows = services.Select(s =>
+        {
+            var notesSummary = string.Join(" | ", s.CarrierNotes
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(2)
+                .Select(n => $"{n.NoteType}: {n.Message}"));
+
+            return new CarrierServiceDto(
+                s.Id,
+                s.Carrier?.Name ?? "-",
+                s.ServiceLabel,
+                s.Plan,
+                s.AccountNumber,
+                s.ContractNumber,
+                s.CircuitId,
+                s.ServiceAddress,
+                s.IpInfo,
+                !string.IsNullOrWhiteSpace(s.SupportPhoneOverride) ? s.SupportPhoneOverride : (s.Carrier?.SupportPhone ?? "-"),
+                s.Notes,
+                notesSummary);
+        }).ToList();
+
+        return Ok(new CarrierClientDetailDto(
+            client.Id,
+            client.Name,
+            client.Rfc,
+            client.Email,
+            client.Phone,
+            rows));
+    }
+
     [HttpGet("projects")]
     [ProducesResponseType(typeof(List<ProjectItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -281,6 +380,41 @@ public class ModulesController : ControllerBase
             .ToListAsync();
 
         return Ok(rows);
+    }
+
+    [HttpGet("leaves/{id:guid}")]
+    [ProducesResponseType(typeof(LeaveDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LeaveDetail(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Leaves))
+            return Forbid();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var item = await _db.LeaveRequests
+            .AsNoTracking()
+            .Include(x => x.Evidences)
+            .FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+        if (item == null) return NotFound();
+
+        var detail = new LeaveDetailDto(
+            item.Id,
+            item.Type.ToString(),
+            item.Status.ToString(),
+            item.StartDate,
+            item.EndDate,
+            item.TotalDays,
+            item.RequestedAt,
+            item.ReviewedAt,
+            item.Reason,
+            item.AdminComment,
+            item.Evidences.OrderByDescending(e => e.UploadedAt).Select(e => e.OriginalFileName).ToList());
+
+        return Ok(detail);
     }
 
     [HttpGet("exams")]

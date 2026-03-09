@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.MonitoringTargetDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Detalle monitoreo"
+    Background="#E9EEF7">
+    <ScrollView>
+        <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
+            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="NameLabel" FontAttributes="Bold" FontSize="22" TextColor="White" />
+                    <Label x:Name="ClientLabel" FontSize="13" Opacity="0.85" TextColor="#C5D5F0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="StatusLabel" FontAttributes="Bold" />
+                    <Label x:Name="AddressLabel" />
+                    <Label x:Name="ProbeLabel" FontSize="12" Opacity="0.75" />
+                    <Label x:Name="ContractLabel" FontSize="12" Opacity="0.75" />
+                    <Label x:Name="ServiceLabel" FontSize="12" Opacity="0.75" />
+                    <Label x:Name="NotesLabel" FontSize="12" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" Text="Últimos checks" />
+                    <CollectionView x:Name="ChecksCollection" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.7" Text="Sin historial disponible." />
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -17,6 +17,12 @@
                         <Label FontSize="12" Opacity="0.7" Text="{Binding Client}" />
                         <Label FontSize="13" Text="{Binding Address}" />
                         <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                        <Button Margin="0,6,0,0"
+                                HorizontalOptions="Start"
+                                Text="Ver detalle"
+                                CornerRadius="10"
+                                CommandParameter="{Binding Id}"
+                                Clicked="OnOpenDetailClicked" />
                     </VerticalStackLayout>
                 </Border>
             </DataTemplate>

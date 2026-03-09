@@ -247,6 +247,31 @@ public sealed class MonitorItemDto
     public string LastError { get; set; } = "";
 }
 
+public sealed class MonitorCheckDto
+{
+    public DateTime CheckedAt { get; set; }
+    public bool Success { get; set; }
+    public int? LatencyMs { get; set; }
+    public string Error { get; set; } = "";
+}
+
+public sealed class MonitorDetailDto
+{
+    public Guid Id { get; set; }
+    public string Client { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string ProbeType { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime? LastCheckedAt { get; set; }
+    public int? LastLatencyMs { get; set; }
+    public string LastError { get; set; } = "";
+    public string ContractLabel { get; set; } = "";
+    public string CarrierServiceLabel { get; set; } = "";
+    public string Notes { get; set; } = "";
+    public List<MonitorCheckDto> LastChecks { get; set; } = new();
+}
+
 public sealed class InventoryModuleOrderDto
 {
     public Guid AnchorId { get; set; }
@@ -265,6 +290,32 @@ public sealed class CarrierClientDto
     public string Name { get; set; } = "";
     public int ServicesCount { get; set; }
     public string CarriersSummary { get; set; } = "";
+}
+
+public sealed class CarrierServiceDto
+{
+    public Guid Id { get; set; }
+    public string Carrier { get; set; } = "";
+    public string ServiceLabel { get; set; } = "";
+    public string Plan { get; set; } = "";
+    public string AccountNumber { get; set; } = "";
+    public string ContractNumber { get; set; } = "";
+    public string CircuitId { get; set; } = "";
+    public string ServiceAddress { get; set; } = "";
+    public string IpInfo { get; set; } = "";
+    public string SupportPhone { get; set; } = "";
+    public string Notes { get; set; } = "";
+    public string LastNotesSummary { get; set; } = "";
+}
+
+public sealed class CarrierClientDetailDto
+{
+    public Guid ClientId { get; set; }
+    public string ClientName { get; set; } = "";
+    public string Rfc { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Phone { get; set; } = "";
+    public List<CarrierServiceDto> Services { get; set; } = new();
 }
 
 public sealed class ProjectModuleItemDto
@@ -297,6 +348,21 @@ public sealed class LeaveModuleItemDto
     public DateTime EndDate { get; set; }
     public int TotalDays { get; set; }
     public DateTime RequestedAt { get; set; }
+}
+
+public sealed class LeaveDetailDto
+{
+    public Guid Id { get; set; }
+    public string Type { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public int TotalDays { get; set; }
+    public DateTime RequestedAt { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public string Reason { get; set; } = "";
+    public string AdminComment { get; set; } = "";
+    public List<string> EvidenceFiles { get; set; } = new();
 }
 
 public sealed class ExamModuleItemDto

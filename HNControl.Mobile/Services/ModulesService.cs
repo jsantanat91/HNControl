@@ -16,12 +16,16 @@ public sealed class ModulesService
 
     public Task<List<MonitorItemDto>> GetMonitoringAsync()
         => _api.GetJsonAsync<List<MonitorItemDto>>("api/mobile/modules/monitoring");
+    public Task<MonitorDetailDto> GetMonitoringDetailAsync(Guid id)
+        => _api.GetJsonAsync<MonitorDetailDto>($"api/mobile/modules/monitoring/{id}");
 
     public Task<List<InventoryModuleOrderDto>> GetInventoryRequestsAsync()
         => _api.GetJsonAsync<List<InventoryModuleOrderDto>>("api/mobile/modules/inventory/my-requests");
 
     public Task<List<CarrierClientDto>> GetCarriersAsync()
         => _api.GetJsonAsync<List<CarrierClientDto>>("api/mobile/modules/carriers");
+    public Task<CarrierClientDetailDto> GetCarrierClientDetailAsync(Guid clientId)
+        => _api.GetJsonAsync<CarrierClientDetailDto>($"api/mobile/modules/carriers/{clientId}");
 
     public Task<List<ProjectModuleItemDto>> GetProjectsAsync()
         => _api.GetJsonAsync<List<ProjectModuleItemDto>>("api/mobile/modules/projects");
@@ -31,6 +35,8 @@ public sealed class ModulesService
 
     public Task<List<LeaveModuleItemDto>> GetLeavesAsync()
         => _api.GetJsonAsync<List<LeaveModuleItemDto>>("api/mobile/modules/leaves");
+    public Task<LeaveDetailDto> GetLeaveDetailAsync(Guid id)
+        => _api.GetJsonAsync<LeaveDetailDto>($"api/mobile/modules/leaves/{id}");
 
     public Task<List<ExamModuleItemDto>> GetExamsAsync()
         => _api.GetJsonAsync<List<ExamModuleItemDto>>("api/mobile/modules/exams");

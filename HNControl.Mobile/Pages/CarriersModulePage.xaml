@@ -13,6 +13,12 @@
                         <Label FontAttributes="Bold" FontSize="17" Text="{Binding Name}" />
                         <Label FontSize="12" Opacity="0.8" Text="{Binding ServicesCount, StringFormat='Servicios activos: {0}'}" />
                         <Label FontSize="12" Opacity="0.75" Text="{Binding CarriersSummary}" />
+                        <Button Margin="0,6,0,0"
+                                HorizontalOptions="Start"
+                                Text="Ver servicios"
+                                CornerRadius="10"
+                                CommandParameter="{Binding ClientId}"
+                                Clicked="OnOpenClientClicked" />
                     </VerticalStackLayout>
                 </Border>
             </DataTemplate>
