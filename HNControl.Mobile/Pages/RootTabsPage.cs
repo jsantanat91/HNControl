@@ -1,6 +1,9 @@
+using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
+
 namespace HNControl.Mobile.Pages;
 
-public class RootTabsPage : TabbedPage
+public class RootTabsPage : Microsoft.Maui.Controls.TabbedPage
 {
     public RootTabsPage(OrdersPage ordersPage, EmployeeDashboardPage employeeDashboardPage, ModulesHubPage modulesHubPage)
     {
@@ -9,6 +12,7 @@ public class RootTabsPage : TabbedPage
         BarTextColor = Color.FromArgb("#0E2242");
         SelectedTabColor = Color.FromArgb("#2252D5");
         UnselectedTabColor = Color.FromArgb("#7A869A");
+        this.On<Microsoft.Maui.Controls.PlatformConfiguration.Android>().SetIsSwipePagingEnabled(false);
         Children.Add(new NavigationPage(ordersPage)
         {
             Title = "Ordenes",
