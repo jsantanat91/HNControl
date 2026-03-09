@@ -75,6 +75,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ServiceOrderChecklistItem> ServiceOrderChecklistItems => Set<ServiceOrderChecklistItem>();
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
     public DbSet<ServiceOrderSignature> ServiceOrderSignatures => Set<ServiceOrderSignature>();
+    public DbSet<QuoteCatalogItem> QuoteCatalogItems => Set<QuoteCatalogItem>();
+    public DbSet<QuoteCatalogRule> QuoteCatalogRules => Set<QuoteCatalogRule>();
+    public DbSet<QuoteRequest> QuoteRequests => Set<QuoteRequest>();
+    public DbSet<QuoteRequestLine> QuoteRequestLines => Set<QuoteRequestLine>();
 
     // --------------------
     // Vacaciones e incidencias
@@ -189,7 +193,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.ContactName).HasMaxLength(120);
             e.Property(x => x.Address).HasMaxLength(400);
+            e.Property(x => x.PublicQuoteToken).HasMaxLength(80);
             e.HasIndex(x => x.ClientCode).IsUnique();
+            e.HasIndex(x => x.PublicQuoteToken).IsUnique();
             e.HasMany(x => x.Contracts)
              .WithOne(s => s.Client!)
              .HasForeignKey(s => s.ClientId)
@@ -674,6 +680,57 @@ b.Entity<ServiceOrder>(e =>
             e.HasKey(x => x.Id);
             e.Property(x => x.SignedByName).HasMaxLength(200);
             e.Property(x => x.StoragePath).HasMaxLength(500);
+        });
+
+        b.Entity<QuoteCatalogItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(140);
+            e.Property(x => x.Description).HasMaxLength(1200);
+            e.Property(x => x.ReferenceUrl).HasMaxLength(600);
+            e.Property(x => x.UnitPrice).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.Segment, x.NodeType, x.ParentId, x.IsActive });
+        });
+
+        b.Entity<QuoteCatalogRule>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.Segment, x.TargetItemId, x.RequiredItemId }).IsUnique();
+            e.HasIndex(x => new { x.Segment, x.IsActive });
+        });
+
+        b.Entity<QuoteRequest>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Folio).HasMaxLength(30);
+            e.Property(x => x.CustomerName).HasMaxLength(160);
+            e.Property(x => x.CustomerEmail).HasMaxLength(256);
+            e.Property(x => x.CustomerPhone).HasMaxLength(40);
+            e.Property(x => x.CustomerLocation).HasMaxLength(260);
+            e.Property(x => x.CompanyName).HasMaxLength(200);
+            e.Property(x => x.Notes).HasMaxLength(1200);
+            e.Property(x => x.PdfStoragePath).HasMaxLength(500);
+            e.Property(x => x.SubtotalAuto).HasColumnType("numeric(12,2)");
+            e.Property(x => x.EstimatedTotal).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => x.Folio).IsUnique();
+            e.HasIndex(x => new { x.Segment, x.CreatedAt });
+
+            e.HasMany(x => x.Lines)
+                .WithOne(l => l.QuoteRequest!)
+                .HasForeignKey(l => l.QuoteRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<QuoteRequestLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CategoryName).HasMaxLength(140);
+            e.Property(x => x.ServiceName).HasMaxLength(140);
+            e.Property(x => x.SubproductName).HasMaxLength(140);
+            e.Property(x => x.Description).HasMaxLength(1200);
+            e.Property(x => x.UnitPrice).HasColumnType("numeric(12,2)");
+            e.Property(x => x.LineTotal).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => x.QuoteRequestId);
         });
 
         // --------------------

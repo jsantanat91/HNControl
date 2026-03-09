@@ -44,6 +44,9 @@ public class Client
     [MaxLength(400)]
     public string? Address { get; set; }
 
+    [MaxLength(80)]
+    public string? PublicQuoteToken { get; set; }
+
     // ✅ Columna real en DB
     public ClientType Type { get; set; } = ClientType.Moral;
 

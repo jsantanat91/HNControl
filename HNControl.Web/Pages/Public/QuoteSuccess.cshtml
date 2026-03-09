@@ -1,0 +1,28 @@
+﻿@page
+@model HNControl.Web.Pages.Public.QuoteSuccessModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Solicitud enviada";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-soft">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-2">Solicitud recibida</h1>
+                <p class="text-muted mb-3">Folio: <strong>@Model.Folio</strong></p>
+
+                @if (Model.SentOk)
+                {
+                    <div class="alert alert-success">El PDF fue enviado a tu correo y tambien a nuestro equipo.</div>
+                }
+                else
+                {
+                    <div class="alert alert-warning">Se genero la solicitud, pero el envio de correo fallo. Nuestro equipo dara seguimiento con tu folio.</div>
+                }
+
+                <a class="btn btn-primary" asp-page="/Public/Quote">Nueva cotizacion</a>
+            </div>
+        </div>
+    </div>
+</div>

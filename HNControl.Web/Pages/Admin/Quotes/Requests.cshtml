@@ -1,0 +1,100 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.Quotes.RequestsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Admin - Solicitudes de cotizacion";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Solicitudes de cotizacion</h1>
+        <div class="text-muted small">Leads del kiosk y PDF generado.</div>
+    </div>
+    <a class="btn btn-outline-primary" asp-page="./Catalog">Catalogo</a>
+</div>
+
+<form method="get" class="card shadow-sm mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Buscar</label>
+            <input class="form-control" name="q" value="@Model.Q" placeholder="Folio, nombre o correo" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Segmento</label>
+            <select class="form-select" name="segment">
+                <option value="">Todos</option>
+                <option value="Residential" selected="@(Model.Segment == "Residential")">Residencial</option>
+                <option value="Business" selected="@(Model.Segment == "Business")">Empresarial</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Desde</label>
+            <input class="form-control" type="date" name="from" value="@Model.From" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Hasta</label>
+            <input class="form-control" type="date" name="to" value="@Model.To" />
+        </div>
+        <div class="col-md-1 d-grid">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+<div class="vstack gap-3">
+@foreach (var r in Model.Rows)
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <div>
+                    <div class="fw-bold">@r.Folio · @r.CustomerName</div>
+                    <div class="text-muted small">@r.CustomerEmail · @r.CustomerPhone · @r.CustomerLocation</div>
+                    <div class="small">@r.CreatedAtLocal · <span class="badge text-bg-light border">@r.SegmentLabel</span></div>
+                </div>
+                <div class="text-end">
+                    <div><strong>Total estimado:</strong> @r.EstimatedTotal.ToString("C2")</div>
+                    <div><span class="badge @(r.ManualItemsCount > 0 ? "text-bg-warning" : "text-bg-success")">Manual: @r.ManualItemsCount</span></div>
+                    @if (r.HasPdf)
+                    {
+                        <a class="btn btn-sm btn-outline-primary mt-2" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">PDF</a>
+                    }
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Servicio</th>
+                            <th>Subproducto</th>
+                            <th class="text-center">Cant</th>
+                            <th class="text-end">Costo</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var l in r.Lines)
+                    {
+                        <tr>
+                            <td>@l.CategoryName</td>
+                            <td>@l.ServiceName</td>
+                            <td>@(string.IsNullOrWhiteSpace(l.SubproductName) ? "-" : l.SubproductName)</td>
+                            <td class="text-center">@l.Quantity</td>
+                            <td class="text-end">@(l.IsManualPrice ? "Manual" : l.UnitPrice?.ToString("C2"))</td>
+                            <td class="text-end">@(l.IsManualPrice ? "Por validar" : l.LineTotal?.ToString("C2"))</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card"><div class="card-body text-muted">Sin solicitudes en este filtro.</div></div>
+}
+</div>

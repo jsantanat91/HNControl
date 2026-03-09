@@ -1,0 +1,93 @@
+﻿@page "{id:guid}"
+@model HNControl.Web.Pages.Admin.Quotes.EditItemModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Editar item de cotizacion";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-0">Editar item</h1>
+        <div class="text-muted small">Ajusta nombre, costos, orden y padre.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="./Catalog">Volver</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-success">@Model.Message</div>
+}
+
+@if (Model.ItemNotFound)
+{
+    <div class="alert alert-warning">Item no encontrado.</div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                <input asp-for="Input.Id" type="hidden" />
+                <div class="col-md-3">
+                    <label class="form-label">Segmento</label>
+                    <select asp-for="Input.Segment" class="form-select">
+                        <option value="Residential">Residencial</option>
+                        <option value="Business">Empresarial</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nivel</label>
+                    <select asp-for="Input.NodeType" class="form-select">
+                        <option value="Category">Categoria</option>
+                        <option value="Service">Servicio</option>
+                        <option value="Subproduct">Subproducto</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Padre</label>
+                    <select asp-for="Input.ParentId" class="form-select">
+                        <option value="">Sin padre</option>
+                        @foreach (var p in Model.ParentOptions)
+                        {
+                            <option value="@p.Id">@p.Label</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Nombre</label>
+                    <input asp-for="Input.Name" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Costo unitario</label>
+                    <input asp-for="Input.UnitPrice" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="Input.IsManualPrice" class="form-check-input" />
+                        <label asp-for="Input.IsManualPrice" class="form-check-label">Costo manual</label>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Orden</label>
+                    <input asp-for="Input.SortOrder" class="form-control" />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Link referencia</label>
+                    <input asp-for="Input.ReferenceUrl" class="form-control" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Descripcion</label>
+                    <input asp-for="Input.Description" class="form-control" />
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                    <button class="btn btn-outline-danger" type="submit" asp-page-handler="Delete" onclick="return confirm('Eliminar item?')">Eliminar item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}

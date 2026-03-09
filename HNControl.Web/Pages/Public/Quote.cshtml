@@ -1,0 +1,311 @@
+﻿@page "/cotizar/{token?}"
+@model HNControl.Web.Pages.Public.QuoteModel
+@using System.Text.Json
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Cotizacion a la medida";
+
+    var catalogJson = JsonSerializer.Serialize(Model.CatalogPayload);
+}
+
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <div class="card shadow-soft mb-3">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <div>
+                        <h1 class="h3 mb-1">Cotizacion a la medida</h1>
+                        <div class="text-muted">Selecciona tus servicios y recibe PDF por correo.</div>
+                    </div>
+                    <span class="badge text-bg-light border">Kiosk publico</span>
+                </div>
+
+                @if (Model.HasClientContext)
+                {
+                    <div class="alert alert-info py-2">Cliente detectado: <strong>@Model.ClientName</strong>. Datos precargados.</div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger">@Model.ErrorMessage</div>
+                }
+
+                <form method="post" id="quoteForm" class="row g-3">
+                    <input type="hidden" asp-for="Input.ClientToken" />
+
+                    <div class="col-md-4">
+                        <label class="form-label">Seleccion 1</label>
+                        <select class="form-select" asp-for="Input.Segment" id="segmentSelect">
+                            <option value="Residential">Residencial</option>
+                            <option value="Business">Empresarial</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Categoria</label>
+                        <select class="form-select" id="categorySelect"></select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Servicio</label>
+                        <select class="form-select" id="serviceSelect"></select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Subproducto (opcional)</label>
+                        <select class="form-select" id="subproductSelect"></select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Cantidad</label>
+                        <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
+                    </div>
+
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-outline-primary" type="button" id="addLineBtn">Agregar concepto</button>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm align-middle mb-0" id="linesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Categoria</th>
+                                        <th>Servicio</th>
+                                        <th>Subproducto</th>
+                                        <th class="text-center">Cant</th>
+                                        <th class="text-end">Costo</th>
+                                        <th class="text-end">Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="emptyRow"><td colspan="7" class="text-muted">Aun no agregas conceptos.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
+
+                    <div class="col-12 mt-2"><hr /></div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre</label>
+                        <input class="form-control" asp-for="Input.CustomerName" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Correo</label>
+                        <input class="form-control" asp-for="Input.CustomerEmail" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Telefono</label>
+                        <input class="form-control" asp-for="Input.CustomerPhone" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Ubicacion</label>
+                        <input class="form-control" asp-for="Input.CustomerLocation" required />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Empresa (opcional)</label>
+                        <input class="form-control" asp-for="Input.CompanyName" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Comentarios (opcional)</label>
+                        <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <span class="badge text-bg-success" id="autoTotalBadge">Subtotal: $0.00</span>
+                            <span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span>
+                        </div>
+                        <button class="btn btn-primary btn-lg" type="submit">Generar y enviar cotizacion</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const payload = @Html.Raw(catalogJson);
+    const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant();
+    const lines = [];
+
+    const seg = document.getElementById('segmentSelect');
+    const cat = document.getElementById('categorySelect');
+    const svc = document.getElementById('serviceSelect');
+    const sub = document.getElementById('subproductSelect');
+    const qty = document.getElementById('qtyInput');
+    const addBtn = document.getElementById('addLineBtn');
+    const tbody = document.querySelector('#linesTable tbody');
+    const emptyRow = document.getElementById('emptyRow');
+    const linesJson = document.getElementById('linesJson');
+    const autoTotal = document.getElementById('autoTotalBadge');
+    const manualBadge = document.getElementById('manualBadge');
+
+    if(hasClientContext){
+        ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation','Input_CompanyName']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.readOnly = true;
+            });
+    }
+
+    function toMoney(v){
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
+    }
+
+    function getSegmentData(){
+        return payload[seg.value] || { categories: [], services: [], subproducts: [], rules: [] };
+    }
+
+    function selectedIdsSet(){
+        const ids = new Set();
+        lines.forEach(x => {
+            ids.add(String(x.categoryId));
+            ids.add(String(x.serviceId));
+            if(x.subproductId) ids.add(String(x.subproductId));
+        });
+        return ids;
+    }
+
+    function isAllowedByRules(itemId){
+        const s = getSegmentData();
+        const rules = (s.rules || []).filter(r => String(r.targetItemId) === String(itemId));
+        if(rules.length === 0) return true;
+        const selected = selectedIdsSet();
+        return rules.some(r => selected.has(String(r.requiredItemId)));
+    }
+
+    function fillCategories(){
+        const s = getSegmentData();
+        cat.innerHTML = '';
+        s.categories.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id;
+            o.textContent = c.name;
+            cat.appendChild(o);
+        });
+        fillServices();
+    }
+
+    function fillServices(){
+        const s = getSegmentData();
+        const catId = cat.value;
+        svc.innerHTML = '';
+        s.services.filter(x => x.parentId === catId && isAllowedByRules(x.id)).forEach(x => {
+            const o = document.createElement('option');
+            o.value = x.id;
+            o.textContent = x.name;
+            svc.appendChild(o);
+        });
+        fillSubproducts();
+    }
+
+    function fillSubproducts(){
+        const s = getSegmentData();
+        const svcId = svc.value;
+        sub.innerHTML = '<option value="">Sin subproducto</option>';
+        s.subproducts.filter(x => x.parentId === svcId && isAllowedByRules(x.id)).forEach(x => {
+            const o = document.createElement('option');
+            o.value = x.id;
+            o.textContent = x.name;
+            sub.appendChild(o);
+        });
+    }
+
+    function find(arr, id){
+        return arr.find(x => x.id === id);
+    }
+
+    function recalc(){
+        const auto = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
+        const man = lines.filter(x => x.isManual).length;
+        autoTotal.textContent = 'Subtotal: ' + toMoney(auto);
+        manualBadge.textContent = 'Manuales: ' + man;
+        linesJson.value = JSON.stringify(lines.map(x => ({
+            categoryId: x.categoryId,
+            serviceId: x.serviceId,
+            subproductId: x.subproductId || null,
+            quantity: x.quantity
+        })));
+    }
+
+    function render(){
+        tbody.innerHTML = '';
+        if(lines.length === 0){
+            tbody.appendChild(emptyRow);
+            recalc();
+            return;
+        }
+
+        lines.forEach((l, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${l.categoryName}</td>
+                <td>${l.serviceName}</td>
+                <td>${l.subproductName || '-'}</td>
+                <td class="text-center">${l.quantity}</td>
+                <td class="text-end">${l.isManual ? 'Manual' : toMoney(l.unitPrice)}</td>
+                <td class="text-end">${l.isManual ? 'Por validar' : toMoney(l.total)}</td>
+                <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('button[data-del]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = Number(btn.getAttribute('data-del'));
+                lines.splice(idx, 1);
+                render();
+            });
+        });
+
+        recalc();
+    }
+
+    addBtn.addEventListener('click', () => {
+        const s = getSegmentData();
+        const category = find(s.categories, cat.value);
+        const service = find(s.services, svc.value);
+        if(!category || !service){
+            alert('Selecciona categoria y servicio.');
+            return;
+        }
+
+        const subItem = sub.value ? find(s.subproducts, sub.value) : null;
+        const selected = subItem || service;
+        const isManual = !!selected.isManualPrice || selected.unitPrice == null;
+        const unit = Number(selected.unitPrice || 0);
+        const q = Math.max(1, Number(qty.value || 1));
+
+        lines.push({
+            categoryId: category.id,
+            serviceId: service.id,
+            subproductId: subItem ? subItem.id : null,
+            categoryName: category.name,
+            serviceName: service.name,
+            subproductName: subItem ? subItem.name : '',
+            quantity: q,
+            unitPrice: unit,
+            total: unit * q,
+            isManual
+        });
+
+        fillServices();
+        render();
+    });
+
+    seg.addEventListener('change', fillCategories);
+    cat.addEventListener('change', fillServices);
+    svc.addEventListener('change', fillSubproducts);
+
+    fillCategories();
+    render();
+})();
+</script>
+}

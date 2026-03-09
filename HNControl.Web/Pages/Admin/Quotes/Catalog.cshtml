@@ -1,0 +1,274 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.Quotes.CatalogModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Admin - Cotizaciones";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Cotizacion a la medida</h1>
+        <div class="text-muted small">Configura segmento, categorias, servicios y subproductos del kiosk publico.</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Public/Quote" target="_blank">Abrir kiosk publico</a>
+        <a class="btn btn-outline-primary" asp-page="./Requests">Solicitudes</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-success">@Model.Message</div>
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <h2 class="h6 mb-3">Nuevo item del catalogo</h2>
+        <form method="post" asp-page-handler="Create" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Segmento</label>
+                <select asp-for="Input.Segment" class="form-select">
+                    <option value="Residential">Residencial</option>
+                    <option value="Business">Empresarial</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Nivel</label>
+                <select asp-for="Input.NodeType" class="form-select" id="nodeTypeSelect">
+                    <option value="Category">Categoria</option>
+                    <option value="Service">Servicio</option>
+                    <option value="Subproduct">Subproducto</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Padre (si aplica)</label>
+                <select asp-for="Input.ParentId" class="form-select" id="parentSelect">
+                    <option value="">Sin padre</option>
+                    @foreach (var p in Model.ParentOptions)
+                    {
+                        <option value="@p.Id" data-segment="@p.Segment" data-type="@p.NodeType">@p.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Nombre</label>
+                <input asp-for="Input.Name" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Costo unitario (opcional)</label>
+                <input asp-for="Input.UnitPrice" class="form-control" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input asp-for="Input.IsManualPrice" class="form-check-input" />
+                    <label asp-for="Input.IsManualPrice" class="form-check-label">Costo manual</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Orden</label>
+                <input asp-for="Input.SortOrder" class="form-control" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Link de referencia (opcional)</label>
+                <input asp-for="Input.ReferenceUrl" class="form-control" placeholder="https://..." />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Descripcion</label>
+                <input asp-for="Input.Description" class="form-control" />
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Guardar item</button>
+                <button class="btn btn-outline-secondary" type="submit" formaction="?handler=SeedDemo">Cargar demo base</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h2 class="h6 mb-3">Catalogo actual</h2>
+
+        @if (Model.Items.Count == 0)
+        {
+            <div class="text-muted">Aun no hay elementos en el catalogo.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Segmento</th>
+                            <th>Nivel</th>
+                            <th>Nombre</th>
+                            <th>Padre</th>
+                            <th>Costo</th>
+                            <th>Ref</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var i in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="badge text-bg-light border">@Model.LabelSegment(i.Segment)</span></td>
+                            <td>@Model.LabelType(i.NodeType)</td>
+                            <td>
+                                <div class="fw-semibold">@i.Name</div>
+                                @if (!string.IsNullOrWhiteSpace(i.Description))
+                                {
+                                    <div class="small text-muted">@i.Description</div>
+                                }
+                            </td>
+                            <td>@(string.IsNullOrWhiteSpace(i.ParentName) ? "-" : i.ParentName)</td>
+                            <td>
+                                @if (i.IsManualPrice)
+                                {
+                                    <span class="badge text-bg-warning">Manual</span>
+                                }
+                                else if (i.UnitPrice.HasValue)
+                                {
+                                    @i.UnitPrice.Value.ToString("C2")
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(i.ReferenceUrl))
+                                {
+                                    <a href="@i.ReferenceUrl" target="_blank" rel="noopener">Abrir</a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(i.IsActive ? "text-bg-success" : "text-bg-secondary")">@(i.IsActive ? "Activo" : "Inactivo")</span>
+                            </td>
+                            <td class="text-end">
+                                <form method="post" asp-page-handler="Toggle" class="d-inline">
+                                    <input type="hidden" name="id" value="@i.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">@(i.IsActive ? "Desactivar" : "Activar")</button>
+                                </form>
+                                <a class="btn btn-sm btn-outline-primary" asp-page="./EditItem" asp-route-id="@i.Id">Editar</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm mt-3">
+    <div class="card-body">
+        <h2 class="h6 mb-3">Reglas condicionales (Fase 2)</h2>
+        <div class="text-muted small mb-3">Muestra un item solo cuando otro item ya fue seleccionado en la cotizacion.</div>
+        <form method="post" asp-page-handler="CreateRule" class="row g-2 mb-3">
+            <div class="col-md-5">
+                <label class="form-label">Item objetivo (se mostrara)</label>
+                <select asp-for="Rule.TargetItemId" class="form-select">
+                    <option value="">Seleccionar</option>
+                    @foreach (var p in Model.ParentOptions)
+                    {
+                        <option value="@p.Id">@p.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Item requerido</label>
+                <select asp-for="Rule.RequiredItemId" class="form-select">
+                    <option value="">Seleccionar</option>
+                    @foreach (var p in Model.ParentOptions)
+                    {
+                        <option value="@p.Id">@p.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-grid align-items-end">
+                <button class="btn btn-primary mt-4" type="submit">Agregar regla</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Segmento</th>
+                        <th>Mostrar</th>
+                        <th>Cuando exista</th>
+                        <th class="text-end">Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Rules.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-muted">Sin reglas por ahora.</td></tr>
+                }
+                else
+                {
+                    @foreach (var r in Model.Rules)
+                    {
+                        <tr>
+                            <td>@Model.LabelSegment(r.Segment)</td>
+                            <td>@r.TargetName</td>
+                            <td>@r.RequiredName</td>
+                            <td class="text-end">
+                                <form method="post" asp-page-handler="DeleteRule" class="d-inline">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Quitar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function(){
+    const seg = document.querySelector('[name="Input.Segment"]');
+    const node = document.getElementById('nodeTypeSelect');
+    const parent = document.getElementById('parentSelect');
+
+    function neededParentType(nodeType){
+        if(nodeType === 'Service') return 'Category';
+        if(nodeType === 'Subproduct') return 'Service';
+        return '';
+    }
+
+    function refreshParents(){
+        const currentSeg = seg.value;
+        const typeNeeded = neededParentType(node.value);
+
+        [...parent.options].forEach((opt, idx) => {
+            if(idx === 0){
+                opt.hidden = !!typeNeeded;
+                if(!typeNeeded) opt.selected = true;
+                return;
+            }
+            const okSeg = opt.dataset.segment === currentSeg;
+            const okType = !typeNeeded || opt.dataset.type === typeNeeded;
+            opt.hidden = !(okSeg && okType);
+            if(opt.hidden && opt.selected) parent.value = '';
+        });
+    }
+
+    seg.addEventListener('change', refreshParents);
+    node.addEventListener('change', refreshParents);
+    refreshParents();
+})();
+</script>
+}

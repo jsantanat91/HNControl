@@ -10,7 +10,12 @@ namespace HNControl.Web.Pages.Clients;
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public DetailsModel(ApplicationDbContext db) => _db = db;
+    private readonly IConfiguration _cfg;
+    public DetailsModel(ApplicationDbContext db, IConfiguration cfg)
+    {
+        _db = db;
+        _cfg = cfg;
+    }
 
     public Client? Client { get; set; }
 
@@ -34,6 +39,7 @@ public class DetailsModel : PageModel
 
     public record ProjectRow(Guid Id, string Title, string StartDate, string EstEnd, string Status);
     public List<ProjectRow> Projects { get; set; } = new();
+    public string PublicQuoteUrl { get; set; } = string.Empty;
 
     public async Task OnGetAsync(Guid id)
     {
@@ -48,6 +54,17 @@ public class DetailsModel : PageModel
             Client.ClientCode = await NextClientCodeAsync();
             await _db.SaveChangesAsync();
         }
+
+        if (string.IsNullOrWhiteSpace(Client.PublicQuoteToken))
+        {
+            Client.PublicQuoteToken = Convert.ToHexString(Guid.NewGuid().ToByteArray()).ToLowerInvariant();
+            await _db.SaveChangesAsync();
+        }
+
+        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
+        PublicQuoteUrl = string.IsNullOrWhiteSpace(baseUrl)
+            ? $"/cotizar/{Client.PublicQuoteToken}"
+            : $"{baseUrl}/cotizar/{Client.PublicQuoteToken}";
 
         var projMap = await _db.Projects
             .Where(p => p.ClientId == id)
