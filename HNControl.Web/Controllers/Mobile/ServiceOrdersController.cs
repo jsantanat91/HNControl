@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -161,7 +161,7 @@ public class ServiceOrdersController : ControllerBase
             return Conflict(new { message = "La orden ya no acepta edicion" });
 
         if (!string.IsNullOrWhiteSpace(o.ClaimedByUserId) && o.ClaimedByUserId != userId)
-            return Conflict(new { message = "La orden ya fue tomada por otro técnico. Pide al admin desasignarla." });
+            return Conflict(new { message = "La orden ya fue tomada por otro tÃ©cnico. Pide al admin desasignarla." });
 
         o.ClaimedByUserId = userId;
         o.ClaimedAt = DateTime.UtcNow;
@@ -226,7 +226,7 @@ public class ServiceOrdersController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Área actualizada.", area = o.CurrentArea });
+        return Ok(new { message = "Ãrea actualizada.", area = o.CurrentArea });
     }
 
     [HttpPost("{id:guid}/area/previous")]
@@ -248,7 +248,7 @@ public class ServiceOrdersController : ControllerBase
             o.CurrentArea = (ServiceOrderWorkflowArea)(current - 1);
 
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Área actualizada.", area = o.CurrentArea });
+        return Ok(new { message = "Ãrea actualizada.", area = o.CurrentArea });
     }
 
     [HttpPost("{id:guid}/submit")]
@@ -266,10 +266,10 @@ public class ServiceOrdersController : ControllerBase
         if (!CanEdit(o, userId)) return Forbid();
 
         if (o.CurrentArea != ServiceOrderWorkflowArea.CierreTecnico)
-            return Conflict(new { message = "Debes avanzar hasta Cierre técnico para enviar a revisión." });
+            return Conflict(new { message = "Debes avanzar hasta Cierre tÃ©cnico para enviar a revisiÃ³n." });
 
         if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
-            return Conflict(new { message = "La orden ya no permite envío a revisión." });
+            return Conflict(new { message = "La orden ya no permite envÃ­o a revisiÃ³n." });
 
         o.Status = ServiceOrderStatus.InReview;
         o.SubmittedForReviewAt = DateTime.UtcNow;
@@ -277,7 +277,7 @@ public class ServiceOrdersController : ControllerBase
         o.PdfGeneratedAt = null;
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "Orden enviada a revisión." });
+        return Ok(new { message = "Orden enviada a revisiÃ³n." });
     }
 
     [HttpPost("{id:guid}/evidence")]
@@ -295,11 +295,8 @@ public class ServiceOrdersController : ControllerBase
         if (o == null) return NotFound();
         if (!CanEdit(o, userId)) return Forbid();
 
-        if (o.CurrentArea != ServiceOrderWorkflowArea.Levantamiento)
-            return BadRequest(new { message = "Solo puedes adjuntar evidencias en el área de Levantamiento." });
-
         if (req.EvidenceFile == null || req.EvidenceFile.Length == 0)
-            return BadRequest(new { message = "Selecciona un archivo válido." });
+            return BadRequest(new { message = "Selecciona un archivo vÃ¡lido." });
 
         var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
             req.EvidenceFile,
@@ -365,3 +362,4 @@ public class ServiceOrdersController : ControllerBase
         return v.Length <= max ? v : v[..max];
     }
 }
+
