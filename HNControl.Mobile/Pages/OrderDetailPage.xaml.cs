@@ -71,13 +71,15 @@ public partial class OrderDetailPage : ContentPage
         var isLastArea = d.CurrentArea >= 4;
         var canSubmit = canEdit && isLastArea && d.Status is 1 or 2 or 6;
 
-        PreviousAreaButton.IsVisible = canEdit && !isFirstArea;
-        NextAreaButton.IsVisible = canEdit && !isLastArea;
+        PreviousAreaButton.IsVisible = canEdit;
+        NextAreaButton.IsVisible = canEdit;
         SubmitButton.IsVisible = canSubmit;
 
         PreviousAreaButton.IsEnabled = canEdit && !isFirstArea;
         NextAreaButton.IsEnabled = canEdit && !isLastArea;
         SubmitButton.IsEnabled = canSubmit;
+        PreviousAreaButton.Text = isFirstArea ? "Primera área" : "Área anterior";
+        NextAreaButton.Text = isLastArea ? "Última área" : "Siguiente área";
         EditorCard.Opacity = canEdit ? 1 : 0.7;
         EditHintLabel.Text = canEdit
             ? (isLastArea
