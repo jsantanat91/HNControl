@@ -33,6 +33,7 @@ public partial class OrderDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        RootScroll.IsEnabled = true;
         if (_orderId == Guid.Empty) return;
         await ReloadAsync();
     }
@@ -381,6 +382,7 @@ public partial class OrderDetailPage : ContentPage
 
         var p = e.Touches.FirstOrDefault();
         _signature.StartStroke(p);
+        RootScroll.IsEnabled = false;
         SignaturePad.Invalidate();
     }
 
@@ -397,6 +399,7 @@ public partial class OrderDetailPage : ContentPage
     private void OnSignatureEnd(object? sender, TouchEventArgs e)
     {
         _signature.EndStroke();
+        RootScroll.IsEnabled = true;
         SignaturePad.Invalidate();
     }
 
@@ -407,6 +410,7 @@ public partial class OrderDetailPage : ContentPage
 
         var p = e.Touches.FirstOrDefault();
         _clientSignature.StartStroke(p);
+        RootScroll.IsEnabled = false;
         ClientSignaturePad.Invalidate();
     }
 
@@ -423,6 +427,7 @@ public partial class OrderDetailPage : ContentPage
     private void OnClientSignatureEnd(object? sender, TouchEventArgs e)
     {
         _clientSignature.EndStroke();
+        RootScroll.IsEnabled = true;
         ClientSignaturePad.Invalidate();
     }
 

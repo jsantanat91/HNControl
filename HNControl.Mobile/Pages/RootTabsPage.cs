@@ -9,7 +9,6 @@ public class RootTabsPage : TabbedPage
         BarTextColor = Color.FromArgb("#0E2242");
         SelectedTabColor = Color.FromArgb("#2252D5");
         UnselectedTabColor = Color.FromArgb("#7A869A");
-
         Children.Add(new NavigationPage(ordersPage)
         {
             Title = "Ordenes",

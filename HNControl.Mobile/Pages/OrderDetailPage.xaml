@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Detalle orden"
     Background="#E9EEF7">
-    <ScrollView>
+    <ScrollView x:Name="RootScroll">
         <VerticalStackLayout Padding="14,12,14,28" Spacing="10">
             <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="6">
