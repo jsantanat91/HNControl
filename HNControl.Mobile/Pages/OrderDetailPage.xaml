@@ -45,7 +45,7 @@
                     <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />
                     <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
 
-                    <VerticalStackLayout x:Name="NotesSection" Spacing="8">
+                    <VerticalStackLayout x:Name="LevantamientoSection" Spacing="8">
                         <Label FontAttributes="Bold" Text="Levantamiento" />
                         <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />
 
@@ -68,9 +68,11 @@
                                 <Label Opacity="0.7" Text="Sin evidencias cargadas." />
                             </CollectionView.EmptyView>
                         </CollectionView>
+                    </VerticalStackLayout>
 
+                    <VerticalStackLayout x:Name="MaterialesSection" Spacing="8" IsVisible="False">
                         <Label FontAttributes="Bold" Text="Materiales" />
-                        <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Materiales, cantidades y pendientes..." />
+                        <Editor x:Name="MaterialesEditor" AutoSize="TextChanges" MinimumHeightRequest="110" Placeholder="Materiales, cantidades y pendientes..." />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout x:Name="ChecklistSection" Spacing="8" IsVisible="False">
@@ -106,7 +108,35 @@
 
                     <VerticalStackLayout x:Name="CloseSection" Spacing="8" IsVisible="False">
                         <Label FontAttributes="Bold" Text="Cierre técnico" />
-                        <Label Text="La firma técnica se toma automáticamente del usuario autenticado." FontSize="12" Opacity="0.75" />
+                        <Label Text="Firma autógrafa del técnico:" FontSize="12" Opacity="0.75" />
+                        <Label x:Name="TechSignatureLabel" FontAttributes="Bold" Text="Técnico: -" />
+                        <Border Background="#FFFFFF" Stroke="#CBD5E1" StrokeShape="RoundRectangle 10" Padding="4">
+                            <GraphicsView x:Name="SignaturePad"
+                                          HeightRequest="170"
+                                          StartInteraction="OnSignatureStart"
+                                          DragInteraction="OnSignatureDrag"
+                                          EndInteraction="OnSignatureEnd" />
+                        </Border>
+                        <Button x:Name="ClearSignatureButton"
+                                Text="Limpiar firma"
+                                Clicked="OnClearSignatureClicked"
+                                CornerRadius="10"
+                                BackgroundColor="#E2E8F0"
+                                TextColor="#0F172A" />
+                        <Label Text="Firma autógrafa del cliente:" FontSize="12" Opacity="0.75" Margin="0,8,0,0" />
+                        <Border Background="#FFFFFF" Stroke="#CBD5E1" StrokeShape="RoundRectangle 10" Padding="4">
+                            <GraphicsView x:Name="ClientSignaturePad"
+                                          HeightRequest="170"
+                                          StartInteraction="OnClientSignatureStart"
+                                          DragInteraction="OnClientSignatureDrag"
+                                          EndInteraction="OnClientSignatureEnd" />
+                        </Border>
+                        <Button x:Name="ClearClientSignatureButton"
+                                Text="Limpiar firma cliente"
+                                Clicked="OnClearClientSignatureClicked"
+                                CornerRadius="10"
+                                BackgroundColor="#E2E8F0"
+                                TextColor="#0F172A" />
                     </VerticalStackLayout>
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
@@ -116,7 +146,7 @@
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button x:Name="SaveButton" Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" CornerRadius="10" BackgroundColor="#0E2242" TextColor="White" />
-                        <Button x:Name="SubmitButton" Grid.Column="1" Text="Enviar revisión (final)" Clicked="OnSubmitClicked" CornerRadius="10" />
+                        <Button x:Name="SubmitButton" Grid.Column="1" Text="Firmar y enviar" Clicked="OnSubmitClicked" CornerRadius="10" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>

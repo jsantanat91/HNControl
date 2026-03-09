@@ -1,12 +1,15 @@
 ﻿using System.Collections.ObjectModel;
 using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
+using Microsoft.Maui.Graphics;
 
 namespace HNControl.Mobile.Pages;
 
 public partial class OrderDetailPage : ContentPage
 {
     private readonly OrdersService _orders;
+    private readonly SignatureDrawable _signature = new();
+    private readonly SignatureDrawable _clientSignature = new();
     private Guid _orderId;
     private ServiceOrderDetailDto? _current;
     private bool _busy;
@@ -18,6 +21,8 @@ public partial class OrderDetailPage : ContentPage
         InitializeComponent();
         _orders = orders;
         ChecklistCollection.ItemsSource = ChecklistItems;
+        SignaturePad.Drawable = _signature;
+        ClientSignaturePad.Drawable = _clientSignature;
     }
 
     public void SetOrderId(Guid orderId)
@@ -86,9 +91,11 @@ public partial class OrderDetailPage : ContentPage
         var isLastArea = d.CurrentArea >= 4;
         var canSubmit = canEdit && isLastArea && d.Status is 1 or 2 or 6;
 
-        NotesSection.IsVisible = d.CurrentArea is 1 or 2;
+        LevantamientoSection.IsVisible = d.CurrentArea == 1;
+        MaterialesSection.IsVisible = d.CurrentArea == 2;
         ChecklistSection.IsVisible = d.CurrentArea == 3;
         CloseSection.IsVisible = d.CurrentArea == 4;
+        TechSignatureLabel.Text = "Técnico: " + (string.IsNullOrWhiteSpace(d.ClaimedBy) ? "Sin tomar" : d.ClaimedBy);
 
         LevantamientoEditor.IsReadOnly = !canEdit;
         MaterialesEditor.IsReadOnly = !canEdit;
@@ -109,17 +116,22 @@ public partial class OrderDetailPage : ContentPage
         PreviousAreaButton.Text = isFirstArea ? "Primera área" : "Área anterior";
         NextAreaButton.Text = isLastArea ? "Última área" : "Siguiente área";
 
-        var canAttachEvidence = canEdit;
+        var canAttachEvidence = canEdit && d.CurrentArea == 1;
         AttachEvidenceButton.IsEnabled = canAttachEvidence;
-        AttachEvidenceButton.IsVisible = canEdit;
+        AttachEvidenceButton.IsVisible = d.CurrentArea == 1;
         EvidenceHintLabel.Text = canAttachEvidence
             ? "Puedes subir foto o PDF."
-            : "Solo quien tomó la orden (o admin global) puede adjuntar evidencias.";
+            : "Adjunta evidencias en la etapa de levantamiento.";
+
+        ClearSignatureButton.IsVisible = d.CurrentArea == 4;
+        ClearSignatureButton.IsEnabled = canEdit && d.CurrentArea == 4;
+        ClearClientSignatureButton.IsVisible = d.CurrentArea == 4;
+        ClearClientSignatureButton.IsEnabled = canEdit && d.CurrentArea == 4;
 
         EditorCard.Opacity = canEdit ? 1 : 0.75;
         EditHintLabel.Text = canEdit
             ? (isLastArea
-                ? "Última área: cuando termines, envía a revisión."
+                ? "Última área: firma y envía a revisión."
                 : "Puedes capturar datos y mover la orden por áreas.")
             : BuildReadOnlyReason(d);
     }
@@ -234,8 +246,7 @@ public partial class OrderDetailPage : ContentPage
                 });
             }
 
-            var res = await _orders.NextAreaAsync(_orderId);
-            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
+            await _orders.NextAreaAsync(_orderId);
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -265,8 +276,7 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            var res = await _orders.PreviousAreaAsync(_orderId);
-            await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Área actualizada." : res.Message, "OK");
+            await _orders.PreviousAreaAsync(_orderId);
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -287,6 +297,22 @@ public partial class OrderDetailPage : ContentPage
             await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
             return;
         }
+        if (_current.CurrentArea != 4)
+        {
+            await DisplayAlertAsync("Orden", "Debes estar en Cierre técnico para firmar y enviar.", "OK");
+            return;
+        }
+
+        if (!_signature.HasStrokes)
+        {
+            await DisplayAlertAsync("Firma requerida", "Dibuja la firma del técnico antes de enviar.", "OK");
+            return;
+        }
+        if (!_clientSignature.HasStrokes)
+        {
+            await DisplayAlertAsync("Firma requerida", "Dibuja la firma del cliente antes de enviar.", "OK");
+            return;
+        }
 
         var ok = await DisplayAlertAsync("Enviar revisión", "Se enviará la orden para revisión de admin. ¿Continuar?", "Enviar", "Cancelar");
         if (!ok) return;
@@ -294,8 +320,14 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            var res = await _orders.SubmitAsync(_orderId);
+            var dataUrl = await CaptureSignatureDataUrlAsync();
+            var clientDataUrl = await CaptureClientSignatureDataUrlAsync();
+            var res = await _orders.SubmitAsync(_orderId, dataUrl, clientDataUrl);
             await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
+            _signature.Clear();
+            _clientSignature.Clear();
+            SignaturePad.Invalidate();
+            ClientSignaturePad.Invalidate();
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -306,6 +338,92 @@ public partial class OrderDetailPage : ContentPage
         {
             _busy = false;
         }
+    }
+
+    private async Task<string> CaptureSignatureDataUrlAsync()
+    {
+        var capture = await SignaturePad.CaptureAsync();
+        if (capture == null)
+            return string.Empty;
+        await using var stream = await capture.OpenReadAsync();
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
+    }
+
+    private async Task<string> CaptureClientSignatureDataUrlAsync()
+    {
+        var capture = await ClientSignaturePad.CaptureAsync();
+        if (capture == null)
+            return string.Empty;
+        await using var stream = await capture.OpenReadAsync();
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
+    }
+
+    private void OnClearSignatureClicked(object sender, EventArgs e)
+    {
+        _signature.Clear();
+        SignaturePad.Invalidate();
+    }
+
+    private void OnClearClientSignatureClicked(object sender, EventArgs e)
+    {
+        _clientSignature.Clear();
+        ClientSignaturePad.Invalidate();
+    }
+
+    private void OnSignatureStart(object? sender, TouchEventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4)
+            return;
+
+        var p = e.Touches.FirstOrDefault();
+        _signature.StartStroke(p);
+        SignaturePad.Invalidate();
+    }
+
+    private void OnSignatureDrag(object? sender, TouchEventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4)
+            return;
+
+        var p = e.Touches.FirstOrDefault();
+        _signature.AddPoint(p);
+        SignaturePad.Invalidate();
+    }
+
+    private void OnSignatureEnd(object? sender, TouchEventArgs e)
+    {
+        _signature.EndStroke();
+        SignaturePad.Invalidate();
+    }
+
+    private void OnClientSignatureStart(object? sender, TouchEventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4)
+            return;
+
+        var p = e.Touches.FirstOrDefault();
+        _clientSignature.StartStroke(p);
+        ClientSignaturePad.Invalidate();
+    }
+
+    private void OnClientSignatureDrag(object? sender, TouchEventArgs e)
+    {
+        if (_current?.CanEdit != true || _current.CurrentArea != 4)
+            return;
+
+        var p = e.Touches.FirstOrDefault();
+        _clientSignature.AddPoint(p);
+        ClientSignaturePad.Invalidate();
+    }
+
+    private void OnClientSignatureEnd(object? sender, TouchEventArgs e)
+    {
+        _clientSignature.EndStroke();
+        ClientSignaturePad.Invalidate();
     }
 
     private async void OnAttachEvidenceClicked(object sender, EventArgs e)
@@ -424,4 +542,66 @@ public class ChecklistEditItemVm
     public string Title { get; set; } = string.Empty;
     public bool IsDone { get; set; }
     public string Notes { get; set; } = string.Empty;
+}
+
+public sealed class SignatureDrawable : IDrawable
+{
+    private List<PointF> _currentStroke = new();
+    public List<List<PointF>> Strokes { get; } = new();
+
+    public bool HasStrokes => Strokes.Count > 0 || _currentStroke.Count > 1;
+
+    public void StartStroke(PointF p)
+    {
+        _currentStroke = new List<PointF> { p };
+    }
+
+    public void AddPoint(PointF p)
+    {
+        _currentStroke.Add(p);
+    }
+
+    public void EndStroke()
+    {
+        if (_currentStroke.Count > 1)
+            Strokes.Add(new List<PointF>(_currentStroke));
+        _currentStroke.Clear();
+    }
+
+    public void Clear()
+    {
+        Strokes.Clear();
+        _currentStroke.Clear();
+    }
+
+    public void Draw(ICanvas canvas, RectF dirtyRect)
+    {
+        canvas.FillColor = Colors.White;
+        canvas.FillRectangle(dirtyRect);
+        canvas.StrokeColor = Color.FromArgb("#0F172A");
+        canvas.StrokeSize = 2;
+        canvas.StrokeLineCap = LineCap.Round;
+        canvas.StrokeLineJoin = LineJoin.Round;
+
+        foreach (var stroke in Strokes)
+        {
+            DrawStroke(canvas, stroke);
+        }
+
+        if (_currentStroke.Count > 1)
+        {
+            DrawStroke(canvas, _currentStroke);
+        }
+    }
+
+    private static void DrawStroke(ICanvas canvas, List<PointF> stroke)
+    {
+        if (stroke.Count < 2) return;
+        for (var i = 1; i < stroke.Count; i++)
+        {
+            var p1 = stroke[i - 1];
+            var p2 = stroke[i];
+            canvas.DrawLine(p1.X, p1.Y, p2.X, p2.Y);
+        }
+    }
 }

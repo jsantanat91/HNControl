@@ -52,9 +52,9 @@ public sealed class OrdersService
         return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/area/previous", new { });
     }
 
-    public Task<ApiMessageDto> SubmitAsync(Guid id)
+    public Task<ApiMessageDto> SubmitAsync(Guid id, string? techSigDataUrl = null, string? clientSigDataUrl = null)
     {
-        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { });
+        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { techSigDataUrl, clientSigDataUrl });
     }
 
     public async Task<ApiMessageDto> UploadEvidenceAsync(Guid id, Stream fileStream, string fileName, string? fileContentType)

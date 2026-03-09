@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text.RegularExpressions;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -81,6 +82,12 @@ public class ServiceOrdersController : ControllerBase
     public class UploadEvidenceRequest
     {
         public IFormFile? EvidenceFile { get; set; }
+    }
+
+    public class SubmitOrderRequest
+    {
+        public string? TechSigDataUrl { get; set; }
+        public string? ClientSigDataUrl { get; set; }
     }
 
     [HttpGet]
@@ -320,7 +327,7 @@ public class ServiceOrdersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Submit(Guid id)
+    public async Task<IActionResult> Submit(Guid id, [FromBody] SubmitOrderRequest? req)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
@@ -334,6 +341,107 @@ public class ServiceOrdersController : ControllerBase
 
         if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
             return Conflict(new { message = "La orden ya no permite envÃ­o a revisiÃ³n." });
+
+        var techName = await _db.EmployeeProfiles
+            .Where(e => e.UserId == userId)
+            .Select(e => e.FullName)
+            .FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(techName))
+            techName = User.Identity?.Name ?? "Tecnico";
+
+        var techSigDataUrl = (req?.TechSigDataUrl ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(techSigDataUrl))
+        {
+            var base64 = Regex.Replace(techSigDataUrl, "^data:image\\/png;base64,", "");
+            byte[] bytes;
+            try { bytes = Convert.FromBase64String(base64); }
+            catch { return BadRequest(new { message = "La firma del técnico no es válida." }); }
+
+            if (bytes.Length < 1200)
+                return BadRequest(new { message = "La firma del técnico está vacía o incompleta." });
+
+            var fileName = $"tech_{Guid.NewGuid():N}.png";
+            var (sigPath, _, _) = await _storage.SaveBytesAsync(
+                bytes,
+                $"serviceorders/{o.Id}/signatures",
+                fileName,
+                "image/png");
+
+            var existingTechSig = await _db.ServiceOrderSignatures
+                .FirstOrDefaultAsync(s => s.OrderId == o.Id && s.Role == SignatureRole.Technician);
+
+            if (existingTechSig == null)
+            {
+                _db.ServiceOrderSignatures.Add(new ServiceOrderSignature
+                {
+                    OrderId = o.Id,
+                    Role = SignatureRole.Technician,
+                    SignedByName = techName,
+                    StoragePath = sigPath,
+                    SignedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existingTechSig.SignedByName = techName;
+                existingTechSig.StoragePath = sigPath;
+                existingTechSig.SignedAt = DateTime.UtcNow;
+            }
+        }
+        else
+        {
+            var existingTechSig = await _db.ServiceOrderSignatures
+                .FirstOrDefaultAsync(s => s.OrderId == o.Id && s.Role == SignatureRole.Technician);
+            if (existingTechSig == null || string.IsNullOrWhiteSpace(existingTechSig.StoragePath))
+                return Conflict(new { message = "Debes capturar la firma del técnico antes de enviar." });
+        }
+
+        var clientSigDataUrl = (req?.ClientSigDataUrl ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(clientSigDataUrl))
+        {
+            var base64 = Regex.Replace(clientSigDataUrl, "^data:image\\/png;base64,", "");
+            byte[] bytes;
+            try { bytes = Convert.FromBase64String(base64); }
+            catch { return BadRequest(new { message = "La firma del cliente no es válida." }); }
+
+            if (bytes.Length < 1200)
+                return BadRequest(new { message = "La firma del cliente está vacía o incompleta." });
+
+            var fileName = $"client_{Guid.NewGuid():N}.png";
+            var (sigPath, _, _) = await _storage.SaveBytesAsync(
+                bytes,
+                $"serviceorders/{o.Id}/signatures",
+                fileName,
+                "image/png");
+
+            var existingClientSig = await _db.ServiceOrderSignatures
+                .FirstOrDefaultAsync(s => s.OrderId == o.Id && s.Role == SignatureRole.Client);
+
+            if (existingClientSig == null)
+            {
+                _db.ServiceOrderSignatures.Add(new ServiceOrderSignature
+                {
+                    OrderId = o.Id,
+                    Role = SignatureRole.Client,
+                    SignedByName = "Cliente",
+                    StoragePath = sigPath,
+                    SignedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existingClientSig.SignedByName = "Cliente";
+                existingClientSig.StoragePath = sigPath;
+                existingClientSig.SignedAt = DateTime.UtcNow;
+            }
+        }
+        else
+        {
+            var existingClientSig = await _db.ServiceOrderSignatures
+                .FirstOrDefaultAsync(s => s.OrderId == o.Id && s.Role == SignatureRole.Client);
+            if (existingClientSig == null || string.IsNullOrWhiteSpace(existingClientSig.StoragePath))
+                return Conflict(new { message = "Debes capturar la firma del cliente antes de enviar." });
+        }
 
         o.Status = ServiceOrderStatus.InReview;
         o.SubmittedForReviewAt = DateTime.UtcNow;
@@ -478,4 +586,6 @@ public class ServiceOrdersController : ControllerBase
         return true;
     }
 }
+
+
 
