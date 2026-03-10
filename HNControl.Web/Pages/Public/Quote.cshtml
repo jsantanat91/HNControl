@@ -15,14 +15,14 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
                         <h1 class="h3 mb-1">Cotizacion a la medida</h1>
-                        <div class="text-muted">Selecciona tus servicios y recibe PDF por correo.</div>
+                        <div class="text-muted">Wizard guiado para una captura simple y clara.</div>
                     </div>
                     <span class="badge text-bg-light border">Kiosk publico</span>
                 </div>
 
                 @if (Model.HasClientContext)
                 {
-                    <div class="alert alert-info py-2">Cliente detectado: <strong>@Model.ClientName</strong>. Datos precargados.</div>
+                    <div class="alert alert-info py-2">Cliente detectado: <strong>@Model.ClientName</strong>. Datos precargados desde el link.</div>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
@@ -30,97 +30,160 @@
                     <div class="alert alert-danger">@Model.ErrorMessage</div>
                 }
 
+                <div class="quote-steps mb-3">
+                    <div class="quote-step-pill active" data-step-pill="1">1. Empresarial / Residencial</div>
+                    <div class="quote-step-pill" data-step-pill="2">2. Cotizacion</div>
+                    <div class="quote-step-pill" data-step-pill="3">3. Datos del cliente</div>
+                    <div class="quote-step-pill" data-step-pill="4">4. Confirmacion</div>
+                </div>
+
                 <form method="post" id="quoteForm" class="row g-3">
                     <input type="hidden" asp-for="Input.ClientToken" />
-
-                    <div class="col-md-4">
-                        <label class="form-label">Seleccion 1</label>
-                        <select class="form-select" asp-for="Input.Segment" id="segmentSelect">
-                            <option value="Residential">Residencial</option>
-                            <option value="Business">Empresarial</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Categoria</label>
-                        <select class="form-select" id="categorySelect"></select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Servicio</label>
-                        <select class="form-select" id="serviceSelect"></select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Subproducto (opcional)</label>
-                        <select class="form-select" id="subproductSelect"></select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Cantidad</label>
-                        <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
-                    </div>
-
-                    <div class="col-md-6 d-flex align-items-end">
-                        <button class="btn btn-outline-primary" type="button" id="addLineBtn">Agregar concepto</button>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="table-responsive border rounded">
-                            <table class="table table-sm align-middle mb-0" id="linesTable">
-                                <thead>
-                                    <tr>
-                                        <th>Categoria</th>
-                                        <th>Servicio</th>
-                                        <th>Subproducto</th>
-                                        <th class="text-center">Cant</th>
-                                        <th class="text-end">Costo</th>
-                                        <th class="text-end">Total</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr id="emptyRow"><td colspan="7" class="text-muted">Aun no agregas conceptos.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
 
-                    <div class="col-12 mt-2"><hr /></div>
-
-                    <div class="col-md-6">
-                        <label class="form-label">Nombre</label>
-                        <input class="form-control" asp-for="Input.CustomerName" required />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Correo</label>
-                        <input class="form-control" asp-for="Input.CustomerEmail" required />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Telefono</label>
-                        <input class="form-control" asp-for="Input.CustomerPhone" required />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Ubicacion</label>
-                        <input class="form-control" asp-for="Input.CustomerLocation" required />
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Empresa (opcional)</label>
-                        <input class="form-control" asp-for="Input.CompanyName" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Comentarios (opcional)</label>
-                        <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
-                    </div>
-
-                    <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <div>
-                            <span class="badge text-bg-success" id="autoTotalBadge">Subtotal: $0.00</span>
-                            <span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span>
+                    <section class="quote-step-panel" data-step="1">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Selecciona el tipo de cliente</label>
+                                <select class="form-select" asp-for="Input.Segment" id="segmentSelect">
+                                    <option value="Residential">Residencial</option>
+                                    <option value="Business">Empresarial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 h-100 bg-light-subtle">
+                                    <div class="fw-semibold">Paso 1 de 4</div>
+                                    <div class="text-muted small">Primero definimos el segmento para cargar su catalogo correcto.</div>
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn btn-primary btn-lg" type="submit">Generar y enviar cotizacion</button>
+                    </section>
+
+                    <section class="quote-step-panel d-none" data-step="2">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Categoria</label>
+                                <select class="form-select" id="categorySelect"></select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Servicio</label>
+                                <select class="form-select" id="serviceSelect"></select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Subproducto (opcional)</label>
+                                <select class="form-select" id="subproductSelect"></select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Cantidad</label>
+                                <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
+                            </div>
+
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-outline-primary w-100" type="button" id="addLineBtn">Agregar concepto</button>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="table-responsive border rounded">
+                                    <table class="table table-sm align-middle mb-0" id="linesTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Categoria</th>
+                                                <th>Servicio</th>
+                                                <th>Subproducto</th>
+                                                <th class="text-center">Cant</th>
+                                                <th class="text-end">Costo</th>
+                                                <th class="text-end">Total</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr id="emptyRow"><td colspan="7" class="text-muted">Aun no agregas conceptos.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body py-2">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-md-7">
+                                                <span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><strong id="sumBase">$0.00</strong></div>
+                                                <div class="d-flex justify-content-between small"><span class="text-muted">IVA 16%</span><strong id="sumVat">$0.00</strong></div>
+                                                <div class="d-flex justify-content-between border-top mt-1 pt-1"><span class="fw-semibold">Total</span><strong class="text-primary" id="sumTotal">$0.00</strong></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="quote-step-panel d-none" data-step="3">
+                        @if (Model.HasClientContext)
+                        {
+                            <div class="alert alert-success mb-0">Los datos del cliente ya vienen cargados por el link publico. Este paso se omite automaticamente.</div>
+                        }
+                        else
+                        {
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nombre</label>
+                                    <input class="form-control" asp-for="Input.CustomerName" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Correo</label>
+                                    <input class="form-control" asp-for="Input.CustomerEmail" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Telefono</label>
+                                    <input class="form-control" asp-for="Input.CustomerPhone" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Ubicacion</label>
+                                    <input class="form-control" asp-for="Input.CustomerLocation" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Empresa (opcional)</label>
+                                    <input class="form-control" asp-for="Input.CompanyName" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Comentarios (opcional)</label>
+                                    <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
+                                </div>
+                            </div>
+                        }
+                    </section>
+
+                    <section class="quote-step-panel d-none" data-step="4">
+                        <div class="alert alert-light border">
+                            <div class="fw-semibold">Confirmacion final</div>
+                            <div class="text-muted">Revisa el resumen, abre la vista previa PDF y despues enviala.</div>
+                        </div>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Conceptos</div><div class="fw-semibold" id="confirmLinesCount">0</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Subtotal sin IVA</div><div class="fw-semibold" id="confirmBase">$0.00</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">IVA 16%</div><div class="fw-semibold" id="confirmVat">$0.00</div></div></div>
+                            <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Total c/IVA</div><div class="fw-semibold" id="confirmTotal">$0.00</div></div></div>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-primary" formaction="?handler=Preview" formtarget="_blank" id="previewBtn">Ver PDF previo</button>
+                        </div>
+                    </section>
+
+                    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                        <button type="button" class="btn btn-outline-secondary" id="prevStepBtn">Anterior</button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary" id="nextStepBtn">Siguiente</button>
+                            <button type="submit" class="btn btn-success d-none" id="submitBtn">Generar y enviar cotizacion</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -132,9 +195,13 @@
 <script>
 (() => {
     const payload = @Html.Raw(catalogJson);
-    const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant();
+    const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant() === 'true';
     const IVA = 0.16;
     const lines = [];
+
+    const allSteps = [1,2,3,4];
+    const navSteps = hasClientContext ? [1,2,4] : allSteps;
+    let currentStep = navSteps[0];
 
     const seg = document.getElementById('segmentSelect');
     const cat = document.getElementById('categorySelect');
@@ -145,8 +212,13 @@
     const tbody = document.querySelector('#linesTable tbody');
     const emptyRow = document.getElementById('emptyRow');
     const linesJson = document.getElementById('linesJson');
-    const autoTotal = document.getElementById('autoTotalBadge');
     const manualBadge = document.getElementById('manualBadge');
+    const sumBase = document.getElementById('sumBase');
+    const sumVat = document.getElementById('sumVat');
+    const sumTotal = document.getElementById('sumTotal');
+    const prevStepBtn = document.getElementById('prevStepBtn');
+    const nextStepBtn = document.getElementById('nextStepBtn');
+    const submitBtn = document.getElementById('submitBtn');
 
     if(hasClientContext){
         ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation','Input_CompanyName']
@@ -154,6 +226,8 @@
                 const el = document.getElementById(id);
                 if(el) el.readOnly = true;
             });
+        const pill3 = document.querySelector('[data-step-pill="3"]');
+        if(pill3) pill3.classList.add('is-skipped');
     }
 
     function toMoney(v){
@@ -177,7 +251,7 @@
     function isAllowedByRules(itemId){
         const s = getSegmentData();
         const rules = (s.rules || []).filter(r => String(r.targetItemId) === String(itemId));
-        if(rules.length === 0) return true;
+        if (rules.length === 0) return true;
         const selected = selectedIdsSet();
         return rules.some(r => selected.has(String(r.requiredItemId)));
     }
@@ -223,19 +297,35 @@
         return arr.find(x => x.id === id);
     }
 
-    function recalc(){
-        const auto = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
+    function totals(){
         const base = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
         const vat = lines.filter(x => !x.isManual).reduce((a,b) => a + b.vat, 0);
-        const man = lines.filter(x => x.isManual).length;
-        autoTotal.textContent = 'Total c/IVA: ' + toMoney(auto) + ' (Base ' + toMoney(base) + ' + IVA ' + toMoney(vat) + ')';
-        manualBadge.textContent = 'Manuales: ' + man;
+        const total = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
+        const manual = lines.filter(x => x.isManual).length;
+        return { base, vat, total, manual };
+    }
+
+    function recalc(){
+        const t = totals();
+        if(sumBase) sumBase.textContent = toMoney(t.base);
+        if(sumVat) sumVat.textContent = toMoney(t.vat);
+        if(sumTotal) sumTotal.textContent = toMoney(t.total);
+        manualBadge.textContent = 'Manuales: ' + t.manual;
         linesJson.value = JSON.stringify(lines.map(x => ({
             categoryId: x.categoryId,
             serviceId: x.serviceId,
             subproductId: x.subproductId || null,
             quantity: x.quantity
         })));
+
+        const cLines = document.getElementById('confirmLinesCount');
+        const cBase = document.getElementById('confirmBase');
+        const cVat = document.getElementById('confirmVat');
+        const cTotal = document.getElementById('confirmTotal');
+        if(cLines) cLines.textContent = String(lines.length);
+        if(cBase) cBase.textContent = toMoney(t.base);
+        if(cVat) cVat.textContent = toMoney(t.vat);
+        if(cTotal) cTotal.textContent = toMoney(t.total);
     }
 
     function render(){
@@ -264,11 +354,59 @@
             btn.addEventListener('click', () => {
                 const idx = Number(btn.getAttribute('data-del'));
                 lines.splice(idx, 1);
+                fillServices();
                 render();
             });
         });
 
         recalc();
+    }
+
+    function showStep(step){
+        currentStep = step;
+        document.querySelectorAll('.quote-step-panel').forEach(p => {
+            p.classList.toggle('d-none', Number(p.getAttribute('data-step')) !== currentStep);
+        });
+        document.querySelectorAll('[data-step-pill]').forEach(p => {
+            p.classList.toggle('active', Number(p.getAttribute('data-step-pill')) === currentStep);
+        });
+
+        const idx = navSteps.indexOf(currentStep);
+        prevStepBtn.disabled = idx <= 0;
+        nextStepBtn.classList.toggle('d-none', idx === navSteps.length - 1);
+        submitBtn.classList.toggle('d-none', idx !== navSteps.length - 1);
+        recalc();
+    }
+
+    function validateStep(step){
+        if(step === 2 && lines.length === 0){
+            alert('Agrega al menos un concepto antes de continuar.');
+            return false;
+        }
+        if(step === 3 && !hasClientContext){
+            const required = ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation'];
+            for(const id of required){
+                const el = document.getElementById(id);
+                if(!el || !String(el.value || '').trim()){
+                    alert('Completa los datos de contacto obligatorios.');
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function goNext(){
+        const idx = navSteps.indexOf(currentStep);
+        if(idx < 0 || idx >= navSteps.length - 1) return;
+        if(!validateStep(currentStep)) return;
+        showStep(navSteps[idx + 1]);
+    }
+
+    function goPrev(){
+        const idx = navSteps.indexOf(currentStep);
+        if(idx <= 0) return;
+        showStep(navSteps[idx - 1]);
     }
 
     addBtn.addEventListener('click', () => {
@@ -286,9 +424,11 @@
         const unit = Number(selected.unitPrice || 0);
         const q = Math.max(1, Number(qty.value || 1));
         const includesVat = !!selected.unitPriceIncludesVat;
+
         let base = 0;
         let vat = 0;
         let total = 0;
+
         if(!isManual){
             const raw = unit * q;
             if(includesVat){
@@ -322,12 +462,47 @@
         render();
     });
 
-    seg.addEventListener('change', fillCategories);
+    prevStepBtn.addEventListener('click', goPrev);
+    nextStepBtn.addEventListener('click', goNext);
+
+    seg.addEventListener('change', () => {
+        fillCategories();
+        lines.length = 0;
+        render();
+    });
     cat.addEventListener('change', fillServices);
     svc.addEventListener('change', fillSubproducts);
 
     fillCategories();
     render();
+    showStep(navSteps[0]);
 })();
 </script>
+
+<style>
+.quote-steps{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.5rem;
+}
+.quote-step-pill{
+    border:1px solid #dbe3f4;
+    background:#f7f9ff;
+    color:#64748b;
+    border-radius:999px;
+    text-align:center;
+    padding:.45rem .6rem;
+    font-weight:700;
+    font-size:.86rem;
+}
+.quote-step-pill.active{
+    border-color:#1d4ed8;
+    background:#e8efff;
+    color:#1d4ed8;
+}
+.quote-step-pill.is-skipped{
+    opacity:.55;
+}
+.quote-step-panel{ min-height: 220px; }
+</style>
 }

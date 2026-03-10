@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -20,15 +20,26 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
 
     public async Task<byte[]> RenderAsync(QuoteRequest request)
     {
-        var q = await _db.QuoteRequests
-            .Include(x => x.Lines)
-            .FirstAsync(x => x.Id == request.Id);
+        // Soporte para render persistido (con Id) y preview (sin guardar en DB).
+        QuoteRequest q;
+        if (request.Lines.Count > 0)
+        {
+            q = request;
+        }
+        else
+        {
+            q = await _db.QuoteRequests
+                .Include(x => x.Lines)
+                .FirstAsync(x => x.Id == request.Id);
+        }
 
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var logoPath = (_cfg["Branding:LogoPath"] ?? string.Empty).Trim();
         byte[]? logo = null;
         if (!string.IsNullOrWhiteSpace(logoPath) && File.Exists(logoPath))
             logo = await File.ReadAllBytesAsync(logoPath);
+
+        var created = q.CreatedAt == default ? DateTime.UtcNow : q.CreatedAt;
 
         var doc = Document.Create(c =>
         {
@@ -59,22 +70,34 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                 {
                     col.Spacing(8);
 
-                    col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
+                    // Bloque estilo similar a Orden: datos cliente + meta.
+                    col.Item().Row(row =>
                     {
-                        x.Item().Text("Datos del cliente").SemiBold();
-                        x.Item().Text($"Nombre: {q.CustomerName}");
-                        x.Item().Text($"Correo: {q.CustomerEmail}");
-                        x.Item().Text($"Telefono: {q.CustomerPhone}");
-                        x.Item().Text($"Ubicacion: {q.CustomerLocation}");
-                        x.Item().Text($"Empresa: {(string.IsNullOrWhiteSpace(q.CompanyName) ? "-" : q.CompanyName)}");
-                        x.Item().Text($"Segmento: {LabelSegment(q.Segment)}");
-                        if (!string.IsNullOrWhiteSpace(q.Notes))
-                            x.Item().Text($"Comentarios: {q.Notes}");
+                        row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
+                        {
+                            x.Item().Text("Cliente").SemiBold();
+                            x.Item().Text(q.CustomerName);
+                            x.Item().Text(q.CustomerEmail).FontColor(Colors.Grey.Darken2);
+                            x.Item().Text(q.CustomerPhone).FontColor(Colors.Grey.Darken2);
+                            x.Item().Text(q.CustomerLocation).FontColor(Colors.Grey.Darken2);
+                            if (!string.IsNullOrWhiteSpace(q.CompanyName))
+                                x.Item().Text($"Empresa: {q.CompanyName}").FontColor(Colors.Grey.Darken2);
+                        });
+
+                        row.ConstantItem(260).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
+                        {
+                            x.Item().Text("Datos de cotizacion").SemiBold();
+                            x.Item().Text($"Segmento: {LabelSegment(q.Segment)}");
+                            x.Item().Text($"Estatus: {LabelStatus(q.Status)}");
+                            x.Item().Text($"Fecha: {created.ToLocalTime():yyyy-MM-dd HH:mm}");
+                            if (q.ManualItemsCount > 0)
+                                x.Item().Text($"Conceptos manuales: {q.ManualItemsCount}");
+                        });
                     });
 
                     col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
                     {
-                        x.Item().Text("Conceptos seleccionados").SemiBold();
+                        x.Item().Text("Detalle de cotizacion").SemiBold();
                         x.Item().PaddingTop(6).Table(t =>
                         {
                             t.ColumnsDefinition(cd =>
@@ -114,16 +137,16 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                     {
                         r.RelativeItem().Column(x =>
                         {
-                            x.Item().Text("Notas de cotizacion").SemiBold();
-                            x.Item().Text("Los conceptos marcados como manuales requieren validacion comercial.");
-                            x.Item().Text("La cotizacion puede ajustarse despues de visita tecnica.");
+                            x.Item().Text("Notas").SemiBold();
+                            x.Item().Text(string.IsNullOrWhiteSpace(q.Notes)
+                                ? "La cotizacion puede ajustarse despues de visita tecnica."
+                                : q.Notes);
                         });
                         r.ConstantItem(190).Column(x =>
                         {
                             x.Item().AlignRight().Text($"Subtotal sin IVA: {Money(q.SubtotalBeforeVat)}");
                             x.Item().AlignRight().Text($"IVA 16%: {Money(q.VatAmount)}");
                             x.Item().AlignRight().Text($"Subtotal automatico: {Money(q.SubtotalAuto)}");
-                            x.Item().AlignRight().Text($"Conceptos manuales: {q.ManualItemsCount}");
                             x.Item().AlignRight().Text($"Total estimado: {Money(q.EstimatedTotal)}").SemiBold();
                         });
                     });
@@ -144,6 +167,14 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
         c.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5);
 
     private static string LabelSegment(QuoteSegment s) => s == QuoteSegment.Business ? "Empresarial" : "Residencial";
+
+    private static string LabelStatus(QuoteRequestStatus s) => s switch
+    {
+        QuoteRequestStatus.New => "Nueva",
+        QuoteRequestStatus.Emailed => "Enviada",
+        QuoteRequestStatus.EmailError => "Error de envio",
+        _ => s.ToString()
+    };
 
     private static string Money(decimal? v) => (v ?? 0m).ToString("C2");
 }

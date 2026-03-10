@@ -43,7 +43,65 @@ public class QuoteModel : PageModel
         await LoadCatalogPayloadAsync();
     }
 
+    public async Task<IActionResult> OnPostPreviewAsync()
+    {
+        var build = await BuildRequestFromInputAsync(isPreview: true);
+        if (build.error != null || build.request == null)
+        {
+            ErrorMessage = build.error ?? "No se pudo generar el preview.";
+            return Page();
+        }
+
+        var pdfBytes = await _pdf.RenderAsync(build.request);
+        Response.Headers.ContentDisposition = $"inline; filename=\"{build.request.Folio}.pdf\"";
+        return File(pdfBytes, "application/pdf");
+    }
+
     public async Task<IActionResult> OnPostAsync()
+    {
+        var build = await BuildRequestFromInputAsync(isPreview: false);
+        if (build.error != null || build.request == null)
+        {
+            ErrorMessage = build.error ?? "No se pudo generar la cotizacion.";
+            return Page();
+        }
+
+        var request = build.request;
+
+        _db.QuoteRequests.Add(request);
+        await _db.SaveChangesAsync();
+
+        var pdfBytes = await _pdf.RenderAsync(request);
+        var fileName = $"{request.Folio}.pdf";
+        var save = await _storage.SaveBytesAsync(pdfBytes, "quotes", fileName, "application/pdf");
+        request.PdfStoragePath = save.storagePath;
+
+        var subject = $"Cotizacion {request.Folio} - HN Control";
+        var bodyCustomer = BuildEmailBody(request, true);
+        var bodyInternal = BuildEmailBody(request, false);
+
+        try
+        {
+            await _email.SendAsync(request.CustomerEmail, subject, bodyCustomer, pdfBytes, fileName, "application/pdf");
+
+            var copy = (_cfg["Quotes:InternalCopyEmail"] ?? _cfg["SeedAdmin:Email"] ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(copy))
+                await _email.SendAsync(copy, $"[Copia interna] {subject}", bodyInternal, pdfBytes, fileName, "application/pdf");
+
+            request.Status = QuoteRequestStatus.Emailed;
+            await _db.SaveChangesAsync();
+
+            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 1 });
+        }
+        catch
+        {
+            request.Status = QuoteRequestStatus.EmailError;
+            await _db.SaveChangesAsync();
+            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 0 });
+        }
+    }
+
+    private async Task<(QuoteRequest? request, string? error)> BuildRequestFromInputAsync(bool isPreview)
     {
         var boundClient = await TryLoadClientContextAsync(Input.ClientToken);
         if (boundClient != null)
@@ -62,8 +120,7 @@ public class QuoteModel : PageModel
             || string.IsNullOrWhiteSpace(Input.CustomerPhone)
             || string.IsNullOrWhiteSpace(Input.CustomerLocation))
         {
-            ErrorMessage = "Completa nombre, correo, telefono y ubicacion.";
-            return Page();
+            return (null, "Completa nombre, correo, telefono y ubicacion.");
         }
 
         List<LinePickVm>? picks;
@@ -76,15 +133,11 @@ public class QuoteModel : PageModel
         }
         catch
         {
-            ErrorMessage = "No se pudieron leer los conceptos seleccionados.";
-            return Page();
+            return (null, "No se pudieron leer los conceptos seleccionados.");
         }
 
         if (picks == null || picks.Count == 0)
-        {
-            ErrorMessage = "Agrega al menos un concepto para cotizar.";
-            return Page();
-        }
+            return (null, "Agrega al menos un concepto para cotizar.");
 
         var activeItems = await _db.QuoteCatalogItems
             .AsNoTracking()
@@ -95,7 +148,7 @@ public class QuoteModel : PageModel
 
         var request = new QuoteRequest
         {
-            Folio = await NextFolioAsync(),
+            Folio = isPreview ? $"PREV-{DateTime.UtcNow:yyyyMMddHHmmss}" : await NextFolioAsync(),
             Segment = Input.Segment,
             Status = QuoteRequestStatus.New,
             CustomerName = Input.CustomerName.Trim(),
@@ -155,21 +208,18 @@ public class QuoteModel : PageModel
                 SubproductName = subName,
                 Description = selected.Description,
                 Quantity = qty,
-            UnitPrice = selected.UnitPrice,
-            PriceIncludesVat = selected.UnitPriceIncludesVat,
-            VatRate = 0.16m,
-            IsManualPrice = manual,
-            BaseAmount = manual ? null : baseAmount,
-            VatAmount = manual ? null : vatAmount,
-            LineTotal = lineTotal
-        });
+                UnitPrice = selected.UnitPrice,
+                PriceIncludesVat = selected.UnitPriceIncludesVat,
+                VatRate = 0.16m,
+                IsManualPrice = manual,
+                BaseAmount = manual ? null : baseAmount,
+                VatAmount = manual ? null : vatAmount,
+                LineTotal = lineTotal
+            });
         }
 
         if (request.Lines.Count == 0)
-        {
-            ErrorMessage = "No hay conceptos validos en la seleccion.";
-            return Page();
-        }
+            return (null, "No hay conceptos validos en la seleccion.");
 
         request.SubtotalBeforeVat = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.BaseAmount ?? 0m);
         request.VatAmount = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.VatAmount ?? 0m);
@@ -177,37 +227,7 @@ public class QuoteModel : PageModel
         request.ManualItemsCount = request.Lines.Count(x => x.IsManualPrice);
         request.EstimatedTotal = request.SubtotalAuto;
 
-        _db.QuoteRequests.Add(request);
-        await _db.SaveChangesAsync();
-
-        var pdfBytes = await _pdf.RenderAsync(request);
-        var fileName = $"{request.Folio}.pdf";
-        var save = await _storage.SaveBytesAsync(pdfBytes, "quotes", fileName, "application/pdf");
-        request.PdfStoragePath = save.storagePath;
-
-        var subject = $"Cotizacion {request.Folio} - HN Control";
-        var bodyCustomer = BuildEmailBody(request, true);
-        var bodyInternal = BuildEmailBody(request, false);
-
-        try
-        {
-            await _email.SendAsync(request.CustomerEmail, subject, bodyCustomer, pdfBytes, fileName, "application/pdf");
-
-            var copy = (_cfg["Quotes:InternalCopyEmail"] ?? _cfg["SeedAdmin:Email"] ?? "").Trim();
-            if (!string.IsNullOrWhiteSpace(copy))
-                await _email.SendAsync(copy, $"[Copia interna] {subject}", bodyInternal, pdfBytes, fileName, "application/pdf");
-
-            request.Status = QuoteRequestStatus.Emailed;
-            await _db.SaveChangesAsync();
-
-            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 1 });
-        }
-        catch
-        {
-            request.Status = QuoteRequestStatus.EmailError;
-            await _db.SaveChangesAsync();
-            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 0 });
-        }
+        return (request, null);
     }
 
     private async Task LoadCatalogPayloadAsync()
