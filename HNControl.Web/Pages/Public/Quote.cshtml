@@ -133,6 +133,7 @@
 (() => {
     const payload = @Html.Raw(catalogJson);
     const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant();
+    const IVA = 0.16;
     const lines = [];
 
     const seg = document.getElementById('segmentSelect');
@@ -224,8 +225,10 @@
 
     function recalc(){
         const auto = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
+        const base = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
+        const vat = lines.filter(x => !x.isManual).reduce((a,b) => a + b.vat, 0);
         const man = lines.filter(x => x.isManual).length;
-        autoTotal.textContent = 'Subtotal: ' + toMoney(auto);
+        autoTotal.textContent = 'Total c/IVA: ' + toMoney(auto) + ' (Base ' + toMoney(base) + ' + IVA ' + toMoney(vat) + ')';
         manualBadge.textContent = 'Manuales: ' + man;
         linesJson.value = JSON.stringify(lines.map(x => ({
             categoryId: x.categoryId,
@@ -250,7 +253,7 @@
                 <td>${l.serviceName}</td>
                 <td>${l.subproductName || '-'}</td>
                 <td class="text-center">${l.quantity}</td>
-                <td class="text-end">${l.isManual ? 'Manual' : toMoney(l.unitPrice)}</td>
+                <td class="text-end">${l.isManual ? 'Manual' : (toMoney(l.unitPrice) + (l.includesVat ? ' (IVA incl.)' : ' + IVA'))}</td>
                 <td class="text-end">${l.isManual ? 'Por validar' : toMoney(l.total)}</td>
                 <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button></td>
             `;
@@ -282,6 +285,22 @@
         const isManual = !!selected.isManualPrice || selected.unitPrice == null;
         const unit = Number(selected.unitPrice || 0);
         const q = Math.max(1, Number(qty.value || 1));
+        const includesVat = !!selected.unitPriceIncludesVat;
+        let base = 0;
+        let vat = 0;
+        let total = 0;
+        if(!isManual){
+            const raw = unit * q;
+            if(includesVat){
+                total = raw;
+                base = total / (1 + IVA);
+                vat = total - base;
+            } else {
+                base = raw;
+                vat = base * IVA;
+                total = base + vat;
+            }
+        }
 
         lines.push({
             categoryId: category.id,
@@ -292,7 +311,10 @@
             subproductName: subItem ? subItem.name : '',
             quantity: q,
             unitPrice: unit,
-            total: unit * q,
+            includesVat,
+            base,
+            vat,
+            total,
             isManual
         });
 

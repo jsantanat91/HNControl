@@ -41,6 +41,7 @@ public class QuoteCatalogItem
     public string? Description { get; set; }
 
     public decimal? UnitPrice { get; set; }
+    public bool UnitPriceIncludesVat { get; set; }
     public bool IsManualPrice { get; set; }
 
     [MaxLength(600)]
@@ -65,6 +66,7 @@ public class QuoteCatalogRule
 public class QuoteRequest
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? ClientId { get; set; }
 
     [MaxLength(30)]
     public string Folio { get; set; } = string.Empty;
@@ -91,6 +93,8 @@ public class QuoteRequest
     public string? Notes { get; set; }
 
     public decimal SubtotalAuto { get; set; }
+    public decimal SubtotalBeforeVat { get; set; }
+    public decimal VatAmount { get; set; }
     public int ManualItemsCount { get; set; }
     public decimal? EstimatedTotal { get; set; }
 
@@ -99,6 +103,7 @@ public class QuoteRequest
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public Client? Client { get; set; }
     public List<QuoteRequestLine> Lines { get; set; } = [];
 }
 
@@ -121,6 +126,10 @@ public class QuoteRequestLine
 
     public int Quantity { get; set; } = 1;
     public decimal? UnitPrice { get; set; }
+    public bool PriceIncludesVat { get; set; }
+    public decimal VatRate { get; set; } = 0.16m;
+    public decimal? BaseAmount { get; set; }
+    public decimal? VatAmount { get; set; }
     public bool IsManualPrice { get; set; }
     public decimal? LineTotal { get; set; }
 

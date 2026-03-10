@@ -40,6 +40,7 @@ public class EditItemModel : PageModel
             Name = item.Name,
             Description = item.Description,
             UnitPrice = item.UnitPrice,
+            UnitPriceIncludesVat = item.UnitPriceIncludesVat,
             IsManualPrice = item.IsManualPrice,
             ReferenceUrl = item.ReferenceUrl,
             SortOrder = item.SortOrder
@@ -64,6 +65,7 @@ public class EditItemModel : PageModel
         item.Name = (Input.Name ?? string.Empty).Trim();
         item.Description = string.IsNullOrWhiteSpace(Input.Description) ? null : Input.Description.Trim();
         item.UnitPrice = Input.UnitPrice;
+        item.UnitPriceIncludesVat = Input.UnitPriceIncludesVat;
         item.IsManualPrice = Input.IsManualPrice;
         item.ReferenceUrl = string.IsNullOrWhiteSpace(Input.ReferenceUrl) ? null : Input.ReferenceUrl.Trim();
         item.SortOrder = Input.SortOrder;
@@ -124,6 +126,7 @@ public class EditItemModel : PageModel
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal? UnitPrice { get; set; }
+        public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
         public string? ReferenceUrl { get; set; }
         public int SortOrder { get; set; }

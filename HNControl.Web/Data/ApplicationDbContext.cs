@@ -711,14 +711,22 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.Notes).HasMaxLength(1200);
             e.Property(x => x.PdfStoragePath).HasMaxLength(500);
             e.Property(x => x.SubtotalAuto).HasColumnType("numeric(12,2)");
+            e.Property(x => x.SubtotalBeforeVat).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.EstimatedTotal).HasColumnType("numeric(12,2)");
             e.HasIndex(x => x.Folio).IsUnique();
             e.HasIndex(x => new { x.Segment, x.CreatedAt });
+            e.HasIndex(x => x.ClientId);
 
             e.HasMany(x => x.Lines)
                 .WithOne(l => l.QuoteRequest!)
                 .HasForeignKey(l => l.QuoteRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<QuoteRequestLine>(e =>
@@ -729,6 +737,9 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.SubproductName).HasMaxLength(140);
             e.Property(x => x.Description).HasMaxLength(1200);
             e.Property(x => x.UnitPrice).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VatRate).HasColumnType("numeric(6,4)");
+            e.Property(x => x.BaseAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.LineTotal).HasColumnType("numeric(12,2)");
             e.HasIndex(x => x.QuoteRequestId);
         });

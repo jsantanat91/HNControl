@@ -103,7 +103,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 t.Cell().Element(CellBody).Text(line.SubproductName ?? "-");
                                 t.Cell().Element(CellBody).AlignCenter().Text(line.Quantity.ToString());
                                 t.Cell().Element(CellBody).AlignRight()
-                                    .Text(line.IsManualPrice ? "Manual" : Money(line.UnitPrice));
+                                    .Text(line.IsManualPrice ? "Manual" : $"{Money(line.UnitPrice)} {(line.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}");
                                 t.Cell().Element(CellBody).AlignRight()
                                     .Text(line.IsManualPrice ? "Por validar" : Money(line.LineTotal));
                             }
@@ -120,6 +120,8 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                         });
                         r.ConstantItem(190).Column(x =>
                         {
+                            x.Item().AlignRight().Text($"Subtotal sin IVA: {Money(q.SubtotalBeforeVat)}");
+                            x.Item().AlignRight().Text($"IVA 16%: {Money(q.VatAmount)}");
                             x.Item().AlignRight().Text($"Subtotal automatico: {Money(q.SubtotalAuto)}");
                             x.Item().AlignRight().Text($"Conceptos manuales: {q.ManualItemsCount}");
                             x.Item().AlignRight().Text($"Total estimado: {Money(q.EstimatedTotal)}").SemiBold();

@@ -79,6 +79,7 @@ public class RequestsModel : PageModel
                     SubproductName = l.SubproductName,
                     Quantity = l.Quantity,
                     UnitPrice = l.UnitPrice,
+                    PriceIncludesVat = l.PriceIncludesVat,
                     IsManualPrice = l.IsManualPrice,
                     LineTotal = l.LineTotal
                 }).ToList()
@@ -119,6 +120,7 @@ public class RequestsModel : PageModel
         public string? SubproductName { get; set; }
         public int Quantity { get; set; }
         public decimal? UnitPrice { get; set; }
+        public bool PriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
         public decimal? LineTotal { get; set; }
     }

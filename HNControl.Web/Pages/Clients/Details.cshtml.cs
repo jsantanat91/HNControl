@@ -39,6 +39,8 @@ public class DetailsModel : PageModel
 
     public record ProjectRow(Guid Id, string Title, string StartDate, string EstEnd, string Status);
     public List<ProjectRow> Projects { get; set; } = new();
+    public record QuoteRow(Guid Id, string Folio, string CreatedAt, string Segment, decimal Total, int ManualItems, bool HasPdf);
+    public List<QuoteRow> Quotes { get; set; } = new();
     public string PublicQuoteUrl { get; set; } = string.Empty;
 
     public async Task OnGetAsync(Guid id)
@@ -131,6 +133,22 @@ public class DetailsModel : PageModel
             p.EstimatedEndDate.ToString("yyyy-MM-dd"),
             p.Status.ToString()
         )).ToList();
+
+        Quotes = await _db.QuoteRequests
+            .AsNoTracking()
+            .Where(x => x.ClientId == id)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(30)
+            .Select(x => new QuoteRow(
+                x.Id,
+                x.Folio,
+                x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                x.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial",
+                x.EstimatedTotal ?? x.SubtotalAuto,
+                x.ManualItemsCount,
+                !string.IsNullOrWhiteSpace(x.PdfStoragePath)
+            ))
+            .ToListAsync();
     }
 
     private async Task<string> NextClientCodeAsync()

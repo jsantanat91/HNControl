@@ -107,6 +107,9 @@ public class QuoteModel : PageModel
             CreatedAt = DateTime.UtcNow
         };
 
+        if (boundClient != null)
+            request.ClientId = boundClient.Id;
+
         foreach (var p in picks)
         {
             if (!byId.TryGetValue(p.CategoryId, out var cat) || cat.NodeType != QuoteNodeType.Category)
@@ -124,7 +127,26 @@ public class QuoteModel : PageModel
 
             var qty = p.Quantity <= 0 ? 1 : p.Quantity;
             var manual = selected.IsManualPrice || !selected.UnitPrice.HasValue;
-            var lineTotal = manual ? (decimal?)null : selected.UnitPrice!.Value * qty;
+            decimal? baseAmount = null;
+            decimal? vatAmount = null;
+            decimal? lineTotal = null;
+            if (!manual)
+            {
+                var rate = 0.16m;
+                var raw = selected.UnitPrice!.Value * qty;
+                if (selected.UnitPriceIncludesVat)
+                {
+                    lineTotal = Math.Round(raw, 2);
+                    baseAmount = Math.Round(lineTotal.Value / (1m + rate), 2);
+                    vatAmount = Math.Round(lineTotal.Value - baseAmount.Value, 2);
+                }
+                else
+                {
+                    baseAmount = Math.Round(raw, 2);
+                    vatAmount = Math.Round(baseAmount.Value * rate, 2);
+                    lineTotal = Math.Round(baseAmount.Value + vatAmount.Value, 2);
+                }
+            }
 
             request.Lines.Add(new QuoteRequestLine
             {
@@ -133,10 +155,14 @@ public class QuoteModel : PageModel
                 SubproductName = subName,
                 Description = selected.Description,
                 Quantity = qty,
-                UnitPrice = selected.UnitPrice,
-                IsManualPrice = manual,
-                LineTotal = lineTotal
-            });
+            UnitPrice = selected.UnitPrice,
+            PriceIncludesVat = selected.UnitPriceIncludesVat,
+            VatRate = 0.16m,
+            IsManualPrice = manual,
+            BaseAmount = manual ? null : baseAmount,
+            VatAmount = manual ? null : vatAmount,
+            LineTotal = lineTotal
+        });
         }
 
         if (request.Lines.Count == 0)
@@ -145,6 +171,8 @@ public class QuoteModel : PageModel
             return Page();
         }
 
+        request.SubtotalBeforeVat = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.BaseAmount ?? 0m);
+        request.VatAmount = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.VatAmount ?? 0m);
         request.SubtotalAuto = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.LineTotal ?? 0m);
         request.ManualItemsCount = request.Lines.Count(x => x.IsManualPrice);
         request.EstimatedTotal = request.SubtotalAuto;
@@ -222,6 +250,7 @@ public class QuoteModel : PageModel
         name = x.Name,
         description = x.Description,
         unitPrice = x.UnitPrice,
+        unitPriceIncludesVat = x.UnitPriceIncludesVat,
         isManualPrice = x.IsManualPrice,
         referenceUrl = x.ReferenceUrl
     };

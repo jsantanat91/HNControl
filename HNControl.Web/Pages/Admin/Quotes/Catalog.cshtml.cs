@@ -56,6 +56,7 @@ public class CatalogModel : PageModel
             Name = Input.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(Input.Description) ? null : Input.Description.Trim(),
             UnitPrice = Input.UnitPrice,
+            UnitPriceIncludesVat = Input.UnitPriceIncludesVat,
             IsManualPrice = Input.IsManualPrice,
             ReferenceUrl = string.IsNullOrWhiteSpace(Input.ReferenceUrl) ? null : Input.ReferenceUrl.Trim(),
             SortOrder = Input.SortOrder,
@@ -263,6 +264,7 @@ public class CatalogModel : PageModel
             Name = x.Name,
             Description = x.Description,
             UnitPrice = x.UnitPrice,
+            UnitPriceIncludesVat = x.UnitPriceIncludesVat,
             IsManualPrice = x.IsManualPrice,
             ReferenceUrl = x.ReferenceUrl,
             IsActive = x.IsActive,
@@ -358,6 +360,7 @@ public class CatalogModel : PageModel
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal? UnitPrice { get; set; }
+        public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
         public string? ReferenceUrl { get; set; }
         public int SortOrder { get; set; }
@@ -371,6 +374,7 @@ public class CatalogModel : PageModel
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal? UnitPrice { get; set; }
+        public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
         public string? ReferenceUrl { get; set; }
         public bool IsActive { get; set; }

@@ -62,7 +62,13 @@ else
                     <label class="form-label">Costo unitario</label>
                     <input asp-for="Input.UnitPrice" class="form-control" />
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="Input.UnitPriceIncludesVat" class="form-check-input" />
+                        <label asp-for="Input.UnitPriceIncludesVat" class="form-check-label">Costo con IVA</label>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
                     <div class="form-check mb-2">
                         <input asp-for="Input.IsManualPrice" class="form-check-input" />
                         <label asp-for="Input.IsManualPrice" class="form-check-label">Costo manual</label>

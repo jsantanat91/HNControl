@@ -3,6 +3,7 @@ using System;
 using HNControl.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HNControl.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309233943_LinkQuotesToClient")]
+    partial class LinkQuotesToClient
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1895,9 +1898,6 @@ namespace HNControl.Web.Migrations
                     b.Property<decimal?>("UnitPrice")
                         .HasColumnType("numeric(12,2)");
 
-                    b.Property<bool>("UnitPriceIncludesVat")
-                        .HasColumnType("boolean");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Segment", "NodeType", "ParentId", "IsActive");
@@ -2003,12 +2003,6 @@ namespace HNControl.Web.Migrations
                     b.Property<decimal>("SubtotalAuto")
                         .HasColumnType("numeric(12,2)");
 
-                    b.Property<decimal>("SubtotalBeforeVat")
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<decimal>("VatAmount")
-                        .HasColumnType("numeric(12,2)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
@@ -2027,9 +2021,6 @@ namespace HNControl.Web.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal?>("BaseAmount")
-                        .HasColumnType("numeric(12,2)");
-
                     b.Property<string>("CategoryName")
                         .IsRequired()
                         .HasMaxLength(140)
@@ -2044,9 +2035,6 @@ namespace HNControl.Web.Migrations
 
                     b.Property<decimal?>("LineTotal")
                         .HasColumnType("numeric(12,2)");
-
-                    b.Property<bool>("PriceIncludesVat")
-                        .HasColumnType("boolean");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
@@ -2065,12 +2053,6 @@ namespace HNControl.Web.Migrations
 
                     b.Property<decimal?>("UnitPrice")
                         .HasColumnType("numeric(12,2)");
-
-                    b.Property<decimal?>("VatAmount")
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<decimal>("VatRate")
-                        .HasColumnType("numeric(6,4)");
 
                     b.HasKey("Id");
 

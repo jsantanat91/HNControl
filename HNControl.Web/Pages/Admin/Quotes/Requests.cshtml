@@ -82,7 +82,7 @@
                             <td>@l.ServiceName</td>
                             <td>@(string.IsNullOrWhiteSpace(l.SubproductName) ? "-" : l.SubproductName)</td>
                             <td class="text-center">@l.Quantity</td>
-                            <td class="text-end">@(l.IsManualPrice ? "Manual" : l.UnitPrice?.ToString("C2"))</td>
+                            <td class="text-end">@(l.IsManualPrice ? "Manual" : $"{l.UnitPrice?.ToString("C2")} {(l.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}")</td>
                             <td class="text-end">@(l.IsManualPrice ? "Por validar" : l.LineTotal?.ToString("C2"))</td>
                         </tr>
                     }
