@@ -32,6 +32,10 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string ReportMonth { get; set; } = DateTime.Now.ToString("yyyy-MM");
     public List<string> ReportMonthOptions { get; set; } = new();
+    [TempData]
+    public string? UiMessage { get; set; }
+    [TempData]
+    public string? UiMessageType { get; set; }
 
     public int OpenCount { get; set; }
     public int MineCount { get; set; }
@@ -61,7 +65,9 @@ public class IndexModel : PageModel
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        await _flow.TryTakeAsync(id, uid, uname, IsAdmin);
+        var ok = await _flow.TryTakeAsync(id, uid, uname, IsAdmin);
+        UiMessage = ok ? "Ticket tomado y asignado correctamente." : "No se pudo tomar el ticket.";
+        UiMessageType = ok ? "success" : "danger";
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -69,7 +75,9 @@ public class IndexModel : PageModel
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        await _flow.TryStartAsync(id, uid, uname, IsAdmin);
+        var ok = await _flow.TryStartAsync(id, uid, uname, IsAdmin);
+        UiMessage = ok ? "Ticket iniciado." : "No se pudo iniciar el ticket.";
+        UiMessageType = ok ? "success" : "danger";
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -77,7 +85,9 @@ public class IndexModel : PageModel
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        await _flow.TryResolveAsync(id, uid, uname, summary ?? "", IsAdmin);
+        var ok = await _flow.TryResolveAsync(id, uid, uname, summary ?? "", IsAdmin);
+        UiMessage = ok ? "Ticket marcado como resuelto." : "No se pudo resolver el ticket.";
+        UiMessageType = ok ? "success" : "danger";
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -85,7 +95,9 @@ public class IndexModel : PageModel
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        await _flow.TryCloseAsync(id, uid, uname, IsAdmin);
+        var ok = await _flow.TryCloseAsync(id, uid, uname, IsAdmin);
+        UiMessage = ok ? $"Ticket cerrado por {uname}." : "No se pudo cerrar el ticket.";
+        UiMessageType = ok ? "success" : "danger";
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -100,6 +112,8 @@ public class IndexModel : PageModel
             || string.IsNullOrWhiteSpace(CreateInput.RequesterEmail)
             || string.IsNullOrWhiteSpace(CreateInput.Description))
         {
+            UiMessage = "Faltan campos obligatorios para crear el ticket.";
+            UiMessageType = "danger";
             return RedirectToPage(new { status = StatusFilter, q = Search });
         }
 
@@ -121,6 +135,8 @@ public class IndexModel : PageModel
             string.IsNullOrWhiteSpace(CreateInput.AssignedToName) ? null : CreateInput.AssignedToName
         );
 
+        UiMessage = "Ticket manual creado correctamente.";
+        UiMessageType = "success";
         return RedirectToPage(new { status = "open" });
     }
 
@@ -128,13 +144,15 @@ public class IndexModel : PageModel
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        await _flow.AddNoteWithEvidenceAsync(
+        var ok = await _flow.AddNoteWithEvidenceAsync(
             id,
             uid,
             uname,
             noteText ?? "",
             noteFile,
             IsAdmin);
+        UiMessage = ok ? "Bitácora guardada correctamente." : "No se pudo guardar la bitácora. Captura una nota o adjunta evidencia en ticket abierto.";
+        UiMessageType = ok ? "success" : "danger";
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -329,7 +347,7 @@ public class IndexModel : PageModel
             DueResponseAt = t.SlaResponseDueAt,
             DueResolutionAt = t.SlaResolutionDueAt,
             Breach = t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
-            CanTake = t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled,
+            CanTake = string.IsNullOrWhiteSpace(t.AssignedToUserId) && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled,
             IsMine = t.AssignedToUserId == uid,
             AttachmentCount = _db.TicketAttachments.Count(a => a.TicketId == t.Id)
         }).ToListAsync();

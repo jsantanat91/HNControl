@@ -329,9 +329,13 @@ public class TicketFlowService : ITicketFlowService
     {
         var t = await _db.Tickets.FirstOrDefaultAsync(x => x.Id == ticketId, ct);
         if (t == null) return false;
-        if (!CanOperate(t, userId, isAdmin)) return false;
+        if (t.Status is TicketStatus.Closed or TicketStatus.Cancelled) return false;
 
         var now = DateTime.UtcNow;
+        var previousOwner = string.IsNullOrWhiteSpace(t.AssignedToName) ? "Sin asignar" : t.AssignedToName;
+        t.AssignedToUserId = userId;
+        t.AssignedToName = userName;
+        t.AssignedAt ??= now;
         t.Status = TicketStatus.Closed;
         t.ClosedAt = now;
         t.UpdatedAt = now;
@@ -343,7 +347,7 @@ public class TicketFlowService : ITicketFlowService
             EventType = "Closed",
             UserId = userId,
             UserName = userName,
-            Message = "Ticket cerrado.",
+            Message = $"Ticket cerrado por {userName}. Asignado previo: {previousOwner}.",
             CreatedAt = now
         });
 
@@ -383,7 +387,7 @@ public class TicketFlowService : ITicketFlowService
     {
         var t = await _db.Tickets.FirstOrDefaultAsync(x => x.Id == ticketId, ct);
         if (t == null) return false;
-        if (!CanOperate(t, userId, isAdmin)) return false;
+        if (t.Status is TicketStatus.Closed or TicketStatus.Cancelled) return false;
         if (string.IsNullOrWhiteSpace(note) && (evidence == null || evidence.Length <= 0)) return false;
 
         var now = DateTime.UtcNow;
@@ -478,20 +482,8 @@ public class TicketFlowService : ITicketFlowService
 
     private static void SetSla(Ticket t, DateTime now)
     {
-        var responseHours = t.Priority switch
-        {
-            TicketPriority.Critical => 1,
-            TicketPriority.High => 2,
-            TicketPriority.Medium => 4,
-            _ => 8
-        };
-        var resolutionHours = t.Priority switch
-        {
-            TicketPriority.Critical => 4,
-            TicketPriority.High => 8,
-            TicketPriority.Medium => 24,
-            _ => 48
-        };
+        const int responseHours = 8;
+        const int resolutionHours = 8;
 
         t.SlaResponseDueAt = now.AddHours(responseHours);
         t.SlaResolutionDueAt = now.AddHours(resolutionHours);
