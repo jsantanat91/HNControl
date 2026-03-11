@@ -78,6 +78,12 @@ public class CreateModel : PageModel
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
 
+        [MaxLength(140)]
+        public string Branch { get; set; } = "";
+
+        [MaxLength(320)]
+        public string BranchAddress { get; set; } = "";
+
         public IFormFile? SignedContract { get; set; }
     }
 
@@ -144,6 +150,8 @@ public class CreateModel : PageModel
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = (Input.Notes ?? "").Trim(),
             MonthlyAmount = Input.MonthlyAmount,
+            Branch = (Input.Branch ?? "").Trim(),
+            BranchAddress = (Input.BranchAddress ?? "").Trim(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

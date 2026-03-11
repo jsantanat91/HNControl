@@ -89,6 +89,10 @@ else
                                                 }
                                                 <div class="d-flex flex-wrap align-items-center gap-1 mt-2">
                                                     <span class="hn-chip hn-chip-neutral">@t.ProbeType</span>
+                                                    @if (!string.IsNullOrWhiteSpace(t.Branch))
+                                                    {
+                                                        <span class="hn-chip hn-chip-type">Sucursal: @t.Branch</span>
+                                                    }
                                                     <span class="hn-chip hn-chip-ref">@t.Address</span>
                                                 </div>
                                             </div>

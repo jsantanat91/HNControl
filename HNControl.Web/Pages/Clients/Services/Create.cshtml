@@ -74,9 +74,14 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Monto mensual</label>
-                <input class="form-control" asp-for="Input.MonthlyAmount" placeholder="$0.00" />
-                <div class="form-text">Costo mensual del servicio.</div>
+                <label class="form-label">Sucursal</label>
+                <input class="form-control" asp-for="Input.Branch" placeholder="Ej: Matriz / Tultepark / Sucursal Toluca" />
+                <div class="form-text">Se usa para tickets, monitoreo y carrier.</div>
+            </div>
+
+            <div class="col-md-8">
+                <label class="form-label">Direccion de sucursal (opcional)</label>
+                <input class="form-control" asp-for="Input.BranchAddress" placeholder="Direccion del sitio para soporte y tickets" />
             </div>
 
             <div class="col-md-6">

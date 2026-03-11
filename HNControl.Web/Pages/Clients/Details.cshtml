@@ -68,13 +68,17 @@
                                     <div class="text-muted small">
                                         Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "-" : c.AccountNumber)
                                         &middot; #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "-" : c.ContractNumber)
-                                        @if (c.MonthlyAmount.HasValue)
+                                        @if (!string.IsNullOrWhiteSpace(c.Branch))
                                         {
-                                            <span> &middot; Mensual: <b>@c.MonthlyAmount.Value.ToString("C")</b></span>
+                                            <span> &middot; <span class="hn-chip hn-chip-ref">Sucursal: @c.Branch</span></span>
                                         }
                                         @if (c.HasPortalAccess)
                                         {
                                             <span> &middot; <span class="badge bg-info text-dark">Acceso portal</span></span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(c.BranchAddress))
+                                        {
+                                            <div class="text-muted small mt-1">Direccion sucursal: @c.BranchAddress</div>
                                         }
                                     </div>
                                 </td>
@@ -142,7 +146,7 @@
                     <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('ticketPublicLink').value)">Copiar</button>
                     <a class="btn btn-primary" href="@Model.PublicTicketUrl" target="_blank" rel="noopener">Abrir</a>
                 </div>
-                <div class="text-muted small mt-2">El cliente captura su codigo (ej: HN-0001), selecciona contrato y levanta ticket ITIL.</div>
+                <div class="text-muted small mt-2">El cliente captura su ID (ej: HN-0001), selecciona sucursal y levanta ticket ITIL.</div>
             </div>
         </div>
 

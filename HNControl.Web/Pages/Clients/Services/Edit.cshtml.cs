@@ -82,6 +82,12 @@ public class EditModel : PageModel
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
 
+        [MaxLength(140)]
+        public string Branch { get; set; } = "";
+
+        [MaxLength(320)]
+        public string BranchAddress { get; set; } = "";
+
         public IFormFile? SignedContract { get; set; }
     }
 
@@ -114,6 +120,8 @@ public class EditModel : PageModel
             AccountNumber = string.IsNullOrWhiteSpace(Contract.AccountNumber) ? ClientCode : Contract.AccountNumber,
             ContractNumber = string.IsNullOrWhiteSpace(Contract.ContractNumber) ? $"{ClientCode}-01" : Contract.ContractNumber,
             MonthlyAmount = Contract.MonthlyAmount,
+            Branch = Contract.Branch,
+            BranchAddress = Contract.BranchAddress,
             PortalUrl = Contract.PortalUrl ?? "",
             PortalUsername = Contract.PortalUsername ?? "",
             PortalPassword = _protector.Unprotect(Contract.PortalPasswordProtected),
@@ -154,6 +162,8 @@ public class EditModel : PageModel
         Contract.AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? ClientCode : Input.AccountNumber.Trim();
         Contract.ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber) ? $"{ClientCode}-01" : Input.ContractNumber.Trim();
         Contract.MonthlyAmount = Input.MonthlyAmount;
+        Contract.Branch = (Input.Branch ?? "").Trim();
+        Contract.BranchAddress = (Input.BranchAddress ?? "").Trim();
         Contract.PortalUrl = (Input.PortalUrl ?? "").Trim();
         Contract.PortalUsername = (Input.PortalUsername ?? "").Trim();
         Contract.PortalPasswordProtected = _protector.Protect((Input.PortalPassword ?? "").Trim());

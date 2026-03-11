@@ -18,12 +18,14 @@ public class ModulesController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IModuleAccessService _moduleAccess;
     private readonly ITicketFlowService _ticketFlow;
+    private readonly IFileStorage _storage;
 
-    public ModulesController(ApplicationDbContext db, IModuleAccessService moduleAccess, ITicketFlowService ticketFlow)
+    public ModulesController(ApplicationDbContext db, IModuleAccessService moduleAccess, ITicketFlowService ticketFlow, IFileStorage storage)
     {
         _db = db;
         _moduleAccess = moduleAccess;
         _ticketFlow = ticketFlow;
+        _storage = storage;
     }
 
     public record ModuleItemDto(string Key, string Label);
@@ -42,8 +44,9 @@ public class ModulesController : ControllerBase
     public record MonitorCheckDto(DateTime CheckedAt, bool Success, int? LatencyMs, string Error);
     public record MonitorDetailDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError, string ContractLabel, string CarrierServiceLabel, string Notes, List<MonitorCheckDto> LastChecks);
     public record TicketItemDto(Guid Id, string TicketNumber, string Client, string Title, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, bool IsMine, bool CanTake);
-    public record TicketDetailDto(Guid Id, string TicketNumber, string Client, string Contract, string Title, string Description, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, string ResolutionSummary, List<TicketEventDto> Events);
+    public record TicketDetailDto(Guid Id, string TicketNumber, string Client, string Contract, string Title, string Description, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, string ResolutionSummary, List<TicketEventDto> Events, List<TicketAttachmentDto> Attachments);
     public record TicketEventDto(DateTime CreatedAt, string EventType, string UserName, string Message);
+    public record TicketAttachmentDto(Guid Id, string FileName, string ContentType, DateTime UploadedAt, string UploadedBy);
 
     [HttpGet]
     [ProducesResponseType(typeof(List<ModuleItemDto>), StatusCodes.Status200OK)]
@@ -213,6 +216,7 @@ public class ModulesController : ControllerBase
             .Include(x => x.Client)
             .Include(x => x.ClientServiceContract)
             .Include(x => x.Events)
+            .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id);
         if (t == null) return NotFound();
 
@@ -235,7 +239,8 @@ public class ModulesController : ControllerBase
             t.SlaResolutionDueAt,
             t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
             t.ResolutionSummary,
-            t.Events.OrderByDescending(e => e.CreatedAt).Take(60).Select(e => new TicketEventDto(e.CreatedAt, e.EventType, e.UserName, e.Message)).ToList()
+            t.Events.OrderByDescending(e => e.CreatedAt).Take(60).Select(e => new TicketEventDto(e.CreatedAt, e.EventType, e.UserName, e.Message)).ToList(),
+            t.Attachments.OrderByDescending(a => a.UploadedAt).Take(50).Select(a => new TicketAttachmentDto(a.Id, a.OriginalFileName, a.ContentType, a.UploadedAt, a.UploadedByName)).ToList()
         );
 
         return Ok(dto);
@@ -268,6 +273,7 @@ public class ModulesController : ControllerBase
     }
 
     public record TicketResolveBody(string Summary);
+    public record TicketNoteBody(string Note);
 
     [HttpPost("tickets/{id:guid}/resolve")]
     [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
@@ -280,6 +286,56 @@ public class ModulesController : ControllerBase
         var uname = User.Identity?.Name ?? "Usuario";
         var ok = await _ticketFlow.TryResolveAsync(id, uid, uname, body.Summary ?? "", AppRoles.IsGlobalAdmin(User));
         return Ok(new ApiMessageDto(ok ? "Ticket resuelto." : "No se pudo resolver."));
+    }
+
+    [HttpPost("tickets/{id:guid}/note")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketNote(Guid id, [FromBody] TicketNoteBody body)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.AddNoteWithEvidenceAsync(id, uid, uname, body.Note ?? "", null, AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Nota agregada." : "No se pudo agregar nota."));
+    }
+
+    [HttpPost("tickets/{id:guid}/evidence")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketEvidence(Guid id, [FromForm] string? note, [FromForm] IFormFile? file)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.AddNoteWithEvidenceAsync(id, uid, uname, note ?? "", file, AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Evidencia guardada." : "No se pudo guardar evidencia."));
+    }
+
+    [HttpGet("tickets/attachments/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TicketAttachmentDownload(Guid attachmentId)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+
+        var att = await _db.TicketAttachments
+            .AsNoTracking()
+            .Include(a => a.Ticket!)
+            .FirstOrDefaultAsync(a => a.Id == attachmentId);
+        if (att == null || att.Ticket == null) return NotFound();
+
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (!isAdmin && att.Ticket.AssignedToUserId != uid && !string.IsNullOrWhiteSpace(att.Ticket.AssignedToUserId))
+            return Forbid();
+
+        var downloadName = string.IsNullOrWhiteSpace(att.OriginalFileName) ? "adjunto" : att.OriginalFileName;
+        var (stream, contentType, _) = await _storage.OpenAsync(att.StoragePath, downloadName);
+        return File(stream, contentType, downloadName);
     }
 
     [HttpPost("tickets/{id:guid}/close")]

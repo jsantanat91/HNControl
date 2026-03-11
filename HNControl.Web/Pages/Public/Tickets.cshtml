@@ -17,18 +17,43 @@
                     <div class="alert @(Model.Success ? "alert-success" : "alert-warning")">@Model.Message</div>
                 }
 
-                <form method="post" asp-page-handler="Lookup" class="row g-2 align-items-end mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Ingresa tu ID de Cliente</label>
-                        <input asp-for="Input.ClientCode" class="form-control" placeholder="Ej. HN-0001" />
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-primary w-100">Buscar cliente</button>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-outline-secondary w-100" asp-page-handler="History">Historial</button>
-                    </div>
-                </form>
+                @if (Model.Client == null)
+                {
+                    <form method="post" asp-page-handler="Lookup" class="row g-2 align-items-end mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Ingresa tu ID de Cliente</label>
+                            <input asp-for="Input.ClientCode" class="form-control" placeholder="Ej. HN-0001" />
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100">Buscar cliente</button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary w-100" asp-page-handler="History">Historial</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" class="row g-2 align-items-end mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Ingresa tu ID de Cliente</label>
+                            <input asp-for="Input.ClientCode" class="form-control" readonly />
+                        </div>
+                        <div class="col-md-3">
+                            @if (Model.Input.Mode == "history")
+                            {
+                                <button class="btn btn-success w-100" asp-page-handler="New">Nuevo ticket</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-secondary w-100" asp-page-handler="History">Historial</button>
+                            }
+                        </div>
+                        <div class="col-md-3">
+                            <a class="btn btn-outline-danger w-100" href="/ticket-publico">Cancelar</a>
+                        </div>
+                    </form>
+                }
 
                 @if (Model.Client != null)
                 {
@@ -76,7 +101,7 @@
                                                     <div>
                                                         <div class="small text-muted">@h.TicketNumber</div>
                                                         <div class="h5 mb-1">@h.Title</div>
-                                                        <div class="text-muted small">Contrato: @h.Contract</div>
+                                                        <div class="text-muted small">Sucursal: @h.Contract</div>
                                                         <div class="text-muted small mt-1">@h.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
                                                     </div>
                                                     <div class="text-end d-flex flex-column gap-1 align-items-end">
@@ -98,14 +123,16 @@
                             <input asp-for="Input.Mode" type="hidden" />
 
                             <div class="col-md-6">
-                                <label class="form-label">Contrato</label>
-                                <select asp-for="Input.ContractId" class="form-select">
-                                    <option value="">Sin contrato especifico</option>
+                                <label class="form-label">Sucursal</label>
+                                <select id="publicContractSelect" asp-for="Input.ContractId" class="form-select">
+                                    <option value="">Sin sucursal especifica</option>
                                     @foreach (var c in Model.Contracts)
                                     {
-                                        <option value="@c.Id">@c.ServiceType - @c.Label</option>
+                                        var carrierData = Model.ContractCarrierMap.TryGetValue(c.Id, out var summary) ? summary : "";
+                                        <option value="@c.Id" data-address="@c.BranchAddress" data-carrier="@carrierData">@HNControl.Web.Pages.Public.TicketsModel.ContractToBranchLabel(c)</option>
                                     }
                                 </select>
+                                <div id="publicCarrierInfo" class="form-text">Selecciona una sucursal para ver datos carrier (IP/cuenta/circuito).</div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Prioridad</label>
@@ -135,7 +162,7 @@
 
                             <div class="col-12">
                                 <label class="form-label">Ubicacion / sitio</label>
-                                <input asp-for="Input.RequesterLocation" class="form-control" placeholder="Sucursal, direccion o referencia" />
+                                <input id="publicLocationInput" asp-for="Input.RequesterLocation" class="form-control" placeholder="Si seleccionas sucursal, se toma direccion automaticamente." />
                             </div>
 
                             <div class="col-12">
@@ -153,3 +180,31 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function syncPublicTicketLocation() {
+            const sel = document.getElementById('publicContractSelect');
+            const input = document.getElementById('publicLocationInput');
+            const carrier = document.getElementById('publicCarrierInfo');
+            if (!sel || !input) return;
+            const opt = sel.options[sel.selectedIndex];
+            const address = (opt && opt.getAttribute('data-address')) ? opt.getAttribute('data-address') : '';
+            const carrierSummary = (opt && opt.getAttribute('data-carrier')) ? opt.getAttribute('data-carrier') : '';
+            if (address && address.trim().length > 0) {
+                input.value = address;
+            }
+            if (carrier) {
+                carrier.textContent = carrierSummary && carrierSummary.trim().length > 0
+                    ? ("Datos carrier: " + carrierSummary)
+                    : "Selecciona una sucursal para ver datos carrier (IP/cuenta/circuito).";
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const sel = document.getElementById('publicContractSelect');
+            if (!sel) return;
+            sel.addEventListener('change', syncPublicTicketLocation);
+            syncPublicTicketLocation();
+        });
+    </script>
+}

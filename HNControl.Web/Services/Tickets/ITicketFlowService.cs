@@ -1,4 +1,5 @@
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace HNControl.Web.Services.Tickets;
 
@@ -38,4 +39,12 @@ public interface ITicketFlowService
     Task<bool> TryResolveAsync(Guid ticketId, string userId, string userName, string summary, bool isAdmin, CancellationToken ct = default);
     Task<bool> TryCloseAsync(Guid ticketId, string userId, string userName, bool isAdmin, CancellationToken ct = default);
     Task<bool> AddNoteAsync(Guid ticketId, string userId, string userName, string note, CancellationToken ct = default);
+    Task<bool> AddNoteWithEvidenceAsync(
+        Guid ticketId,
+        string userId,
+        string userName,
+        string note,
+        IFormFile? evidence,
+        bool isAdmin,
+        CancellationToken ct = default);
 }

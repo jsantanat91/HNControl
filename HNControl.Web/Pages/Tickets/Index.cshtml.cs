@@ -3,6 +3,7 @@ using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,9 @@ public class IndexModel : PageModel
     public int MineCount { get; set; }
     public int BreachCount { get; set; }
     public int AutoCount { get; set; }
+    public double AvgFirstResponseMinutes { get; set; }
+    public double AvgResolutionHours { get; set; }
+    public double SlaCompliancePercent { get; set; }
 
     public List<TicketVm> Items { get; set; } = new();
     public List<ClientGroupVm> Groups { get; set; } = new();
@@ -36,8 +40,6 @@ public class IndexModel : PageModel
     public List<ContractPickVm> ContractOptions { get; set; } = new();
     public List<EmployeePickVm> EmployeeOptions { get; set; } = new();
 
-    [BindProperty]
-    public string NoteText { get; set; } = "";
     [BindProperty]
     public CreateManualInput CreateInput { get; set; } = new();
 
@@ -115,12 +117,17 @@ public class IndexModel : PageModel
         return RedirectToPage(new { status = "open" });
     }
 
-    public async Task<IActionResult> OnPostNoteAsync(Guid id)
+    public async Task<IActionResult> OnPostNoteAsync(Guid id, string? noteText, IFormFile? noteFile)
     {
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var uname = User.Identity?.Name ?? "Usuario";
-        if (!string.IsNullOrWhiteSpace(NoteText))
-            await _flow.AddNoteAsync(id, uid, uname, NoteText);
+        await _flow.AddNoteWithEvidenceAsync(
+            id,
+            uid,
+            uname,
+            noteText ?? "",
+            noteFile,
+            IsAdmin);
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
@@ -140,6 +147,43 @@ public class IndexModel : PageModel
         MineCount = await baseQ.CountAsync(t => t.AssignedToUserId == uid && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
         BreachCount = await baseQ.CountAsync(t => (t.SlaBreachedResponse || t.SlaBreachedResolution) && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
         AutoCount = await baseQ.CountAsync(t => t.Source == TicketSource.MonitoringAuto && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
+
+        var from = now.AddDays(-30);
+        var kpiQ = _db.Tickets.AsNoTracking()
+            .Where(t => t.CreatedAt >= from && t.Status != TicketStatus.Cancelled);
+        var kpiRows = await kpiQ
+            .Select(t => new
+            {
+                t.CreatedAt,
+                t.FirstResponseAt,
+                t.ResolvedAt,
+                t.SlaResponseDueAt,
+                t.SlaResolutionDueAt
+            })
+            .ToListAsync();
+
+        var withFirst = kpiRows.Where(x => x.FirstResponseAt != null).ToList();
+        AvgFirstResponseMinutes = withFirst.Any()
+            ? Math.Round(withFirst.Average(x => (x.FirstResponseAt!.Value - x.CreatedAt).TotalMinutes), 1)
+            : 0;
+
+        var withResolved = kpiRows.Where(x => x.ResolvedAt != null).ToList();
+        AvgResolutionHours = withResolved.Any()
+            ? Math.Round(withResolved.Average(x => (x.ResolvedAt!.Value - x.CreatedAt).TotalHours), 2)
+            : 0;
+
+        var closedOrResolved = kpiRows.Where(x => x.ResolvedAt != null || x.FirstResponseAt != null).ToList();
+        if (closedOrResolved.Any())
+        {
+            var okCount = closedOrResolved.Count(x =>
+                (x.FirstResponseAt == null || x.FirstResponseAt <= x.SlaResponseDueAt) &&
+                (x.ResolvedAt == null || x.ResolvedAt <= x.SlaResolutionDueAt));
+            SlaCompliancePercent = Math.Round((okCount * 100d) / closedOrResolved.Count, 1);
+        }
+        else
+        {
+            SlaCompliancePercent = 0;
+        }
 
         if (!IsAdmin)
         {
@@ -166,8 +210,12 @@ public class IndexModel : PageModel
         {
             Id = t.Id,
             TicketNumber = t.TicketNumber,
+            ContractId = t.ClientServiceContractId,
             Client = t.Client != null ? t.Client.Name : "-",
             Contract = t.ClientServiceContract != null ? t.ClientServiceContract.Label : "-",
+            Branch = t.ClientServiceContract != null
+                ? (string.IsNullOrWhiteSpace(t.ClientServiceContract.Branch) ? "-" : t.ClientServiceContract.Branch)
+                : "-",
             Title = t.Title,
             Status = t.Status,
             StatusLabel = ToStatusLabel(t.Status),
@@ -180,8 +228,38 @@ public class IndexModel : PageModel
             DueResolutionAt = t.SlaResolutionDueAt,
             Breach = t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
             CanTake = string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.AssignedToUserId == uid || IsAdmin,
-            IsMine = t.AssignedToUserId == uid
+            IsMine = t.AssignedToUserId == uid,
+            AttachmentCount = _db.TicketAttachments.Count(a => a.TicketId == t.Id)
         }).ToListAsync();
+
+        foreach (var item in Items.Where(x => x.ContractId.HasValue))
+        {
+            var contractId = item.ContractId;
+            if (!contractId.HasValue) continue;
+            var svc = await _db.ClientCarrierServices
+                .AsNoTracking()
+                .Include(s => s.Carrier)
+                .Where(s => s.ClientServiceContractId == contractId.Value)
+                .OrderBy(s => s.ServiceLabel)
+                .Select(s => new
+                {
+                    Carrier = s.Carrier != null ? s.Carrier.Name : "-",
+                    s.ServiceLabel,
+                    s.AccountNumber,
+                    s.CircuitId,
+                    s.IpInfo
+                })
+                .FirstOrDefaultAsync();
+
+            if (svc != null)
+            {
+                item.CarrierName = svc.Carrier;
+                item.CarrierServiceLabel = svc.ServiceLabel ?? "";
+                item.CarrierAccount = svc.AccountNumber ?? "";
+                item.CarrierCircuit = svc.CircuitId ?? "";
+                item.CarrierIp = svc.IpInfo ?? "";
+            }
+        }
 
         Groups = Items
             .GroupBy(x => x.Client)
@@ -212,7 +290,16 @@ public class IndexModel : PageModel
                 {
                     Id = c.Id,
                     ClientId = c.ClientId,
-                    Label = (c.Client != null ? c.Client.Name : "-") + " - " + c.Label
+                    Label = (string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch) + " - " + c.Label,
+                    Address = c.BranchAddress,
+                    CarrierSummary = _db.ClientCarrierServices
+                        .Where(s => s.ClientServiceContractId == c.Id)
+                        .OrderBy(s => s.ServiceLabel)
+                        .Select(s => (s.Carrier != null ? s.Carrier.Name : "-")
+                                     + " | Cuenta: " + (string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)
+                                     + " | Circuito: " + (string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)
+                                     + " | IP: " + (string.IsNullOrWhiteSpace(s.IpInfo) ? "-" : s.IpInfo))
+                        .FirstOrDefault() ?? ""
                 })
                 .ToListAsync();
 
@@ -253,8 +340,10 @@ public class IndexModel : PageModel
     {
         public Guid Id { get; set; }
         public string TicketNumber { get; set; } = "";
+        public Guid? ContractId { get; set; }
         public string Client { get; set; } = "";
         public string Contract { get; set; } = "";
+        public string Branch { get; set; } = "";
         public string Title { get; set; } = "";
         public TicketStatus Status { get; set; }
         public string StatusLabel { get; set; } = "";
@@ -268,6 +357,12 @@ public class IndexModel : PageModel
         public bool Breach { get; set; }
         public bool IsMine { get; set; }
         public bool CanTake { get; set; }
+        public int AttachmentCount { get; set; }
+        public string CarrierName { get; set; } = "";
+        public string CarrierServiceLabel { get; set; } = "";
+        public string CarrierAccount { get; set; } = "";
+        public string CarrierCircuit { get; set; } = "";
+        public string CarrierIp { get; set; } = "";
     }
 
     public class ClientGroupVm
@@ -290,6 +385,8 @@ public class IndexModel : PageModel
         public Guid Id { get; set; }
         public Guid ClientId { get; set; }
         public string Label { get; set; } = "";
+        public string? Address { get; set; }
+        public string? CarrierSummary { get; set; }
     }
 
     public class EmployeePickVm

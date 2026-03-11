@@ -46,6 +46,10 @@ else
 
                         <div class="d-flex flex-wrap gap-1 mb-2">
                             <span class="hn-chip hn-chip-neutral">@t.Probe</span>
+                            @if (!string.IsNullOrWhiteSpace(t.Branch))
+                            {
+                                <span class="hn-chip hn-chip-type">Sucursal: @t.Branch</span>
+                            }
                             <span class="hn-chip hn-chip-ref">@t.Address</span>
                             <span class="hn-chip hn-chip-type">@t.IntervalSeconds s</span>
                         </div>

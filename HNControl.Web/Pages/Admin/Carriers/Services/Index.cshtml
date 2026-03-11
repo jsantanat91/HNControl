@@ -52,9 +52,14 @@ else
         @foreach (var s in Model.Services)
         {
             var contractNumber = s.ClientServiceContract?.ContractNumber;
+            var branchBadge = s.ClientServiceContract?.Branch;
             if (string.IsNullOrWhiteSpace(contractNumber))
             {
                 contractNumber = s.ContractNumber;
+            }
+            if (string.IsNullOrWhiteSpace(branchBadge))
+            {
+                branchBadge = s.ClientServiceContract?.Label;
             }
 
             <div class="col d-flex">
@@ -74,6 +79,10 @@ else
                                 @if (!string.IsNullOrWhiteSpace(contractNumber))
                                 {
                                     <span class="hn-chip hn-chip-ref">#@contractNumber</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(branchBadge))
+                                {
+                                    <span class="hn-chip hn-chip-type">Sucursal: @branchBadge</span>
                                 }
                             </div>
                         </div>

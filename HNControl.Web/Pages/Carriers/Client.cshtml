@@ -56,9 +56,14 @@
         {
             var collapseId = "note_" + s.Service.Id.ToString("N");
             var contractBadge = s.Service.ClientServiceContract?.ContractNumber;
+            var branchBadge = s.Service.ClientServiceContract?.Branch;
             if (string.IsNullOrWhiteSpace(contractBadge))
             {
                 contractBadge = s.Service.ContractNumber;
+            }
+            if (string.IsNullOrWhiteSpace(branchBadge))
+            {
+                branchBadge = s.Service.ClientServiceContract?.Label;
             }
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100 hn-carrier-service-card">
@@ -75,6 +80,10 @@
                                     @if (!string.IsNullOrWhiteSpace(contractBadge))
                                     {
                                                 <span class="hn-chip hn-chip-ref">#@contractBadge</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(branchBadge))
+                                    {
+                                        <span class="hn-chip hn-chip-type">Sucursal: @branchBadge</span>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
                                     {

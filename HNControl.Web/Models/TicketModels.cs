@@ -118,6 +118,7 @@ public class Ticket
     public string ResolutionSummary { get; set; } = "";
 
     public List<TicketEvent> Events { get; set; } = new();
+    public List<TicketAttachment> Attachments { get; set; } = new();
 }
 
 public class TicketEvent
@@ -142,3 +143,27 @@ public class TicketEvent
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+public class TicketAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TicketId { get; set; }
+    public Ticket? Ticket { get; set; }
+
+    [MaxLength(255)]
+    public string OriginalFileName { get; set; } = "";
+
+    [MaxLength(100)]
+    public string ContentType { get; set; } = "";
+
+    [MaxLength(500)]
+    public string StoragePath { get; set; } = "";
+
+    public long SizeBytes { get; set; }
+    public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+
+    [MaxLength(64)]
+    public string UploadedByUserId { get; set; } = "";
+
+    [MaxLength(200)]
+    public string UploadedByName { get; set; } = "";
+}

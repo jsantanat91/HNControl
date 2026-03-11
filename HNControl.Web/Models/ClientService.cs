@@ -72,6 +72,18 @@ public class ClientServiceContract
     [Column(TypeName = "numeric(12,2)")]
     public decimal? MonthlyAmount { get; set; }
 
+    /// <summary>
+    /// Sucursal/sitio del contrato (ej: Matriz, Tultepark, Sucursal Toluca).
+    /// </summary>
+    [MaxLength(140)]
+    public string Branch { get; set; } = "";
+
+    /// <summary>
+    /// Direccion del sitio/sucursal para soporte y tickets.
+    /// </summary>
+    [MaxLength(320)]
+    public string BranchAddress { get; set; } = "";
+
     // Archivo del contrato firmado (PDF recomendado)
     [MaxLength(500)]
     public string? SignedContractStoragePath { get; set; }

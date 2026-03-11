@@ -33,6 +33,7 @@ public class IndexModel : PageModel
             Client = t.Client?.Name ?? "(Sin cliente)",
             Name = t.Name,
             Contract = t.ClientServiceContract?.Label ?? "",
+            Branch = t.ClientServiceContract?.Branch ?? "",
             CarrierService = t.ClientCarrierService?.ServiceLabel ?? "",
             Probe = t.ProbeType.ToString(),
             Address = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn,
@@ -61,6 +62,7 @@ public class IndexModel : PageModel
         public string Client { get; set; } = "";
         public string Name { get; set; } = "";
         public string Contract { get; set; } = "";
+        public string Branch { get; set; } = "";
         public string CarrierService { get; set; } = "";
         public string Probe { get; set; } = "";
         public string Address { get; set; } = "";

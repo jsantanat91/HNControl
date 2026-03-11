@@ -51,6 +51,7 @@ public class IndexModel : PageModel
                     Id = t.Id,
                     Name = t.Name,
                     ContractLabel = t.ClientServiceContract != null ? t.ClientServiceContract.Label : "",
+                    Branch = t.ClientServiceContract != null ? t.ClientServiceContract.Branch : "",
                     CarrierServiceLabel = t.ClientCarrierService != null ? t.ClientCarrierService.ServiceLabel : "",
                     ProbeType = t.ProbeType,
                     Address = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn,
@@ -121,6 +122,7 @@ public class IndexModel : PageModel
         public Guid Id { get; set; }
         public string Name { get; set; } = "";
         public string ContractLabel { get; set; } = "";
+        public string Branch { get; set; } = "";
         public string CarrierServiceLabel { get; set; } = "";
         public MonitorProbeType ProbeType { get; set; }
         public string Address { get; set; } = "";

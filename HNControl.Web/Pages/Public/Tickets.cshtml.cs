@@ -25,6 +25,7 @@ public class TicketsModel : PageModel
 
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
+    public Dictionary<Guid, string> ContractCarrierMap { get; set; } = new();
     public List<HistoryTicketRow> History { get; set; } = new();
     public string? Message { get; set; }
     public bool Success { get; set; }
@@ -63,6 +64,19 @@ public class TicketsModel : PageModel
         }
 
         await LoadHistoryAsync();
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostNewAsync()
+    {
+        await LoadClientAsync();
+        Input.Mode = "new";
+        if (Client == null)
+        {
+            Message = "No encontramos ese ID de cliente.";
+            return Page();
+        }
+
         return Page();
     }
 
@@ -120,14 +134,34 @@ public class TicketsModel : PageModel
         var code = (Input.ClientCode ?? "").Trim().ToUpperInvariant();
         Client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.ClientCode == code);
         Contracts = new();
+        ContractCarrierMap = new();
         if (Client == null) return;
 
         Contracts = await _db.ClientServiceContracts
             .AsNoTracking()
             .Where(x => x.ClientId == Client.Id)
-            .OrderBy(x => x.ServiceType)
+            .OrderBy(x => x.Branch)
             .ThenBy(x => x.Label)
             .ToListAsync();
+
+        var contractIds = Contracts.Select(x => x.Id).ToList();
+        ContractCarrierMap = await _db.ClientCarrierServices
+            .AsNoTracking()
+            .Include(s => s.Carrier)
+            .Where(s => s.ClientServiceContractId.HasValue && contractIds.Contains(s.ClientServiceContractId.Value))
+            .GroupBy(s => s.ClientServiceContractId!.Value)
+            .Select(g => new
+            {
+                ContractId = g.Key,
+                Summary = g
+                    .OrderBy(s => s.ServiceLabel)
+                    .Select(s => (s.Carrier != null ? s.Carrier.Name : "-")
+                                 + " | Cuenta: " + (string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)
+                                 + " | Circuito: " + (string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)
+                                 + " | IP: " + (string.IsNullOrWhiteSpace(s.IpInfo) ? "-" : s.IpInfo))
+                    .FirstOrDefault() ?? ""
+            })
+            .ToDictionaryAsync(x => x.ContractId, x => x.Summary);
     }
 
     private async Task LoadHistoryAsync()
@@ -154,7 +188,11 @@ public class TicketsModel : PageModel
         {
             TicketNumber = t.TicketNumber,
             Title = t.Title,
-            Contract = t.ClientServiceContract != null ? t.ClientServiceContract.Label : "-",
+            Contract = t.ClientServiceContract != null
+                ? (string.IsNullOrWhiteSpace(t.ClientServiceContract.Branch)
+                    ? t.ClientServiceContract.Label
+                    : t.ClientServiceContract.Branch)
+                : "-",
             CreatedAt = t.CreatedAt.ToLocalTime(),
             Status = ToStatusEs(t.Status),
             Priority = ToPriorityEs(t.Priority)
@@ -172,6 +210,12 @@ public class TicketsModel : PageModel
         TicketStatus.Cancelled => "Cancelado",
         _ => "-"
     };
+
+    public static string ContractToBranchLabel(ClientServiceContract c)
+    {
+        var branch = string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch.Trim();
+        return $"{branch} - {c.ServiceType}: {c.Label}";
+    }
 
     private static string ToPriorityEs(TicketPriority p) => p switch
     {

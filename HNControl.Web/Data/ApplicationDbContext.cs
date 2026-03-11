@@ -64,6 +64,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<MonitorCheck> MonitorChecks => Set<MonitorCheck>();
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<TicketEvent> TicketEvents => Set<TicketEvent>();
+    public DbSet<TicketAttachment> TicketAttachments => Set<TicketAttachment>();
 
     public DbSet<Eval360Competency> Eval360Competencies => Set<Eval360Competency>();
     public DbSet<Eval360Question> Eval360Questions => Set<Eval360Question>();
@@ -797,6 +798,11 @@ b.Entity<ServiceOrder>(e =>
                 .WithOne(ev => ev.Ticket!)
                 .HasForeignKey(ev => ev.TicketId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Attachments)
+                .WithOne(a => a.Ticket!)
+                .HasForeignKey(a => a.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<TicketEvent>(e =>
@@ -807,6 +813,17 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.UserName).HasMaxLength(200);
             e.Property(x => x.Message).HasMaxLength(4000);
             e.HasIndex(x => new { x.TicketId, x.CreatedAt });
+        });
+
+        b.Entity<TicketAttachment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.OriginalFileName).HasMaxLength(255);
+            e.Property(x => x.ContentType).HasMaxLength(100);
+            e.Property(x => x.StoragePath).HasMaxLength(500);
+            e.Property(x => x.UploadedByUserId).HasMaxLength(64);
+            e.Property(x => x.UploadedByName).HasMaxLength(200);
+            e.HasIndex(x => new { x.TicketId, x.UploadedAt });
         });
 
         // --------------------

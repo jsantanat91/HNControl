@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Services.Tickets;
@@ -7,10 +8,12 @@ namespace HNControl.Web.Services.Tickets;
 public class TicketFlowService : ITicketFlowService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
 
-    public TicketFlowService(ApplicationDbContext db)
+    public TicketFlowService(ApplicationDbContext db, IFileStorage storage)
     {
         _db = db;
+        _storage = storage;
     }
 
     public async Task<Ticket> CreatePublicAsync(
@@ -43,6 +46,9 @@ public class TicketFlowService : ITicketFlowService
         var finalImpact = ToImpact(finalPriority);
         var finalUrgency = ToUrgency(finalPriority);
         var now = DateTime.UtcNow;
+        var location = !string.IsNullOrWhiteSpace(contract?.BranchAddress)
+            ? contract!.BranchAddress
+            : (!string.IsNullOrWhiteSpace(contract?.Branch) ? contract!.Branch : requesterLocation);
         var ticket = new Ticket
         {
             TicketNumber = await NextTicketNumberAsync(ct),
@@ -60,7 +66,7 @@ public class TicketFlowService : ITicketFlowService
             RequesterName = (requesterName ?? "").Trim(),
             RequesterEmail = (requesterEmail ?? "").Trim(),
             RequesterPhone = (requesterPhone ?? "").Trim(),
-            RequesterLocation = (requesterLocation ?? "").Trim(),
+            RequesterLocation = (location ?? "").Trim(),
             CreatedByName = "Portal publico",
             CreatedAt = now,
             UpdatedAt = now
@@ -109,6 +115,9 @@ public class TicketFlowService : ITicketFlowService
         }
 
         var now = DateTime.UtcNow;
+        var location = !string.IsNullOrWhiteSpace(contract?.BranchAddress)
+            ? contract!.BranchAddress
+            : (!string.IsNullOrWhiteSpace(contract?.Branch) ? contract!.Branch : requesterLocation);
         var ticket = new Ticket
         {
             TicketNumber = await NextTicketNumberAsync(ct),
@@ -126,7 +135,7 @@ public class TicketFlowService : ITicketFlowService
             RequesterName = (requesterName ?? "").Trim(),
             RequesterEmail = (requesterEmail ?? "").Trim(),
             RequesterPhone = (requesterPhone ?? "").Trim(),
-            RequesterLocation = (requesterLocation ?? "").Trim(),
+            RequesterLocation = (location ?? "").Trim(),
             CreatedByUserId = string.IsNullOrWhiteSpace(createdByUserId) ? null : createdByUserId.Trim(),
             CreatedByName = string.IsNullOrWhiteSpace(createdByName) ? "Admin" : createdByName.Trim(),
             AssignedToUserId = string.IsNullOrWhiteSpace(assignedToUserId) ? null : assignedToUserId.Trim(),
@@ -180,6 +189,11 @@ public class TicketFlowService : ITicketFlowService
         if (existing != null) return existing;
 
         var now = DateTime.UtcNow;
+        var location = !string.IsNullOrWhiteSpace(target.ClientServiceContract?.BranchAddress)
+            ? target.ClientServiceContract!.BranchAddress
+            : (!string.IsNullOrWhiteSpace(target.ClientServiceContract?.Branch)
+                ? target.ClientServiceContract!.Branch
+                : (target.Client?.Address ?? ""));
         var ticket = new Ticket
         {
             TicketNumber = await NextTicketNumberAsync(ct),
@@ -200,7 +214,7 @@ public class TicketFlowService : ITicketFlowService
             RequesterName = target.Client?.Name ?? "Monitoreo",
             RequesterEmail = target.Client?.Email ?? "",
             RequesterPhone = target.Client?.Phone ?? "",
-            RequesterLocation = target.Client?.Address ?? "",
+            RequesterLocation = location,
             CreatedByName = "MonitorWorker",
             CreatedAt = now,
             UpdatedAt = now
@@ -354,6 +368,76 @@ public class TicketFlowService : ITicketFlowService
             Message = note.Trim(),
             CreatedAt = now
         });
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> AddNoteWithEvidenceAsync(
+        Guid ticketId,
+        string userId,
+        string userName,
+        string note,
+        IFormFile? evidence,
+        bool isAdmin,
+        CancellationToken ct = default)
+    {
+        var t = await _db.Tickets.FirstOrDefaultAsync(x => x.Id == ticketId, ct);
+        if (t == null) return false;
+        if (!CanOperate(t, userId, isAdmin)) return false;
+        if (string.IsNullOrWhiteSpace(note) && (evidence == null || evidence.Length <= 0)) return false;
+
+        var now = DateTime.UtcNow;
+        t.UpdatedAt = now;
+        EvaluateSla(t, now);
+
+        if (!string.IsNullOrWhiteSpace(note))
+        {
+            _db.TicketEvents.Add(new TicketEvent
+            {
+                TicketId = t.Id,
+                EventType = "Note",
+                UserId = userId,
+                UserName = userName,
+                Message = note.Trim(),
+                CreatedAt = now
+            });
+        }
+
+        if (evidence != null && evidence.Length > 0)
+        {
+            var allowed = new[] { ".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic" };
+            var att = new TicketAttachment
+            {
+                TicketId = t.Id,
+                OriginalFileName = Path.GetFileName(evidence.FileName),
+                UploadedAt = now,
+                UploadedByUserId = userId,
+                UploadedByName = userName
+            };
+            var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
+                evidence,
+                $"tickets/{t.Id:N}",
+                att.Id.ToString("N"),
+                allowed,
+                25 * 1024 * 1024);
+
+            att.StoragePath = path;
+            att.SizeBytes = size;
+            att.ContentType = contentType;
+            att.OriginalFileName = string.IsNullOrWhiteSpace(originalName) ? att.OriginalFileName : originalName;
+            _db.TicketAttachments.Add(att);
+
+            _db.TicketEvents.Add(new TicketEvent
+            {
+                TicketId = t.Id,
+                EventType = "Evidence",
+                UserId = userId,
+                UserName = userName,
+                Message = $"Adjunto: {att.OriginalFileName}",
+                CreatedAt = now
+            });
+        }
+
         await _db.SaveChangesAsync(ct);
         return true;
     }
