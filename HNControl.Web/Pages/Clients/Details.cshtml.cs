@@ -41,7 +41,10 @@ public class DetailsModel : PageModel
     public List<ProjectRow> Projects { get; set; } = new();
     public record QuoteRow(Guid Id, string Folio, string CreatedAt, string Segment, decimal Total, int ManualItems, bool HasPdf);
     public List<QuoteRow> Quotes { get; set; } = new();
+    public record TicketRow(Guid Id, string Number, string Title, string Status, string Priority, string CreatedAt, string AssignedTo);
+    public List<TicketRow> Tickets { get; set; } = new();
     public string PublicQuoteUrl { get; set; } = string.Empty;
+    public string PublicTicketUrl { get; set; } = string.Empty;
 
     public async Task OnGetAsync(Guid id)
     {
@@ -67,6 +70,9 @@ public class DetailsModel : PageModel
         PublicQuoteUrl = string.IsNullOrWhiteSpace(baseUrl)
             ? $"/cotizar/{Client.PublicQuoteToken}"
             : $"{baseUrl}/cotizar/{Client.PublicQuoteToken}";
+        PublicTicketUrl = string.IsNullOrWhiteSpace(baseUrl)
+            ? "/ticket-publico"
+            : $"{baseUrl}/ticket-publico";
 
         var projMap = await _db.Projects
             .Where(p => p.ClientId == id)
@@ -147,6 +153,31 @@ public class DetailsModel : PageModel
                 x.EstimatedTotal ?? x.SubtotalAuto,
                 x.ManualItemsCount,
                 !string.IsNullOrWhiteSpace(x.PdfStoragePath)
+            ))
+            .ToListAsync();
+
+        Tickets = await _db.Tickets
+            .AsNoTracking()
+            .Where(x => x.ClientId == id)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(20)
+            .Select(x => new TicketRow(
+                x.Id,
+                x.TicketNumber,
+                x.Title,
+                x.Status == TicketStatus.New ? "Nuevo" :
+                x.Status == TicketStatus.Assigned ? "Asignado" :
+                x.Status == TicketStatus.InProgress ? "En proceso" :
+                x.Status == TicketStatus.PendingCustomer ? "Pendiente cliente" :
+                x.Status == TicketStatus.Resolved ? "Resuelto" :
+                x.Status == TicketStatus.Closed ? "Cerrado" :
+                x.Status == TicketStatus.Cancelled ? "Cancelado" : "-",
+                x.Priority == TicketPriority.Low ? "Baja" :
+                x.Priority == TicketPriority.Medium ? "Intermedia" :
+                x.Priority == TicketPriority.High ? "Alta" :
+                x.Priority == TicketPriority.Critical ? "Urge" : "-",
+                x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                string.IsNullOrWhiteSpace(x.AssignedToName) ? "Sin asignar" : x.AssignedToName
             ))
             .ToListAsync();
     }

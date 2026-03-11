@@ -38,6 +38,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<EmployeeService>();
         builder.Services.AddSingleton<ModulesService>();
         builder.Services.AddSingleton<ViaticosService>();
+        builder.Services.AddSingleton<TicketsService>();
 
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<OrdersPage>();
@@ -57,6 +58,8 @@ public static class MauiProgram
         builder.Services.AddTransient<LeaveDetailPage>();
         builder.Services.AddTransient<ExamsModulePage>();
         builder.Services.AddTransient<Eval360ModulePage>();
+        builder.Services.AddTransient<TicketsModulePage>();
+        builder.Services.AddTransient<TicketDetailPage>();
         builder.Services.AddTransient<RootTabsPage>();
 
         return builder.Build();

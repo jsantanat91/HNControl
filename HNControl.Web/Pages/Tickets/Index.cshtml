@@ -1,0 +1,245 @@
+﻿@page
+@model HNControl.Web.Pages.Tickets.IndexModel
+@{
+    ViewData["Title"] = "Tickets";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-0">Tickets ITIL</h1>
+        <div class="text-muted small">Incidentes, SLA y flujo operativo.</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="/ticket-publico" target="_blank" rel="noopener">Portal publico</a>
+        <a class="btn btn-outline-secondary" href="?status=open">Abiertos</a>
+        <a class="btn btn-outline-secondary" href="?status=mine">Mios</a>
+        <a class="btn btn-outline-secondary" href="?status=closed">Cerrados</a>
+    </div>
+</div>
+
+@if (Model.IsAdmin)
+{
+    <form method="post" asp-page-handler="CreateManual" class="card shadow-soft mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-semibold">Nuevo ticket manual (admin)</div>
+                <span class="hn-chip hn-chip-ref">Se notifica hasta que alguien lo tome</span>
+            </div>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Cliente</label>
+                    <select asp-for="CreateInput.ClientId" class="form-select" required>
+                        <option value="">Selecciona cliente</option>
+                        @foreach (var c in Model.ClientOptions)
+                        {
+                            <option value="@c.Id">@c.Name (@c.Code)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Contrato (opcional)</label>
+                    <select asp-for="CreateInput.ContractId" class="form-select">
+                        <option value="">Sin contrato</option>
+                        @foreach (var c in Model.ContractOptions)
+                        {
+                            <option value="@c.Id">@c.Label</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Asignar a (opcional)</label>
+                    <select asp-for="CreateInput.AssignedToUserId" class="form-select" onchange="document.getElementById('assignedName').value = this.options[this.selectedIndex].dataset.name || ''">
+                        <option value="">Sin asignar</option>
+                        @foreach (var e in Model.EmployeeOptions)
+                        {
+                            <option value="@e.UserId" data-name="@e.Name">@e.Name</option>
+                        }
+                    </select>
+                    <input id="assignedName" asp-for="CreateInput.AssignedToName" type="hidden" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Prioridad</label>
+                    <select asp-for="CreateInput.Priority" class="form-select">
+                        <option value="@HNControl.Web.Models.TicketPriority.Low">Baja</option>
+                        <option value="@HNControl.Web.Models.TicketPriority.Medium">Intermedia</option>
+                        <option value="@HNControl.Web.Models.TicketPriority.High">Alta</option>
+                        <option value="@HNControl.Web.Models.TicketPriority.Critical">Urge</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Asunto</label>
+                    <input asp-for="CreateInput.Title" class="form-control" placeholder="Ajuste en red, cambio de segmento, etc." required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Contacto</label>
+                    <input asp-for="CreateInput.RequesterName" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Correo</label>
+                    <input asp-for="CreateInput.RequesterEmail" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Telefono</label>
+                    <input asp-for="CreateInput.RequesterPhone" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ubicacion</label>
+                    <input asp-for="CreateInput.RequesterLocation" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripcion</label>
+                    <textarea asp-for="CreateInput.Description" class="form-control" rows="3" required></textarea>
+                </div>
+                <div class="col-12 d-flex justify-content-end">
+                    <button class="btn btn-primary">Crear ticket</button>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card shadow-soft"><div class="card-body"><div class="text-muted small">Abiertos</div><div class="fs-3 fw-bold">@Model.OpenCount</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft"><div class="card-body"><div class="text-muted small">Asignados a mi</div><div class="fs-3 fw-bold">@Model.MineCount</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft"><div class="card-body"><div class="text-muted small">SLA vencido</div><div class="fs-3 fw-bold text-danger">@Model.BreachCount</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft"><div class="card-body"><div class="text-muted small">Auto-monitoreo</div><div class="fs-3 fw-bold text-warning">@Model.AutoCount</div></div></div></div>
+</div>
+
+<form method="get" class="card shadow-soft mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label">Filtro</label>
+                <select class="form-select" name="status">
+                    <option value="open" selected="@(Model.StatusFilter=="open")">Abiertos</option>
+                    <option value="mine" selected="@(Model.StatusFilter=="mine")">Mios</option>
+                    <option value="closed" selected="@(Model.StatusFilter=="closed")">Cerrados</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Buscar</label>
+                <input class="form-control" name="q" value="@Model.Search" placeholder="Ticket, cliente o titulo" />
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row g-3">
+    @if (!Model.Groups.Any())
+    {
+        <div class="col-12"><div class="alert alert-light border">Sin tickets para este filtro.</div></div>
+    }
+    else
+    {
+        @foreach (var g in Model.Groups)
+        {
+            <div class="col-12">
+                <div class="card shadow-soft">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">@g.Client</div>
+                        <div class="d-flex gap-2">
+                            <span class="hn-chip hn-chip-neutral">Abiertos: @g.OpenCount</span>
+                            @if (g.BreachCount > 0)
+                            {
+                                <span class="hn-chip hn-chip-priority-critical">SLA vencido: @g.BreachCount</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            @foreach (var t in g.Tickets)
+                            {
+                                var statusClass = t.Status switch
+                                {
+                                    HNControl.Web.Models.TicketStatus.New => "hn-chip-type",
+                                    HNControl.Web.Models.TicketStatus.Assigned => "hn-chip-type",
+                                    HNControl.Web.Models.TicketStatus.InProgress => "hn-chip-status-progress",
+                                    HNControl.Web.Models.TicketStatus.Resolved => "hn-chip-status-up",
+                                    HNControl.Web.Models.TicketStatus.Closed => "hn-chip-status-closed",
+                                    _ => "hn-chip-neutral"
+                                };
+                                var priorityClass = t.Priority switch
+                                {
+                                    HNControl.Web.Models.TicketPriority.Critical => "hn-chip-priority-critical",
+                                    HNControl.Web.Models.TicketPriority.High => "hn-chip-priority-high",
+                                    HNControl.Web.Models.TicketPriority.Medium => "hn-chip-priority-medium",
+                                    _ => "hn-chip-priority-low"
+                                };
+                                <div class="col-xl-6">
+                                    <div class="card border h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                                <div>
+                                                    <div class="small text-muted">@t.TicketNumber</div>
+                                                    <div class="h5 mb-1">@t.Title</div>
+                                                    <div class="text-muted small">Contrato: @t.Contract</div>
+                                                </div>
+                                                <div class="text-end d-flex gap-1 flex-wrap justify-content-end">
+                                                    <span class="hn-chip @statusClass">@t.StatusLabel</span>
+                                                    <span class="hn-chip @priorityClass">@t.PriorityLabel</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="small mt-2">
+                                                <div>Asignado: <b>@t.AssignedTo</b></div>
+                                                <div>Creado: @t.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                                <div>SLA R1: @t.DueResponseAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                                <div>SLA Resolucion: @t.DueResolutionAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                @if (t.CanTake && t.Status != HNControl.Web.Models.TicketStatus.Closed && t.Status != HNControl.Web.Models.TicketStatus.Cancelled)
+                                                {
+                                                    <form method="post" asp-page-handler="Take">
+                                                        <input type="hidden" name="id" value="@t.Id" />
+                                                        <button class="btn btn-sm btn-outline-primary">Tomar</button>
+                                                    </form>
+                                                }
+                                                @if (t.CanTake && (t.Status == HNControl.Web.Models.TicketStatus.Assigned || t.Status == HNControl.Web.Models.TicketStatus.New))
+                                                {
+                                                    <form method="post" asp-page-handler="Start">
+                                                        <input type="hidden" name="id" value="@t.Id" />
+                                                        <button class="btn btn-sm btn-outline-secondary">Iniciar</button>
+                                                    </form>
+                                                }
+                                                @if (t.CanTake && (t.Status == HNControl.Web.Models.TicketStatus.InProgress || t.Status == HNControl.Web.Models.TicketStatus.Assigned))
+                                                {
+                                                    <form method="post" asp-page-handler="Resolve" class="d-flex gap-1">
+                                                        <input type="hidden" name="id" value="@t.Id" />
+                                                        <input type="text" class="form-control form-control-sm" name="summary" placeholder="Resumen solucion" style="min-width: 180px" />
+                                                        <button class="btn btn-sm btn-success">Resolver</button>
+                                                    </form>
+                                                }
+                                                @if (t.CanTake && t.Status == HNControl.Web.Models.TicketStatus.Resolved)
+                                                {
+                                                    <form method="post" asp-page-handler="Close">
+                                                        <input type="hidden" name="id" value="@t.Id" />
+                                                        <button class="btn btn-sm btn-dark">Cerrar</button>
+                                                    </form>
+                                                }
+                                            </div>
+
+                                            <div class="mt-2 d-flex gap-2 align-items-center">
+                                                @if (t.Source == HNControl.Web.Models.TicketSource.MonitoringAuto)
+                                                {
+                                                    <span class="hn-chip hn-chip-ref">Auto monitoreo</span>
+                                                }
+                                                @if (t.Breach)
+                                                {
+                                                    <span class="hn-chip hn-chip-priority-critical">SLA vencido</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>

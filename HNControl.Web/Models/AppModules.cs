@@ -14,6 +14,7 @@ public static class AppModules
     public const string Carriers = "Carriers";
     public const string Inventory = "Inventory";
     public const string Monitoring = "Monitoring";
+    public const string Tickets = "Tickets";
     public const string Leaves = "Leaves";   // Vacaciones e incidencias
     public const string Exams = "Exams";     // Exámenes
 
@@ -32,6 +33,7 @@ public static class AppModules
         Carriers,
         Inventory,
         Monitoring,
+        Tickets,
         Leaves,
         Exams
     ];
@@ -46,6 +48,7 @@ public static class AppModules
         Carriers,
         Inventory,
         Monitoring,
+        Tickets,
         Leaves,
         Exams,
         Clients,
@@ -63,6 +66,7 @@ public static class AppModules
         Carriers => "Carriers (Internet)",
         Inventory => "Inventarios",
         Monitoring => "Monitoreo",
+        Tickets => "Tickets",
         Leaves => "Vacaciones e incidencias",
         Exams => "Exámenes",
         Clients => "Clientes",
@@ -94,6 +98,7 @@ public static class AppModules
         if (viewEnginePath.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase)) return Carriers;
         if (viewEnginePath.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase)) return Inventory;
         if (viewEnginePath.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) return Monitoring;
+        if (viewEnginePath.StartsWith("/Tickets", StringComparison.OrdinalIgnoreCase)) return Tickets;
         if (viewEnginePath.StartsWith("/Leaves", StringComparison.OrdinalIgnoreCase)) return Leaves;
         if (viewEnginePath.StartsWith("/Exams", StringComparison.OrdinalIgnoreCase)) return Exams;
 

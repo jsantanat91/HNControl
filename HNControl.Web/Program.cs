@@ -3,6 +3,7 @@ using HNControl.Web.Models;
 using HNControl.Web.Services;
 using HNControl.Web.Services.Monitoring;
 using HNControl.Web.Services.Mobile;
+using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -148,6 +149,7 @@ builder.Services.AddRazorPages(options =>
 
     // Monitoreo: empleado y admin (admin gestiona targets)
     options.Conventions.AuthorizeFolder("/Monitoring", "EmployeeOnly");
+    options.Conventions.AuthorizeFolder("/Tickets", "EmployeeOnly");
 
     // Monitoreo: empleados (lectura) + admin
     options.Conventions.AuthorizeFolder("/Monitoring", "EmployeeOnly");
@@ -180,6 +182,7 @@ builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Se
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
 builder.Services.AddScoped<IQuoteRequestPdfRenderer, QuoteRequestPdfRenderer>();
+builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
 
 // QuestPDF licencia community
 QuestPDF.Settings.License = LicenseType.Community;

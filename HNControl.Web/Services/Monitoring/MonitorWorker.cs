@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -45,6 +46,7 @@ public class MonitorWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var probe = scope.ServiceProvider.GetRequiredService<IMonitorProbeService>();
+        var ticketFlow = scope.ServiceProvider.GetRequiredService<ITicketFlowService>();
 
         var now = DateTime.UtcNow;
 
@@ -62,6 +64,7 @@ public class MonitorWorker : BackgroundService
         {
             ct.ThrowIfCancellationRequested();
 
+            var wasDown = t.LastStatus == MonitorStatus.Down;
             var res = await probe.ProbeAsync(t, ct);
 
             // historial
@@ -92,6 +95,15 @@ public class MonitorWorker : BackgroundService
 
             t.NextCheckAt = now.AddSeconds(Math.Max(10, t.CheckIntervalSeconds));
             t.UpdatedAt = now;
+
+            // Auto-ticket por caída (solo al transicionar a DOWN).
+            if (!wasDown && t.LastStatus == MonitorStatus.Down)
+            {
+                var title = $"Caida monitor: {t.Name}";
+                var host = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn;
+                var desc = $"Monitoreo detecto falla en {t.Name} ({host}). Error: {t.LastError}";
+                await ticketFlow.CreateMonitoringAutoAsync(t.Id, title, desc, ct);
+            }
         }
 
         await db.SaveChangesAsync(ct);

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.TicketsModulePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Tickets"
+    Background="#E9EEF7">
+    <Grid RowDefinitions="Auto,*" Padding="14,12,14,14">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <Picker x:Name="StatusPicker" Grid.Column="0" Title="Filtro" SelectedIndexChanged="OnFilterChanged">
+                <Picker.Items>
+                    <x:String>open</x:String>
+                    <x:String>mine</x:String>
+                    <x:String>closed</x:String>
+                </Picker.Items>
+            </Picker>
+            <Button Grid.Column="1" Text="Refrescar" BackgroundColor="#2B5FD9" TextColor="White" Clicked="OnRefreshClicked" />
+        </Grid>
+
+        <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="White" StrokeShape="RoundRectangle 16" Padding="12" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout>
+                                    <Label Text="{Binding TicketNumber}" FontSize="12" TextColor="#64748B" />
+                                    <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" TextColor="#0F172A" />
+                                    <Label Text="{Binding Client}" FontSize="13" TextColor="#475569" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="3">
+                                    <Border Background="#E8EEFF" StrokeShape="RoundRectangle 999" Padding="8,3">
+                                        <Label Text="{Binding Status}" FontSize="12" TextColor="#1D4ED8" />
+                                    </Border>
+                                    <Border Background="#FFF4E5" StrokeShape="RoundRectangle 999" Padding="8,3">
+                                        <Label Text="{Binding Priority}" FontSize="12" TextColor="#B45309" />
+                                    </Border>
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <Label Text="{Binding Meta}" FontSize="12" TextColor="#64748B" />
+                            <Label Text="{Binding BreachText}" FontSize="12" TextColor="#DC2626" IsVisible="{Binding IsBreach}" />
+
+                            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="6">
+                                <Button Text="Tomar" Clicked="OnTakeClicked" CommandParameter="{Binding Id}" IsVisible="{Binding CanTake}" />
+                                <Button Grid.Column="1" Text="Abrir" Clicked="OnOpenClicked" CommandParameter="{Binding Id}" BackgroundColor="#2B5FD9" TextColor="White" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
+

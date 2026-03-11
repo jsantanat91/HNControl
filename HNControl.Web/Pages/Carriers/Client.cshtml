@@ -55,6 +55,11 @@
         @foreach (var s in Model.Services)
         {
             var collapseId = "note_" + s.Service.Id.ToString("N");
+            var contractBadge = s.Service.ClientServiceContract?.ContractNumber;
+            if (string.IsNullOrWhiteSpace(contractBadge))
+            {
+                contractBadge = s.Service.ContractNumber;
+            }
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100 hn-carrier-service-card">
                     <div class="card-body d-flex flex-column">
@@ -66,14 +71,14 @@
                                     {
                                         <img src="@s.CarrierLogoUrl" alt="logo" style="height:20px; width:44px; object-fit:contain;" class="border rounded bg-white p-1" />
                                     }
-                                    <span class="badge rounded-pill bg-light text-dark border">@s.CarrierName</span>
-                                    @if (s.Service.ClientServiceContract != null)
+                                    <span class="hn-chip hn-chip-neutral">@s.CarrierName</span>
+                                    @if (!string.IsNullOrWhiteSpace(contractBadge))
                                     {
-                                        <span class="badge rounded-pill bg-info-subtle text-info border border-info-subtle">Contrato: @s.Service.ClientServiceContract.Label</span>
+                                                <span class="hn-chip hn-chip-ref">#@contractBadge</span>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(s.Service.Plan))
                                     {
-                                        <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle">@s.Service.Plan</span>
+                                        <span class="hn-chip hn-chip-type">@s.Service.Plan</span>
                                     }
                                 </div>
                             </div>

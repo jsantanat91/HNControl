@@ -75,6 +75,14 @@ public partial class EmployeeDashboardPage : ContentPage
             VariableText = $"{x.VariablePercent:0.#}%"
         }).ToList();
 
+        var ticketMax = Math.Max(1, data.TicketHistory.Any() ? data.TicketHistory.Max(x => x.Resolved) : 1);
+        TicketHistoryCollection.ItemsSource = data.TicketHistory.Select(x => new TicketHistoryVm
+        {
+            Label = x.Label,
+            Ratio = (double)Math.Clamp((decimal)x.Resolved / ticketMax, 0m, 1m),
+            ValueText = x.Resolved.ToString()
+        }).ToList();
+
         DeductionsCollection.ItemsSource = data.Deductions.Select(d =>
         {
             var hasProgress = d.ProgressPaidPeriods.HasValue && d.ProgressTotalPeriods.HasValue && d.ProgressTotalPeriods.Value > 0;
@@ -115,6 +123,13 @@ public partial class EmployeeDashboardPage : ContentPage
         public bool HasProgress { get; set; }
         public double ProgressRatio { get; set; }
         public string ProgressText { get; set; } = "";
+    }
+
+    private sealed class TicketHistoryVm
+    {
+        public string Label { get; set; } = "";
+        public double Ratio { get; set; }
+        public string ValueText { get; set; } = "";
     }
 
     private sealed class InventoryVm

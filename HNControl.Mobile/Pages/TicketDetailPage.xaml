@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.TicketDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Detalle ticket"
+    Background="#E9EEF7">
+    <ScrollView>
+        <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
+            <Border Background="#0E2242" StrokeShape="RoundRectangle 16" Padding="12">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="TicketNumberLabel" TextColor="#AFC5ED" FontSize="12" />
+                    <Label x:Name="TitleLabel" TextColor="White" FontAttributes="Bold" FontSize="24" />
+                    <Label x:Name="ClientLabel" TextColor="#DCE8FF" FontSize="14" />
+                    <Label x:Name="MetaLabel" TextColor="#DCE8FF" FontSize="12" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout>
+                    <Label Text="Descripcion" FontAttributes="Bold" FontSize="20" />
+                    <Label x:Name="DescriptionLabel" FontSize="16" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Acciones" FontAttributes="Bold" FontSize="18" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="Tomar" Clicked="OnTakeClicked" />
+                        <Button Grid.Column="1" Text="Iniciar" Clicked="OnStartClicked" />
+                    </Grid>
+                    <Entry x:Name="ResolveEntry" Placeholder="Resumen de solucion" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="Resolver" Clicked="OnResolveClicked" BackgroundColor="#16A34A" TextColor="White" />
+                        <Button Grid.Column="1" Text="Cerrar" Clicked="OnCloseClicked" BackgroundColor="#0F172A" TextColor="White" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Bitacora" FontAttributes="Bold" FontSize="18" />
+                    <CollectionView x:Name="EventsCollection" SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F8FAFC" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
+                                    <VerticalStackLayout>
+                                        <Label Text="{Binding Top}" FontSize="12" TextColor="#64748B" />
+                                        <Label Text="{Binding Message}" FontSize="14" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

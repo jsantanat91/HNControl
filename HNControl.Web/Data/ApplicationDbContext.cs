@@ -62,6 +62,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     // --------------------
     public DbSet<MonitorTarget> MonitorTargets => Set<MonitorTarget>();
     public DbSet<MonitorCheck> MonitorChecks => Set<MonitorCheck>();
+    public DbSet<Ticket> Tickets => Set<Ticket>();
+    public DbSet<TicketEvent> TicketEvents => Set<TicketEvent>();
 
     public DbSet<Eval360Competency> Eval360Competencies => Set<Eval360Competency>();
     public DbSet<Eval360Question> Eval360Questions => Set<Eval360Question>();
@@ -742,6 +744,69 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.LineTotal).HasColumnType("numeric(12,2)");
             e.HasIndex(x => x.QuoteRequestId);
+        });
+
+        // --------------------
+        // Tickets (ITIL)
+        // --------------------
+        b.Entity<Ticket>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TicketNumber).HasMaxLength(40);
+            e.Property(x => x.Title).HasMaxLength(220);
+            e.Property(x => x.Description).HasMaxLength(4000);
+            e.Property(x => x.Category).HasMaxLength(100);
+            e.Property(x => x.Subcategory).HasMaxLength(100);
+            e.Property(x => x.AssignedToUserId).HasMaxLength(64);
+            e.Property(x => x.AssignedToName).HasMaxLength(200);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.Property(x => x.CreatedByName).HasMaxLength(200);
+            e.Property(x => x.RequesterName).HasMaxLength(180);
+            e.Property(x => x.RequesterEmail).HasMaxLength(256);
+            e.Property(x => x.RequesterPhone).HasMaxLength(60);
+            e.Property(x => x.RequesterLocation).HasMaxLength(300);
+            e.Property(x => x.ResolutionSummary).HasMaxLength(1200);
+
+            e.HasIndex(x => x.TicketNumber).IsUnique();
+            e.HasIndex(x => new { x.Status, x.Priority, x.CreatedAt });
+            e.HasIndex(x => new { x.ClientId, x.CreatedAt });
+            e.HasIndex(x => x.MonitorTargetId);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.MonitorTarget)
+                .WithMany()
+                .HasForeignKey(x => x.MonitorTargetId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.AssignedToEmployee)
+                .WithMany()
+                .HasForeignKey(x => x.AssignedToUserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasMany(x => x.Events)
+                .WithOne(ev => ev.Ticket!)
+                .HasForeignKey(ev => ev.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<TicketEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(60);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.UserName).HasMaxLength(200);
+            e.Property(x => x.Message).HasMaxLength(4000);
+            e.HasIndex(x => new { x.TicketId, x.CreatedAt });
         });
 
         // --------------------

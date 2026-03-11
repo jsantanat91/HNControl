@@ -7,8 +7,8 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Ordenes de servicio</h1>
-        <div class="text-muted small">Todas las ordenes son visibles. Solo quien la toma puede editar.</div>
+        <h1 class="h4 m-0">&Oacute;rdenes de servicio</h1>
+        <div class="text-muted small">Todas las &oacute;rdenes son visibles. Solo quien la toma puede editar.</div>
     </div>
 </div>
 
@@ -28,7 +28,7 @@
 
 @if (Model.Rows.Count == 0)
 {
-    <div class="alert alert-secondary">No hay ordenes registradas.</div>
+    <div class="alert alert-secondary">No hay &oacute;rdenes registradas.</div>
 }
 else
 {
@@ -37,6 +37,20 @@ else
         {
             var type = UiBadges.ServiceOrderTypeBadge(r.Type);
             var status = UiBadges.ServiceOrderStatusBadge(r.Status);
+            var typeKey = (type.text ?? "").ToLowerInvariant();
+            var typeChip = typeKey.Contains("levantamiento")
+                ? "hn-chip-ref"
+                : typeKey.Contains("global")
+                    ? "hn-chip-neutral"
+                    : "hn-chip-type";
+            var statusKey = (status.text ?? "").ToLowerInvariant();
+            var statusChip = statusKey.Contains("final")
+                ? "hn-chip-status-closed"
+                : statusKey.Contains("rechaz")
+                    ? "hn-chip-status-down"
+                    : statusKey.Contains("proceso") || statusKey.Contains("revisi")
+                        ? "hn-chip-status-progress"
+                        : "hn-chip-type";
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100">
                     <div class="card-body d-flex flex-column">
@@ -48,8 +62,8 @@ else
                             <div class="text-muted small">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
                         </div>
                         <div class="mt-2 d-flex flex-wrap gap-1">
-                            <span class="badge @type.css">@type.text</span>
-                            <span class="badge @status.css">@status.text</span>
+                            <span class="hn-chip @typeChip">@type.text</span>
+                            <span class="hn-chip @statusChip">@status.text</span>
                         </div>
                         <div class="small mt-2 text-muted">Tomada por: @r.ClaimedBy</div>
                         <div class="small text-muted">Entrega: @r.Due</div>

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Monitoring.Targets.IndexModel
 @{
     ViewData["Title"] = "Targets de monitoreo";
@@ -7,10 +7,10 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Targets de monitoreo</h1>
-        <div class="text-muted small">Alta/edicion de servicios a monitorear (ping/tcp/http).</div>
+        <div class="text-muted small">Alta y edici&oacute;n de servicios a monitorear (ping/tcp/http).</div>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap hn-target-actions">
         <a class="btn btn-outline-secondary" asp-page="/Monitoring/Index">Ver tablero</a>
         <a class="btn btn-primary" asp-page="Create">Nuevo target</a>
     </div>
@@ -22,54 +22,99 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-            <tr>
-                <th>Cliente</th>
-                <th>Target</th>
-                <th>Contrato</th>
-                <th>Servicio carrier</th>
-                <th>Probe</th>
-                <th>Destino</th>
-                <th>Intervalo</th>
-                <th>Status</th>
-                <th>Ultimo</th>
-                <th class="text-end"></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var t in Model.Items)
-            {
-                <tr>
-                    <td>@t.Client</td>
-                    <td class="fw-semibold">@t.Name</td>
-                    <td class="text-muted small">@t.Contract</td>
-                    <td class="text-muted small">@t.CarrierService</td>
-                    <td class="text-muted small">@t.Probe</td>
-                    <td class="text-muted small">@t.Address</td>
-                    <td class="text-muted small">@t.IntervalSeconds s</td>
-                    <td><span class="badge @t.BadgeClass">@t.Status</span></td>
-                    <td class="text-muted small">@(t.LastCheckedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
-                    <td class="text-end">
-                        <div class="d-inline-flex gap-2">
+    <div class="row row-cols-1 row-cols-xl-2 g-3">
+        @foreach (var t in Model.Items)
+        {
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100 hn-target-admin-card" data-status="@t.Status">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                            <div>
+                                <div class="fw-bold fs-5 lh-sm hn-target-title" title="@t.Name">@t.Name</div>
+                                <div class="text-muted small">@t.Client</div>
+                            </div>
+                            @{
+                                var statusChip = t.Status switch
+                                {
+                                    HNControl.Web.Models.MonitorStatus.Up => "hn-chip-status-up",
+                                    HNControl.Web.Models.MonitorStatus.Down => "hn-chip-status-down",
+                                    _ => "hn-chip-neutral"
+                                };
+                            }
+                            <span class="hn-chip @statusChip">@t.Status</span>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <span class="hn-chip hn-chip-neutral">@t.Probe</span>
+                            <span class="hn-chip hn-chip-ref">@t.Address</span>
+                            <span class="hn-chip hn-chip-type">@t.IntervalSeconds s</span>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(t.Contract))
+                        {
+                            <div class="small text-muted hn-line-clamp-1" title="@t.Contract">Contrato: @t.Contract</div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(t.CarrierService))
+                        {
+                            <div class="small text-muted hn-line-clamp-1" title="@t.CarrierService">Servicio: @t.CarrierService</div>
+                        }
+
+                        <div class="small text-muted mt-2">&Uacute;ltimo check: @(t.LastCheckedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
+
+                        @if (!string.IsNullOrWhiteSpace(t.LastError))
+                        {
+                            <div class="small text-danger mt-2">@t.LastError</div>
+                        }
+
+                        <div class="mt-auto pt-3 d-flex justify-content-end gap-2">
                             <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@t.Id">Editar</a>
-                            <form method="post" asp-page-handler="Toggle" class="d-inline m-0">
+                            <form method="post" asp-page-handler="Toggle" class="m-0">
                                 <input type="hidden" name="id" value="@t.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">@(t.IsActive ? "Desactivar" : "Activar")</button>
                             </form>
                         </div>
-                    </td>
-                </tr>
-                @if (!string.IsNullOrWhiteSpace(t.LastError))
-                {
-                    <tr>
-                        <td></td>
-                        <td colspan="9" class="small text-danger">@t.LastError</td>
-                    </tr>
-                }
-            }
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
+}
+
+@section Styles {
+    <style>
+        .hn-target-admin-card {
+            border-radius: 16px !important;
+            background: linear-gradient(150deg, rgba(255,255,255,.98), rgba(248,251,255,.93));
+            border: 1px solid rgba(15,23,42,.08);
+            min-height: 235px;
+        }
+
+        .hn-target-admin-card[data-status="Down"] {
+            border-color: rgba(220, 53, 69, .32);
+        }
+
+        .hn-target-admin-card[data-status="Up"] {
+            border-color: rgba(25, 135, 84, .3);
+        }
+
+        .hn-target-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .hn-line-clamp-1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @@media (max-width: 767.98px) {
+            .hn-target-actions .btn {
+                flex: 1 1 auto;
+            }
+        }
+    </style>
 }

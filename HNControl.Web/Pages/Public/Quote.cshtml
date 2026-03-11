@@ -22,7 +22,17 @@
 
                 @if (Model.HasClientContext)
                 {
-                    <div class="alert alert-info py-2">Cliente detectado: <strong>@Model.ClientName</strong>. Datos precargados desde el link.</div>
+                    <div class="alert alert-info py-2">
+                        Cliente detectado: <strong>@Model.ClientName</strong>.
+                        @if (Model.SkipClientDataStep)
+                        {
+                            <span>Datos precargados desde el link.</span>
+                        }
+                        else
+                        {
+                            <span>Faltan datos de contacto, complétalos en el paso 3.</span>
+                        }
+                    </div>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
@@ -40,6 +50,7 @@
                 <form method="post" id="quoteForm" class="row g-3">
                     <input type="hidden" asp-for="Input.ClientToken" />
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
+                    <input type="hidden" id="skipClientDataStep" value="@(Model.SkipClientDataStep ? "1" : "0")" />
 
                     <section class="quote-step-panel" data-step="1">
                         <div class="row g-3">
@@ -125,7 +136,7 @@
                     </section>
 
                     <section class="quote-step-panel d-none" data-step="3">
-                        @if (Model.HasClientContext)
+                        @if (Model.SkipClientDataStep)
                         {
                             <div class="alert alert-success mb-0">Los datos del cliente ya vienen cargados por el link publico. Este paso se omite automaticamente.</div>
                         }
@@ -196,11 +207,12 @@
 (() => {
     const payload = @Html.Raw(catalogJson);
     const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant() === 'true';
+    const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
     const lines = [];
 
     const allSteps = [1,2,3,4];
-    const navSteps = hasClientContext ? [1,2,4] : allSteps;
+    const navSteps = skipClientDataStep ? [1,2,4] : allSteps;
     let currentStep = navSteps[0];
 
     const seg = document.getElementById('segmentSelect');
@@ -220,7 +232,7 @@
     const nextStepBtn = document.getElementById('nextStepBtn');
     const submitBtn = document.getElementById('submitBtn');
 
-    if(hasClientContext){
+    if(skipClientDataStep){
         ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation','Input_CompanyName']
             .forEach(id => {
                 const el = document.getElementById(id);
@@ -383,7 +395,7 @@
             alert('Agrega al menos un concepto antes de continuar.');
             return false;
         }
-        if(step === 3 && !hasClientContext){
+        if(step === 3 && !skipClientDataStep){
             const required = ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation'];
             for(const id of required){
                 const el = document.getElementById(id);

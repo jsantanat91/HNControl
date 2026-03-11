@@ -66,6 +66,24 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Tickets abiertos</div>
+                <div class="fs-3 fw-bold">@Model.Kpi.OpenTickets</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index">Ver</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-soft hn-hover hn-kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Tickets SLA vencido</div>
+                <div class="fs-3 fw-bold text-danger">@Model.Kpi.TicketSlaBreached</div>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index" asp-route-status="open">Ver</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3 mt-1">
@@ -134,6 +152,7 @@
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
+                    <a class="btn btn-outline-secondary" asp-page="/Tickets/Index"><i class="bi bi-life-preserver me-1"></i> Tickets</a>
                 </div>
             </div>
         </div>

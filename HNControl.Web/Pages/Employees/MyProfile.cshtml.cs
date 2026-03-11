@@ -78,6 +78,11 @@ public class MyProfileModel : PageModel
     public string ExamsValuesJson { get; set; } = "[]";
     public string PayrollLabelsJson { get; set; } = "[]";
     public string PayrollValuesJson { get; set; } = "[]";
+    public string TicketsLabelsJson { get; set; } = "[]";
+    public string TicketsValuesJson { get; set; } = "[]";
+    public int TicketsAssigned { get; set; }
+    public int TicketsResolvedMonth { get; set; }
+    public int TicketsSlaBreach { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -96,6 +101,7 @@ public class MyProfileModel : PageModel
         await LoadEval360Async(userId);
         await LoadLeavesAsync(userId);
         await LoadExamsAsync(userId);
+        await LoadTicketsAsync(userId);
     }
 
     private async Task LoadViaticosAsync(string userId)
@@ -392,6 +398,46 @@ public class MyProfileModel : PageModel
 
         ExamsLabelsJson = JsonSerializer.Serialize(labels);
         ExamsValuesJson = JsonSerializer.Serialize(values);
+    }
+
+    private async Task LoadTicketsAsync(string userId)
+    {
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        TicketsAssigned = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.AssignedToUserId == userId && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled)
+            .CountAsync();
+
+        TicketsResolvedMonth = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.AssignedToUserId == userId && t.ResolvedAt != null && t.ResolvedAt >= monthStart)
+            .CountAsync();
+
+        TicketsSlaBreach = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.AssignedToUserId == userId && (t.SlaBreachedResponse || t.SlaBreachedResolution))
+            .CountAsync();
+
+        var firstMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var resolved = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.AssignedToUserId == userId && t.ResolvedAt != null && t.ResolvedAt >= firstMonth)
+            .Select(t => t.ResolvedAt!.Value)
+            .ToListAsync();
+
+        var labels = new List<string>();
+        var values = new List<int>();
+        for (var i = 5; i >= 0; i--)
+        {
+            var m = now.AddMonths(-i);
+            labels.Add(m.ToString("MMM yy"));
+            values.Add(resolved.Count(x => x.Year == m.Year && x.Month == m.Month));
+        }
+
+        TicketsLabelsJson = JsonSerializer.Serialize(labels);
+        TicketsValuesJson = JsonSerializer.Serialize(values);
     }
 
     private static string CalcSeniority(DateTime? hireDate)

@@ -164,11 +164,18 @@ public sealed class EmployeeDashboardDto
     public EmployeeProfileDto Profile { get; set; } = new();
     public PayrollDto Payroll { get; set; } = new();
     public List<PayrollHistoryPointDto> PayrollHistory { get; set; } = new();
+    public List<TicketHistoryPointDto> TicketHistory { get; set; } = new();
     public List<DeductionDto> Deductions { get; set; } = new();
     public VacationsDto Vacations { get; set; } = new();
     public ExamsDto Exams { get; set; } = new();
     public ViaticWeekDto? CurrentViaticWeek { get; set; }
     public List<InventoryOrderDto> InventoryOrders { get; set; } = new();
+}
+
+public sealed class TicketHistoryPointDto
+{
+    public string Label { get; set; } = "";
+    public int Resolved { get; set; }
 }
 
 public sealed class EmployeeProfileDto
@@ -414,6 +421,52 @@ public sealed class Eval360ModuleItemDto
     public string Status { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public DateTime? SubmittedAt { get; set; }
+}
+
+public sealed class TicketModuleItemDto
+{
+    public Guid Id { get; set; }
+    public string TicketNumber { get; set; } = "";
+    public string Client { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Priority { get; set; } = "";
+    public string Source { get; set; } = "";
+    public string AssignedTo { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime SlaResponseDueAt { get; set; }
+    public DateTime SlaResolutionDueAt { get; set; }
+    public bool Breach { get; set; }
+    public bool IsMine { get; set; }
+    public bool CanTake { get; set; }
+}
+
+public sealed class TicketEventDto
+{
+    public DateTime CreatedAt { get; set; }
+    public string EventType { get; set; } = "";
+    public string UserName { get; set; } = "";
+    public string Message { get; set; } = "";
+}
+
+public sealed class TicketDetailDto
+{
+    public Guid Id { get; set; }
+    public string TicketNumber { get; set; } = "";
+    public string Client { get; set; } = "";
+    public string Contract { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Priority { get; set; } = "";
+    public string Source { get; set; } = "";
+    public string AssignedTo { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime SlaResponseDueAt { get; set; }
+    public DateTime SlaResolutionDueAt { get; set; }
+    public bool Breach { get; set; }
+    public string ResolutionSummary { get; set; } = "";
+    public List<TicketEventDto> Events { get; set; } = new();
 }
 
 public sealed class ViaticWeekListItemDto

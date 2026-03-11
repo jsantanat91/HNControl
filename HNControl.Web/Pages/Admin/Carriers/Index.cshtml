@@ -8,71 +8,90 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Carriers (Internet)</h1>
-        <div class="text-muted small">Catálogo de proveedores + datos de soporte.</div>
+        <div class="text-muted small">Cat&aacute;logo de proveedores y datos de soporte.</div>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap hn-admin-actions">
         <a class="btn btn-primary" asp-page="./Create">+ Nuevo carrier</a>
         <a class="btn btn-outline-secondary" asp-page="/Admin/Carriers/Services/Index">Servicios por cliente</a>
         <a class="btn btn-outline-secondary" asp-page="/Carriers/Index">Vista (empleados)</a>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead>
-                    <tr>
-                        <th style="width:86px;">Logo</th>
-                        <th>Carrier</th>
-                        <th>Ejecutivo</th>
-                        <th>Tel soporte</th>
-                        <th>Email</th>
-                        <th>Portal</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var c in Model.Carriers)
-                {
-                    <tr>
-                        <td>
-                            @if (!string.IsNullOrWhiteSpace(c.LogoStoragePath))
-                            {
-                                <img src="@Url.Page("/Carriers/Logo", new { id = c.Id })" alt="logo" style="height:36px; width:72px; object-fit:contain;" class="border rounded bg-white p-1" />
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </td>
-                        <td class="fw-semibold">@c.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(c.ExecutiveName) ? "—" : c.ExecutiveName)</td>
-                        <td>@(string.IsNullOrWhiteSpace(c.SupportPhone) ? "—" : c.SupportPhone)</td>
-                        <td>@(string.IsNullOrWhiteSpace(c.SupportEmail) ? "—" : c.SupportEmail)</td>
-                        <td>
+@if (Model.Carriers.Count == 0)
+{
+    <div class="alert alert-light border">Sin carriers a&uacute;n.</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+        @foreach (var c in Model.Carriers)
+        {
+            <div class="col d-flex">
+                <div class="card shadow-soft hn-hover w-100 hn-admin-carrier-card">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(c.LogoStoragePath))
+                                {
+                                    <img src="@Url.Page("/Carriers/Logo", new { id = c.Id })" alt="logo" style="height:30px; width:58px; object-fit:contain;" class="border rounded bg-white p-1" />
+                                }
+                                <span class="fw-bold">@c.Name</span>
+                            </div>
+                            <span class="hn-chip hn-chip-neutral">Carrier</span>
+                        </div>
+
+                        <div class="small text-muted">Ejecutivo</div>
+                        <div class="fw-semibold mb-2">@(string.IsNullOrWhiteSpace(c.ExecutiveName) ? "-" : c.ExecutiveName)</div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="small text-muted">Soporte tel</div>
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(c.SupportPhone) ? "-" : c.SupportPhone)</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small text-muted">Email</div>
+                                <div class="fw-semibold text-break">@(string.IsNullOrWhiteSpace(c.SupportEmail) ? "-" : c.SupportEmail)</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto d-flex justify-content-between align-items-center">
                             @if (!string.IsNullOrWhiteSpace(c.SupportPortalUrl))
                             {
-                                <a class="hn-link" href="@c.SupportPortalUrl" target="_blank" rel="noopener">Abrir</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="@c.SupportPortalUrl" target="_blank" rel="noopener">Portal</a>
                             }
                             else
                             {
-                                <span>—</span>
+                                <span class="text-muted small">Sin portal</span>
                             }
-                        </td>
-                        <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@c.Id">Editar</a>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-
-        @if (Model.Carriers.Count == 0)
-        {
-            <div class="text-muted">Sin carriers aún.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         }
     </div>
-</div>
+}
+
+@section Styles {
+    <style>
+        .hn-admin-carrier-card {
+            border-radius: 16px !important;
+            background: linear-gradient(150deg, rgba(255,255,255,.98), rgba(248,251,255,.94));
+            min-height: 210px;
+        }
+
+        .hn-admin-carrier-card .fw-bold {
+            max-width: 260px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @@media (max-width: 767.98px) {
+            .hn-admin-actions .btn {
+                flex: 1 1 auto;
+            }
+        }
+    </style>
+}

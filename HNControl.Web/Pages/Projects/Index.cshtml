@@ -54,18 +54,30 @@ else
         {
             var st = UiBadges.ProjectStatusBadge(p.Status);
             var sla = UiBadges.ProjectSlaBadge(p.Status, p.EstEnd);
+            var stKey = (st.text ?? "").ToLowerInvariant();
+            var stChip = stKey.Contains("cerr")
+                ? "hn-chip-status-closed"
+                : stKey.Contains("abier")
+                    ? "hn-chip-type"
+                    : "hn-chip-neutral";
+            var slaKey = (sla.text ?? "").ToLowerInvariant();
+            var slaChip = slaKey.Contains("venc")
+                ? "hn-chip-status-down"
+                : slaKey.Contains("riesgo")
+                    ? "hn-chip-status-progress"
+                    : "hn-chip-status-up";
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div class="fw-bold fs-5 lh-sm">@p.Title</div>
-                            <span class="badge @st.css">@st.text</span>
+                            <span class="hn-chip @stChip">@st.text</span>
                         </div>
                         <div class="small text-muted mt-1">Cliente: @p.ClientName</div>
                         <div class="small text-muted">Responsable: @p.Responsible</div>
                         <div class="small mt-2">Inicio: @p.StartDate.ToString("yyyy-MM-dd")</div>
                         <div class="small">Estimado: @p.EstEnd.ToString("yyyy-MM-dd")</div>
-                        <div class="mt-2"><span class="badge @sla.css">@sla.text</span></div>
+                        <div class="mt-2"><span class="hn-chip @slaChip">@sla.text</span></div>
                         <div class="mt-auto pt-3">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
                             @if (User.IsInRole(AppRoles.Admin))

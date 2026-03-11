@@ -43,4 +43,7 @@ public sealed class ModulesService
 
     public Task<List<Eval360ModuleItemDto>> GetEval360Async()
         => _api.GetJsonAsync<List<Eval360ModuleItemDto>>("api/mobile/modules/eval360");
+
+    public Task<List<TicketModuleItemDto>> GetTicketsAsync(string status = "open")
+        => _api.GetJsonAsync<List<TicketModuleItemDto>>($"api/mobile/modules/tickets?status={Uri.EscapeDataString(status)}");
 }

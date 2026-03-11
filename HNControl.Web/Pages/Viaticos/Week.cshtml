@@ -2,7 +2,7 @@
 @model HNControl.Web.Pages.Viaticos.WeekModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Mis viaticos";
+    ViewData["Title"] = "Mis vi&aacute;ticos";
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -16,12 +16,20 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h1 class="h4 m-0">Mis viaticos</h1>
+        <h1 class="h4 m-0">Mis vi&aacute;ticos</h1>
         <div class="text-muted small">
             Semana: <strong>@Model.WeekStart.ToString("yyyy-MM-dd")</strong>
             @if (Model.Week != null)
             {
-                <span> · Estado: <strong>@Model.Week.Status.GetDisplayName()</strong></span>
+                var wkKey = Model.Week.Status.GetDisplayName().ToLowerInvariant();
+                var wkChip = wkKey.Contains("aprob")
+                    ? "hn-chip-status-up"
+                    : wkKey.Contains("rechaz")
+                        ? "hn-chip-status-down"
+                        : wkKey.Contains("envi")
+                            ? "hn-chip-status-progress"
+                            : "hn-chip-neutral";
+                <span> · Estado: <span class="hn-chip @wkChip">@Model.Week.Status.GetDisplayName()</span></span>
             }
         </div>
     </div>
@@ -94,10 +102,10 @@ else
                                     <div class="fw-semibold fs-5">@e.Description</div>
                                     <div class="small text-muted">@e.DayDate.ToString("yyyy-MM-dd")</div>
                                 </div>
-                                <span class="hn-badge @(e.IsBillable ? "hn-badge-green" : "hn-badge-slate")">@(e.IsBillable ? "Facturable" : "No facturable")</span>
+                                <span class="hn-chip @(e.IsBillable ? "hn-chip-status-up" : "hn-chip-neutral")">@(e.IsBillable ? "Facturable" : "No facturable")</span>
                             </div>
 
-                            <div class="small mt-2">Categoria: <b>@e.Category</b></div>
+                            <div class="small mt-2">Categor&iacute;a: <b>@e.Category</b></div>
                             <div class="small">Monto: <b>@e.Amount.ToString("0.00")</b></div>
 
                             <div class="small mt-2">

@@ -1,4 +1,4 @@
-using HNControl.Mobile.Services;
+﻿using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
 
@@ -6,6 +6,7 @@ public partial class ModulesHubPage : ContentPage
 {
     private readonly ModulesService _modules;
     private readonly IServiceProvider _services;
+    private static int _lastUnassignedOpenTickets;
 
     public ModulesHubPage(ModulesService modules, IServiceProvider services)
     {
@@ -21,6 +22,21 @@ public partial class ModulesHubPage : ContentPage
         {
             var list = await _modules.GetAllowedModulesAsync();
             ModulesCollection.ItemsSource = list;
+
+            var hasTickets = list.Any(x => string.Equals(x.Key, "Tickets", StringComparison.OrdinalIgnoreCase));
+            if (hasTickets)
+            {
+                var open = await _modules.GetTicketsAsync("open");
+                var unassignedOpen = open.Count(x =>
+                    string.Equals(x.AssignedTo, "Sin asignar", StringComparison.OrdinalIgnoreCase));
+
+                if (unassignedOpen > _lastUnassignedOpenTickets)
+                {
+                    await DisplayAlertAsync("Tickets", $"Hay {unassignedOpen} ticket(s) sin tomar.", "OK");
+                }
+
+                _lastUnassignedOpenTickets = unassignedOpen;
+            }
         }
         catch (Exception ex)
         {
@@ -45,6 +61,7 @@ public partial class ModulesHubPage : ContentPage
             "Leaves" => _services.GetRequiredService<LeavesModulePage>(),
             "Exams" => _services.GetRequiredService<ExamsModulePage>(),
             "Eval360" => _services.GetRequiredService<Eval360ModulePage>(),
+            "Tickets" => _services.GetRequiredService<TicketsModulePage>(),
             _ => null
         };
 

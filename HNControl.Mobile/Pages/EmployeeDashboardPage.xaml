@@ -46,6 +46,27 @@
 
             <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" FontSize="18" Text="Tickets atendidos" />
+                    <Label FontSize="12" Opacity="0.7" Text="Ultimos 6 meses" />
+                    <CollectionView x:Name="TicketHistoryCollection" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.7" Text="Sin tickets resueltos recientes." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="64,*,52" Margin="0,2">
+                                    <Label VerticalOptions="Center" Text="{Binding Label}" />
+                                    <ProgressBar Grid.Column="1" Progress="{Binding Ratio}" />
+                                    <Label Grid.Column="2" HorizontalTextAlignment="End" VerticalOptions="Center" Text="{Binding ValueText}" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Deducciones y bonos" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
                         <VerticalStackLayout>

@@ -51,11 +51,19 @@ else
     <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
         @foreach (var w in Model.Weeks)
         {
+            var wkKey = w.Status.GetDisplayName().ToLowerInvariant();
+            var wkChip = wkKey.Contains("aprob")
+                ? "hn-chip-status-up"
+                : wkKey.Contains("rechaz")
+                    ? "hn-chip-status-down"
+                    : wkKey.Contains("envi")
+                        ? "hn-chip-status-progress"
+                        : "hn-chip-neutral";
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100">
                     <div class="card-body d-flex flex-column">
                         <div class="fw-bold fs-5">Semana @w.WeekStartDate.ToString("yyyy-MM-dd")</div>
-                        <div class="small mt-2">Estado: <span class="badge rounded-pill bg-light text-dark border">@w.Status.GetDisplayName()</span></div>
+                        <div class="small mt-2">Estado: <span class="hn-chip @wkChip">@w.Status.GetDisplayName()</span></div>
                         <div class="small">Total: <b>@w.Total.ToString("C")</b></div>
                         <div class="mt-auto pt-3">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Viaticos/Week" asp-route-id="@w.Id">Abrir</a>

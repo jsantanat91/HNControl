@@ -34,6 +34,7 @@ public class QuoteModel : PageModel
 
     public string? ErrorMessage { get; set; }
     public bool HasClientContext { get; set; }
+    public bool SkipClientDataStep { get; set; }
     public string ClientName { get; set; } = string.Empty;
 
     public async Task OnGetAsync(string? token)
@@ -106,11 +107,14 @@ public class QuoteModel : PageModel
         var boundClient = await TryLoadClientContextAsync(Input.ClientToken);
         if (boundClient != null)
         {
-            Input.CustomerName = string.IsNullOrWhiteSpace(boundClient.ContactName) ? boundClient.Name : boundClient.ContactName!;
-            Input.CustomerEmail = boundClient.Email ?? string.Empty;
-            Input.CustomerPhone = boundClient.Phone ?? string.Empty;
-            Input.CustomerLocation = boundClient.Address ?? string.Empty;
-            Input.CompanyName = boundClient.Name;
+            // Si el cliente del link tiene datos incompletos, se permite que el usuario los capture.
+            Input.CustomerName = string.IsNullOrWhiteSpace(Input.CustomerName)
+                ? (string.IsNullOrWhiteSpace(boundClient.ContactName) ? boundClient.Name : boundClient.ContactName!)
+                : Input.CustomerName;
+            Input.CustomerEmail = string.IsNullOrWhiteSpace(Input.CustomerEmail) ? (boundClient.Email ?? string.Empty) : Input.CustomerEmail;
+            Input.CustomerPhone = string.IsNullOrWhiteSpace(Input.CustomerPhone) ? (boundClient.Phone ?? string.Empty) : Input.CustomerPhone;
+            Input.CustomerLocation = string.IsNullOrWhiteSpace(Input.CustomerLocation) ? (boundClient.Address ?? string.Empty) : Input.CustomerLocation;
+            Input.CompanyName = string.IsNullOrWhiteSpace(Input.CompanyName) ? boundClient.Name : Input.CompanyName;
         }
 
         await LoadCatalogPayloadAsync();
@@ -326,6 +330,7 @@ public class QuoteModel : PageModel
     private async Task<Client?> TryLoadClientContextAsync(string? token)
     {
         HasClientContext = false;
+        SkipClientDataStep = false;
         ClientName = string.Empty;
 
         if (string.IsNullOrWhiteSpace(token)) return null;
@@ -341,6 +346,12 @@ public class QuoteModel : PageModel
         Input.CustomerPhone = client.Phone ?? string.Empty;
         Input.CustomerLocation = client.Address ?? string.Empty;
         Input.CompanyName = client.Name;
+
+        SkipClientDataStep =
+            !string.IsNullOrWhiteSpace(Input.CustomerName) &&
+            !string.IsNullOrWhiteSpace(Input.CustomerEmail) &&
+            !string.IsNullOrWhiteSpace(Input.CustomerPhone) &&
+            !string.IsNullOrWhiteSpace(Input.CustomerLocation);
         return client;
     }
 }

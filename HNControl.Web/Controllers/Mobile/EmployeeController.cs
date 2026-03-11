@@ -66,6 +66,7 @@ public class EmployeeController : ControllerBase
     public record ExamsDto(int Assigned, int InProgress, int Submitted, int Graded);
 
     public record ViaticWeekDto(Guid Id, DateTime WeekStart, string Status, decimal Total, decimal Billable);
+    public record TicketHistoryPointDto(string Label, int Resolved);
 
     public record InventoryOrderDto(
         Guid AnchorId,
@@ -81,6 +82,7 @@ public class EmployeeController : ControllerBase
         EmployeeProfileDto Profile,
         PayrollDto Payroll,
         List<PayrollHistoryPointDto> PayrollHistory,
+        List<TicketHistoryPointDto> TicketHistory,
         List<DeductionDto> Deductions,
         VacationsDto Vacations,
         ExamsDto Exams,
@@ -323,6 +325,21 @@ public class EmployeeController : ControllerBase
             })
             .ToList();
 
+        var firstTicketMonth = new DateTime(todayUtc.Year, todayUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var ticketResolvedDates = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.AssignedToUserId == userId && t.ResolvedAt != null && t.ResolvedAt >= firstTicketMonth)
+            .Select(t => t.ResolvedAt!.Value)
+            .ToListAsync();
+
+        var ticketHistory = new List<TicketHistoryPointDto>();
+        for (var i = 5; i >= 0; i--)
+        {
+            var month = todayUtc.AddMonths(-i);
+            var count = ticketResolvedDates.Count(x => x.Year == month.Year && x.Month == month.Month);
+            ticketHistory.Add(new TicketHistoryPointDto(month.ToString("MM/yy"), count));
+        }
+
         var dto = new EmployeeDashboardDto(
             new EmployeeProfileDto(
                 profile.FullName,
@@ -344,6 +361,7 @@ public class EmployeeController : ControllerBase
                 bonusesTotal,
                 netQuincenal),
             history,
+            ticketHistory,
             deductions,
             new VacationsDto(
                 year,

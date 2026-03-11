@@ -21,10 +21,12 @@ public class DashboardModel : PageModel
         int PendingLeaveRequests,
         int ExamsToGrade,
         int PendingInventoryOrders,
-        int LowStockItems
+        int LowStockItems,
+        int OpenTickets,
+        int TicketSlaBreached
     );
 
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0);
+    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     public record TopVm(string UserId, string Name, decimal Variable);
     public List<TopVm> Top { get; set; } = new();
@@ -76,7 +78,19 @@ public class DashboardModel : PageModel
             .Where(i => i.IsActive && i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel)
             .CountAsync();
 
-        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems);
+        var now = DateTime.UtcNow;
+        var openTickets = await _db.Tickets
+            .Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled)
+            .CountAsync();
+
+        var ticketSlaBreached = await _db.Tickets
+            .Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled)
+            .Where(t => t.SlaBreachedResponse || t.SlaBreachedResolution
+                        || (t.FirstResponseAt == null && t.SlaResponseDueAt < now)
+                        || (t.ResolvedAt == null && t.SlaResolutionDueAt < now))
+            .CountAsync();
+
+        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems, openTickets, ticketSlaBreached);
 
         // Top variable (última evaluación por empleado)
         var latest = await _db.PerformanceReviews

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,14 +17,17 @@ public class ModulesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IModuleAccessService _moduleAccess;
+    private readonly ITicketFlowService _ticketFlow;
 
-    public ModulesController(ApplicationDbContext db, IModuleAccessService moduleAccess)
+    public ModulesController(ApplicationDbContext db, IModuleAccessService moduleAccess, ITicketFlowService ticketFlow)
     {
         _db = db;
         _moduleAccess = moduleAccess;
+        _ticketFlow = ticketFlow;
     }
 
     public record ModuleItemDto(string Key, string Label);
+    public record ApiMessageDto(string Message);
     public record MonitorItemDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError);
     public record InventoryOrderDto(Guid AnchorId, DateTime RequestedAt, string Type, string ProjectTitle, string ResponsibleName, string StatusLabel, int LinesCount, string ItemsPreview);
     public record CarrierClientDto(Guid ClientId, string Name, int ServicesCount, string CarriersSummary);
@@ -37,6 +41,9 @@ public class ModulesController : ControllerBase
     public record CarrierClientDetailDto(Guid ClientId, string ClientName, string Rfc, string Email, string Phone, List<CarrierServiceDto> Services);
     public record MonitorCheckDto(DateTime CheckedAt, bool Success, int? LatencyMs, string Error);
     public record MonitorDetailDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError, string ContractLabel, string CarrierServiceLabel, string Notes, List<MonitorCheckDto> LastChecks);
+    public record TicketItemDto(Guid Id, string TicketNumber, string Client, string Title, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, bool IsMine, bool CanTake);
+    public record TicketDetailDto(Guid Id, string TicketNumber, string Client, string Contract, string Title, string Description, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, string ResolutionSummary, List<TicketEventDto> Events);
+    public record TicketEventDto(DateTime CreatedAt, string EventType, string UserName, string Message);
 
     [HttpGet]
     [ProducesResponseType(typeof(List<ModuleItemDto>), StatusCodes.Status200OK)]
@@ -46,6 +53,7 @@ public class ModulesController : ControllerBase
         var mobileEmployeeModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             AppModules.ServiceOrders,
+            AppModules.Tickets,
             AppModules.Monitoring,
             AppModules.Inventory,
             AppModules.Carriers,
@@ -136,6 +144,155 @@ public class ModulesController : ControllerBase
             checks);
 
         return Ok(detail);
+    }
+
+    [HttpGet("tickets")]
+    [ProducesResponseType(typeof(List<TicketItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Tickets([FromQuery] string? status = null)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var st = (status ?? "open").Trim().ToLowerInvariant();
+        var now = DateTime.UtcNow;
+
+        var q = _db.Tickets
+            .AsNoTracking()
+            .Include(t => t.Client)
+            .OrderByDescending(t => t.CreatedAt)
+            .AsQueryable();
+
+        if (!isAdmin)
+            q = q.Where(t => t.AssignedToUserId == uid || string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.CreatedByUserId == uid);
+
+        if (st == "open")
+            q = q.Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
+        else if (st == "mine")
+            q = q.Where(t => t.AssignedToUserId == uid);
+        else if (st == "closed")
+            q = q.Where(t => t.Status == TicketStatus.Closed);
+
+        var data = await q.Take(200).Select(t => new TicketItemDto(
+            t.Id,
+            t.TicketNumber,
+            t.Client != null ? t.Client.Name : "-",
+            t.Title,
+            t.Status.ToString(),
+            t.Priority.ToString(),
+            t.Source.ToString(),
+            string.IsNullOrWhiteSpace(t.AssignedToName) ? "Sin asignar" : t.AssignedToName,
+            t.CreatedAt,
+            t.SlaResponseDueAt,
+            t.SlaResolutionDueAt,
+            t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
+            t.AssignedToUserId == uid,
+            string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.AssignedToUserId == uid || isAdmin
+        )).ToListAsync();
+
+        return Ok(data);
+    }
+
+    [HttpGet("tickets/{id:guid}")]
+    [ProducesResponseType(typeof(TicketDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TicketDetail(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var now = DateTime.UtcNow;
+
+        var t = await _db.Tickets
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
+            .Include(x => x.Events)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return NotFound();
+
+        if (!isAdmin && t.AssignedToUserId != uid && !string.IsNullOrWhiteSpace(t.AssignedToUserId))
+            return Forbid();
+
+        var dto = new TicketDetailDto(
+            t.Id,
+            t.TicketNumber,
+            t.Client?.Name ?? "-",
+            t.ClientServiceContract?.Label ?? "-",
+            t.Title,
+            t.Description,
+            t.Status.ToString(),
+            t.Priority.ToString(),
+            t.Source.ToString(),
+            string.IsNullOrWhiteSpace(t.AssignedToName) ? "Sin asignar" : t.AssignedToName,
+            t.CreatedAt,
+            t.SlaResponseDueAt,
+            t.SlaResolutionDueAt,
+            t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
+            t.ResolutionSummary,
+            t.Events.OrderByDescending(e => e.CreatedAt).Take(60).Select(e => new TicketEventDto(e.CreatedAt, e.EventType, e.UserName, e.Message)).ToList()
+        );
+
+        return Ok(dto);
+    }
+
+    [HttpPost("tickets/{id:guid}/take")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketTake(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.TryTakeAsync(id, uid, uname, AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Ticket tomado." : "No se pudo tomar ticket."));
+    }
+
+    [HttpPost("tickets/{id:guid}/start")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketStart(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.TryStartAsync(id, uid, uname, AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Ticket en proceso." : "No se pudo iniciar."));
+    }
+
+    public record TicketResolveBody(string Summary);
+
+    [HttpPost("tickets/{id:guid}/resolve")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketResolve(Guid id, [FromBody] TicketResolveBody body)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.TryResolveAsync(id, uid, uname, body.Summary ?? "", AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Ticket resuelto." : "No se pudo resolver."));
+    }
+
+    [HttpPost("tickets/{id:guid}/close")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> TicketClose(Guid id)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
+            return Forbid();
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var uname = User.Identity?.Name ?? "Usuario";
+        var ok = await _ticketFlow.TryCloseAsync(id, uid, uname, AppRoles.IsGlobalAdmin(User));
+        return Ok(new ApiMessageDto(ok ? "Ticket cerrado." : "No se pudo cerrar."));
     }
 
     [HttpGet("inventory/my-requests")]

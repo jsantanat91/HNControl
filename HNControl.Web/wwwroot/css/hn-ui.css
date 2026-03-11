@@ -379,6 +379,76 @@ a:hover { color: var(--hn-blue-dark); text-decoration: underline; }
 .hn-badge-cyan{ background: rgba(6,182,212,.10); color: rgba(8,145,178,.98); border-color: rgba(6,182,212,.22); }
 .hn-badge-purple{ background: rgba(124,58,237,.10); color: rgba(88,28,135,.98); border-color: rgba(124,58,237,.22); }
 
+/* Unified chips (Carriers, Monitoring, Tickets) */
+.hn-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:.24rem .58rem;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,.12);
+  font-weight:700;
+  font-size:.76rem;
+  line-height:1.1;
+  letter-spacing:-.01em;
+  white-space:nowrap;
+}
+.hn-chip-ref{
+  background: rgba(6,182,212,.10);
+  color: rgb(8,145,178);
+  border-color: rgba(6,182,212,.28);
+}
+.hn-chip-neutral{
+  background: rgba(148,163,184,.14);
+  color: rgb(51,65,85);
+  border-color: rgba(100,116,139,.24);
+}
+.hn-chip-type{
+  background: rgba(37,99,235,.10);
+  color: rgb(30,64,175);
+  border-color: rgba(37,99,235,.25);
+}
+.hn-chip-status-up{
+  background: rgba(34,197,94,.10);
+  color: rgb(21,128,61);
+  border-color: rgba(34,197,94,.28);
+}
+.hn-chip-status-down{
+  background: rgba(239,68,68,.10);
+  color: rgb(185,28,28);
+  border-color: rgba(239,68,68,.28);
+}
+.hn-chip-status-progress{
+  background: rgba(245,158,11,.14);
+  color: rgb(146,64,14);
+  border-color: rgba(245,158,11,.28);
+}
+.hn-chip-status-closed{
+  background: rgba(16,185,129,.12);
+  color: rgb(6,95,70);
+  border-color: rgba(16,185,129,.30);
+}
+.hn-chip-priority-critical{
+  background: rgba(220,38,38,.12);
+  color: rgb(153,27,27);
+  border-color: rgba(220,38,38,.30);
+}
+.hn-chip-priority-high{
+  background: rgba(245,158,11,.14);
+  color: rgb(146,64,14);
+  border-color: rgba(245,158,11,.30);
+}
+.hn-chip-priority-medium{
+  background: rgba(37,99,235,.10);
+  color: rgb(30,64,175);
+  border-color: rgba(37,99,235,.25);
+}
+.hn-chip-priority-low{
+  background: rgba(148,163,184,.14);
+  color: rgb(51,65,85);
+  border-color: rgba(100,116,139,.24);
+}
+
 /* Module cards (Carriers, etc.) */
 .hn-module{
   position: relative;

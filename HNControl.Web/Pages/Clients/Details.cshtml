@@ -134,6 +134,18 @@
             </div>
         </div>
 
+        <div class="card shadow-sm hn-hover mb-3">
+            <div class="card-body">
+                <div class="fw-semibold mb-1">Link publico de tickets</div>
+                <div class="input-group">
+                    <input id="ticketPublicLink" class="form-control" value="@Model.PublicTicketUrl" readonly />
+                    <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('ticketPublicLink').value)">Copiar</button>
+                    <a class="btn btn-primary" href="@Model.PublicTicketUrl" target="_blank" rel="noopener">Abrir</a>
+                </div>
+                <div class="text-muted small mt-2">El cliente captura su codigo (ej: HN-0001), selecciona contrato y levanta ticket ITIL.</div>
+            </div>
+        </div>
+
         <div class="card shadow-soft hn-hover">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">Proyectos</div>
@@ -220,6 +232,47 @@
                                            asp-route-id="@q.Id">PDF</a>
                                     }
                                 </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-soft hn-hover mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Tickets</div>
+                <div class="text-muted small">@Model.Tickets.Count registro(s)</div>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Asunto</th>
+                            <th>Estado</th>
+                            <th>Prioridad</th>
+                            <th>Asignado</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!Model.Tickets.Any())
+                    {
+                        <tr><td colspan="6" class="text-muted">Sin tickets todavia.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var t in Model.Tickets)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@t.Number</td>
+                                <td>@t.Title</td>
+                                <td><span class="hn-chip hn-chip-neutral">@t.Status</span></td>
+                                <td><span class="hn-chip hn-chip-ref">@t.Priority</span></td>
+                                <td>@t.AssignedTo</td>
+                                <td class="text-muted small">@t.CreatedAt</td>
                             </tr>
                         }
                     }

@@ -47,8 +47,8 @@ else
                             <div class="small text-muted">Global: @group.GlobalWeeks semana(s) · En esta página: @group.Weeks.Count semana(s)</div>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2">Total global: @group.GlobalTotalAmount.ToString("C")</span>
-                            <span class="badge rounded-pill bg-light text-dark border px-3 py-2">Página: @group.PageTotalAmount.ToString("C")</span>
+                            <span class="hn-chip hn-chip-type">Total global: @group.GlobalTotalAmount.ToString("C")</span>
+                            <span class="hn-chip hn-chip-neutral">Página: @group.PageTotalAmount.ToString("C")</span>
                         </div>
                     </div>
                 </summary>
@@ -59,8 +59,18 @@ else
                             <div class="col d-flex">
                                 <div class="card border w-100">
                                     <div class="card-body d-flex flex-column">
+                                        @{
+                                            var wkKey = w.Status.GetDisplayName().ToLowerInvariant();
+                                            var wkChip = wkKey.Contains("aprob")
+                                                ? "hn-chip-status-up"
+                                                : wkKey.Contains("rechaz")
+                                                    ? "hn-chip-status-down"
+                                                    : wkKey.Contains("envi")
+                                                        ? "hn-chip-status-progress"
+                                                        : "hn-chip-neutral";
+                                        }
                                         <div class="small text-muted">Semana: @w.WeekStart.ToString("yyyy-MM-dd")</div>
-                                        <div class="small mt-2">Estado: <span class="badge rounded-pill bg-light text-dark border">@w.Status.GetDisplayName()</span></div>
+                                        <div class="small mt-2">Estado: <span class="hn-chip @wkChip">@w.Status.GetDisplayName()</span></div>
                                         <div class="small">Total: <b>@w.Total.ToString("C")</b></div>
                                         <div class="mt-auto pt-3">
                                             <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Viaticos/Week" asp-route-id="@w.WeekId">Abrir</a>
