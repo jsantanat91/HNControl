@@ -31,29 +31,28 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-lg-7">
+    <div class="col-12">
         <div class="card shadow-soft hn-hover">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">Servicios contratados</div>
                 <div class="text-muted small">@Model.Contracts.Count contrato(s)</div>
             </div>
 
-            <div class="card-body table-responsive">
+            <div class="card-body">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Categor&iacute;a</th>
                             <th>Contrato</th>
                             <th>Proveedor</th>
-                            <th class="text-nowrap">Vence</th>
-                            <th>Proyecto</th>
+                            <th>Vence</th>
                             <th class="text-end"></th>
                         </tr>
                     </thead>
                     <tbody>
                     @if (!Model.Contracts.Any())
                     {
-                        <tr><td colspan="6" class="text-muted">A&uacute;n no hay contratos. Dale al bot&oacute;n "Agregar contrato".</td></tr>
+                        <tr><td colspan="5" class="text-muted">A&uacute;n no hay contratos. Dale al bot&oacute;n "Agregar contrato".</td></tr>
                     }
                     else
                     {
@@ -70,26 +69,26 @@
                                         &middot; #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "-" : c.ContractNumber)
                                         @if (!string.IsNullOrWhiteSpace(c.Branch))
                                         {
-                                            <span> &middot; <span class="hn-chip hn-chip-ref">Sucursal: @c.Branch</span></span>
+                                            <div class="mt-1"><span class="hn-chip hn-chip-ref hn-chip-branch" title="@c.Branch">Sucursal: @c.Branch</span></div>
                                         }
                                         @if (c.HasPortalAccess)
                                         {
-                                            <span> &middot; <span class="badge bg-info text-dark">Acceso portal</span></span>
+                                            <div class="mt-1"><span class="badge bg-info text-dark">Acceso portal</span></div>
                                         }
                                         @if (!string.IsNullOrWhiteSpace(c.BranchAddress))
                                         {
                                             <div class="text-muted small mt-1">Direccion sucursal: @c.BranchAddress</div>
                                         }
+                                        <div class="text-muted small mt-1">Proyecto: @c.ProjectTitle</div>
                                     </div>
                                 </td>
                                 <td>@(string.IsNullOrWhiteSpace(c.Provider) ? "-" : c.Provider)</td>
-                                <td class="text-nowrap">
+                                <td>
                                     <div>@(c.ContractEndDateText)</div>
                                     <div>
                                         <span class="badge @c.StatusBadgeClass">@c.StatusText</span>
                                     </div>
                                 </td>
-                                <td class="text-muted small">@c.ProjectTitle</td>
                                 <td class="text-end text-nowrap">
                                     @if (c.HasContractFile)
                                     {
@@ -114,7 +113,7 @@
         </div>
     </div>
 
-    <div class="col-lg-5">
+    <div class="col-12 col-xl-4">
         <div class="card shadow-sm hn-hover mb-3">
             <div class="card-body">
                 <div class="fw-semibold mb-1">Contacto</div>
@@ -149,7 +148,9 @@
                 <div class="text-muted small mt-2">El cliente captura su ID (ej: HN-0001), selecciona sucursal y levanta ticket ITIL.</div>
             </div>
         </div>
+    </div>
 
+    <div class="col-12 col-xl-4">
         <div class="card shadow-soft hn-hover">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">Proyectos</div>
@@ -190,7 +191,9 @@
                 </table>
             </div>
         </div>
+    </div>
 
+    <div class="col-12 col-xl-4">
         <div class="card shadow-soft hn-hover mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="fw-semibold">Cotizaciones</div>
@@ -286,4 +289,16 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .hn-chip-branch {
+            max-width: 100%;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+}
 

@@ -29,9 +29,18 @@ public partial class TicketDetailPage : ContentPage
             var d = await _tickets.DetailAsync(_ticketId);
             TicketNumberLabel.Text = d.TicketNumber;
             TitleLabel.Text = d.Title;
-            ClientLabel.Text = $"{d.Client} · {d.Contract}";
+            ClientLabel.Text = $"{d.Client} - {d.Contract}";
             MetaLabel.Text = $"{d.Status} | {d.Priority} | SLA: {d.SlaResolutionDueAt:yyyy-MM-dd HH:mm}";
             DescriptionLabel.Text = d.Description;
+
+            BranchLabel.Text = $"Sucursal: {Safe(d.Branch)}";
+            BranchAddressLabel.Text = $"Direccion: {Safe(d.BranchAddress)}";
+            CarrierLabel.Text = Safe(d.Carrier);
+            CarrierServiceLabel.Text = Safe(d.CarrierService);
+            CarrierAccountLabel.Text = Safe(d.CarrierAccount);
+            CarrierCircuitLabel.Text = Safe(d.CarrierCircuit);
+            CarrierIpLabel.Text = Safe(d.CarrierIp);
+
             ResolveEntry.Text = d.ResolutionSummary;
             EventsCollection.ItemsSource = d.Events.Select(x => new EventVm
             {
@@ -87,5 +96,7 @@ public partial class TicketDetailPage : ContentPage
         public string Top { get; set; } = "";
         public string Message { get; set; } = "";
     }
-}
 
+    private static string Safe(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+}
