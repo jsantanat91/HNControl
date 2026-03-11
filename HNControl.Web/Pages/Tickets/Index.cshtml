@@ -28,7 +28,7 @@
             <div class="row g-2">
                 <div class="col-md-4">
                     <label class="form-label">Cliente</label>
-                    <select asp-for="CreateInput.ClientId" class="form-select" required>
+                    <select id="manualClientSelect" asp-for="CreateInput.ClientId" class="form-select" required onchange="filterContractsByClient()">
                         <option value="">Selecciona cliente</option>
                         @foreach (var c in Model.ClientOptions)
                         {
@@ -38,11 +38,11 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Contrato (opcional)</label>
-                    <select asp-for="CreateInput.ContractId" class="form-select">
+                    <select id="manualContractSelect" asp-for="CreateInput.ContractId" class="form-select">
                         <option value="">Sin contrato</option>
                         @foreach (var c in Model.ContractOptions)
                         {
-                            <option value="@c.Id">@c.Label</option>
+                            <option value="@c.Id" data-client-id="@c.ClientId">@c.Label</option>
                         }
                     </select>
                 </div>
@@ -243,3 +243,34 @@
         }
     }
 </div>
+
+@section Scripts {
+    <script>
+        function filterContractsByClient() {
+            const clientSelect = document.getElementById('manualClientSelect');
+            const contractSelect = document.getElementById('manualContractSelect');
+            if (!clientSelect || !contractSelect) return;
+
+            const clientId = (clientSelect.value || '').toLowerCase();
+            const options = Array.from(contractSelect.options);
+            let hasVisibleSelected = false;
+
+            options.forEach((opt, idx) => {
+                if (idx === 0) {
+                    opt.hidden = false;
+                    return;
+                }
+                const owner = (opt.getAttribute('data-client-id') || '').toLowerCase();
+                const visible = !!clientId && owner === clientId;
+                opt.hidden = !visible;
+                if (visible && opt.selected) hasVisibleSelected = true;
+            });
+
+            if (!hasVisibleSelected) {
+                contractSelect.value = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', filterContractsByClient);
+    </script>
+}
