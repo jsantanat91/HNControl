@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
 
 namespace HNControl.Web.Pages.Tickets;
 
@@ -25,6 +27,11 @@ public class IndexModel : PageModel
     public bool IsAdmin => AppRoles.IsGlobalAdmin(User);
     public string StatusFilter { get; set; } = "open";
     public string Search { get; set; } = "";
+    [BindProperty(SupportsGet = true)]
+    public Guid? ReportClientId { get; set; }
+    [BindProperty(SupportsGet = true)]
+    public string ReportMonth { get; set; } = DateTime.Now.ToString("yyyy-MM");
+    public List<string> ReportMonthOptions { get; set; } = new();
 
     public int OpenCount { get; set; }
     public int MineCount { get; set; }
@@ -131,8 +138,108 @@ public class IndexModel : PageModel
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
+    public async Task<IActionResult> OnGetExportClientMonthPdfAsync(Guid clientId, string month)
+    {
+        if (!IsAdmin) return Forbid();
+
+        if (!DateTime.TryParse($"{month}-01", out var firstLocal))
+            return RedirectToPage(new { status = StatusFilter, q = Search });
+
+        var from = new DateTime(firstLocal.Year, firstLocal.Month, 1, 0, 0, 0, DateTimeKind.Local).ToUniversalTime();
+        var to = from.AddMonths(1);
+
+        var client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId);
+        if (client == null) return NotFound();
+
+        var rows = await _db.Tickets
+            .AsNoTracking()
+            .Include(t => t.ClientServiceContract)
+            .Where(t => t.ClientId == clientId && t.CreatedAt >= from && t.CreatedAt < to)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new
+            {
+                t.TicketNumber,
+                t.Title,
+                Status = ToStatusLabel(t.Status),
+                Priority = ToPriorityLabel(t.Priority),
+                Branch = t.ClientServiceContract != null ? (t.ClientServiceContract.Branch ?? "-") : "-",
+                AssignedTo = string.IsNullOrWhiteSpace(t.AssignedToName) ? "Sin asignar" : t.AssignedToName,
+                CreatedAt = t.CreatedAt,
+                ClosedAt = t.ClosedAt,
+                t.SlaBreachedResponse,
+                t.SlaBreachedResolution
+            })
+            .ToListAsync();
+
+        var monthLabel = firstLocal.ToString("yyyy-MM");
+        var fileName = $"Tickets-{(client.ClientCode ?? "Cliente")}-{monthLabel}.pdf";
+
+        var pdf = Document.Create(d =>
+        {
+            d.Page(p =>
+            {
+                p.Size(PageSizes.A4);
+                p.Margin(22);
+                p.DefaultTextStyle(x => x.FontSize(10));
+
+                p.Header().Column(c =>
+                {
+                    c.Item().Text("Reporte de tickets por cliente").FontSize(15).SemiBold();
+                    c.Item().Text($"{client.Name} ({client.ClientCode}) · Mes: {monthLabel}").FontColor(Colors.Grey.Darken1);
+                });
+
+                p.Content().PaddingTop(8).Column(c =>
+                {
+                    c.Item().Text($"Total tickets: {rows.Count}");
+                    c.Item().Text($"Cerrados: {rows.Count(x => x.ClosedAt.HasValue)} · SLA vencido: {rows.Count(x => x.SlaBreachedResponse || x.SlaBreachedResolution)}");
+
+                    c.Item().PaddingTop(6).Table(t =>
+                    {
+                        t.ColumnsDefinition(cols =>
+                        {
+                            cols.RelativeColumn(1.1f);
+                            cols.RelativeColumn(2.5f);
+                            cols.RelativeColumn(1f);
+                            cols.RelativeColumn(1f);
+                            cols.RelativeColumn(1.2f);
+                            cols.RelativeColumn(1.2f);
+                        });
+                        // Header manual para evitar repetición de helper local fuera de scope
+                        t.Header(h =>
+                        {
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Ticket");
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Titulo");
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Estado");
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Prioridad");
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Sucursal");
+                            h.Cell().Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text("Asignado");
+                        });
+
+                        foreach (var r in rows)
+                        {
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(r.TicketNumber);
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(r.Title);
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(r.Status);
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(r.Priority);
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(string.IsNullOrWhiteSpace(r.Branch) ? "-" : r.Branch);
+                            t.Cell().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(r.AssignedTo);
+                        }
+                    });
+                });
+            });
+        }).GeneratePdf();
+
+        return File(pdf, "application/pdf", fileName);
+    }
+
     private async Task LoadAsync()
     {
+        ReportMonthOptions = Enumerable.Range(0, 25)
+            .Select(i => DateTime.Now.AddMonths(-i).ToString("yyyy-MM"))
+            .ToList();
+        if (string.IsNullOrWhiteSpace(ReportMonth) || !ReportMonthOptions.Contains(ReportMonth))
+            ReportMonth = ReportMonthOptions.FirstOrDefault() ?? DateTime.Now.ToString("yyyy-MM");
+
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var now = DateTime.UtcNow;
 
@@ -185,11 +292,6 @@ public class IndexModel : PageModel
             SlaCompliancePercent = 0;
         }
 
-        if (!IsAdmin)
-        {
-            baseQ = baseQ.Where(t => t.AssignedToUserId == uid || string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.CreatedByUserId == uid);
-        }
-
         if (StatusFilter == "open")
             baseQ = baseQ.Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
         else if (StatusFilter == "mine")
@@ -227,7 +329,7 @@ public class IndexModel : PageModel
             DueResponseAt = t.SlaResponseDueAt,
             DueResolutionAt = t.SlaResolutionDueAt,
             Breach = t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
-            CanTake = string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.AssignedToUserId == uid || IsAdmin,
+            CanTake = t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled,
             IsMine = t.AssignedToUserId == uid,
             AttachmentCount = _db.TicketAttachments.Count(a => a.TicketId == t.Id)
         }).ToListAsync();
@@ -280,6 +382,9 @@ public class IndexModel : PageModel
                 .OrderBy(c => c.Name)
                 .Select(c => new ClientPickVm { Id = c.Id, Name = c.Name, Code = c.ClientCode })
                 .ToListAsync();
+
+            if (!ReportClientId.HasValue && ClientOptions.Count > 0)
+                ReportClientId = ClientOptions[0].Id;
 
             ContractOptions = await _db.ClientServiceContracts
                 .AsNoTracking()

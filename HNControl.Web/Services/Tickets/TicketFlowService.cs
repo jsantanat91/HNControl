@@ -238,10 +238,10 @@ public class TicketFlowService : ITicketFlowService
     {
         var t = await _db.Tickets.FirstOrDefaultAsync(x => x.Id == ticketId, ct);
         if (t == null) return false;
-        if (!string.IsNullOrWhiteSpace(t.AssignedToUserId) && t.AssignedToUserId != userId && !isAdmin) return false;
         if (t.Status is TicketStatus.Resolved or TicketStatus.Closed or TicketStatus.Cancelled) return false;
 
         var now = DateTime.UtcNow;
+        var previousOwner = string.IsNullOrWhiteSpace(t.AssignedToName) ? "Sin asignar" : t.AssignedToName;
         t.AssignedToUserId = userId;
         t.AssignedToName = userName;
         t.AssignedAt ??= now;
@@ -256,7 +256,7 @@ public class TicketFlowService : ITicketFlowService
             EventType = "Taken",
             UserId = userId,
             UserName = userName,
-            Message = "Ticket tomado por tecnico.",
+            Message = $"Ticket tomado por tecnico. Antes: {previousOwner}.",
             CreatedAt = now
         });
 

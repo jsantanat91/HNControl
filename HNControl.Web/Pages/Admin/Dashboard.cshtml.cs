@@ -23,10 +23,12 @@ public class DashboardModel : PageModel
         int PendingInventoryOrders,
         int LowStockItems,
         int OpenTickets,
-        int TicketSlaBreached
+        int TicketSlaBreached,
+        int QuotesAcceptedMonth,
+        decimal QuotesRevenueMonth
     );
 
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0m);
 
     public record TopVm(string UserId, string Name, decimal Variable);
     public List<TopVm> Top { get; set; } = new();
@@ -40,6 +42,10 @@ public class DashboardModel : PageModel
     public string InvLabelsJson { get; set; } = "[]";
     public string InvInValuesJson { get; set; } = "[]";
     public string InvOutValuesJson { get; set; } = "[]";
+    public string QuoteSalesLabelsJson { get; set; } = "[]";
+    public string QuoteSalesValuesJson { get; set; } = "[]";
+    public string TicketsClosedLabelsJson { get; set; } = "[]";
+    public string TicketsClosedValuesJson { get; set; } = "[]";
 
     public async Task OnGetAsync()
     {
@@ -90,7 +96,16 @@ public class DashboardModel : PageModel
                         || (t.ResolvedAt == null && t.SlaResolutionDueAt < now))
             .CountAsync();
 
-        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems, openTickets, ticketSlaBreached);
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthEnd = monthStart.AddMonths(1);
+        var quotesAcceptedMonth = await _db.QuoteRequests
+            .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= monthStart && q.AcceptedAt.Value < monthEnd)
+            .CountAsync();
+        var quotesRevenueMonth = await _db.QuoteRequests
+            .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= monthStart && q.AcceptedAt.Value < monthEnd)
+            .SumAsync(q => q.EstimatedTotal ?? 0m);
+
+        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems, openTickets, ticketSlaBreached, quotesAcceptedMonth, quotesRevenueMonth);
 
         // Top variable (última evaluación por empleado)
         var latest = await _db.PerformanceReviews
@@ -149,5 +164,31 @@ public class DashboardModel : PageModel
         InvLabelsJson = JsonSerializer.Serialize(labels);
         InvInValuesJson = JsonSerializer.Serialize(invIn);
         InvOutValuesJson = JsonSerializer.Serialize(invOut);
+
+        var salesLabels = new List<string>();
+        var salesValues = new List<decimal>();
+        for (var i = 5; i >= 0; i--)
+        {
+            var mStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-i);
+            var mEnd = mStart.AddMonths(1);
+            var sum = await _db.QuoteRequests
+                .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= mStart && q.AcceptedAt.Value < mEnd)
+                .SumAsync(q => q.EstimatedTotal ?? 0m);
+            salesLabels.Add(mStart.ToLocalTime().ToString("MMM yy"));
+            salesValues.Add(sum);
+        }
+
+        QuoteSalesLabelsJson = JsonSerializer.Serialize(salesLabels);
+        QuoteSalesValuesJson = JsonSerializer.Serialize(salesValues);
+
+        var ticketsClosed = await _db.Tickets
+            .AsNoTracking()
+            .Where(t => t.ClosedAt.HasValue && t.ClosedAt.Value.Date >= start)
+            .GroupBy(t => t.ClosedAt!.Value.Date)
+            .Select(g => new { Day = g.Key, Cnt = g.Count() })
+            .ToListAsync();
+        var closedValues = days.Select(d => ticketsClosed.FirstOrDefault(x => x.Day == d)?.Cnt ?? 0).ToList();
+        TicketsClosedLabelsJson = JsonSerializer.Serialize(labels);
+        TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
     }
 }

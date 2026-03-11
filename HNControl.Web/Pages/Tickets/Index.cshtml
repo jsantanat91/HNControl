@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 mb-0">Tickets ITIL</h1>
-        <div class="text-muted small">Incidentes, SLA y flujo operativo.</div>
+        <div class="text-muted small">Incidentes, SLA y flujo operativo. Todos ven tickets; quien lo toma da seguimiento (admin siempre puede operar).</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" href="/ticket-publico" target="_blank" rel="noopener">Portal publico</a>
@@ -16,6 +16,38 @@
         <a class="btn btn-outline-secondary" href="?status=closed">Cerrados</a>
     </div>
 </div>
+
+@if (Model.IsAdmin)
+{
+    <form method="get" asp-page-handler="ExportClientMonthPdf" class="card shadow-soft mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-2">Reporte PDF por cliente y mes</div>
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <label class="form-label">Cliente</label>
+                    <select class="form-select" name="clientId" required>
+                        @foreach (var c in Model.ClientOptions)
+                        {
+                            <option value="@c.Id" selected="@(Model.ReportClientId == c.Id)">@c.Name (@c.Code)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Mes</label>
+                    <select class="form-select" name="month" required>
+                        @foreach (var m in Model.ReportMonthOptions)
+                        {
+                            <option value="@m" selected="@(Model.ReportMonth == m)">@m</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 d-grid align-items-end">
+                    <button class="btn btn-outline-primary mt-4" type="submit">Exportar PDF cliente-mes</button>
+                </div>
+            </div>
+        </div>
+    </form>
+}
 
 @if (Model.IsAdmin)
 {

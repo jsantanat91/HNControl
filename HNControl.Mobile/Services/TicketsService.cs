@@ -28,5 +28,19 @@ public sealed class TicketsService
 
     public Task<ApiMessageDto> CloseAsync(Guid id)
         => _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/modules/tickets/{id}/close", new { });
-}
 
+    public Task<ApiMessageDto> AddNoteAsync(Guid id, string note)
+        => _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/modules/tickets/{id}/note", new { note });
+
+    public Task<ApiMessageDto> AddEvidenceAsync(Guid id, string note, Stream fileStream, string fileName, string? fileContentType)
+        => _api.PostMultipartAsync<ApiMessageDto>(
+            $"api/mobile/modules/tickets/{id}/evidence",
+            new Dictionary<string, string> { ["note"] = note ?? "" },
+            fileStream,
+            fileName,
+            "file",
+            fileContentType);
+
+    public Task<byte[]> DownloadAttachmentAsync(Guid attachmentId)
+        => _api.GetBytesAsync($"api/mobile/modules/tickets/attachments/{attachmentId}");
+}

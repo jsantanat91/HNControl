@@ -58,9 +58,29 @@ else
                     <label class="form-label">Nombre</label>
                     <input asp-for="Input.Name" class="form-control" />
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Imagen (URL opcional)</label>
+                    <input asp-for="Input.ImageUrl" class="form-control" placeholder="https://..." />
+                </div>
                 <div class="col-md-3">
                     <label class="form-label">Costo unitario</label>
                     <input asp-for="Input.UnitPrice" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tipo comercial</label>
+                    <select asp-for="Input.OfferType" class="form-select">
+                        <option value="Sale">Venta</option>
+                        <option value="MonthlyRent">Renta mensual</option>
+                        <option value="Lease">Arrendamiento</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Grupo variante</label>
+                    <input asp-for="Input.VariantGroup" class="form-control" placeholder="Color, Talla, Tecnologia..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Valor variante</label>
+                    <input asp-for="Input.VariantValue" class="form-control" placeholder="Negro, PIR, 8 canales..." />
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <div class="form-check mb-2">

@@ -15,11 +15,19 @@ public enum QuoteNodeType
     Subproduct = 3
 }
 
+public enum QuoteOfferType
+{
+    Sale = 1,
+    MonthlyRent = 2,
+    Lease = 3
+}
+
 public enum QuoteRequestStatus
 {
     New = 1,
     Emailed = 2,
-    EmailError = 3
+    EmailError = 3,
+    Accepted = 4
 }
 
 public enum QuoteRuleAction
@@ -40,9 +48,19 @@ public class QuoteCatalogItem
     [MaxLength(1200)]
     public string? Description { get; set; }
 
+    [MaxLength(600)]
+    public string? ImageUrl { get; set; }
+
     public decimal? UnitPrice { get; set; }
     public bool UnitPriceIncludesVat { get; set; }
     public bool IsManualPrice { get; set; }
+    public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+
+    [MaxLength(60)]
+    public string? VariantGroup { get; set; }
+
+    [MaxLength(80)]
+    public string? VariantValue { get; set; }
 
     [MaxLength(600)]
     public string? ReferenceUrl { get; set; }
@@ -98,6 +116,11 @@ public class QuoteRequest
     public int ManualItemsCount { get; set; }
     public decimal? EstimatedTotal { get; set; }
 
+    public DateTime? AcceptedAt { get; set; }
+
+    [MaxLength(64)]
+    public string? AcceptedByUserId { get; set; }
+
     [MaxLength(500)]
     public string? PdfStoragePath { get; set; }
 
@@ -132,6 +155,10 @@ public class QuoteRequestLine
     public decimal? VatAmount { get; set; }
     public bool IsManualPrice { get; set; }
     public decimal? LineTotal { get; set; }
+    public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+
+    [MaxLength(600)]
+    public string? ItemImageUrl { get; set; }
 
     public QuoteRequest? QuoteRequest { get; set; }
 }

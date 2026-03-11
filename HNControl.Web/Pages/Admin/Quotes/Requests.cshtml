@@ -13,6 +13,11 @@
     <a class="btn btn-outline-primary" asp-page="./Catalog">Catalogo</a>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-success">@Model.Message</div>
+}
+
 <form method="get" class="card shadow-sm mb-3">
     <div class="card-body row g-2 align-items-end">
         <div class="col-md-4">
@@ -28,10 +33,20 @@
             </select>
         </div>
         <div class="col-md-2">
+            <label class="form-label">Estado</label>
+            <select class="form-select" name="status">
+                <option value="">Todos</option>
+                <option value="New" selected="@(Model.Status == "New")">Nueva</option>
+                <option value="Emailed" selected="@(Model.Status == "Emailed")">Enviada</option>
+                <option value="EmailError" selected="@(Model.Status == "EmailError")">Error envio</option>
+                <option value="Accepted" selected="@(Model.Status == "Accepted")">Aceptada</option>
+            </select>
+        </div>
+        <div class="col-md-2">
             <label class="form-label">Desde</label>
             <input class="form-control" type="date" name="from" value="@Model.From" />
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
             <label class="form-label">Hasta</label>
             <input class="form-control" type="date" name="to" value="@Model.To" />
         </div>
@@ -50,7 +65,15 @@
                 <div>
                     <div class="fw-bold">@r.Folio · @r.CustomerName</div>
                     <div class="text-muted small">@r.CustomerEmail · @r.CustomerPhone · @r.CustomerLocation</div>
-                    <div class="small">@r.CreatedAtLocal · <span class="badge text-bg-light border">@r.SegmentLabel</span></div>
+                    <div class="small d-flex gap-1 flex-wrap">
+                        <span>@r.CreatedAtLocal</span>
+                        <span class="badge text-bg-light border">@r.SegmentLabel</span>
+                        <span class="badge @(r.Status == "Accepted" ? "text-bg-success" : "text-bg-primary")">@r.StatusLabel</span>
+                        @if (!string.IsNullOrWhiteSpace(r.AcceptedAtLocal))
+                        {
+                            <span class="text-muted">Aceptada: @r.AcceptedAtLocal</span>
+                        }
+                    </div>
                 </div>
                 <div class="text-end">
                     <div><strong>Total estimado:</strong> @r.EstimatedTotal.ToString("C2")</div>
@@ -58,6 +81,18 @@
                     @if (r.HasPdf)
                     {
                         <a class="btn btn-sm btn-outline-primary mt-2" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">PDF</a>
+                    }
+                    @if (r.Status != "Accepted")
+                    {
+                        <form method="post" asp-page-handler="Accept" class="mt-2">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <input type="hidden" name="q" value="@Model.Q" />
+                            <input type="hidden" name="segment" value="@Model.Segment" />
+                            <input type="hidden" name="status" value="@Model.Status" />
+                            <input type="hidden" name="from" value="@Model.From" />
+                            <input type="hidden" name="to" value="@Model.To" />
+                            <button type="submit" class="btn btn-sm btn-success">Aceptar</button>
+                        </form>
                     }
                 </div>
             </div>
@@ -70,6 +105,7 @@
                             <th>Servicio</th>
                             <th>Subproducto</th>
                             <th class="text-center">Cant</th>
+                            <th class="text-center">Modalidad</th>
                             <th class="text-end">Costo</th>
                             <th class="text-end">Total</th>
                         </tr>
@@ -82,6 +118,11 @@
                             <td>@l.ServiceName</td>
                             <td>@(string.IsNullOrWhiteSpace(l.SubproductName) ? "-" : l.SubproductName)</td>
                             <td class="text-center">@l.Quantity</td>
+                            <td class="text-center">
+                                <span class="badge text-bg-light border">
+                                    @(l.OfferType == "MonthlyRent" ? "Renta mensual" : l.OfferType == "Lease" ? "Arrendamiento" : "Venta")
+                                </span>
+                            </td>
                             <td class="text-end">@(l.IsManualPrice ? "Manual" : $"{l.UnitPrice?.ToString("C2")} {(l.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}")</td>
                             <td class="text-end">@(l.IsManualPrice ? "Por validar" : l.LineTotal?.ToString("C2"))</td>
                         </tr>

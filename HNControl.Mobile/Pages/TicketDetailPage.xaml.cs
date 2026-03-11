@@ -6,6 +6,7 @@ public partial class TicketDetailPage : ContentPage
 {
     private readonly TicketsService _tickets;
     private Guid _ticketId;
+    private FileResult? _selectedEvidence;
 
     public TicketDetailPage(TicketsService tickets)
     {
@@ -42,6 +43,21 @@ public partial class TicketDetailPage : ContentPage
             CarrierIpLabel.Text = Safe(d.CarrierIp);
 
             ResolveEntry.Text = d.ResolutionSummary;
+            var canOperate = !d.Status.Equals("Closed", StringComparison.OrdinalIgnoreCase)
+                             && !d.Status.Equals("Cancelado", StringComparison.OrdinalIgnoreCase)
+                             && !d.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
+            EvidenceCard.IsEnabled = canOperate;
+            EvidenceCard.Opacity = canOperate ? 1 : 0.75;
+
+            AttachmentsCollection.ItemsSource = d.Attachments
+                .Select(a => new AttachmentVm
+                {
+                    Id = a.Id,
+                    FileName = string.IsNullOrWhiteSpace(a.FileName) ? "adjunto" : a.FileName,
+                    Meta = $"{a.UploadedAt:yyyy-MM-dd HH:mm} · {Safe(a.UploadedBy)}"
+                })
+                .ToList();
+
             EventsCollection.ItemsSource = d.Events.Select(x => new EventVm
             {
                 Top = $"{x.CreatedAt:yyyy-MM-dd HH:mm} | {x.EventType} | {x.UserName}",
@@ -91,10 +107,118 @@ public partial class TicketDetailPage : ContentPage
         await DisplayAlertAsync("Ticket", r.Message, "OK");
     });
 
+    private async void OnAddNoteClicked(object sender, EventArgs e) => await Run(async () =>
+    {
+        var note = (NoteEditor.Text ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(note))
+        {
+            await DisplayAlertAsync("Ticket", "Escribe una nota para guardar en la bitácora.", "OK");
+            return;
+        }
+
+        var r = await _tickets.AddNoteAsync(_ticketId, note);
+        NoteEditor.Text = "";
+        await DisplayAlertAsync("Ticket", r.Message, "OK");
+    });
+
+    private async void OnPickEvidenceClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var picked = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Selecciona evidencia (PDF o imagen)",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.Android, new[] { "application/pdf", "image/*" } },
+                    { DevicePlatform.iOS, new[] { "com.adobe.pdf", "public.image" } },
+                    { DevicePlatform.WinUI, new[] { ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".heic" } },
+                    { DevicePlatform.MacCatalyst, new[] { "pdf", "png", "jpg", "jpeg", "webp", "heic" } }
+                })
+            });
+
+            if (picked == null) return;
+            _selectedEvidence = picked;
+            SelectedEvidenceLabel.Text = $"Seleccionado: {_selectedEvidence.FileName}";
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Evidencia", ex.Message, "OK");
+        }
+    }
+
+    private async void OnCaptureEvidenceClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            if (!MediaPicker.Default.IsCaptureSupported)
+            {
+                await DisplayAlertAsync("Evidencia", "Este dispositivo no soporta captura de cámara en la app.", "OK");
+                return;
+            }
+
+            var photo = await MediaPicker.Default.CapturePhotoAsync();
+            if (photo == null) return;
+            _selectedEvidence = photo;
+            SelectedEvidenceLabel.Text = $"Foto: {_selectedEvidence.FileName}";
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Evidencia", ex.Message, "OK");
+        }
+    }
+
+    private async void OnUploadEvidenceClicked(object sender, EventArgs e) => await Run(async () =>
+    {
+        if (_selectedEvidence == null)
+        {
+            await DisplayAlertAsync("Ticket", "Selecciona una evidencia (foto/PDF) antes de subir.", "OK");
+            return;
+        }
+
+        await using var fileStream = await _selectedEvidence.OpenReadAsync();
+        var note = (NoteEditor.Text ?? "").Trim();
+        var r = await _tickets.AddEvidenceAsync(_ticketId, note, fileStream, _selectedEvidence.FileName, _selectedEvidence.ContentType);
+        _selectedEvidence = null;
+        NoteEditor.Text = "";
+        SelectedEvidenceLabel.Text = "Sin evidencia seleccionada";
+        await DisplayAlertAsync("Ticket", r.Message, "OK");
+    });
+
+    private async void OnOpenAttachmentClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button b || b.CommandParameter is not Guid attachmentId) return;
+        try
+        {
+            var detail = await _tickets.DetailAsync(_ticketId);
+            var att = detail.Attachments.FirstOrDefault(x => x.Id == attachmentId);
+            var fileName = att?.FileName;
+            var bytes = await _tickets.DownloadAttachmentAsync(attachmentId);
+            fileName = string.IsNullOrWhiteSpace(fileName) ? $"ticket_{attachmentId:N}.bin" : fileName;
+            var path = Path.Combine(FileSystem.CacheDirectory, fileName);
+            await File.WriteAllBytesAsync(path, bytes);
+            await Launcher.Default.OpenAsync(new OpenFileRequest
+            {
+                File = new ReadOnlyFile(path)
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Adjunto", ex.Message, "OK");
+        }
+    }
+
     private sealed class EventVm
     {
         public string Top { get; set; } = "";
         public string Message { get; set; } = "";
+    }
+
+    private sealed class AttachmentVm
+    {
+        public Guid Id { get; set; }
+        public string FileName { get; set; } = "";
+        public string Meta { get; set; } = "";
     }
 
     private static string Safe(string? value)

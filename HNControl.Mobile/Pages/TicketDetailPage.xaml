@@ -58,6 +58,43 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Border x:Name="EvidenceCard" Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Nota y evidencia" FontAttributes="Bold" FontSize="18" />
+                    <Editor x:Name="NoteEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Bitácora técnica, diagnóstico, acciones realizadas..." />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="Archivo (PDF/Foto)" Clicked="OnPickEvidenceClicked" />
+                        <Button Grid.Column="1" Text="Tomar foto" Clicked="OnCaptureEvidenceClicked" />
+                    </Grid>
+                    <Label x:Name="SelectedEvidenceLabel" Text="Sin evidencia seleccionada" FontSize="12" TextColor="#64748B" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Text="Guardar nota" Clicked="OnAddNoteClicked" />
+                        <Button Grid.Column="1" Text="Subir evidencia" BackgroundColor="#2B5FD9" TextColor="White" Clicked="OnUploadEvidenceClicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Evidencias" FontAttributes="Bold" FontSize="18" />
+                    <CollectionView x:Name="AttachmentsCollection" SelectionMode="None" EmptyView="Sin evidencias adjuntas.">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F8FAFC" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <VerticalStackLayout>
+                                            <Label Text="{Binding FileName}" FontSize="14" FontAttributes="Bold" />
+                                            <Label Text="{Binding Meta}" FontSize="12" TextColor="#64748B" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="Abrir" Clicked="OnOpenAttachmentClicked" CommandParameter="{Binding Id}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
             <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Bitacora" FontAttributes="Bold" FontSize="18" />

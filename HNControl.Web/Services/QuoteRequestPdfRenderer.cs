@@ -106,6 +106,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 cd.RelativeColumn(1.1f);
                                 cd.RelativeColumn(1.1f);
                                 cd.ConstantColumn(40);
+                                cd.ConstantColumn(70);
                                 cd.ConstantColumn(72);
                                 cd.ConstantColumn(82);
                             });
@@ -115,6 +116,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 h.Cell().Element(CellHead).Text("Servicio");
                                 h.Cell().Element(CellHead).Text("Subproducto");
                                 h.Cell().Element(CellHead).AlignCenter().Text("Cant");
+                                h.Cell().Element(CellHead).AlignCenter().Text("Modalidad");
                                 h.Cell().Element(CellHead).AlignRight().Text("Costo");
                                 h.Cell().Element(CellHead).AlignRight().Text("Total");
                             });
@@ -125,6 +127,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 t.Cell().Element(CellBody).Text(line.ServiceName);
                                 t.Cell().Element(CellBody).Text(line.SubproductName ?? "-");
                                 t.Cell().Element(CellBody).AlignCenter().Text(line.Quantity.ToString());
+                                t.Cell().Element(CellBody).AlignCenter().Text(LabelOffer(line.OfferType));
                                 t.Cell().Element(CellBody).AlignRight()
                                     .Text(line.IsManualPrice ? "Manual" : $"{Money(line.UnitPrice)} {(line.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}");
                                 t.Cell().Element(CellBody).AlignRight()
@@ -173,7 +176,16 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
         QuoteRequestStatus.New => "Nueva",
         QuoteRequestStatus.Emailed => "Enviada",
         QuoteRequestStatus.EmailError => "Error de envio",
+        QuoteRequestStatus.Accepted => "Aceptada",
         _ => s.ToString()
+    };
+
+    private static string LabelOffer(QuoteOfferType x) => x switch
+    {
+        QuoteOfferType.Sale => "Venta",
+        QuoteOfferType.MonthlyRent => "Renta",
+        QuoteOfferType.Lease => "Arrendam.",
+        _ => x.ToString()
     };
 
     private static string Money(decimal? v) => (v ?? 0m).ToString("C2");

@@ -56,8 +56,28 @@
                 <input asp-for="Input.Name" class="form-control" />
             </div>
             <div class="col-md-4">
+                <label class="form-label">Imagen (URL opcional)</label>
+                <input asp-for="Input.ImageUrl" class="form-control" placeholder="https://..." />
+            </div>
+            <div class="col-md-4">
                 <label class="form-label">Costo unitario (opcional)</label>
                 <input asp-for="Input.UnitPrice" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo comercial</label>
+                <select asp-for="Input.OfferType" class="form-select">
+                    <option value="Sale">Venta</option>
+                    <option value="MonthlyRent">Renta mensual</option>
+                    <option value="Lease">Arrendamiento</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Atributo variante (opcional)</label>
+                <input asp-for="Input.VariantGroup" class="form-control" placeholder="Color, Tecnologia, Plan..." />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Opcion variante (opcional)</label>
+                <input asp-for="Input.VariantValue" class="form-control" placeholder="Negro, PIR, 8 canales..." />
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <div class="form-check mb-2 me-3">
@@ -71,9 +91,10 @@
                     <label asp-for="Input.IsManualPrice" class="form-check-label">Costo manual</label>
                 </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Orden</label>
-                <input asp-for="Input.SortOrder" class="form-control" />
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="small text-muted">
+                    Orden automatico: el sistema coloca el nuevo item despues del ultimo en su mismo nivel.
+                </div>
             </div>
 
             <div class="col-md-6">
@@ -83,6 +104,11 @@
             <div class="col-md-6">
                 <label class="form-label">Descripcion</label>
                 <input asp-for="Input.Description" class="form-control" />
+            </div>
+            <div class="col-12">
+                <div class="small text-muted">
+                    Variantes: para crear mas de una opcion del mismo producto, repite el alta con mismo Segmento + Padre + Nombre y cambia solo Atributo/Opcion variante.
+                </div>
             </div>
 
             <div class="col-12 d-flex gap-2">
@@ -111,7 +137,9 @@
                             <th>Nivel</th>
                             <th>Nombre</th>
                             <th>Padre</th>
+                            <th>Tipo</th>
                             <th>Costo</th>
+                            <th>Imagen</th>
                             <th>Ref</th>
                             <th>Estado</th>
                             <th class="text-end">Acciones</th>
@@ -129,8 +157,17 @@
                                 {
                                     <div class="small text-muted">@i.Description</div>
                                 }
+                                @if (!string.IsNullOrWhiteSpace(i.VariantGroup) || !string.IsNullOrWhiteSpace(i.VariantValue))
+                                {
+                                    <div class="small mt-1">
+                                        <span class="badge text-bg-light border">@((i.VariantGroup ?? "Variante") + ": " + (i.VariantValue ?? "-"))</span>
+                                    </div>
+                                }
                             </td>
                             <td>@(string.IsNullOrWhiteSpace(i.ParentName) ? "-" : i.ParentName)</td>
+                            <td>
+                                <span class="badge text-bg-light border">@Model.LabelOfferType(i.OfferType)</span>
+                            </td>
                             <td>
                                 @if (i.IsManualPrice)
                                 {
@@ -144,6 +181,16 @@
                                 else
                                 {
                                     <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(i.ImageUrl))
+                                {
+                                    <img src="@i.ImageUrl" alt="img" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #dbe3f4;" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
                                 }
                             </td>
                             <td>
@@ -165,6 +212,10 @@
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">@(i.IsActive ? "Desactivar" : "Activar")</button>
                                 </form>
                                 <a class="btn btn-sm btn-outline-primary" asp-page="./EditItem" asp-route-id="@i.Id">Editar</a>
+                                <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('Eliminar este item y sus variantes/hijos?');">
+                                    <input type="hidden" name="id" value="@i.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
                             </td>
                         </tr>
                     }

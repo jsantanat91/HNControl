@@ -216,6 +216,8 @@ public class QuoteModel : PageModel
                 PriceIncludesVat = selected.UnitPriceIncludesVat,
                 VatRate = 0.16m,
                 IsManualPrice = manual,
+                OfferType = selected.OfferType,
+                ItemImageUrl = selected.ImageUrl,
                 BaseAmount = manual ? null : baseAmount,
                 VatAmount = manual ? null : vatAmount,
                 LineTotal = lineTotal
@@ -273,9 +275,13 @@ public class QuoteModel : PageModel
         parentId = x.ParentId,
         name = x.Name,
         description = x.Description,
+        imageUrl = x.ImageUrl,
         unitPrice = x.UnitPrice,
         unitPriceIncludesVat = x.UnitPriceIncludesVat,
         isManualPrice = x.IsManualPrice,
+        offerType = x.OfferType.ToString(),
+        variantGroup = x.VariantGroup,
+        variantValue = x.VariantValue,
         referenceUrl = x.ReferenceUrl
     };
 

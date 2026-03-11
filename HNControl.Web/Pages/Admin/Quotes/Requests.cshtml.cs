@@ -1,11 +1,14 @@
 ﻿using HNControl.Web.Data;
+using HNControl.Web.Models;
 using HNControl.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
+[Authorize(Roles = AppRoles.Admin)]
 public class RequestsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -23,11 +26,17 @@ public class RequestsModel : PageModel
     [BindProperty(SupportsGet = true, Name = "segment")]
     public string? Segment { get; set; }
 
+    [BindProperty(SupportsGet = true, Name = "status")]
+    public string? Status { get; set; }
+
     [BindProperty(SupportsGet = true, Name = "from")]
     public string? From { get; set; }
 
     [BindProperty(SupportsGet = true, Name = "to")]
     public string? To { get; set; }
+
+    [TempData]
+    public string? Message { get; set; }
 
     public List<RowVm> Rows { get; set; } = [];
 
@@ -47,8 +56,11 @@ public class RequestsModel : PageModel
                 x.CustomerEmail.ToLower().Contains(q));
         }
 
-        if (!string.IsNullOrWhiteSpace(Segment) && Enum.TryParse<HNControl.Web.Models.QuoteSegment>(Segment, out var seg))
+        if (!string.IsNullOrWhiteSpace(Segment) && Enum.TryParse<QuoteSegment>(Segment, out var seg))
             query = query.Where(x => x.Segment == seg);
+
+        if (!string.IsNullOrWhiteSpace(Status) && Enum.TryParse<QuoteRequestStatus>(Status, out var st))
+            query = query.Where(x => x.Status == st);
 
         if (DateOnly.TryParse(From, out var fromDate))
             query = query.Where(x => x.CreatedAt >= fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
@@ -67,8 +79,10 @@ public class RequestsModel : PageModel
                 CustomerEmail = x.CustomerEmail,
                 CustomerPhone = x.CustomerPhone,
                 CustomerLocation = x.CustomerLocation,
-                SegmentLabel = x.Segment == HNControl.Web.Models.QuoteSegment.Business ? "Empresarial" : "Residencial",
+                SegmentLabel = x.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial",
+                Status = x.Status.ToString(),
                 CreatedAtLocal = x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                AcceptedAtLocal = x.AcceptedAt.HasValue ? x.AcceptedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : null,
                 EstimatedTotal = x.EstimatedTotal ?? x.SubtotalAuto,
                 ManualItemsCount = x.ManualItemsCount,
                 HasPdf = !string.IsNullOrWhiteSpace(x.PdfStoragePath),
@@ -81,10 +95,29 @@ public class RequestsModel : PageModel
                     UnitPrice = l.UnitPrice,
                     PriceIncludesVat = l.PriceIncludesVat,
                     IsManualPrice = l.IsManualPrice,
-                    LineTotal = l.LineTotal
+                    LineTotal = l.LineTotal,
+                    OfferType = l.OfferType.ToString()
                 }).ToList()
             })
             .ToListAsync();
+
+        foreach (var r in Rows)
+            r.StatusLabel = LabelStatus(r.Status);
+    }
+
+    public async Task<IActionResult> OnPostAcceptAsync(Guid id)
+    {
+        var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
+        if (req == null)
+            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
+
+        req.Status = QuoteRequestStatus.Accepted;
+        req.AcceptedAt = DateTime.UtcNow;
+        req.AcceptedByUserId = User.Identity?.Name;
+        await _db.SaveChangesAsync();
+
+        Message = $"Cotizacion {req.Folio} marcada como Aceptada.";
+        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)
@@ -106,7 +139,10 @@ public class RequestsModel : PageModel
         public string CustomerPhone { get; set; } = string.Empty;
         public string CustomerLocation { get; set; } = string.Empty;
         public string SegmentLabel { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string StatusLabel { get; set; } = string.Empty;
         public string CreatedAtLocal { get; set; } = string.Empty;
+        public string? AcceptedAtLocal { get; set; }
         public decimal EstimatedTotal { get; set; }
         public int ManualItemsCount { get; set; }
         public bool HasPdf { get; set; }
@@ -123,5 +159,15 @@ public class RequestsModel : PageModel
         public bool PriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
         public decimal? LineTotal { get; set; }
+        public string OfferType { get; set; } = string.Empty;
     }
+
+    public static string LabelStatus(string status) => status switch
+    {
+        nameof(QuoteRequestStatus.New) => "Nueva",
+        nameof(QuoteRequestStatus.Emailed) => "Enviada",
+        nameof(QuoteRequestStatus.EmailError) => "Error envio",
+        nameof(QuoteRequestStatus.Accepted) => "Aceptada",
+        _ => status
+    };
 }

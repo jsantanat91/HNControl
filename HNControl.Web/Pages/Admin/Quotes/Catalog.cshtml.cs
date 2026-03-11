@@ -48,6 +48,13 @@ public class CatalogModel : PageModel
             return Page();
         }
 
+        var nextSort = await _db.QuoteCatalogItems
+            .Where(x => x.Segment == Input.Segment
+                        && x.NodeType == Input.NodeType
+                        && x.ParentId == Input.ParentId)
+            .Select(x => (int?)x.SortOrder)
+            .MaxAsync() ?? 0;
+
         var item = new QuoteCatalogItem
         {
             Segment = Input.Segment,
@@ -55,11 +62,15 @@ public class CatalogModel : PageModel
             ParentId = Input.ParentId,
             Name = Input.Name.Trim(),
             Description = string.IsNullOrWhiteSpace(Input.Description) ? null : Input.Description.Trim(),
+            ImageUrl = string.IsNullOrWhiteSpace(Input.ImageUrl) ? null : Input.ImageUrl.Trim(),
             UnitPrice = Input.UnitPrice,
             UnitPriceIncludesVat = Input.UnitPriceIncludesVat,
             IsManualPrice = Input.IsManualPrice,
+            OfferType = Input.OfferType,
+            VariantGroup = string.IsNullOrWhiteSpace(Input.VariantGroup) ? null : Input.VariantGroup.Trim(),
+            VariantValue = string.IsNullOrWhiteSpace(Input.VariantValue) ? null : Input.VariantValue.Trim(),
             ReferenceUrl = string.IsNullOrWhiteSpace(Input.ReferenceUrl) ? null : Input.ReferenceUrl.Trim(),
-            SortOrder = Input.SortOrder,
+            SortOrder = nextSort + 10,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -80,6 +91,43 @@ public class CatalogModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = item.IsActive ? "Item activado." : "Item desactivado.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        var exists = await _db.QuoteCatalogItems.AnyAsync(x => x.Id == id);
+        if (!exists) return RedirectToPage();
+
+        var all = await _db.QuoteCatalogItems.ToListAsync();
+        var deleteIds = new HashSet<Guid> { id };
+        var stack = new Stack<Guid>();
+        stack.Push(id);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            foreach (var child in all.Where(x => x.ParentId == current))
+            {
+                if (deleteIds.Add(child.Id))
+                    stack.Push(child.Id);
+            }
+        }
+
+        var rules = await _db.QuoteCatalogRules
+            .Where(r => deleteIds.Contains(r.TargetItemId) || deleteIds.Contains(r.RequiredItemId))
+            .ToListAsync();
+        if (rules.Count > 0)
+            _db.QuoteCatalogRules.RemoveRange(rules);
+
+        var items = all.Where(x => deleteIds.Contains(x.Id)).ToList();
+        if (items.Count > 0)
+            _db.QuoteCatalogItems.RemoveRange(items);
+
+        await _db.SaveChangesAsync();
+        Message = items.Count > 1
+            ? $"Items eliminados: {items.Count} (incluye variantes/hijos)."
+            : "Item eliminado.";
         return RedirectToPage();
     }
 
@@ -266,6 +314,10 @@ public class CatalogModel : PageModel
             UnitPrice = x.UnitPrice,
             UnitPriceIncludesVat = x.UnitPriceIncludesVat,
             IsManualPrice = x.IsManualPrice,
+            OfferType = x.OfferType,
+            ImageUrl = x.ImageUrl,
+            VariantGroup = x.VariantGroup,
+            VariantValue = x.VariantValue,
             ReferenceUrl = x.ReferenceUrl,
             IsActive = x.IsActive,
             ParentName = x.ParentId.HasValue && byId.TryGetValue(x.ParentId.Value, out var p) ? p : null
@@ -352,6 +404,14 @@ public class CatalogModel : PageModel
         _ => x.ToString()
     };
 
+    public string LabelOfferType(QuoteOfferType x) => x switch
+    {
+        QuoteOfferType.Sale => "Venta",
+        QuoteOfferType.MonthlyRent => "Renta mensual",
+        QuoteOfferType.Lease => "Arrendamiento",
+        _ => x.ToString()
+    };
+
     public class CatalogInput
     {
         public QuoteSegment Segment { get; set; } = QuoteSegment.Residential;
@@ -359,11 +419,14 @@ public class CatalogModel : PageModel
         public Guid? ParentId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
         public decimal? UnitPrice { get; set; }
         public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
+        public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+        public string? VariantGroup { get; set; }
+        public string? VariantValue { get; set; }
         public string? ReferenceUrl { get; set; }
-        public int SortOrder { get; set; }
     }
 
     public class CatalogRowVm
@@ -373,9 +436,13 @@ public class CatalogModel : PageModel
         public QuoteNodeType NodeType { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
         public decimal? UnitPrice { get; set; }
         public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
+        public QuoteOfferType OfferType { get; set; }
+        public string? VariantGroup { get; set; }
+        public string? VariantValue { get; set; }
         public string? ReferenceUrl { get; set; }
         public bool IsActive { get; set; }
         public string? ParentName { get; set; }

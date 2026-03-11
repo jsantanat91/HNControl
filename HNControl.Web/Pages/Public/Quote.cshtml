@@ -9,13 +9,13 @@
 }
 
 <div class="row justify-content-center">
-    <div class="col-xl-10">
+    <div class="col-xl-11">
         <div class="card shadow-soft mb-3">
             <div class="card-body p-4">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
                         <h1 class="h3 mb-1">Cotizacion a la medida</h1>
-                        <div class="text-muted">Wizard guiado para una captura simple y clara.</div>
+                        <div class="text-muted">Modo tienda: selecciona productos como carrito y recibe PDF por correo.</div>
                     </div>
                     <span class="badge text-bg-light border">Kiosk publico</span>
                 </div>
@@ -30,7 +30,7 @@
                         }
                         else
                         {
-                            <span>Faltan datos de contacto, complétalos en el paso 3.</span>
+                            <span>Faltan datos de contacto, completalos en el paso 3.</span>
                         }
                     </div>
                 }
@@ -41,9 +41,9 @@
                 }
 
                 <div class="quote-steps mb-3">
-                    <div class="quote-step-pill active" data-step-pill="1">1. Empresarial / Residencial</div>
-                    <div class="quote-step-pill" data-step-pill="2">2. Cotizacion</div>
-                    <div class="quote-step-pill" data-step-pill="3">3. Datos del cliente</div>
+                    <div class="quote-step-pill active" data-step-pill="1">1. Segmento</div>
+                    <div class="quote-step-pill" data-step-pill="2">2. Tienda / carrito</div>
+                    <div class="quote-step-pill" data-step-pill="3">3. Datos cliente</div>
                     <div class="quote-step-pill" data-step-pill="4">4. Confirmacion</div>
                 </div>
 
@@ -64,7 +64,7 @@
                             <div class="col-md-6">
                                 <div class="border rounded p-3 h-100 bg-light-subtle">
                                     <div class="fw-semibold">Paso 1 de 4</div>
-                                    <div class="text-muted small">Primero definimos el segmento para cargar su catalogo correcto.</div>
+                                    <div class="text-muted small">Define segmento para mostrar el catalogo correcto (residencial/empresarial).</div>
                                 </div>
                             </div>
                         </div>
@@ -72,63 +72,52 @@
 
                     <section class="quote-step-panel d-none" data-step="2">
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Categoria</label>
-                                <select class="form-select" id="categorySelect"></select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Servicio</label>
-                                <select class="form-select" id="serviceSelect"></select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Subproducto (opcional)</label>
-                                <select class="form-select" id="subproductSelect"></select>
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="form-label">Cantidad</label>
-                                <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
-                            </div>
-
-                            <div class="col-md-3 d-flex align-items-end">
-                                <button class="btn btn-outline-primary w-100" type="button" id="addLineBtn">Agregar concepto</button>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="table-responsive border rounded">
-                                    <table class="table table-sm align-middle mb-0" id="linesTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Categoria</th>
-                                                <th>Servicio</th>
-                                                <th>Subproducto</th>
-                                                <th class="text-center">Cant</th>
-                                                <th class="text-end">Costo</th>
-                                                <th class="text-end">Total</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr id="emptyRow"><td colspan="7" class="text-muted">Aun no agregas conceptos.</td></tr>
-                                        </tbody>
-                                    </table>
+                            <div class="col-12 col-xxl-8">
+                                <div class="card border-0 bg-light-subtle">
+                                    <div class="card-body">
+                                        <div class="fw-semibold mb-2">Categorias</div>
+                                        <div id="categoryCards" class="hn-grid-cards"></div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="card border-0 bg-light">
-                                    <div class="card-body py-2">
-                                        <div class="row g-2 align-items-center">
-                                            <div class="col-md-7">
-                                                <span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span>
+
+                                <div class="card border-0 bg-light-subtle mt-3">
+                                    <div class="card-body">
+                                        <div class="fw-semibold mb-2">Servicios</div>
+                                        <div id="serviceCards" class="hn-grid-cards"></div>
+                                    </div>
+                                </div>
+
+                                <div class="card border-0 bg-light-subtle mt-3">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div class="fw-semibold">Opciones del producto</div>
+                                            <span class="small text-muted">Ejemplo: color, tecnologia, capacidad, modalidad</span>
+                                        </div>
+                                        <div id="subproductCards" class="hn-grid-cards"></div>
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-sm-4 col-md-3">
+                                                <label class="form-label mb-1">Cantidad</label>
+                                                <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
                                             </div>
-                                            <div class="col-md-5">
-                                                <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><strong id="sumBase">$0.00</strong></div>
-                                                <div class="d-flex justify-content-between small"><span class="text-muted">IVA 16%</span><strong id="sumVat">$0.00</strong></div>
-                                                <div class="d-flex justify-content-between border-top mt-1 pt-1"><span class="fw-semibold">Total</span><strong class="text-primary" id="sumTotal">$0.00</strong></div>
+                                            <div class="col-sm-8 col-md-5 d-flex align-items-end">
+                                                <button class="btn btn-primary w-100" type="button" id="addLineBtn">Agregar al carrito</button>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-xxl-4">
+                                <div class="card border-primary-subtle h-100">
+                                    <div class="card-header bg-white fw-semibold">Carrito</div>
+                                    <div class="card-body">
+                                        <div id="cartLines" class="vstack gap-2"></div>
+                                        <div id="emptyCart" class="text-muted">Aun no agregas conceptos.</div>
+                                        <hr />
+                                        <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><strong id="sumBase">$0.00</strong></div>
+                                        <div class="d-flex justify-content-between small"><span class="text-muted">IVA 16%</span><strong id="sumVat">$0.00</strong></div>
+                                        <div class="d-flex justify-content-between mt-1 pt-1 border-top"><span class="fw-semibold">Total</span><strong class="text-primary" id="sumTotal">$0.00</strong></div>
+                                        <div class="mt-2"><span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -174,7 +163,7 @@
                     <section class="quote-step-panel d-none" data-step="4">
                         <div class="alert alert-light border">
                             <div class="fw-semibold">Confirmacion final</div>
-                            <div class="text-muted">Revisa el resumen, abre la vista previa PDF y despues enviala.</div>
+                            <div class="text-muted">Revisa resumen, abre PDF previo y luego envia la cotizacion.</div>
                         </div>
 
                         <div class="row g-2 mb-2">
@@ -206,7 +195,6 @@
 <script>
 (() => {
     const payload = @Html.Raw(catalogJson);
-    const hasClientContext = @Model.HasClientContext.ToString().ToLowerInvariant() === 'true';
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
     const lines = [];
@@ -216,14 +204,15 @@
     let currentStep = navSteps[0];
 
     const seg = document.getElementById('segmentSelect');
-    const cat = document.getElementById('categorySelect');
-    const svc = document.getElementById('serviceSelect');
-    const sub = document.getElementById('subproductSelect');
     const qty = document.getElementById('qtyInput');
     const addBtn = document.getElementById('addLineBtn');
-    const tbody = document.querySelector('#linesTable tbody');
-    const emptyRow = document.getElementById('emptyRow');
     const linesJson = document.getElementById('linesJson');
+    const categoryCards = document.getElementById('categoryCards');
+    const serviceCards = document.getElementById('serviceCards');
+    const subproductCards = document.getElementById('subproductCards');
+    const cartLines = document.getElementById('cartLines');
+    const emptyCart = document.getElementById('emptyCart');
+
     const manualBadge = document.getElementById('manualBadge');
     const sumBase = document.getElementById('sumBase');
     const sumVat = document.getElementById('sumVat');
@@ -231,6 +220,10 @@
     const prevStepBtn = document.getElementById('prevStepBtn');
     const nextStepBtn = document.getElementById('nextStepBtn');
     const submitBtn = document.getElementById('submitBtn');
+
+    let selectedCategoryId = null;
+    let selectedServiceId = null;
+    let selectedSubproductId = null;
 
     if(skipClientDataStep){
         ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation','Input_CompanyName']
@@ -244,6 +237,12 @@
 
     function toMoney(v){
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
+    }
+
+    function labelOffer(offer){
+        if(offer === 'MonthlyRent') return 'Renta mensual';
+        if(offer === 'Lease') return 'Arrendamiento';
+        return 'Venta';
     }
 
     function getSegmentData(){
@@ -268,46 +267,77 @@
         return rules.some(r => selected.has(String(r.requiredItemId)));
     }
 
-    function fillCategories(){
-        const s = getSegmentData();
-        cat.innerHTML = '';
-        s.categories.forEach(c => {
-            const o = document.createElement('option');
-            o.value = c.id;
-            o.textContent = c.name;
-            cat.appendChild(o);
-        });
-        fillServices();
+    function cardHtml(item, active, extra){
+        const img = item.imageUrl ? `<img src="${item.imageUrl}" alt="img" />` : `<div class="hn-thumb-fallback">${item.name.substring(0,2).toUpperCase()}</div>`;
+        return `
+        <button type="button" class="hn-card-select ${active ? 'is-active' : ''}" data-id="${item.id}">
+            <div class="hn-thumb">${img}</div>
+            <div class="hn-body">
+                <div class="hn-name">${item.name}</div>
+                ${item.description ? `<div class="hn-desc">${item.description}</div>` : ''}
+                ${extra || ''}
+            </div>
+        </button>`;
     }
 
-    function fillServices(){
+    function renderCategories(){
         const s = getSegmentData();
-        const catId = cat.value;
-        svc.innerHTML = '';
-        s.services.filter(x => x.parentId === catId && isAllowedByRules(x.id)).forEach(x => {
-            const o = document.createElement('option');
-            o.value = x.id;
-            o.textContent = x.name;
-            svc.appendChild(o);
+        const rows = s.categories.filter(x => isAllowedByRules(x.id));
+        if(!rows.length){ categoryCards.innerHTML = '<div class="text-muted">Sin categorias para este segmento.</div>'; return; }
+        categoryCards.innerHTML = rows.map(x => cardHtml(x, String(selectedCategoryId) === String(x.id), '')).join('');
+        categoryCards.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedCategoryId = btn.dataset.id;
+                selectedServiceId = null;
+                selectedSubproductId = null;
+                renderCategories();
+                renderServices();
+                renderSubproducts();
+            });
         });
-        fillSubproducts();
+        if(!selectedCategoryId && rows[0]) selectedCategoryId = rows[0].id;
     }
 
-    function fillSubproducts(){
+    function renderServices(){
         const s = getSegmentData();
-        const svcId = svc.value;
-        sub.innerHTML = '<option value="">Sin subproducto</option>';
-        s.subproducts.filter(x => x.parentId === svcId && isAllowedByRules(x.id)).forEach(x => {
-            const o = document.createElement('option');
-            o.value = x.id;
-            o.textContent = x.name;
-            sub.appendChild(o);
+        const rows = s.services.filter(x => x.parentId === selectedCategoryId && isAllowedByRules(x.id));
+        if(!rows.length){ serviceCards.innerHTML = '<div class="text-muted">Selecciona categoria para ver servicios.</div>'; return; }
+        serviceCards.innerHTML = rows.map(x => {
+            const extra = `<div class="d-flex gap-1 flex-wrap mt-1"><span class="badge text-bg-light border">${labelOffer(x.offerType)}</span>${x.referenceUrl ? `<span class="badge text-bg-info">Link</span>` : ''}</div>`;
+            return cardHtml(x, String(selectedServiceId) === String(x.id), extra);
+        }).join('');
+        serviceCards.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedServiceId = btn.dataset.id;
+                selectedSubproductId = null;
+                renderServices();
+                renderSubproducts();
+            });
         });
+        if(!selectedServiceId && rows[0]) selectedServiceId = rows[0].id;
     }
 
-    function find(arr, id){
-        return arr.find(x => x.id === id);
+    function renderSubproducts(){
+        const s = getSegmentData();
+        const rows = s.subproducts.filter(x => x.parentId === selectedServiceId && isAllowedByRules(x.id));
+        if(!selectedServiceId){ subproductCards.innerHTML = '<div class="text-muted">Selecciona un servicio.</div>'; return; }
+        if(!rows.length){ subproductCards.innerHTML = '<div class="text-muted">Este servicio no tiene variantes; se agregara directo al carrito.</div>'; return; }
+        subproductCards.innerHTML = rows.map(x => {
+            const priceTxt = x.isManualPrice || x.unitPrice == null ? 'Precio manual' : `${toMoney(x.unitPrice)} ${x.unitPriceIncludesVat ? '(IVA incl.)' : '+ IVA'}`;
+            const variantTxt = (x.variantGroup || x.variantValue) ? `<span class="badge text-bg-light border">${(x.variantGroup || 'Variante')}: ${x.variantValue || '-'}</span>` : '';
+            const extra = `<div class="d-flex gap-1 flex-wrap mt-1"><span class="badge text-bg-light border">${labelOffer(x.offerType)}</span>${variantTxt}<span class="badge text-bg-secondary">${priceTxt}</span></div>`;
+            return cardHtml(x, String(selectedSubproductId) === String(x.id), extra);
+        }).join('');
+        subproductCards.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedSubproductId = btn.dataset.id;
+                renderSubproducts();
+            });
+        });
+        if(!selectedSubproductId && rows[0]) selectedSubproductId = rows[0].id;
     }
+
+    function find(arr, id){ return arr.find(x => String(x.id) === String(id)); }
 
     function totals(){
         const base = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
@@ -340,37 +370,35 @@
         if(cTotal) cTotal.textContent = toMoney(t.total);
     }
 
-    function render(){
-        tbody.innerHTML = '';
-        if(lines.length === 0){
-            tbody.appendChild(emptyRow);
-            recalc();
-            return;
-        }
-
+    function renderCart(){
+        cartLines.innerHTML = '';
+        if(!lines.length){ emptyCart.classList.remove('d-none'); recalc(); return; }
+        emptyCart.classList.add('d-none');
         lines.forEach((l, idx) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${l.categoryName}</td>
-                <td>${l.serviceName}</td>
-                <td>${l.subproductName || '-'}</td>
-                <td class="text-center">${l.quantity}</td>
-                <td class="text-end">${l.isManual ? 'Manual' : (toMoney(l.unitPrice) + (l.includesVat ? ' (IVA incl.)' : ' + IVA'))}</td>
-                <td class="text-end">${l.isManual ? 'Por validar' : toMoney(l.total)}</td>
-                <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button></td>
+            const div = document.createElement('div');
+            div.className = 'hn-cart-line';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between gap-2">
+                    <div>
+                        <div class="fw-semibold">${l.serviceName}</div>
+                        <div class="small text-muted">${l.categoryName}${l.subproductName ? ' · ' + l.subproductName : ''}</div>
+                        <div class="small"><span class="badge text-bg-light border">${labelOffer(l.offerType)}</span></div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button>
+                </div>
+                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity}</span><span>${l.isManual ? 'Manual' : toMoney(l.total)}</span></div>
             `;
-            tbody.appendChild(tr);
+            cartLines.appendChild(div);
         });
-
-        tbody.querySelectorAll('button[data-del]').forEach(btn => {
+        cartLines.querySelectorAll('button[data-del]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const idx = Number(btn.getAttribute('data-del'));
                 lines.splice(idx, 1);
-                fillServices();
-                render();
+                renderCart();
+                renderServices();
+                renderSubproducts();
             });
         });
-
         recalc();
     }
 
@@ -392,7 +420,7 @@
 
     function validateStep(step){
         if(step === 2 && lines.length === 0){
-            alert('Agrega al menos un concepto antes de continuar.');
+            alert('Agrega al menos un concepto al carrito antes de continuar.');
             return false;
         }
         if(step === 3 && !skipClientDataStep){
@@ -423,24 +451,21 @@
 
     addBtn.addEventListener('click', () => {
         const s = getSegmentData();
-        const category = find(s.categories, cat.value);
-        const service = find(s.services, svc.value);
+        const category = find(s.categories, selectedCategoryId);
+        const service = find(s.services, selectedServiceId);
         if(!category || !service){
             alert('Selecciona categoria y servicio.');
             return;
         }
 
-        const subItem = sub.value ? find(s.subproducts, sub.value) : null;
+        const subItem = selectedSubproductId ? find(s.subproducts, selectedSubproductId) : null;
         const selected = subItem || service;
         const isManual = !!selected.isManualPrice || selected.unitPrice == null;
         const unit = Number(selected.unitPrice || 0);
         const q = Math.max(1, Number(qty.value || 1));
         const includesVat = !!selected.unitPriceIncludesVat;
 
-        let base = 0;
-        let vat = 0;
-        let total = 0;
-
+        let base = 0, vat = 0, total = 0;
         if(!isManual){
             const raw = unit * q;
             if(includesVat){
@@ -467,26 +492,33 @@
             base,
             vat,
             total,
-            isManual
+            isManual,
+            offerType: selected.offerType || 'Sale'
         });
 
-        fillServices();
-        render();
+        renderCart();
+        renderServices();
+        renderSubproducts();
     });
 
     prevStepBtn.addEventListener('click', goPrev);
     nextStepBtn.addEventListener('click', goNext);
 
     seg.addEventListener('change', () => {
-        fillCategories();
         lines.length = 0;
-        render();
+        selectedCategoryId = null;
+        selectedServiceId = null;
+        selectedSubproductId = null;
+        renderCategories();
+        renderServices();
+        renderSubproducts();
+        renderCart();
     });
-    cat.addEventListener('change', fillServices);
-    svc.addEventListener('change', fillSubproducts);
 
-    fillCategories();
-    render();
+    renderCategories();
+    renderServices();
+    renderSubproducts();
+    renderCart();
     showStep(navSteps[0]);
 })();
 </script>
@@ -507,14 +539,35 @@
     font-weight:700;
     font-size:.86rem;
 }
-.quote-step-pill.active{
-    border-color:#1d4ed8;
-    background:#e8efff;
-    color:#1d4ed8;
-}
-.quote-step-pill.is-skipped{
-    opacity:.55;
-}
+.quote-step-pill.active{ border-color:#1d4ed8; background:#e8efff; color:#1d4ed8; }
+.quote-step-pill.is-skipped{ opacity:.55; }
 .quote-step-panel{ min-height: 220px; }
+
+.hn-grid-cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+    gap:.65rem;
+}
+.hn-card-select{
+    width:100%;
+    border:1px solid #dbe3f4;
+    border-radius:14px;
+    background:#fff;
+    text-align:left;
+    padding:.6rem;
+    display:flex;
+    gap:.65rem;
+    transition:.15s ease;
+}
+.hn-card-select:hover{ border-color:#93c5fd; box-shadow:0 6px 16px rgba(30,64,175,.08); }
+.hn-card-select.is-active{ border-color:#1d4ed8; box-shadow:0 0 0 2px rgba(29,78,216,.12) inset; }
+.hn-thumb{ width:62px; min-width:62px; height:62px; border-radius:10px; overflow:hidden; border:1px solid #dbe3f4; background:#f8fafc; display:flex; align-items:center; justify-content:center; }
+.hn-thumb img{ width:100%; height:100%; object-fit:cover; }
+.hn-thumb-fallback{ font-weight:700; color:#64748b; }
+.hn-body{ min-width:0; }
+.hn-name{ font-weight:700; color:#0f172a; }
+.hn-desc{ font-size:.82rem; color:#64748b; line-height:1.2; margin-top:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+.hn-cart-line{ border:1px solid #dbe3f4; border-radius:12px; padding:.55rem; }
 </style>
 }

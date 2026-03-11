@@ -181,7 +181,6 @@ public class ModulesController : ControllerBase
         if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
             return Forbid();
 
-        var isAdmin = AppRoles.IsGlobalAdmin(User);
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var st = (status ?? "open").Trim().ToLowerInvariant();
         var now = DateTime.UtcNow;
@@ -191,9 +190,6 @@ public class ModulesController : ControllerBase
             .Include(t => t.Client)
             .OrderByDescending(t => t.CreatedAt)
             .AsQueryable();
-
-        if (!isAdmin)
-            q = q.Where(t => t.AssignedToUserId == uid || string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.CreatedByUserId == uid);
 
         if (st == "open")
             q = q.Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
@@ -216,7 +212,7 @@ public class ModulesController : ControllerBase
             t.SlaResolutionDueAt,
             t.SlaBreachedResponse || t.SlaBreachedResolution || (t.FirstResponseAt == null && now > t.SlaResponseDueAt) || (t.ResolvedAt == null && now > t.SlaResolutionDueAt),
             t.AssignedToUserId == uid,
-            string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.AssignedToUserId == uid || isAdmin
+            t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled
         )).ToListAsync();
 
         return Ok(data);
@@ -231,8 +227,6 @@ public class ModulesController : ControllerBase
         if (!await _moduleAccess.HasAccessAsync(User, AppModules.Tickets))
             return Forbid();
 
-        var isAdmin = AppRoles.IsGlobalAdmin(User);
-        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var now = DateTime.UtcNow;
 
         var t = await _db.Tickets
@@ -243,9 +237,6 @@ public class ModulesController : ControllerBase
             .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id);
         if (t == null) return NotFound();
-
-        if (!isAdmin && t.AssignedToUserId != uid && !string.IsNullOrWhiteSpace(t.AssignedToUserId))
-            return Forbid();
 
         var carrier = new
         {
@@ -388,11 +379,6 @@ public class ModulesController : ControllerBase
             .Include(a => a.Ticket!)
             .FirstOrDefaultAsync(a => a.Id == attachmentId);
         if (att == null || att.Ticket == null) return NotFound();
-
-        var isAdmin = AppRoles.IsGlobalAdmin(User);
-        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        if (!isAdmin && att.Ticket.AssignedToUserId != uid && !string.IsNullOrWhiteSpace(att.Ticket.AssignedToUserId))
-            return Forbid();
 
         var downloadName = string.IsNullOrWhiteSpace(att.OriginalFileName) ? "adjunto" : att.OriginalFileName;
         var (stream, contentType, _) = await _storage.OpenAsync(att.StoragePath, downloadName);

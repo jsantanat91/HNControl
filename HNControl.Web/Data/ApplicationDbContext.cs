@@ -690,6 +690,9 @@ b.Entity<ServiceOrder>(e =>
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(140);
             e.Property(x => x.Description).HasMaxLength(1200);
+            e.Property(x => x.ImageUrl).HasMaxLength(600);
+            e.Property(x => x.VariantGroup).HasMaxLength(60);
+            e.Property(x => x.VariantValue).HasMaxLength(80);
             e.Property(x => x.ReferenceUrl).HasMaxLength(600);
             e.Property(x => x.UnitPrice).HasColumnType("numeric(12,2)");
             e.HasIndex(x => new { x.Segment, x.NodeType, x.ParentId, x.IsActive });
@@ -713,6 +716,7 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.CompanyName).HasMaxLength(200);
             e.Property(x => x.Notes).HasMaxLength(1200);
             e.Property(x => x.PdfStoragePath).HasMaxLength(500);
+            e.Property(x => x.AcceptedByUserId).HasMaxLength(64);
             e.Property(x => x.SubtotalAuto).HasColumnType("numeric(12,2)");
             e.Property(x => x.SubtotalBeforeVat).HasColumnType("numeric(12,2)");
             e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
@@ -744,6 +748,7 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.BaseAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.LineTotal).HasColumnType("numeric(12,2)");
+            e.Property(x => x.ItemImageUrl).HasMaxLength(600);
             e.HasIndex(x => x.QuoteRequestId);
         });
 

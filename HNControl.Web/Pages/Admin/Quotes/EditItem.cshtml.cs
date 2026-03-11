@@ -39,9 +39,13 @@ public class EditItemModel : PageModel
             ParentId = item.ParentId,
             Name = item.Name,
             Description = item.Description,
+            ImageUrl = item.ImageUrl,
             UnitPrice = item.UnitPrice,
             UnitPriceIncludesVat = item.UnitPriceIncludesVat,
             IsManualPrice = item.IsManualPrice,
+            OfferType = item.OfferType,
+            VariantGroup = item.VariantGroup,
+            VariantValue = item.VariantValue,
             ReferenceUrl = item.ReferenceUrl,
             SortOrder = item.SortOrder
         };
@@ -64,9 +68,13 @@ public class EditItemModel : PageModel
         item.ParentId = Input.ParentId;
         item.Name = (Input.Name ?? string.Empty).Trim();
         item.Description = string.IsNullOrWhiteSpace(Input.Description) ? null : Input.Description.Trim();
+        item.ImageUrl = string.IsNullOrWhiteSpace(Input.ImageUrl) ? null : Input.ImageUrl.Trim();
         item.UnitPrice = Input.UnitPrice;
         item.UnitPriceIncludesVat = Input.UnitPriceIncludesVat;
         item.IsManualPrice = Input.IsManualPrice;
+        item.OfferType = Input.OfferType;
+        item.VariantGroup = string.IsNullOrWhiteSpace(Input.VariantGroup) ? null : Input.VariantGroup.Trim();
+        item.VariantValue = string.IsNullOrWhiteSpace(Input.VariantValue) ? null : Input.VariantValue.Trim();
         item.ReferenceUrl = string.IsNullOrWhiteSpace(Input.ReferenceUrl) ? null : Input.ReferenceUrl.Trim();
         item.SortOrder = Input.SortOrder;
 
@@ -125,9 +133,13 @@ public class EditItemModel : PageModel
         public Guid? ParentId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
         public decimal? UnitPrice { get; set; }
         public bool UnitPriceIncludesVat { get; set; }
         public bool IsManualPrice { get; set; }
+        public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+        public string? VariantGroup { get; set; }
+        public string? VariantValue { get; set; }
         public string? ReferenceUrl { get; set; }
         public int SortOrder { get; set; }
     }

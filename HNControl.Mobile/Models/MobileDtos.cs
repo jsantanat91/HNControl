@@ -474,6 +474,16 @@ public sealed class TicketDetailDto
     public bool Breach { get; set; }
     public string ResolutionSummary { get; set; } = "";
     public List<TicketEventDto> Events { get; set; } = new();
+    public List<TicketAttachmentDto> Attachments { get; set; } = new();
+}
+
+public sealed class TicketAttachmentDto
+{
+    public Guid Id { get; set; }
+    public string FileName { get; set; } = "";
+    public string ContentType { get; set; } = "";
+    public DateTime UploadedAt { get; set; }
+    public string UploadedBy { get; set; } = "";
 }
 
 public sealed class ViaticWeekListItemDto
