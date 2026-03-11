@@ -11,66 +11,48 @@ namespace HNControl.Web.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Branch",
-                table: "ClientServiceContracts",
-                type: "character varying(140)",
-                maxLength: 140,
-                nullable: false,
-                defaultValue: "");
+            migrationBuilder.Sql("""
+                ALTER TABLE "ClientServiceContracts"
+                ADD COLUMN IF NOT EXISTS "Branch" character varying(140) NOT NULL DEFAULT '';
+            """);
 
-            migrationBuilder.AddColumn<string>(
-                name: "BranchAddress",
-                table: "ClientServiceContracts",
-                type: "character varying(320)",
-                maxLength: 320,
-                nullable: false,
-                defaultValue: "");
+            migrationBuilder.Sql("""
+                ALTER TABLE "ClientServiceContracts"
+                ADD COLUMN IF NOT EXISTS "BranchAddress" character varying(320) NOT NULL DEFAULT '';
+            """);
 
-            migrationBuilder.CreateTable(
-                name: "TicketAttachments",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TicketId = table.Column<Guid>(type: "uuid", nullable: false),
-                    OriginalFileName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    ContentType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    StoragePath = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    SizeBytes = table.Column<long>(type: "bigint", nullable: false),
-                    UploadedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UploadedByUserId = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                    UploadedByName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TicketAttachments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_TicketAttachments_Tickets_TicketId",
-                        column: x => x.TicketId,
-                        principalTable: "Tickets",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS "TicketAttachments" (
+                    "Id" uuid NOT NULL,
+                    "TicketId" uuid NOT NULL,
+                    "OriginalFileName" character varying(255) NOT NULL,
+                    "ContentType" character varying(100) NOT NULL,
+                    "StoragePath" character varying(500) NOT NULL,
+                    "SizeBytes" bigint NOT NULL,
+                    "UploadedAt" timestamp with time zone NOT NULL,
+                    "UploadedByUserId" character varying(64) NOT NULL,
+                    "UploadedByName" character varying(200) NOT NULL,
+                    CONSTRAINT "PK_TicketAttachments" PRIMARY KEY ("Id"),
+                    CONSTRAINT "FK_TicketAttachments_Tickets_TicketId"
+                        FOREIGN KEY ("TicketId")
+                        REFERENCES "Tickets" ("Id")
+                        ON DELETE CASCADE
+                );
+            """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_TicketAttachments_TicketId_UploadedAt",
-                table: "TicketAttachments",
-                columns: new[] { "TicketId", "UploadedAt" });
+            migrationBuilder.Sql("""
+                CREATE INDEX IF NOT EXISTS "IX_TicketAttachments_TicketId_UploadedAt"
+                ON "TicketAttachments" ("TicketId", "UploadedAt");
+            """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "TicketAttachments");
-
-            migrationBuilder.DropColumn(
-                name: "Branch",
-                table: "ClientServiceContracts");
-
-            migrationBuilder.DropColumn(
-                name: "BranchAddress",
-                table: "ClientServiceContracts");
+            migrationBuilder.Sql("""DROP INDEX IF EXISTS "IX_TicketAttachments_TicketId_UploadedAt";""");
+            migrationBuilder.Sql("""DROP TABLE IF EXISTS "TicketAttachments";""");
+            migrationBuilder.Sql("""ALTER TABLE "ClientServiceContracts" DROP COLUMN IF EXISTS "Branch";""");
+            migrationBuilder.Sql("""ALTER TABLE "ClientServiceContracts" DROP COLUMN IF EXISTS "BranchAddress";""");
         }
     }
 }

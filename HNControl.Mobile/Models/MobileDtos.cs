@@ -455,6 +455,13 @@ public sealed class TicketDetailDto
     public string TicketNumber { get; set; } = "";
     public string Client { get; set; } = "";
     public string Contract { get; set; } = "";
+    public string Branch { get; set; } = "";
+    public string BranchAddress { get; set; } = "";
+    public string Carrier { get; set; } = "";
+    public string CarrierService { get; set; } = "";
+    public string CarrierAccount { get; set; } = "";
+    public string CarrierCircuit { get; set; } = "";
+    public string CarrierIp { get; set; } = "";
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public string Status { get; set; } = "";

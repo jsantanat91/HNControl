@@ -44,7 +44,31 @@ public class ModulesController : ControllerBase
     public record MonitorCheckDto(DateTime CheckedAt, bool Success, int? LatencyMs, string Error);
     public record MonitorDetailDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError, string ContractLabel, string CarrierServiceLabel, string Notes, List<MonitorCheckDto> LastChecks);
     public record TicketItemDto(Guid Id, string TicketNumber, string Client, string Title, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, bool IsMine, bool CanTake);
-    public record TicketDetailDto(Guid Id, string TicketNumber, string Client, string Contract, string Title, string Description, string Status, string Priority, string Source, string AssignedTo, DateTime CreatedAt, DateTime SlaResponseDueAt, DateTime SlaResolutionDueAt, bool Breach, string ResolutionSummary, List<TicketEventDto> Events, List<TicketAttachmentDto> Attachments);
+    public record TicketDetailDto(
+        Guid Id,
+        string TicketNumber,
+        string Client,
+        string Contract,
+        string Branch,
+        string BranchAddress,
+        string Carrier,
+        string CarrierService,
+        string CarrierAccount,
+        string CarrierCircuit,
+        string CarrierIp,
+        string Title,
+        string Description,
+        string Status,
+        string Priority,
+        string Source,
+        string AssignedTo,
+        DateTime CreatedAt,
+        DateTime SlaResponseDueAt,
+        DateTime SlaResolutionDueAt,
+        bool Breach,
+        string ResolutionSummary,
+        List<TicketEventDto> Events,
+        List<TicketAttachmentDto> Attachments);
     public record TicketEventDto(DateTime CreatedAt, string EventType, string UserName, string Message);
     public record TicketAttachmentDto(Guid Id, string FileName, string ContentType, DateTime UploadedAt, string UploadedBy);
 
@@ -223,11 +247,48 @@ public class ModulesController : ControllerBase
         if (!isAdmin && t.AssignedToUserId != uid && !string.IsNullOrWhiteSpace(t.AssignedToUserId))
             return Forbid();
 
+        var carrier = new
+        {
+            Name = "-",
+            Service = "-",
+            Account = "-",
+            Circuit = "-",
+            Ip = "-"
+        };
+
+        if (t.ClientServiceContractId.HasValue)
+        {
+            var c = await _db.ClientCarrierServices
+                .AsNoTracking()
+                .Include(s => s.Carrier)
+                .Where(s => s.ClientServiceContractId == t.ClientServiceContractId.Value)
+                .OrderBy(s => s.ServiceLabel)
+                .Select(s => new
+                {
+                    Name = s.Carrier != null ? s.Carrier.Name : "-",
+                    Service = string.IsNullOrWhiteSpace(s.ServiceLabel) ? "-" : s.ServiceLabel,
+                    Account = string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber,
+                    Circuit = string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId,
+                    Ip = string.IsNullOrWhiteSpace(s.IpInfo) ? "-" : s.IpInfo
+                })
+                .FirstOrDefaultAsync();
+
+            if (c != null)
+                carrier = c;
+        }
+
         var dto = new TicketDetailDto(
             t.Id,
             t.TicketNumber,
             t.Client?.Name ?? "-",
             t.ClientServiceContract?.Label ?? "-",
+            string.IsNullOrWhiteSpace(t.ClientServiceContract?.Branch) ? "-" : t.ClientServiceContract!.Branch,
+            string.IsNullOrWhiteSpace(t.ClientServiceContract?.BranchAddress) ? "-" : t.ClientServiceContract!.BranchAddress,
+            carrier.Name,
+            carrier.Service,
+            carrier.Account,
+            carrier.Circuit,
+            carrier.Ip,
             t.Title,
             t.Description,
             t.Status.ToString(),

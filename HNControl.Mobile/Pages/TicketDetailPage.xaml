@@ -24,6 +24,26 @@
             </Border>
 
             <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Sucursal y carrier" FontAttributes="Bold" FontSize="18" />
+                    <Label x:Name="BranchLabel" FontSize="14" />
+                    <Label x:Name="BranchAddressLabel" FontSize="13" Opacity="0.8" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowSpacing="4">
+                        <Label Text="Carrier:" FontAttributes="Bold" />
+                        <Label Grid.Column="1" x:Name="CarrierLabel" />
+                        <Label Grid.Row="1" Text="Servicio:" FontAttributes="Bold" />
+                        <Label Grid.Row="1" Grid.Column="1" x:Name="CarrierServiceLabel" />
+                        <Label Grid.Row="2" Text="Cuenta:" FontAttributes="Bold" />
+                        <Label Grid.Row="2" Grid.Column="1" x:Name="CarrierAccountLabel" />
+                        <Label Grid.Row="3" Text="Circuito:" FontAttributes="Bold" />
+                        <Label Grid.Row="3" Grid.Column="1" x:Name="CarrierCircuitLabel" />
+                        <Label Grid.Row="4" Text="IP:" FontAttributes="Bold" />
+                        <Label Grid.Row="4" Grid.Column="1" x:Name="CarrierIpLabel" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Acciones" FontAttributes="Bold" FontSize="18" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
@@ -58,4 +78,3 @@
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
-
