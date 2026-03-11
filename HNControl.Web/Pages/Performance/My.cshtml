@@ -29,6 +29,7 @@
                             <th>Periodo</th>
                             <th class="text-end">Variable %</th>
                             <th class="text-end">Total quincenal</th>
+                            <th>Notas del admin</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38,6 +39,16 @@
                                 <td>@r.Period</td>
                                 <td class="text-end">@((r.VariablePercent * 100m).ToString("0.##"))%</td>
                                 <td class="text-end fw-semibold">@r.TotalPay.ToString("C")</td>
+                                <td>
+                                    @if (string.IsNullOrWhiteSpace(r.Notes))
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@r.Notes</span>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Inventory.Items;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "InventorySupervisor")]
 public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -150,7 +150,7 @@ public class EditModel : PageModel
             .OrderBy(b => b.Name)
             .Select(b => new SelectListItem(b.Name, b.Id.ToString()))
             .ToListAsync();
-        BrandOptions.Insert(0, new SelectListItem("— Sin marca —", ""));
+        BrandOptions.Insert(0, new SelectListItem("â€” Sin marca â€”", ""));
 
         CategoryOptions = await _db.InventoryCategories
             .AsNoTracking()
@@ -158,7 +158,7 @@ public class EditModel : PageModel
             .OrderBy(c => c.Name)
             .Select(c => new SelectListItem(c.Name, c.Name))
             .ToListAsync();
-        CategoryOptions.Insert(0, new SelectListItem("— Sin categoría —", ""));
+        CategoryOptions.Insert(0, new SelectListItem("â€” Sin categorÃ­a â€”", ""));
 
         LocationOptions = await _db.InventoryLocations
             .AsNoTracking()
@@ -166,7 +166,7 @@ public class EditModel : PageModel
             .OrderBy(l => l.Name)
             .Select(l => new SelectListItem(l.Name, l.Name))
             .ToListAsync();
-        LocationOptions.Insert(0, new SelectListItem("— Sin ubicación —", ""));
+        LocationOptions.Insert(0, new SelectListItem("â€” Sin ubicaciÃ³n â€”", ""));
     }
 
     private async Task LoadRecentMovementsAsync(Guid itemId, string unit)
@@ -191,3 +191,4 @@ public class EditModel : PageModel
             .ToListAsync();
     }
 }
+

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Inventory.Approvals;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "InventorySupervisor")]
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -67,7 +67,7 @@ public class DetailsModel : PageModel
 
         using var tx = await _db.Database.BeginTransactionAsync();
 
-        // 2) cargar líneas con tracking
+        // 2) cargar lÃ­neas con tracking
         var lines = await LoadOrderLinesTrackedAsync(anchor);
 
         if (lines.Count == 0) return NotFound();
@@ -79,7 +79,7 @@ public class DetailsModel : PageModel
             return await OnGetAsync(id);
         }
 
-        // 3) validación y actualización de stock
+        // 3) validaciÃ³n y actualizaciÃ³n de stock
         if (lines.First().Type == InventoryMovementType.Out)
         {
             var byItem = lines.GroupBy(x => x.ItemId)
@@ -122,7 +122,7 @@ public class DetailsModel : PageModel
             }
         }
 
-        // 4) aprobar líneas
+        // 4) aprobar lÃ­neas
         var note = (Input.AdminNote ?? "").Trim();
         var now = DateTime.UtcNow;
 
@@ -211,3 +211,4 @@ public class DetailsModel : PageModel
             .ToListAsync();
     }
 }
+

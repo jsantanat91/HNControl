@@ -46,7 +46,7 @@ public static class UiBadges
         ServiceOrderStatus.InReview => ("En revision", "bg-warning text-dark"),
         ServiceOrderStatus.Finalized => ("Finalizada", "bg-success"),
         ServiceOrderStatus.Rejected => ("Rechazada", "bg-danger"),
-        ServiceOrderStatus.PendingClientSignature => ("Firma cliente", "bg-info text-dark"),
+        ServiceOrderStatus.PendingClientSignature => ("En revision", "bg-warning text-dark"),
         _ => ("-", "bg-light text-dark")
     };
 
@@ -56,6 +56,7 @@ public static class UiBadges
         ServiceOrderType.Preventivo => ("Preventivo", "bg-success"),
         ServiceOrderType.NuevaInstalacion => ("Nueva instalacion", "bg-primary"),
         ServiceOrderType.LevantamientoTecnico => ("Levantamiento", "bg-info text-dark"),
+        ServiceOrderType.Eventos => ("Eventos", "bg-info text-dark"),
         ServiceOrderType.Global => ("Global", "bg-dark"),
         _ => ("Otro", "bg-secondary")
     };

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Inventory.Categories;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "InventorySupervisor")]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -48,7 +48,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Esa categoría ya existe.";
+            Error = "Esa categorÃ­a ya existe.";
             return RedirectToPage();
         }
 
@@ -61,7 +61,7 @@ public class IndexModel : PageModel
         });
 
         await _db.SaveChangesAsync();
-        Info = "Categoría agregada.";
+        Info = "CategorÃ­a agregada.";
         return RedirectToPage();
     }
 
@@ -74,7 +74,7 @@ public class IndexModel : PageModel
         c.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
-        Info = c.IsActive ? "Categoría activada." : "Categoría desactivada.";
+        Info = c.IsActive ? "CategorÃ­a activada." : "CategorÃ­a desactivada.";
         return RedirectToPage();
     }
 
@@ -86,7 +86,7 @@ public class IndexModel : PageModel
         var newName = (name ?? "").Trim();
         if (string.IsNullOrWhiteSpace(newName))
         {
-            Error = "El nombre no puede ir vacío.";
+            Error = "El nombre no puede ir vacÃ­o.";
             return RedirectToPage();
         }
 
@@ -96,7 +96,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Ya existe otra categoría con ese nombre.";
+            Error = "Ya existe otra categorÃ­a con ese nombre.";
             return RedirectToPage();
         }
 
@@ -104,7 +104,8 @@ public class IndexModel : PageModel
         c.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Info = "Categoría actualizada.";
+        Info = "CategorÃ­a actualizada.";
         return RedirectToPage();
     }
 }
+

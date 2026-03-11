@@ -56,6 +56,7 @@ public class EditModel : PageModel
         public string AppRole { get; set; } = AppRoles.Employee; // Admin o Employee
 
         public Guid? PermissionRoleId { get; set; }
+        public bool IsInventoryManager { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(string userId)
@@ -87,7 +88,8 @@ public class EditModel : PageModel
             VacationAllowanceDays = Employee.VacationAllowanceDays,
             Email = email,
             AppRole = appRole,
-            PermissionRoleId = upr?.PermissionRoleId
+            PermissionRoleId = upr?.PermissionRoleId,
+            IsInventoryManager = roles.Contains(AppRoles.InventoryManager)
         };
 
         // ✅ Vacaciones automático por LFT (según fecha de ingreso)
@@ -193,6 +195,13 @@ public class EditModel : PageModel
             }
             if (!currentRoles.Contains(desiredRole))
                 await _userManager.AddToRoleAsync(user, desiredRole);
+
+            // Encargado de inventario: puede operar /Admin/Inventory sin ser admin global.
+            var hasInvMgr = currentRoles.Contains(AppRoles.InventoryManager);
+            if (Input.IsInventoryManager && !hasInvMgr)
+                await _userManager.AddToRoleAsync(user, AppRoles.InventoryManager);
+            if (!Input.IsInventoryManager && hasInvMgr)
+                await _userManager.RemoveFromRoleAsync(user, AppRoles.InventoryManager);
         }
 
         await _db.SaveChangesAsync();

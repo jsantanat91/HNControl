@@ -162,6 +162,54 @@ public class EditModel : PageModel
         return RedirectToPage(new { id = examId });
     }
 
+    public async Task<IActionResult> OnPostUpdateQuestionAsync(Guid examId, Guid questionId, string text, ExamQuestionType type, decimal points, bool isRequired)
+    {
+        var q = await _db.ExamQuestions.FirstOrDefaultAsync(x => x.Id == questionId && x.ExamId == examId);
+        if (q == null) return NotFound();
+
+        text = (text ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            TempData["Error"] = "La pregunta no puede ir vacia.";
+            return RedirectToPage(new { id = examId });
+        }
+
+        if (points <= 0m) points = 1m;
+        if (points > 100m) points = 100m;
+
+        q.Text = text;
+        q.Type = type;
+        q.Points = points;
+        q.IsRequired = isRequired;
+
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = "Pregunta actualizada.";
+        return RedirectToPage(new { id = examId });
+    }
+
+    public async Task<IActionResult> OnPostUpdateChoiceAsync(Guid examId, Guid choiceId, string text)
+    {
+        var c = await _db.ExamChoices
+            .Include(x => x.Question)
+            .FirstOrDefaultAsync(x => x.Id == choiceId);
+
+        if (c == null || c.Question == null || c.Question.ExamId != examId) return NotFound();
+
+        text = (text ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            TempData["Error"] = "La opcion no puede ir vacia.";
+            return RedirectToPage(new { id = examId });
+        }
+
+        c.Text = text;
+        await _db.SaveChangesAsync();
+
+        TempData["Success"] = "Opcion actualizada.";
+        return RedirectToPage(new { id = examId });
+    }
+
     public async Task<IActionResult> OnPostToggleCorrectAsync(Guid examId, Guid choiceId)
     {
         var choice = await _db.ExamChoices

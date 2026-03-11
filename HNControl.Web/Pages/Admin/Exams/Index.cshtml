@@ -93,6 +93,7 @@
                                         <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Exams/Edit" asp-route-id="@r.Id">Editar</a>
                                         <a class="btn btn-sm btn-outline-success" asp-page="/Admin/Exams/Assign" asp-route-id="@r.Id">Asignar</a>
                                         <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Exams/Results" asp-route-id="@r.Id">Resultados</a>
+                                        <button type="button" class="btn btn-sm btn-outline-dark js-show-assigned" data-id="@r.Id">Detalles</button>
                                     </div>
                                 </td>
                             </tr>
@@ -130,6 +131,7 @@
                                     <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Exams/Edit" asp-route-id="@r.Id">Editar</a>
                                     <a class="btn btn-sm btn-outline-success" asp-page="/Admin/Exams/Assign" asp-route-id="@r.Id">Asignar</a>
                                     <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Exams/Results" asp-route-id="@r.Id">Resultados</a>
+                                    <button type="button" class="btn btn-sm btn-outline-dark js-show-assigned" data-id="@r.Id">Detalles</button>
                                 </div>
                             </div>
                         </div>
@@ -139,3 +141,73 @@
         }
     </div>
 </div>
+
+<div class="modal fade" id="assignedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignedTitle">Asignaciones</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="assignedBody" class="text-muted">Cargando...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const modalEl = document.getElementById('assignedModal');
+            if (!modalEl || !window.bootstrap) return;
+            const modal = new bootstrap.Modal(modalEl);
+            const titleEl = document.getElementById('assignedTitle');
+            const bodyEl = document.getElementById('assignedBody');
+
+            async function openDetails(id) {
+                bodyEl.innerHTML = '<div class="text-muted">Cargando...</div>';
+                modal.show();
+                try {
+                    const res = await fetch(`@Url.Page("/Admin/Exams/Index", "Assignments")?id=${id}`);
+                    if (!res.ok) throw new Error('No se pudo cargar el detalle.');
+                    const data = await res.json();
+                    titleEl.textContent = `Asignaciones · ${data.exam}`;
+                    if (!data.rows || data.rows.length === 0) {
+                        bodyEl.innerHTML = '<div class="text-muted">Sin asignaciones.</div>';
+                        return;
+                    }
+                    const rows = data.rows.map(r => `
+                        <tr>
+                            <td><div class="fw-semibold">${r.fullName ?? ''}</div><div class="small text-muted">${r.email ?? ''}</div></td>
+                            <td>${r.status ?? '-'}</td>
+                            <td>${(r.assignedAt ?? '').replace('T', ' ').substring(0,16)}</td>
+                            <td>${r.submittedAt ? r.submittedAt.replace('T',' ').substring(0,16) : '-'}</td>
+                            <td>${(r.score ?? 0)} / ${(r.maxScore ?? 0)}</td>
+                        </tr>`).join('');
+                    bodyEl.innerHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Empleado</th>
+                                        <th>Estatus</th>
+                                        <th>Asignado</th>
+                                        <th>Enviado</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>`;
+                } catch (e) {
+                    bodyEl.innerHTML = `<div class="alert alert-danger">${e.message ?? 'Error'}</div>`;
+                }
+            }
+
+            document.querySelectorAll('.js-show-assigned').forEach(btn => {
+                btn.addEventListener('click', () => openDetails(btn.dataset.id));
+            });
+        })();
+    </script>
+}

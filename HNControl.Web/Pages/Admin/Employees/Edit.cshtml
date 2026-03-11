@@ -43,7 +43,7 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Teléfono</label>
+                <label class="form-label">Telefono</label>
                 <input class="form-control" asp-for="Input.Phone" />
             </div>
 
@@ -63,12 +63,12 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Fecha de ingreso (antigüedad)</label>
+                <label class="form-label">Fecha de ingreso (antiguedad)</label>
                 <input class="form-control" asp-for="Input.HireDate" type="date" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Dirección</label>
+                <label class="form-label">Direccion</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
 
@@ -81,8 +81,9 @@
                 <label class="form-label">Sueldo base mensual</label>
                 <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
             </div>
+
             <div class="col-md-6">
-                <label class="form-label">Vacaciones (días por año)</label>
+                <label class="form-label">Vacaciones (dias por anio)</label>
                 <input class="form-control" asp-for="Input.VacationAllowanceDays" type="number" min="0" max="60" />
             </div>
 
@@ -93,12 +94,22 @@
                     <option value="Admin">SuperAdmin (Master)</option>
                 </select>
             </div>
+
             <div class="col-md-3" id="permissionRoleWrap">
-                <label class="form-label">Rol de permisos por módulo</label>
+                <label class="form-label">Rol de permisos por modulo</label>
                 <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions" id="permissionRoleSelect">
                     <option value="">(sin asignar)</option>
                 </select>
                 <div class="form-text">Solo aplica a Employee. Se gestiona en <a asp-page="/Admin/Security/Roles/Index">Seguridad</a>.</div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" asp-for="Input.IsInventoryManager" type="checkbox" />
+                    <label class="form-check-label" asp-for="Input.IsInventoryManager">
+                        Encargado de inventario (puede cargar stock y aprobar solicitudes)
+                    </label>
+                </div>
             </div>
         </div>
     </div>

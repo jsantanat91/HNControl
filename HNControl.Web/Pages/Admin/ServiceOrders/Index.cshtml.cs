@@ -15,11 +15,30 @@ public class IndexModel : PageModel
 
     [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
     [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public ServiceOrderType? Type { get; set; }
+    [BindProperty(SupportsGet = true)] public ServiceOrderStatus? Status { get; set; }
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+    public List<ServiceOrderStatus> StatusOptions { get; } = new()
+    {
+        ServiceOrderStatus.Created,
+        ServiceOrderStatus.InProgress,
+        ServiceOrderStatus.InReview,
+        ServiceOrderStatus.Finalized,
+        ServiceOrderStatus.Rejected
+    };
+    public List<ServiceOrderType> TypeOptions { get; } = new()
+    {
+        ServiceOrderType.Correctivo,
+        ServiceOrderType.Preventivo,
+        ServiceOrderType.NuevaInstalacion,
+        ServiceOrderType.LevantamientoTecnico,
+        ServiceOrderType.Eventos,
+        ServiceOrderType.Global
+    };
 
     public record Row(
         Guid Id,
@@ -61,6 +80,11 @@ public class IndexModel : PageModel
             var to = DateTo.Value.Date;
             q = q.Where(o => o.CreatedAt.Date <= to);
         }
+
+        if (Status.HasValue)
+            q = q.Where(o => o.Status == Status.Value);
+        if (Type.HasValue)
+            q = q.Where(o => o.Type == Type.Value);
 
         TotalCount = await q.CountAsync();
 

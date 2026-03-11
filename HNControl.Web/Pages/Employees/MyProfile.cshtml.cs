@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -30,6 +30,11 @@ public class MyProfileModel : PageModel
 
     public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal, decimal DeductionsQuincenal, decimal BonusesQuincenal, decimal NetQuincenal);
     public PerfMini? CurrentPay { get; set; }
+    public string LatestAdminNotes { get; set; } = "";
+    public bool HasCurrentMonthReview { get; set; }
+    public string CurrentReviewPeriodText { get; set; } = "";
+    public string KpiHistoryLabelsJson { get; set; } = "[]";
+    public string KpiHistoryValuesJson { get; set; } = "[]";
 
     public record DeductionMini(
         string Concept,
@@ -68,7 +73,7 @@ public class MyProfileModel : PageModel
     public DateTime? NextVacationStart { get; set; }
     public DateTime? NextVacationEnd { get; set; }
 
-    // Exámenes
+    // ExÃ¡menes
     public int ExamsAssignedCount { get; set; }
     public int ExamsInProgressCount { get; set; }
     public int ExamsSubmittedCount { get; set; }
@@ -102,6 +107,7 @@ public class MyProfileModel : PageModel
         await LoadLeavesAsync(userId);
         await LoadExamsAsync(userId);
         await LoadTicketsAsync(userId);
+        await LoadKpiHistoryAsync(userId);
     }
 
     private async Task LoadViaticosAsync(string userId)
@@ -135,7 +141,7 @@ public class MyProfileModel : PageModel
             : (TimeUtil.UtcDate(new DateTime(now.Year, now.Month, 16)), TimeUtil.UtcDate(new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month))));
 
         // Robusto contra timestamptz con hora
-        var review = await _db.PerformanceReviews
+        var reviewCurrent = await _db.PerformanceReviews
             .AsNoTracking()
             .Where(r => r.UserId == userId
                         && r.PeriodStart >= ps && r.PeriodStart < ps.AddDays(1)
@@ -143,7 +149,9 @@ public class MyProfileModel : PageModel
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
-        // Si no hay review en la quincena, usamos la última
+        // Si no hay review en la quincena, usamos la Ãºltima
+        var review = reviewCurrent;
+
         if (review == null)
         {
             review = await _db.PerformanceReviews
@@ -163,7 +171,7 @@ public class MyProfileModel : PageModel
         var max20 = baseQ * 0.20m;
         var total = Math.Round(fijo80 + (max20 * vp), 2);
 
-        // Deducciones activas (si aún no existen tablas, no tronamos)
+        // Deducciones activas (si aÃºn no existen tablas, no tronamos)
         await LoadDeductionsAsync(userId, baseQ, total);
         var net = Math.Round(total - DeductionsTotal + BonusesTotal, 2);
         if (net < 0m) net = 0m;
@@ -172,12 +180,52 @@ public class MyProfileModel : PageModel
             ? $"{ps:yyyy-MM-dd} a {pe:yyyy-MM-dd}"
             : $"{review.PeriodStart:yyyy-MM-dd} a {review.PeriodEnd:yyyy-MM-dd}";
 
+        HasCurrentMonthReview = reviewCurrent != null;
+        CurrentReviewPeriodText = period;
+
         CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, BonusesTotal, net);
+        LatestAdminNotes = (review?.Notes ?? "").Trim();
 
         var payLabels = new[] { "Neto", "Deducciones", "Bonos" };
         var payValues = new[] { net, DeductionsTotal, BonusesTotal };
         PayrollLabelsJson = JsonSerializer.Serialize(payLabels);
         PayrollValuesJson = JsonSerializer.Serialize(payValues);
+    }
+
+    private async Task LoadKpiHistoryAsync(string userId)
+    {
+        var reviews = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderBy(r => r.PeriodStart)
+            .Select(r => new { r.PeriodStart, r.VariablePercent })
+            .ToListAsync();
+
+        if (!reviews.Any())
+        {
+            KpiHistoryLabelsJson = "[]";
+            KpiHistoryValuesJson = "[]";
+            return;
+        }
+
+        var monthly = reviews
+            .GroupBy(r => new { r.PeriodStart.Year, r.PeriodStart.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                AvgPct = Math.Round(g.Average(x => x.VariablePercent) * 100m, 0)
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .TakeLast(6)
+            .ToList();
+
+        var labels = monthly.Select(x => new DateTime(x.Year, x.Month, 1).ToString("MMM yy")).ToList();
+        var values = monthly.Select(x => x.AvgPct).ToList();
+
+        KpiHistoryLabelsJson = JsonSerializer.Serialize(labels);
+        KpiHistoryValuesJson = JsonSerializer.Serialize(values);
     }
 
     private async Task LoadDeductionsAsync(string userId, decimal baseQuincenal, decimal estimatedQuincenal)
@@ -194,7 +242,7 @@ public class MyProfileModel : PageModel
                 ? EmployeeDeductionApplyOnHalf.First
                 : EmployeeDeductionApplyOnHalf.Second;
 
-            // Cierre automático (para que no se quede "activo" eternamente)
+            // Cierre automÃ¡tico (para que no se quede "activo" eternamente)
             var toClose = await _db.EmployeeDeductions
                 .Where(d => d.UserId == userId && d.IsActive)
                 .Where(d => (d.EndDate != null && d.EndDate.Value < today)
@@ -236,7 +284,7 @@ public class MyProfileModel : PageModel
                 amount = Math.Round(amount, 2);
                 if (amount < 0m) amount = 0m;
 
-                // Para préstamos con saldo, no descontamos más del saldo
+                // Para prÃ©stamos con saldo, no descontamos mÃ¡s del saldo
                 if (d.RemainingAmount.HasValue)
                 {
                     if (d.RemainingAmount.Value <= 0m) continue;
@@ -271,7 +319,7 @@ public class MyProfileModel : PageModel
         }
         catch
         {
-            // Tablas aún no existen o no accesibles: nos quedamos sin deducciones.
+            // Tablas aÃºn no existen o no accesibles: nos quedamos sin deducciones.
             ActiveDeductions = new();
             DeductionsTotal = 0m;
             BonusesTotal = 0m;
@@ -282,7 +330,7 @@ public class MyProfileModel : PageModel
     {
         var isAdmin = User.IsInRole(AppRoles.Admin);
 
-        // ✅ Tomar la última campaña CERRADA donde este empleado sí tenga respuestas (si no, cae en "no hay resultados")
+        // âœ… Tomar la Ãºltima campaÃ±a CERRADA donde este empleado sÃ­ tenga respuestas (si no, cae en "no hay resultados")
         var campaign = await _db.Eval360Campaigns
             .AsNoTracking()
             .Where(c => c.Status == Eval360CampaignStatus.Closed)
@@ -343,7 +391,7 @@ public class MyProfileModel : PageModel
     {
         VacYear = DateTime.Now.Year;
 
-        // ✅ Allowance automático por LFT (si no hay HireDate, usamos el valor manual)
+        // âœ… Allowance automÃ¡tico por LFT (si no hay HireDate, usamos el valor manual)
         VacationAllowance = (Profile?.HireDate != null)
             ? VacationPolicyMxLft.GetAnnualVacationDays(Profile.HireDate, DateTime.Now.Date)
             : (Profile?.VacationAllowanceDays ?? 0);
@@ -453,7 +501,7 @@ public class MyProfileModel : PageModel
 
         var years = months / 12;
         var rem = months % 12;
-        return $"{years} año(s) {rem} mes(es)";
+        return $"{years} aÃ±o(s) {rem} mes(es)";
     }
 
     private static DateTime ToMonday(DateTime d)
@@ -526,3 +574,4 @@ public class MyProfileModel : PageModel
         return countMonthly;
     }
 }
+

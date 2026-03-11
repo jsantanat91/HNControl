@@ -87,7 +87,10 @@ public class ExportPayrollModel : PageModel
         ws.Cell(1, 9).Value = "20% Max";
         ws.Cell(1, 10).Value = "Variable %";
         ws.Cell(1, 11).Value = "Variable $";
-        ws.Cell(1, 12).Value = "Total Quincenal";
+        ws.Cell(1, 12).Value = "Total Quincenal (sin ajustes)";
+        ws.Cell(1, 13).Value = "Deducciones";
+        ws.Cell(1, 14).Value = "Bonos";
+        ws.Cell(1, 15).Value = "Neto Quincenal";
 
         var row = 2;
 
@@ -102,6 +105,9 @@ public class ExportPayrollModel : PageModel
             var varMoney = max20 * variablePct;
             var total = fixed80 + varMoney;
 
+            var (deductions, bonuses) = await CalcPayrollAdjustmentsAsync(e.UserId, baseQ, total, periodStart, periodEnd);
+            var net = Math.Max(0m, Math.Round(total - deductions + bonuses, 2));
+
             ws.Cell(row, 1).Value = e.FullName;
             ws.Cell(row, 2).Value = e.Email;
             ws.Cell(row, 3).Value = e.Nss;
@@ -114,11 +120,14 @@ public class ExportPayrollModel : PageModel
             ws.Cell(row, 10).Value = variablePct;
             ws.Cell(row, 11).Value = varMoney;
             ws.Cell(row, 12).Value = total;
+            ws.Cell(row, 13).Value = deductions;
+            ws.Cell(row, 14).Value = bonuses;
+            ws.Cell(row, 15).Value = net;
 
             row++;
         }
 
-        ws.Range(1, 1, 1, 12).Style.Font.Bold = true;
+        ws.Range(1, 1, 1, 15).Style.Font.Bold = true;
         ws.SheetView.FreezeRows(1);
 
         ws.Column(6).Style.NumberFormat.Format = "#,##0.00";
@@ -128,6 +137,9 @@ public class ExportPayrollModel : PageModel
         ws.Column(10).Style.NumberFormat.Format = "0.00%";
         ws.Column(11).Style.NumberFormat.Format = "#,##0.00";
         ws.Column(12).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(13).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(14).Style.NumberFormat.Format = "#,##0.00";
+        ws.Column(15).Style.NumberFormat.Format = "#,##0.00";
 
         ws.Columns().AdjustToContents();
 
@@ -154,5 +166,63 @@ public class ExportPayrollModel : PageModel
 
         return (TimeUtil.UtcDate(new DateTime(now.Year, now.Month, 16)),
                 TimeUtil.UtcDate(new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month))));
+    }
+
+    private async Task<(decimal deductions, decimal bonuses)> CalcPayrollAdjustmentsAsync(
+        string userId,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        try
+        {
+            var periodDate = periodEnd.Date;
+            var currentHalf = periodDate.Day <= 15
+                ? EmployeeDeductionApplyOnHalf.First
+                : EmployeeDeductionApplyOnHalf.Second;
+
+            var active = await _db.EmployeeDeductions
+                .AsNoTracking()
+                .Where(d => d.UserId == userId && d.IsActive)
+                .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
+                .Where(d => d.Frequency == EmployeeDeductionFrequency.Biweekly
+                            || (d.Frequency == EmployeeDeductionFrequency.Monthly
+                                && (d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf)))
+                .ToListAsync();
+
+            decimal deductions = 0m;
+            decimal bonuses = 0m;
+
+            foreach (var d in active)
+            {
+                var amount = d.Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => d.Amount,
+                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
+                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
+                    _ => d.Amount
+                };
+
+                amount = Math.Round(Math.Max(0m, amount), 2);
+
+                if (d.RemainingAmount.HasValue)
+                {
+                    if (d.RemainingAmount.Value <= 0m) continue;
+                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                }
+
+                if (d.Direction == EmployeeDeductionDirection.Bonus)
+                    bonuses += amount;
+                else
+                    deductions += amount;
+            }
+
+            return (Math.Round(deductions, 2), Math.Round(bonuses, 2));
+        }
+        catch
+        {
+            return (0m, 0m);
+        }
     }
 }

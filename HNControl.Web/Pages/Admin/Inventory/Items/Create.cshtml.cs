@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Inventory.Items;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "InventorySupervisor")]
 public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -32,7 +32,7 @@ public class CreateModel : PageModel
         [MaxLength(200)]
         public string Name { get; set; } = "";
 
-        // Se guarda texto, pero viene de catálogo
+        // Se guarda texto, pero viene de catÃ¡logo
         [MaxLength(100)]
         public string Category { get; set; } = "";
 
@@ -41,7 +41,7 @@ public class CreateModel : PageModel
         [MaxLength(120)]
         public string? Model { get; set; }
 
-        // Se guarda texto, pero viene de catálogo
+        // Se guarda texto, pero viene de catÃ¡logo
         [MaxLength(200)]
         public string? Location { get; set; }
 
@@ -49,7 +49,7 @@ public class CreateModel : PageModel
         public string Unit { get; set; } = "pza";
 
         public decimal QuantityOnHand { get; set; } = 0m; // Existencia
-        public decimal ReorderLevel { get; set; } = 0m;   // Stock mínimo
+        public decimal ReorderLevel { get; set; } = 0m;   // Stock mÃ­nimo
 
         public bool IsConsumable { get; set; } = true;
         public bool IsActive { get; set; } = true;
@@ -107,10 +107,10 @@ public class CreateModel : PageModel
             Name = Input.Name,
             Sku = Input.Sku,
 
-            Category = Input.Category,     // texto elegido desde catálogo
+            Category = Input.Category,     // texto elegido desde catÃ¡logo
             BrandId = Input.BrandId,
             Model = Input.Model,
-            Location = Input.Location,     // texto elegido desde catálogo
+            Location = Input.Location,     // texto elegido desde catÃ¡logo
 
             Unit = Input.Unit,
             QuantityOnHand = Input.QuantityOnHand,
@@ -138,7 +138,7 @@ public class CreateModel : PageModel
             .OrderBy(b => b.Name)
             .Select(b => new SelectListItem(b.Name, b.Id.ToString()))
             .ToListAsync();
-        BrandOptions.Insert(0, new SelectListItem("— Sin marca —", ""));
+        BrandOptions.Insert(0, new SelectListItem("â€” Sin marca â€”", ""));
 
         CategoryOptions = await _db.InventoryCategories
             .AsNoTracking()
@@ -146,7 +146,7 @@ public class CreateModel : PageModel
             .OrderBy(c => c.Name)
             .Select(c => new SelectListItem(c.Name, c.Name))
             .ToListAsync();
-        CategoryOptions.Insert(0, new SelectListItem("— Sin categoría —", ""));
+        CategoryOptions.Insert(0, new SelectListItem("â€” Sin categorÃ­a â€”", ""));
 
         LocationOptions = await _db.InventoryLocations
             .AsNoTracking()
@@ -154,6 +154,7 @@ public class CreateModel : PageModel
             .OrderBy(l => l.Name)
             .Select(l => new SelectListItem(l.Name, l.Name))
             .ToListAsync();
-        LocationOptions.Insert(0, new SelectListItem("— Sin ubicación —", ""));
+        LocationOptions.Insert(0, new SelectListItem("â€” Sin ubicaciÃ³n â€”", ""));
     }
 }
+

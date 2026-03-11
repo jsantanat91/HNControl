@@ -17,6 +17,9 @@ public enum ServiceOrderType
     [Display(Name = "Levantamiento tecnico")]
     LevantamientoTecnico = 4,
 
+    [Display(Name = "Eventos")]
+    Eventos = 5,
+
     [Display(Name = "Global (multiple)")]
     Global = 99
 

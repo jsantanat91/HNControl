@@ -28,7 +28,7 @@ public class PerformanceReview
     // 0..1
     public decimal VariablePercent { get; set; } = 0m;
 
-    [MaxLength(1200)]
+    [MaxLength(3600)]
     public string Notes { get; set; } = "";
 
     [MaxLength(64)]

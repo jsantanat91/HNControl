@@ -74,8 +74,25 @@ builder.Services.AddAuthentication()
 // --------------------
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx => AppRoles.IsGlobalAdmin(ctx.User)));
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx =>
+    {
+        if (AppRoles.IsGlobalAdmin(ctx.User)) return true;
+        if (ctx.User?.Identity?.IsAuthenticated != true) return false;
+        if (!ctx.User.IsInRole(AppRoles.InventoryManager)) return false;
+
+        var path = (ctx.Resource as HttpContext)?.Request.Path ?? PathString.Empty;
+        return path.StartsWithSegments("/Admin/Inventory", StringComparison.OrdinalIgnoreCase);
+    }));
     options.AddPolicy("EmployeeOnly", policy => policy.RequireRole(AppRoles.Employee, AppRoles.Admin, AppRoles.SuperAdmin));
+    options.AddPolicy("InventorySupervisor", policy => policy.RequireAssertion(ctx =>
+    {
+        if (AppRoles.IsGlobalAdmin(ctx.User)) return true;
+        if (ctx.User?.Identity?.IsAuthenticated != true) return false;
+        if (!ctx.User.IsInRole(AppRoles.InventoryManager)) return false;
+
+        var path = (ctx.Resource as HttpContext)?.Request.Path ?? PathString.Empty;
+        return path.StartsWithSegments("/Admin/Inventory", StringComparison.OrdinalIgnoreCase);
+    }));
 });
 builder.Services.AddControllers();
 builder.Services.AddScoped<MobileJwtTokenService>();
@@ -273,7 +290,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
     var db = services.GetRequiredService<ApplicationDbContext>();
 
     // Roles
-    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee })
+    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee, AppRoles.InventoryManager })
     {
         if (!await roleMgr.RoleExistsAsync(r))
             await roleMgr.CreateAsync(new IdentityRole(r));

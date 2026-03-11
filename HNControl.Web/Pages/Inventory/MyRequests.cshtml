@@ -1,5 +1,6 @@
 ﻿@page
 @model HNControl.Web.Pages.Inventory.MyRequestsModel
+@using System
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
@@ -7,12 +8,16 @@
 
     var inCount = Model.Orders.Count(x => x.Type == InventoryMovementType.In);
     var outCount = Model.Orders.Count(x => x.Type == InventoryMovementType.Out);
+
+    string tabCls(string key) => string.Equals((Model.Filter ?? "all"), key, StringComparison.OrdinalIgnoreCase)
+        ? "btn btn-primary"
+        : "btn btn-outline-secondary";
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Mis solicitudes</h1>
-        <div class="text-muted small">Tus solicitudes agrupadas por orden.</div>
+        <div class="text-muted small">Tus solicitudes por orden, con estatus claro de aprobacion.</div>
     </div>
 
     <div class="d-flex gap-2">
@@ -22,10 +27,25 @@
 </div>
 
 <div class="row g-3 mb-3">
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Pendientes</div><div class="h3 mb-0">@Model.PendingCount</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Aprobadas</div><div class="h3 mb-0 text-success">@Model.ApprovedCount</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Rechazadas</div><div class="h3 mb-0 text-danger">@Model.RejectedCount</div></div></div>
+    </div>
+    <div class="col-12 col-md-3">
+        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">En proceso</div><div class="h3 mb-0 text-primary">@Model.MixedCount</div></div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
     <div class="col-12 col-md-4">
         <div class="card shadow-soft hn-hover h-100">
             <div class="card-body">
-                <div class="text-muted small">Total &oacute;rdenes</div>
+                <div class="text-muted small">Total ordenes (filtro actual)</div>
                 <div class="h3 mb-0">@Model.Orders.Count</div>
             </div>
         </div>
@@ -48,9 +68,19 @@
     </div>
 </div>
 
+<div class="card shadow-soft hn-hover mb-3">
+    <div class="card-body d-flex flex-wrap gap-2">
+        <a class="@tabCls("all")" asp-page="./MyRequests" asp-route-filter="all">Todas</a>
+        <a class="@tabCls("pending")" asp-page="./MyRequests" asp-route-filter="pending">Pendientes</a>
+        <a class="@tabCls("approved")" asp-page="./MyRequests" asp-route-filter="approved">Aprobadas</a>
+        <a class="@tabCls("rejected")" asp-page="./MyRequests" asp-route-filter="rejected">Rechazadas</a>
+        <a class="@tabCls("mixed")" asp-page="./MyRequests" asp-route-filter="mixed">En proceso</a>
+    </div>
+</div>
+
 @if (!Model.Orders.Any())
 {
-    <div class="alert alert-light border">Sin solicitudes.</div>
+    <div class="alert alert-light border">Sin solicitudes para este filtro.</div>
 }
 else
 {
@@ -64,7 +94,8 @@ else
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div>
                                 <span class="hn-badge @typeClass">@(o.Type == InventoryMovementType.In ? "Entrada" : "Salida")</span>
-                                <span class="hn-badge hn-badge-slate">@o.LinesCount l&iacute;neas</span>
+                                <span class="hn-badge @o.StatusCss">@o.StatusLabel</span>
+                                <span class="hn-badge hn-badge-slate">@o.LinesCount lineas</span>
                             </div>
                             <div class="small text-muted">@o.RequestedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                         </div>
@@ -73,10 +104,6 @@ else
 
                         <div class="small text-muted mt-2">Proyecto: @(string.IsNullOrWhiteSpace(o.ProjectTitle) ? "-" : o.ProjectTitle)</div>
                         <div class="small text-muted">Responsable: @o.ResponsibleName</div>
-
-                        <div class="mt-2">
-                            <span class="badge @o.StatusCss">@o.StatusLabel</span>
-                        </div>
 
                         <div class="mt-auto pt-3 d-flex justify-content-end">
                             <a class="btn btn-sm btn-outline-primary" asp-page="./RequestDetails" asp-route-id="@o.AnchorId">Ver detalle</a>
@@ -87,5 +114,5 @@ else
         }
     </div>
 
-    <div class="text-muted small mt-3">Mostrando hasta 300 &oacute;rdenes.</div>
+    <div class="text-muted small mt-3">Mostrando hasta 300 ordenes.</div>
 }

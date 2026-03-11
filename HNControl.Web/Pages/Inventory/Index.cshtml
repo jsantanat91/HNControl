@@ -20,8 +20,12 @@
         <a class="btn btn-outline-secondary" asp-page="./ExportItems">Exportar items (Excel)</a>
         @if (User.IsInRole(AppRoles.Admin))
         {
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Admin items</a>
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Index" asp-route-view="table">Encargado inventario</a>
+        }
+        @if (User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.InventoryManager))
+        {
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Admin Stock</a>
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones pendientes</a>
         }
     </div>
 </div>

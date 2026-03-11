@@ -32,15 +32,15 @@
 
         <div class="row g-3">
             <div class="col-md-8">
-                <label class="form-label">Título</label>
+                <label class="form-label">Titulo</label>
                 <input class="form-control" asp-for="Input.Title" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Límite (minutos)</label>
+                <label class="form-label">Limite (minutos)</label>
                 <input class="form-control" asp-for="Input.TimeLimitMinutes" type="number" min="1" max="600" />
             </div>
             <div class="col-12">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">Descripcion</label>
                 <textarea class="form-control" asp-for="Input.Description" rows="2"></textarea>
             </div>
             <div class="col-12">
@@ -61,7 +61,7 @@
     <div class="card-body">
         @if (Model.Exam == null || Model.Exam.Questions.Count == 0)
         {
-            <div class="text-muted">Aún no hay preguntas.</div>
+            <div class="text-muted">Aun no hay preguntas.</div>
         }
         else
         {
@@ -69,85 +69,120 @@
                 @foreach (var q in Model.Exam.Questions.OrderBy(x => x.Ordinal))
                 {
                     <div class="p-3 rounded-3" style="background: rgba(2,6,23,.03); border:1px solid rgba(15,23,42,.06);">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-semibold">@q.Ordinal. @q.Text</div>
-                                <div class="text-muted small">@q.Type · @q.Points.ToString("0.##") pts · Requerida: @(q.IsRequired ? "Sí" : "No")</div>
-                            </div>
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div class="fw-semibold">Pregunta @q.Ordinal</div>
                             <form method="post" asp-page-handler="DeleteQuestion" class="m-0">
                                 <input type="hidden" name="examId" value="@Model.Input.Id" />
                                 <input type="hidden" name="questionId" value="@q.Id" />
-                                <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('¿Eliminar pregunta?');"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Eliminar pregunta?');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </form>
                         </div>
 
+                        <form method="post" asp-page-handler="UpdateQuestion" class="row g-2 align-items-end mb-3">
+                            <input type="hidden" name="examId" value="@Model.Input.Id" />
+                            <input type="hidden" name="questionId" value="@q.Id" />
+
+                            <div class="col-md-7">
+                                <label class="form-label small">Texto</label>
+                                <input class="form-control" name="text" value="@q.Text" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Tipo</label>
+                                <select class="form-select" name="type">
+                                    <option value="SingleChoice" selected="@(q.Type == HNControl.Web.Models.ExamQuestionType.SingleChoice)">Opcion unica</option>
+                                    <option value="MultipleChoice" selected="@(q.Type == HNControl.Web.Models.ExamQuestionType.MultipleChoice)">Opcion multiple</option>
+                                    <option value="OpenText" selected="@(q.Type == HNControl.Web.Models.ExamQuestionType.OpenText)">Abierta</option>
+                                    <option value="Attachment" selected="@(q.Type == HNControl.Web.Models.ExamQuestionType.Attachment)">Adjunto / Diagrama</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label small">Pts</label>
+                                <input class="form-control" name="points" type="number" step="0.5" value="@q.Points.ToString("0.##")" />
+                            </div>
+                            <div class="col-md-1">
+                                <div class="form-check mt-4">
+                                    @if (q.IsRequired)
+                                    {
+                                        <input class="form-check-input" type="checkbox" name="isRequired" value="true" checked />
+                                    }
+                                    else
+                                    {
+                                        <input class="form-check-input" type="checkbox" name="isRequired" value="true" />
+                                    }
+                                    <label class="form-check-label small">Req</label>
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-sm btn-primary w-100" type="submit">Guardar</button>
+                            </div>
+                        </form>
+
                         @if (q.Type == HNControl.Web.Models.ExamQuestionType.SingleChoice || q.Type == HNControl.Web.Models.ExamQuestionType.MultipleChoice)
                         {
-                            <div class="mt-2">
-                                @if (q.Choices.Count == 0)
-                                {
-                                    <div class="text-muted small">Sin opciones aún.</div>
-                                }
-                                else
-                                {
-                                    <ul class="mb-2">
-                                        @foreach (var c in q.Choices.OrderBy(x => x.Ordinal))
-                                        {
-                                            <li class="d-flex justify-content-between align-items-center gap-2">
-                                                <span>
-                                                    @if (c.IsCorrect)
-                                                    {
-                                                        <span class="badge text-bg-success me-1">Correcta</span>
-                                                    }
-                                                    @c.Text
-                                                </span>
-                                                <span class="d-flex gap-2">
-                                                    <form method="post" asp-page-handler="ToggleCorrect" class="m-0">
-                                                        <input type="hidden" name="examId" value="@Model.Input.Id" />
-                                                        <input type="hidden" name="choiceId" value="@c.Id" />
-                                                        <button class="btn btn-sm btn-outline-success" type="submit">@(c.IsCorrect ? "Quitar" : "Marcar")</button>
-                                                    </form>
-                                                    <form method="post" asp-page-handler="DeleteChoice" class="m-0">
-                                                        <input type="hidden" name="examId" value="@Model.Input.Id" />
-                                                        <input type="hidden" name="choiceId" value="@c.Id" />
-                                                        <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('¿Eliminar opción?');">Eliminar</button>
-                                                    </form>
-                                                </span>
-                                            </li>
-                                        }
-                                    </ul>
-                                }
-
-                                <form method="post" asp-page-handler="AddChoice" class="row g-2 align-items-end">
-                                    <input type="hidden" name="examId" value="@Model.Input.Id" />
-                                    <input type="hidden" name="questionId" value="@q.Id" />
-
-                                    <div class="col-md-8">
-                                        <label class="form-label small">Nueva opción</label>
-                                        <input class="form-control" name="text" placeholder="Texto de opción" />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check mt-4">
-                                            <input class="form-check-input" type="checkbox" name="isCorrect" value="true" id="chk_@q.Id" />
-                                            <label class="form-check-label small" for="chk_@q.Id">Correcta</label>
+                            @if (q.Choices.Count == 0)
+                            {
+                                <div class="text-muted small">Sin opciones aun.</div>
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column gap-2 mb-2">
+                                    @foreach (var c in q.Choices.OrderBy(x => x.Ordinal))
+                                    {
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <form method="post" asp-page-handler="UpdateChoice" class="d-flex gap-2 flex-grow-1">
+                                                <input type="hidden" name="examId" value="@Model.Input.Id" />
+                                                <input type="hidden" name="choiceId" value="@c.Id" />
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">@c.Ordinal</span>
+                                                    <input class="form-control" name="text" value="@c.Text" />
+                                                    <button class="btn btn-outline-primary" type="submit">Guardar</button>
+                                                </div>
+                                            </form>
+                                            <form method="post" asp-page-handler="ToggleCorrect" class="m-0">
+                                                <input type="hidden" name="examId" value="@Model.Input.Id" />
+                                                <input type="hidden" name="choiceId" value="@c.Id" />
+                                                <button class="btn btn-sm @(c.IsCorrect ? "btn-success" : "btn-outline-success")" type="submit">
+                                                    @(c.IsCorrect ? "Correcta" : "Marcar")
+                                                </button>
+                                            </form>
+                                            <form method="post" asp-page-handler="DeleteChoice" class="m-0">
+                                                <input type="hidden" name="examId" value="@Model.Input.Id" />
+                                                <input type="hidden" name="choiceId" value="@c.Id" />
+                                                <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Eliminar opcion?');">Eliminar</button>
+                                            </form>
                                         </div>
+                                    }
+                                </div>
+                            }
+
+                            <form method="post" asp-page-handler="AddChoice" class="row g-2 align-items-end">
+                                <input type="hidden" name="examId" value="@Model.Input.Id" />
+                                <input type="hidden" name="questionId" value="@q.Id" />
+
+                                <div class="col-md-8">
+                                    <label class="form-label small">Nueva opcion</label>
+                                    <input class="form-control" name="text" placeholder="Texto de opcion" />
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" name="isCorrect" value="true" id="chk_@q.Id" />
+                                        <label class="form-check-label small" for="chk_@q.Id">Correcta</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-outline-primary w-100" type="submit">Agregar</button>
-                                    </div>
-                                </form>
-                            </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-outline-primary w-100" type="submit">Agregar</button>
+                                </div>
+                            </form>
                         }
-                        else
-                        {
-                            @if (q.Type == HNControl.Web.Models.ExamQuestionType.OpenText)
+                        else if (q.Type == HNControl.Web.Models.ExamQuestionType.OpenText)
                         {
                             <div class="text-muted small mt-2">Pregunta abierta: se califica manualmente.</div>
                         }
                         else if (q.Type == HNControl.Web.Models.ExamQuestionType.Attachment)
                         {
-                            <div class="text-muted small mt-2">Adjunto/Diagrama: el empleado sube archivo(s) y se califica manualmente.</div>
-                        }
+                            <div class="text-muted small mt-2">Adjunto / diagrama: se califica manualmente.</div>
                         }
                     </div>
                 }
@@ -166,8 +201,8 @@
             <div class="col-md-2">
                 <label class="form-label">Tipo</label>
                 <select class="form-select" name="type">
-                    <option value="SingleChoice">Opción única</option>
-                    <option value="MultipleChoice">Opción múltiple</option>
+                    <option value="SingleChoice">Opcion unica</option>
+                    <option value="MultipleChoice">Opcion multiple</option>
                     <option value="OpenText">Abierta</option>
                     <option value="Attachment">Adjunto / Diagrama</option>
                 </select>

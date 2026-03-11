@@ -1,7 +1,8 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,9 @@ public class MyRequestsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     public MyRequestsModel(ApplicationDbContext db) => _db = db;
+
+    [BindProperty(SupportsGet = true)]
+    public string Filter { get; set; } = "all"; // all|pending|approved|rejected|mixed
 
     public record OrderRowVm(
         Guid AnchorId,
@@ -27,6 +31,11 @@ public class MyRequestsModel : PageModel
 
     public List<OrderRowVm> Orders { get; set; } = new();
 
+    public int PendingCount { get; set; }
+    public int ApprovedCount { get; set; }
+    public int RejectedCount { get; set; }
+    public int MixedCount { get; set; }
+
     public async Task OnGetAsync()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
@@ -38,36 +47,34 @@ public class MyRequestsModel : PageModel
             .Include(m => m.AssignedClient)
             .Where(m => m.RequestedByUserId == userId || m.ResponsibleUserId == userId)
             .OrderByDescending(m => m.RequestedAt)
-            .Take(2000)
+            .Take(3000)
             .ToListAsync();
 
-        string LineLabel(InventoryMovement m)
+        string lineLabel(InventoryMovement m)
         {
-            var name = m.Item?.Name ?? "—";
-            var unit = m.Item?.Unit ?? "";
+            var name = m.Item?.Name ?? "-";
+            var unit = m.Item?.Unit ?? string.Empty;
             return $"{name} ({m.Quantity} {unit})";
         }
 
-        (string label, string css) StatusBadge(IEnumerable<InventoryMovement> g)
+        (string label, string css) statusBadge(List<InventoryMovement> orderLines)
         {
-            var statuses = g.Select(x => x.Status).Distinct().ToList();
+            var statuses = orderLines.Select(x => x.Status).Distinct().ToList();
             if (statuses.Count == 1)
             {
                 return statuses[0] switch
                 {
-                    InventoryMovementStatus.Pending => ("Pendiente", "text-bg-warning"),
-                    InventoryMovementStatus.Approved => ("Aprobado", "text-bg-success"),
-                    InventoryMovementStatus.Rejected => ("Rechazado", "text-bg-danger"),
-                    _ => ("—", "text-bg-light")
+                    InventoryMovementStatus.Pending => ("Pendiente", "hn-badge-amber"),
+                    InventoryMovementStatus.Approved => ("Aprobada", "hn-badge-green"),
+                    InventoryMovementStatus.Rejected => ("Rechazada", "hn-badge-red"),
+                    _ => ("Pendiente", "hn-badge-slate")
                 };
             }
 
-            // mixto (histórico)
-            if (g.Any(x => x.Status == InventoryMovementStatus.Pending)) return ("Parcial (pendiente)", "text-bg-warning");
-            return ("Parcial", "text-bg-secondary");
+            return ("En proceso", "hn-badge-blue");
         }
 
-        Orders = lines
+        var grouped = lines
             .GroupBy(m => new
             {
                 m.RequestedAt,
@@ -80,25 +87,41 @@ public class MyRequestsModel : PageModel
             .Take(300)
             .Select(g =>
             {
-                var first = g.OrderBy(x => x.Id).First();
-                var previewList = g.OrderByDescending(x => x.Quantity).Take(3).Select(LineLabel).ToList();
+                var list = g.ToList();
+                var first = list.OrderBy(x => x.Id).First();
+                var previewList = list.OrderByDescending(x => x.Quantity).Take(3).Select(lineLabel).ToList();
                 var preview = string.Join(", ", previewList);
-                if (g.Count() > 3) preview += $" y {g.Count() - 3} más";
+                if (list.Count > 3) preview += $" y {list.Count - 3} mas";
 
-                var (label, css) = StatusBadge(g);
+                var (label, css) = statusBadge(list);
 
                 return new OrderRowVm(
                     AnchorId: first.Id,
                     RequestedAt: g.Key.RequestedAt,
                     Type: g.Key.Type,
                     ProjectTitle: first.Project?.Title,
-                    ResponsibleName: string.IsNullOrWhiteSpace(first.ResponsibleName) ? "—" : first.ResponsibleName,
+                    ResponsibleName: string.IsNullOrWhiteSpace(first.ResponsibleName) ? "-" : first.ResponsibleName,
                     StatusLabel: label,
                     StatusCss: css,
-                    LinesCount: g.Count(),
-                    ItemsPreview: string.IsNullOrWhiteSpace(preview) ? "—" : preview
+                    LinesCount: list.Count,
+                    ItemsPreview: string.IsNullOrWhiteSpace(preview) ? "-" : preview
                 );
             })
             .ToList();
+
+        PendingCount = grouped.Count(x => x.StatusLabel == "Pendiente");
+        ApprovedCount = grouped.Count(x => x.StatusLabel == "Aprobada");
+        RejectedCount = grouped.Count(x => x.StatusLabel == "Rechazada");
+        MixedCount = grouped.Count(x => x.StatusLabel == "En proceso");
+
+        var f = (Filter ?? "all").Trim().ToLowerInvariant();
+        Orders = f switch
+        {
+            "pending" => grouped.Where(x => x.StatusLabel == "Pendiente").ToList(),
+            "approved" => grouped.Where(x => x.StatusLabel == "Aprobada").ToList(),
+            "rejected" => grouped.Where(x => x.StatusLabel == "Rechazada").ToList(),
+            "mixed" => grouped.Where(x => x.StatusLabel == "En proceso").ToList(),
+            _ => grouped
+        };
     }
 }

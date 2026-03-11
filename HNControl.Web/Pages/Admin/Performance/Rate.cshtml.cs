@@ -43,7 +43,7 @@ public class RateModel : PageModel
         [Range(1, 5)] public int OrderCleanliness { get; set; } = 3;
         [Range(1, 5)] public int TechnicalSkills { get; set; } = 3;
 
-        [MaxLength(1200)] public string Notes { get; set; } = "";
+        [MaxLength(3600)] public string Notes { get; set; } = "";
     }
 
     public async Task<IActionResult> OnGetAsync(string employeeId, string? ym = null, int? half = null, DateTime? start = null, DateTime? end = null)

@@ -507,9 +507,14 @@ public class EditModel : PageModel
         var workTypes = allTypes.Where(x => (ServiceOrderType)x.Id != ServiceOrderType.Global).ToList();
         WorkTypeItems = new SelectList(workTypes, "Id", "Name");
 
-        var statuses = Enum.GetValues<ServiceOrderStatus>()
-            .DistinctBy(s => (int)s)
-            .OrderBy(s => (int)s)
+        var statuses = new[]
+            {
+                ServiceOrderStatus.Created,
+                ServiceOrderStatus.InProgress,
+                ServiceOrderStatus.InReview,
+                ServiceOrderStatus.Finalized,
+                ServiceOrderStatus.Rejected
+            }
             .Select(s => new { Id = s, Name = s.GetDisplayName() })
             .ToList();
 

@@ -7,6 +7,7 @@ public static class AppRoles
     public const string Admin = "Admin";
     public const string SuperAdmin = "SuperAdmin";
     public const string Employee = "Employee";
+    public const string InventoryManager = "InventoryManager";
 
     public static bool IsGlobalAdmin(ClaimsPrincipal? user)
         => user?.IsInRole(Admin) == true || user?.IsInRole(SuperAdmin) == true;

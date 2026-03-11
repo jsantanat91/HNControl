@@ -21,8 +21,30 @@
     <div class="card-body row g-2 align-items-end">
         <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
         <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
-        <div class="col-md-2"><label class="form-label">Por p&aacute;gina</label><select class="form-select" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
-        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" asp-page="/ServiceOrders/Index">Limpiar</a></div>
+        <div class="col-md-2">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="Type">
+                <option value="">Todos</option>
+                @foreach (var t in Model.TypeOptions)
+                {
+                    var lbl = UiBadges.ServiceOrderTypeBadge(t).text;
+                    <option value="@t" selected="@(Model.Type == t)">@lbl</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Estatus</label>
+            <select class="form-select" name="Status">
+                <option value="">Todos</option>
+                @foreach (var st in Model.StatusOptions)
+                {
+                    var lbl = UiBadges.ServiceOrderStatusBadge(st).text;
+                    <option value="@st" selected="@(Model.Status == st)">@lbl</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-1"><label class="form-label">Por p&aacute;gina</label><select class="form-select" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
+        <div class="col-md-1 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" asp-page="/ServiceOrders/Index">Limpiar</a></div>
     </div>
 </form>
 
@@ -92,7 +114,7 @@ else
 <div class="d-flex justify-content-between align-items-center mt-3">
     <div class="text-muted small">Total: @Model.TotalCount · P&aacute;gina @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
 </div>

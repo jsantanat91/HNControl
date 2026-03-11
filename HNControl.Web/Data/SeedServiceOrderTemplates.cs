@@ -35,6 +35,15 @@ public static class SeedServiceOrderTemplates
                 ("Ejecucion", true, new []{ "Accion correctiva / reparacion" }),
                 ("Cierre", true, new []{ "Pruebas de verificacion", "Validacion con cliente" }),
             }),
+            Build(ServiceOrderType.Eventos, "Eventos (base)", new []
+            {
+                ("Fibra Optica", true, new []{ "Revision de enlace y acometida" }),
+                ("Router", true, new []{ "Configuracion base y validacion de router" }),
+                ("Wifi", true, new []{ "Cantidad de APs instalados y cobertura" }),
+                ("Cableado", true, new []{ "Tendido, etiquetado y pruebas de cableado" }),
+                ("Switch", true, new []{ "Configuracion y prueba de puertos en switch" }),
+                ("Otros", false, new []{ "Observaciones adicionales del evento" }),
+            }),
         };
 
         var existing = await db.ServiceOrderChecklistTemplates

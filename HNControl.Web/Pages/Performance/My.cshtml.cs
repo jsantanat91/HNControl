@@ -17,7 +17,7 @@ public class MyModel : PageModel
     public string EmployeeName { get; set; } = "";
     public decimal SalaryBase { get; set; }
 
-    public record ReviewRow(string Period, decimal VariablePercent, decimal TotalPay);
+    public record ReviewRow(string Period, decimal VariablePercent, decimal TotalPay, string Notes);
     public List<ReviewRow> Reviews { get; set; } = new();
 
     public string ChartLabelsJson { get; set; } = "[]";
@@ -53,7 +53,8 @@ public class MyModel : PageModel
             return new ReviewRow(
                 $"{r.PeriodStart:yyyy-MM-dd} a {r.PeriodEnd:yyyy-MM-dd}",
                 r.VariablePercent,
-                total
+                total,
+                (r.Notes ?? "").Trim()
             );
         }).ToList();
 

@@ -1,6 +1,7 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
@@ -83,5 +84,48 @@ public class IndexModel : PageModel
                 avgPct
             );
         }).ToList();
+    }
+
+    public async Task<IActionResult> OnGetAssignmentsAsync(Guid id)
+    {
+        var exam = await _db.Exams.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (exam == null) return NotFound();
+
+        var rows = await _db.ExamAssignments
+            .AsNoTracking()
+            .Where(a => a.ExamId == id)
+            .Join(
+                _db.EmployeeProfiles.AsNoTracking(),
+                a => a.UserId,
+                e => e.UserId,
+                (a, e) => new
+                {
+                    e.FullName,
+                    e.Email,
+                    a.Status,
+                    a.AssignedAt,
+                    a.SubmittedAt,
+                    a.Score,
+                    a.MaxScore
+                })
+            .OrderBy(x => x.FullName)
+            .Take(250)
+            .ToListAsync();
+
+        return new JsonResult(new
+        {
+            exam = exam.Title,
+            total = rows.Count,
+            rows = rows.Select(x => new
+            {
+                x.FullName,
+                x.Email,
+                Status = x.Status.ToString(),
+                AssignedAt = x.AssignedAt,
+                SubmittedAt = x.SubmittedAt,
+                Score = x.Score,
+                MaxScore = x.MaxScore
+            })
+        });
     }
 }
