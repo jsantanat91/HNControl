@@ -19,9 +19,9 @@
 
 <form method="get" class="card shadow-soft hn-hover mb-3">
     <div class="card-body row g-2 align-items-end">
-        <div class="col-6 col-lg-2"><label class="form-label">Desde</label><input class="form-control form-control-sm" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
-        <div class="col-6 col-lg-2"><label class="form-label">Hasta</label><input class="form-control form-control-sm" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
-        <div class="col-6 col-lg-2">
+        <div class="col-6 col-xl-2"><label class="form-label">Desde</label><input class="form-control form-control-sm" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-6 col-xl-2"><label class="form-label">Hasta</label><input class="form-control form-control-sm" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-6 col-xl-2">
             <label class="form-label">Tipo</label>
             <select class="form-select" name="Type">
                 <option value="">Todos</option>
@@ -32,7 +32,7 @@
                 }
             </select>
         </div>
-        <div class="col-6 col-lg-2">
+        <div class="col-6 col-xl-2">
             <label class="form-label">Estatus</label>
             <select class="form-select" name="Status">
                 <option value="">Todos</option>
@@ -43,10 +43,10 @@
                 }
             </select>
         </div>
-        <div class="col-6 col-lg-1"><label class="form-label">Por p&aacute;gina</label><select class="form-select" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
-        <div class="col-12 col-lg-3 d-flex gap-2 justify-content-lg-end">
-            <button class="btn btn-primary" type="submit">Filtrar</button>
-            <a class="btn btn-outline-secondary" asp-page="/ServiceOrders/Index">Limpiar</a>
+        <div class="col-6 col-xl-1"><label class="form-label">Por p&aacute;gina</label><select class="form-select form-select-sm" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
+        <div class="col-12 col-xl-3 d-flex gap-2 justify-content-xl-end flex-wrap">
+            <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
+            <a class="btn btn-outline-secondary btn-sm" asp-page="/ServiceOrders/Index">Limpiar</a>
         </div>
     </div>
 </form>

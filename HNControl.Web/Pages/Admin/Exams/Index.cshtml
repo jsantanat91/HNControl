@@ -2,7 +2,7 @@
 @model HNControl.Web.Pages.Admin.Exams.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Ex&aacute;menes (Admin)";
+    ViewData["Title"] = "Exámenes (Admin)";
 
     string ActiveText(bool active) => active ? "Activo" : "Inactivo";
     string ActiveCss(bool active) => active ? "bg-success text-white" : "bg-secondary text-white";
@@ -14,12 +14,12 @@
     var active = Model.Items.Count(x => x.IsActive);
     var pending = Model.Items.Sum(x => x.PendingGrade);
     var view = (Request.Query["view"].ToString() ?? "").Trim().ToLowerInvariant();
-    var isCards = view == "cards";
+    var isCards = string.IsNullOrWhiteSpace(view) || view == "cards";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Ex&aacute;menes</h1>
+        <h1 class="h4 m-0">Exámenes</h1>
         <div class="text-muted small">Crear, asignar y revisar resultados.</div>
     </div>
     <div class="d-flex gap-2">
@@ -33,7 +33,7 @@
 </div>
 
 <div class="row g-3 mb-3">
-    <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total ex&aacute;menes</div><div class="fs-4 fw-bold">@total</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total exámenes</div><div class="fs-4 fw-bold">@total</div></div></div></div>
     <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Activos</div><div class="fs-4 fw-bold">@active</div></div></div></div>
     <div class="col-md-4"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Pendientes por calificar</div><div class="fs-4 fw-bold">@pending</div></div></div></div>
 </div>
@@ -42,7 +42,7 @@
     <div class="card-body">
         @if (!Model.Items.Any())
         {
-            <div class="text-muted">Sin ex&aacute;menes a&uacute;n.</div>
+            <div class="text-muted">Sin exámenes aún.</div>
         }
         else if (!isCards)
         {
