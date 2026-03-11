@@ -27,7 +27,8 @@ public enum QuoteRequestStatus
     New = 1,
     Emailed = 2,
     EmailError = 3,
-    Accepted = 4
+    Accepted = 4,
+    Rejected = 5
 }
 
 public enum QuoteRuleAction

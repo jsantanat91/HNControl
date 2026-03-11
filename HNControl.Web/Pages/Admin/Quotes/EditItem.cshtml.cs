@@ -121,8 +121,38 @@ public class EditItemModel : PageModel
             .Select(x => new ParentOptionVm
             {
                 Id = x.Id,
-                Label = $"{(x.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial")} · {x.NodeType} · {x.Name}"
+                Label = BuildNodeLabel(x, includeSegment: true)
             }).ToList();
+    }
+
+    private static string LabelSegment(QuoteSegment x) => x == QuoteSegment.Business ? "Empresarial" : "Residencial";
+    private static string LabelType(QuoteNodeType x) => x switch
+    {
+        QuoteNodeType.Category => "Categoria",
+        QuoteNodeType.Service => "Servicio",
+        QuoteNodeType.Subproduct => "Subproducto",
+        _ => x.ToString()
+    };
+    private static string LabelOfferType(QuoteOfferType x) => x switch
+    {
+        QuoteOfferType.Sale => "Venta",
+        QuoteOfferType.MonthlyRent => "Renta mensual",
+        QuoteOfferType.Lease => "Arrendamiento",
+        _ => x.ToString()
+    };
+    private static string BuildNodeLabel(QuoteCatalogItem x, bool includeSegment)
+    {
+        var parts = new List<string>();
+        if (includeSegment)
+            parts.Add(LabelSegment(x.Segment));
+        parts.Add(LabelType(x.NodeType));
+        parts.Add(x.Name);
+        parts.Add(LabelOfferType(x.OfferType));
+
+        if (!string.IsNullOrWhiteSpace(x.VariantGroup) || !string.IsNullOrWhiteSpace(x.VariantValue))
+            parts.Add($"{(x.VariantGroup ?? "Variante")}: {(x.VariantValue ?? "-")}");
+
+        return string.Join(" · ", parts);
     }
 
     public class EditInput

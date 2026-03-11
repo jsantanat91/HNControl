@@ -177,6 +177,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
         QuoteRequestStatus.Emailed => "Enviada",
         QuoteRequestStatus.EmailError => "Error de envio",
         QuoteRequestStatus.Accepted => "Aceptada",
+        QuoteRequestStatus.Rejected => "Rechazada",
         _ => s.ToString()
     };
 

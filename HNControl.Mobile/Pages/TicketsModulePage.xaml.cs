@@ -25,7 +25,7 @@ public partial class TicketsModulePage : ContentPage
     {
         try
         {
-            var status = StatusPicker.SelectedItem?.ToString() ?? "open";
+            var status = GetStatusApiValue(StatusPicker.SelectedItem?.ToString());
             var list = await _tickets.ListAsync(status);
             ItemsCollection.ItemsSource = list.Select(x => new TicketVm
             {
@@ -33,8 +33,8 @@ public partial class TicketsModulePage : ContentPage
                 TicketNumber = x.TicketNumber,
                 Title = x.Title,
                 Client = x.Client,
-                Status = x.Status,
-                Priority = x.Priority,
+                Status = NormalizeStatus(x.Status),
+                Priority = NormalizePriority(x.Priority),
                 Meta = $"{x.Source} | {x.CreatedAt:yyyy-MM-dd HH:mm}",
                 IsBreach = x.Breach,
                 BreachText = x.Breach ? "SLA vencido" : "",
@@ -73,6 +73,38 @@ public partial class TicketsModulePage : ContentPage
         await Navigation.PushAsync(page);
     }
 
+    private static string GetStatusApiValue(string? selected)
+        => selected switch
+        {
+            "Míos" => "mine",
+            "Cerrados" => "closed",
+            _ => "open"
+        };
+
+    private static string NormalizePriority(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "-";
+        return value.Equals("Urge", StringComparison.OrdinalIgnoreCase)
+            ? "Urgente"
+            : value;
+    }
+
+    private static string NormalizeStatus(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "-";
+        return value switch
+        {
+            "New" => "Nuevo",
+            "Assigned" => "Asignado",
+            "InProgress" => "En proceso",
+            "PendingCustomer" => "Pendiente cliente",
+            "Resolved" => "Resuelto",
+            "Closed" => "Cerrado",
+            "Cancelled" => "Cancelado",
+            _ => value
+        };
+    }
+
     private sealed class TicketVm
     {
         public Guid Id { get; set; }
@@ -87,4 +119,3 @@ public partial class TicketsModulePage : ContentPage
         public bool CanTake { get; set; }
     }
 }
-

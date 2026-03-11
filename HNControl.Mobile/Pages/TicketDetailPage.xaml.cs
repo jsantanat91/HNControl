@@ -31,7 +31,7 @@ public partial class TicketDetailPage : ContentPage
             TicketNumberLabel.Text = d.TicketNumber;
             TitleLabel.Text = d.Title;
             ClientLabel.Text = $"{d.Client} - {d.Contract}";
-            MetaLabel.Text = $"{d.Status} | {d.Priority} | SLA: {d.SlaResolutionDueAt:yyyy-MM-dd HH:mm}";
+            MetaLabel.Text = $"{NormalizeStatus(d.Status)} | {NormalizePriority(d.Priority)} | SLA: {d.SlaResolutionDueAt:yyyy-MM-dd HH:mm}";
             DescriptionLabel.Text = d.Description;
 
             BranchLabel.Text = $"Sucursal: {Safe(d.Branch)}";
@@ -223,4 +223,28 @@ public partial class TicketDetailPage : ContentPage
 
     private static string Safe(string? value)
         => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+
+    private static string NormalizePriority(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "-";
+        return value.Equals("Urge", StringComparison.OrdinalIgnoreCase)
+            ? "Urgente"
+            : value;
+    }
+
+    private static string NormalizeStatus(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "-";
+        return value switch
+        {
+            "New" => "Nuevo",
+            "Assigned" => "Asignado",
+            "InProgress" => "En proceso",
+            "PendingCustomer" => "Pendiente cliente",
+            "Resolved" => "Resuelto",
+            "Closed" => "Cerrado",
+            "Cancelled" => "Cancelado",
+            _ => value
+        };
+    }
 }

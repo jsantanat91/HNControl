@@ -152,7 +152,8 @@ else
                                                 data-service="@t.CarrierServiceLabel"
                                                 data-account="@t.CarrierAccount"
                                                 data-circuit="@t.CarrierCircuit"
-                                                data-ip="@t.CarrierIp">
+                                                data-ip="@t.CarrierIp"
+                                                data-lastnote="@t.LastNote">
                                                 Detalle
                                             </button>
                                         </div>
@@ -337,6 +338,20 @@ else
 
                 <div class="card shadow-soft mb-3">
                     <div class="card-body">
+                        <div class="fw-semibold mb-2">Ultima nota ITIL</div>
+                        <div id="mLastNote" class="small text-muted">Sin notas todavia.</div>
+                    </div>
+                </div>
+
+                <div class="card shadow-soft mb-3">
+                    <div class="card-body">
+                        <div class="fw-semibold mb-2">Bitacora completa</div>
+                        <div id="mTimeline" class="small text-muted">Cargando...</div>
+                    </div>
+                </div>
+
+                <div class="card shadow-soft mb-3">
+                    <div class="card-body">
                         <div class="d-flex flex-wrap gap-2 mb-3">
                             <form method="post" asp-page-handler="Start" class="d-inline">
                                 <input type="hidden" name="id" id="startId" />
@@ -460,10 +475,34 @@ else
                     document.getElementById('mAccount').textContent = btn.getAttribute('data-account') || '-';
                     document.getElementById('mCircuit').textContent = btn.getAttribute('data-circuit') || '-';
                     document.getElementById('mIp').textContent = btn.getAttribute('data-ip') || '-';
+                    const lastNote = btn.getAttribute('data-lastnote') || '';
+                    document.getElementById('mLastNote').textContent = (lastNote && lastNote.trim().length > 0) ? lastNote : 'Sin notas todavia.';
                     document.getElementById('startId').value = id;
                     document.getElementById('resolveId').value = id;
                     document.getElementById('closeId').value = id;
                     document.getElementById('noteId').value = id;
+
+                    const timeline = document.getElementById('mTimeline');
+                    if (timeline) timeline.innerHTML = 'Cargando...';
+                    const url = '@Url.Page("/Tickets/Index", "Timeline")' + '&id=' + encodeURIComponent(id);
+                    fetch(url, { credentials: 'same-origin' })
+                        .then(r => r.ok ? r.json() : Promise.reject())
+                        .then(rows => {
+                            if (!timeline) return;
+                            if (!rows || rows.length === 0) {
+                                timeline.innerHTML = '<span class="text-muted">Sin eventos todavia.</span>';
+                                return;
+                            }
+                            timeline.innerHTML = rows.map(x =>
+                                `<div class="border rounded p-2 mb-2">
+                                    <div class="text-muted">${x.at} · ${x.eventType} · ${x.user}</div>
+                                    <div>${x.message}</div>
+                                </div>`
+                            ).join('');
+                        })
+                        .catch(() => {
+                            if (timeline) timeline.innerHTML = '<span class="text-danger">No se pudo cargar la bitacora.</span>';
+                        });
                 });
             }
         });

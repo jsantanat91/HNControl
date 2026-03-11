@@ -140,7 +140,7 @@
                             <th>Tipo</th>
                             <th>Costo</th>
                             <th>Imagen</th>
-                            <th>Ref</th>
+                            <th>Referencia</th>
                             <th>Estado</th>
                             <th class="text-end">Acciones</th>
                         </tr>
@@ -204,7 +204,7 @@
                                 }
                             </td>
                             <td>
-                                <span class="badge @(i.IsActive ? "text-bg-success" : "text-bg-secondary")">@(i.IsActive ? "Activo" : "Inactivo")</span>
+                                <span class="hn-chip @(i.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(i.IsActive ? "Activo" : "Inactivo")</span>
                             </td>
                             <td class="text-end">
                                 <form method="post" asp-page-handler="Toggle" class="d-inline">

@@ -9,9 +9,9 @@
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
             <Picker x:Name="StatusPicker" Grid.Column="0" Title="Filtro" SelectedIndexChanged="OnFilterChanged">
                 <Picker.Items>
-                    <x:String>open</x:String>
-                    <x:String>mine</x:String>
-                    <x:String>closed</x:String>
+                    <x:String>Abiertos</x:String>
+                    <x:String>Míos</x:String>
+                    <x:String>Cerrados</x:String>
                 </Picker.Items>
             </Picker>
             <Button Grid.Column="1" Text="Refrescar" BackgroundColor="#2B5FD9" TextColor="White" Clicked="OnRefreshClicked" />
@@ -52,4 +52,3 @@
         </CollectionView>
     </Grid>
 </ContentPage>
-

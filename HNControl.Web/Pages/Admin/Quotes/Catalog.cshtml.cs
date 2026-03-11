@@ -302,7 +302,7 @@ public class CatalogModel : PageModel
             .ThenBy(x => x.Name)
             .ToListAsync();
 
-        var byId = raw.ToDictionary(x => x.Id, x => x.Name);
+        var byId = raw.ToDictionary(x => x.Id, x => BuildNodeLabel(x, includeSegment: false));
 
         Items = raw.Select(x => new CatalogRowVm
         {
@@ -328,7 +328,7 @@ public class CatalogModel : PageModel
             Id = x.Id,
             Segment = x.Segment,
             NodeType = x.NodeType,
-            Label = $"{LabelSegment(x.Segment)} · {LabelType(x.NodeType)} · {x.Name}"
+            Label = BuildNodeLabel(x, includeSegment: true)
         }).ToList();
 
         var rules = await _db.QuoteCatalogRules
@@ -411,6 +411,22 @@ public class CatalogModel : PageModel
         QuoteOfferType.Lease => "Arrendamiento",
         _ => x.ToString()
     };
+
+    private string BuildNodeLabel(QuoteCatalogItem x, bool includeSegment)
+    {
+        var parts = new List<string>();
+        if (includeSegment)
+            parts.Add(LabelSegment(x.Segment));
+
+        parts.Add(LabelType(x.NodeType));
+        parts.Add(x.Name);
+        parts.Add(LabelOfferType(x.OfferType));
+
+        if (!string.IsNullOrWhiteSpace(x.VariantGroup) || !string.IsNullOrWhiteSpace(x.VariantValue))
+            parts.Add($"{(x.VariantGroup ?? "Variante")}: {(x.VariantValue ?? "-")}");
+
+        return string.Join(" · ", parts);
+    }
 
     public class CatalogInput
     {

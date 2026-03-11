@@ -40,6 +40,7 @@
                 <option value="Emailed" selected="@(Model.Status == "Emailed")">Enviada</option>
                 <option value="EmailError" selected="@(Model.Status == "EmailError")">Error envio</option>
                 <option value="Accepted" selected="@(Model.Status == "Accepted")">Aceptada</option>
+                <option value="Rejected" selected="@(Model.Status == "Rejected")">Rechazada</option>
             </select>
         </div>
         <div class="col-md-2">
@@ -68,10 +69,30 @@
                     <div class="small d-flex gap-1 flex-wrap">
                         <span>@r.CreatedAtLocal</span>
                         <span class="badge text-bg-light border">@r.SegmentLabel</span>
-                        <span class="badge @(r.Status == "Accepted" ? "text-bg-success" : "text-bg-primary")">@r.StatusLabel</span>
-                        @if (!string.IsNullOrWhiteSpace(r.AcceptedAtLocal))
+                        <span class="hn-chip @(r.Status == "Accepted" ? "hn-chip-status-up" : r.Status == "Rejected" ? "hn-chip-priority-critical" : "hn-chip-type")">@r.StatusLabel</span>
+                        <span class="hn-chip @r.ValidityCss">@r.ValidityLabel</span>
+                        @if (!string.IsNullOrWhiteSpace(r.AcceptedAtLocal) && r.Status == "Accepted")
                         {
                             <span class="text-muted">Aceptada: @r.AcceptedAtLocal</span>
+                        }
+                        @if (r.Status == "Rejected")
+                        {
+                            @if (r.IsRejectedAuto)
+                            {
+                                <span class="hn-chip hn-chip-neutral">Rechazo automático</span>
+                                @if (!string.IsNullOrWhiteSpace(r.AcceptedAtLocal))
+                                {
+                                    <span class="text-muted">Vencida: @r.AcceptedAtLocal</span>
+                                }
+                            }
+                            else if (r.IsRejectedManual)
+                            {
+                                <span class="hn-chip hn-chip-priority-critical">Rechazo manual</span>
+                                @if (!string.IsNullOrWhiteSpace(r.AcceptedAtLocal))
+                                {
+                                    <span class="text-muted">Rechazada: @r.AcceptedAtLocal</span>
+                                }
+                            }
                         }
                     </div>
                 </div>
@@ -82,17 +103,28 @@
                     {
                         <a class="btn btn-sm btn-outline-primary mt-2" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">PDF</a>
                     }
-                    @if (r.Status != "Accepted")
+                    @if (r.Status != "Accepted" && r.Status != "Rejected")
                     {
-                        <form method="post" asp-page-handler="Accept" class="mt-2">
-                            <input type="hidden" name="id" value="@r.Id" />
-                            <input type="hidden" name="q" value="@Model.Q" />
-                            <input type="hidden" name="segment" value="@Model.Segment" />
-                            <input type="hidden" name="status" value="@Model.Status" />
-                            <input type="hidden" name="from" value="@Model.From" />
-                            <input type="hidden" name="to" value="@Model.To" />
-                            <button type="submit" class="btn btn-sm btn-success">Aceptar</button>
-                        </form>
+                        <div class="d-flex gap-2 justify-content-end mt-2">
+                            <form method="post" asp-page-handler="Accept">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input type="hidden" name="q" value="@Model.Q" />
+                                <input type="hidden" name="segment" value="@Model.Segment" />
+                                <input type="hidden" name="status" value="@Model.Status" />
+                                <input type="hidden" name="from" value="@Model.From" />
+                                <input type="hidden" name="to" value="@Model.To" />
+                                <button type="submit" class="btn btn-sm btn-success">Aceptar</button>
+                            </form>
+                            <form method="post" asp-page-handler="Reject">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input type="hidden" name="q" value="@Model.Q" />
+                                <input type="hidden" name="segment" value="@Model.Segment" />
+                                <input type="hidden" name="status" value="@Model.Status" />
+                                <input type="hidden" name="from" value="@Model.From" />
+                                <input type="hidden" name="to" value="@Model.To" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                            </form>
+                        </div>
                     }
                 </div>
             </div>

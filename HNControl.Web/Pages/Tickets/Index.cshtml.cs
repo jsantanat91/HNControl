@@ -250,6 +250,24 @@ public class IndexModel : PageModel
         return File(pdf, "application/pdf", fileName);
     }
 
+    public async Task<IActionResult> OnGetTimelineAsync(Guid id)
+    {
+        var rows = await _db.TicketEvents
+            .AsNoTracking()
+            .Where(e => e.TicketId == id)
+            .OrderByDescending(e => e.CreatedAt)
+            .Select(e => new TicketTimelineEntryVm
+            {
+                At = e.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
+                EventType = e.EventType,
+                User = string.IsNullOrWhiteSpace(e.UserName) ? "-" : e.UserName,
+                Message = string.IsNullOrWhiteSpace(e.Message) ? "-" : e.Message
+            })
+            .ToListAsync();
+
+        return new JsonResult(rows);
+    }
+
     private async Task LoadAsync()
     {
         ReportMonthOptions = Enumerable.Range(0, 25)
@@ -350,6 +368,12 @@ public class IndexModel : PageModel
             CanTake = string.IsNullOrWhiteSpace(t.AssignedToUserId) && t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled,
             IsMine = t.AssignedToUserId == uid,
             AttachmentCount = _db.TicketAttachments.Count(a => a.TicketId == t.Id)
+                ,
+            LastNote = _db.TicketEvents
+                .Where(e => e.TicketId == t.Id && e.EventType == "Note")
+                .OrderByDescending(e => e.CreatedAt)
+                .Select(e => e.Message)
+                .FirstOrDefault()
         }).ToListAsync();
 
         foreach (var item in Items.Where(x => x.ContractId.HasValue))
@@ -455,7 +479,7 @@ public class IndexModel : PageModel
         TicketPriority.Low => "Baja",
         TicketPriority.Medium => "Intermedia",
         TicketPriority.High => "Alta",
-        TicketPriority.Critical => "Urge",
+        TicketPriority.Critical => "Urgente",
         _ => "-"
     };
 
@@ -486,6 +510,7 @@ public class IndexModel : PageModel
         public string CarrierAccount { get; set; } = "";
         public string CarrierCircuit { get; set; } = "";
         public string CarrierIp { get; set; } = "";
+        public string? LastNote { get; set; }
     }
 
     public class ClientGroupVm
@@ -531,5 +556,13 @@ public class IndexModel : PageModel
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
         public TicketPriority Priority { get; set; } = TicketPriority.Medium;
+    }
+
+    public class TicketTimelineEntryVm
+    {
+        public string At { get; set; } = "";
+        public string EventType { get; set; } = "";
+        public string User { get; set; } = "";
+        public string Message { get; set; } = "";
     }
 }
