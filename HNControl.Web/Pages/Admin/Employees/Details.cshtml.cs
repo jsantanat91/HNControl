@@ -63,6 +63,13 @@ public class DetailsModel : PageModel
     // ====== Viáticos ======
     public decimal WeeklyViaticTotal { get; set; }
     public decimal CurrentMonthViaticTotal => WeeklyViaticTotal;
+    public decimal CurrentDeductionsTotal { get; set; }
+    public decimal CurrentBonusesTotal { get; set; }
+    public decimal CurrentNetQuincenal { get; set; }
+    public decimal CurrentVariablePercent { get; set; }
+    public string CurrentPayrollPeriod { get; set; } = "";
+    public int VacationRemaining { get; set; }
+    public int ExamsPendingCount { get; set; }
 
     public List<WeekSummary> CurrentMonthWeeks { get; set; } = new();
 
@@ -103,6 +110,8 @@ public class DetailsModel : PageModel
         await LoadKpiAvg90Async(userId);
         await LoadVariableHistoryAsync(userId);
         await LoadViaticWeeksAsync(userId);
+        await LoadPayrollSnapshotAsync(userId);
+        await LoadVacationsAndExamsAsync(userId);
 
         return Page();
     }
@@ -263,5 +272,119 @@ public class DetailsModel : PageModel
         var first = new DateTime(date.Year, date.Month, 1);
         var firstMonday = StartOfWeek(first, DayOfWeek.Monday);
         return (int)Math.Floor((date.Date - firstMonday).TotalDays / 7) + 1;
+    }
+
+    private async Task LoadPayrollSnapshotAsync(string userId)
+    {
+        var nowLocal = DateTime.Now.Date;
+        var periodStart = nowLocal.Day <= 15
+            ? TimeUtil.UtcDate(new DateTime(nowLocal.Year, nowLocal.Month, 1))
+            : TimeUtil.UtcDate(new DateTime(nowLocal.Year, nowLocal.Month, 16));
+        var periodEnd = nowLocal.Day <= 15
+            ? TimeUtil.UtcDate(new DateTime(nowLocal.Year, nowLocal.Month, 15))
+            : TimeUtil.UtcDate(new DateTime(nowLocal.Year, nowLocal.Month, DateTime.DaysInMonth(nowLocal.Year, nowLocal.Month)));
+
+        var review = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.PeriodStart)
+            .ThenByDescending(r => r.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var vp = review?.VariablePercent ?? 0m;
+        if (vp < 0m) vp = 0m;
+        if (vp > 1m) vp = 1m;
+        CurrentVariablePercent = vp;
+
+        var baseQ = Employee.SalaryBase / 2m;
+        var total = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * vp), 2);
+        var (ded, bon) = await CalcPayrollAdjustmentsAsync(userId, baseQ, total, periodStart, periodEnd);
+
+        CurrentDeductionsTotal = ded;
+        CurrentBonusesTotal = bon;
+        CurrentNetQuincenal = Math.Max(0m, Math.Round(total - ded + bon, 2));
+        CurrentPayrollPeriod = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+    }
+
+    private async Task LoadVacationsAndExamsAsync(string userId)
+    {
+        var year = DateTime.Now.Year;
+        var allowance = Employee.HireDate.HasValue
+            ? VacationPolicyMxLft.GetAnnualVacationDays(Employee.HireDate, DateTime.Now.Date)
+            : Employee.VacationAllowanceDays;
+
+        var used = await _db.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.Type == LeaveRequestType.Vacation
+                        && x.Status == LeaveRequestStatus.Approved
+                        && x.StartDate.Year == year)
+            .SumAsync(x => (int?)x.TotalDays) ?? 0;
+
+        VacationRemaining = Math.Max(0, allowance - used);
+
+        ExamsPendingCount = await _db.ExamAssignments
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Where(x => x.Status == ExamAssignmentStatus.Assigned || x.Status == ExamAssignmentStatus.InProgress)
+            .CountAsync();
+    }
+
+    private async Task<(decimal deductions, decimal bonuses)> CalcPayrollAdjustmentsAsync(
+        string userId,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        try
+        {
+            var periodDate = periodEnd.Date;
+            var currentHalf = periodDate.Day <= 15
+                ? EmployeeDeductionApplyOnHalf.First
+                : EmployeeDeductionApplyOnHalf.Second;
+
+            var active = await _db.EmployeeDeductions
+                .AsNoTracking()
+                .Where(d => d.UserId == userId && d.IsActive)
+                .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
+                .Where(d => d.Frequency == EmployeeDeductionFrequency.Biweekly
+                            || (d.Frequency == EmployeeDeductionFrequency.Monthly
+                                && (d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf)))
+                .ToListAsync();
+
+            decimal deductions = 0m;
+            decimal bonuses = 0m;
+
+            foreach (var d in active)
+            {
+                var amount = d.Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => d.Amount,
+                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
+                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
+                    _ => d.Amount
+                };
+
+                amount = Math.Round(Math.Max(0m, amount), 2);
+
+                if (d.RemainingAmount.HasValue)
+                {
+                    if (d.RemainingAmount.Value <= 0m) continue;
+                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                }
+
+                if (d.Direction == EmployeeDeductionDirection.Bonus)
+                    bonuses += amount;
+                else
+                    deductions += amount;
+            }
+
+            return (Math.Round(deductions, 2), Math.Round(bonuses, 2));
+        }
+        catch
+        {
+            return (0m, 0m);
+        }
     }
 }

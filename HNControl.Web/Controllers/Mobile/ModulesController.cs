@@ -32,12 +32,22 @@ public class ModulesController : ControllerBase
     public record ApiMessageDto(string Message);
     public record MonitorItemDto(Guid Id, string Client, string Name, string ProbeType, string Address, string Status, DateTime? LastCheckedAt, int? LastLatencyMs, string LastError);
     public record InventoryOrderDto(Guid AnchorId, DateTime RequestedAt, string Type, string ProjectTitle, string ResponsibleName, string StatusLabel, int LinesCount, string ItemsPreview);
+    public record InventoryCatalogItemDto(Guid Id, string Name, string Sku, string Category, string Location, string Unit, decimal Stock);
+    public record InventoryProjectDto(Guid Id, string Title);
+    public record InventoryCatalogDto(List<InventoryCatalogItemDto> Items, List<InventoryProjectDto> Projects);
+    public record InventoryRequestLineDto(Guid ItemId, decimal Quantity, Guid? AssignedClientId, string SerialNumber, string Reference, string Notes);
+    public record InventoryCreateRequestDto(string Type, Guid? ProjectId, string Notes, List<InventoryRequestLineDto> Lines);
     public record CarrierClientDto(Guid ClientId, string Name, int ServicesCount, string CarriersSummary);
     public record ProjectItemDto(Guid Id, string Client, string Title, string Status, DateTime StartDate, DateTime EstimatedEndDate);
     public record KnowledgeItemDto(Guid Id, string Title, string Category, string DocType, string Status, DateTime UpdatedAt, string Url);
     public record LeaveItemDto(Guid Id, string Type, string Status, DateTime StartDate, DateTime EndDate, int TotalDays, DateTime RequestedAt);
     public record LeaveDetailDto(Guid Id, string Type, string Status, DateTime StartDate, DateTime EndDate, int TotalDays, DateTime RequestedAt, DateTime? ReviewedAt, string Reason, string AdminComment, List<string> EvidenceFiles);
     public record ExamItemDto(Guid AssignmentId, string Title, string Status, DateTime AssignedAt, DateTime? DueAt, decimal Score, decimal MaxScore);
+    public record ExamTakeChoiceDto(Guid ChoiceId, int Ordinal, string Text);
+    public record ExamTakeQuestionDto(Guid QuestionId, int Ordinal, string Type, string Text, decimal Points, bool IsRequired, string TextAnswer, List<Guid> SelectedChoiceIds, List<ExamTakeChoiceDto> Choices);
+    public record ExamTakeDto(Guid AssignmentId, string Title, string Description, string Status, DateTime? DueAt, decimal Score, decimal MaxScore, List<ExamTakeQuestionDto> Questions);
+    public record ExamTakeAnswerInputDto(Guid QuestionId, string? TextAnswer, List<Guid>? ChoiceIds);
+    public record ExamTakeSaveDto(List<ExamTakeAnswerInputDto> Answers);
     public record Eval360ItemDto(Guid AssignmentId, string Campaign, string Role, string Status, DateTime CreatedAt, DateTime? SubmittedAt);
     public record CarrierServiceDto(Guid Id, string Carrier, string ServiceLabel, string Plan, string AccountNumber, string ContractNumber, string CircuitId, string ServiceAddress, string IpInfo, string SupportPhone, string Notes, string LastNotesSummary);
     public record CarrierClientDetailDto(Guid ClientId, string ClientName, string Rfc, string Email, string Phone, List<CarrierServiceDto> Services);
@@ -467,6 +477,112 @@ public class ModulesController : ControllerBase
         return Ok(orders);
     }
 
+    [HttpGet("inventory/catalog")]
+    [ProducesResponseType(typeof(InventoryCatalogDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> InventoryCatalog()
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Inventory))
+            return Forbid();
+
+        var items = await _db.InventoryItems
+            .AsNoTracking()
+            .Where(i => i.IsActive)
+            .OrderBy(i => i.Name)
+            .Take(600)
+            .Select(i => new InventoryCatalogItemDto(
+                i.Id,
+                i.Name,
+                i.Sku ?? "",
+                i.Category ?? "",
+                i.Location ?? "",
+                i.Unit,
+                i.QuantityOnHand))
+            .ToListAsync();
+
+        var projects = await _db.Projects
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenBy(p => p.Title)
+            .Take(250)
+            .Select(p => new InventoryProjectDto(p.Id, p.Title))
+            .ToListAsync();
+
+        return Ok(new InventoryCatalogDto(items, projects));
+    }
+
+    [HttpPost("inventory/request")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> InventoryCreateRequest([FromBody] InventoryCreateRequestDto body)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Inventory))
+            return Forbid();
+
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(uid))
+            return Unauthorized();
+
+        var typeRaw = (body.Type ?? "").Trim();
+        var type = typeRaw.Equals("in", StringComparison.OrdinalIgnoreCase)
+            ? InventoryMovementType.In
+            : typeRaw.Equals("out", StringComparison.OrdinalIgnoreCase)
+                ? InventoryMovementType.Out
+                : (InventoryMovementType?)null;
+        if (!type.HasValue)
+            return BadRequest(new ApiMessageDto("Tipo de movimiento invalido. Usa 'in' o 'out'."));
+
+        var lines = (body.Lines ?? new List<InventoryRequestLineDto>())
+            .Where(x => x.ItemId != Guid.Empty && x.Quantity > 0)
+            .ToList();
+        if (lines.Count == 0)
+            return BadRequest(new ApiMessageDto("Agrega al menos una linea valida."));
+
+        var itemIds = lines.Select(x => x.ItemId).Distinct().ToList();
+        var items = await _db.InventoryItems
+            .AsNoTracking()
+            .Where(i => itemIds.Contains(i.Id) && i.IsActive)
+            .Select(i => new { i.Id, i.IsConsumable })
+            .ToListAsync();
+        if (items.Count != itemIds.Count)
+            return BadRequest(new ApiMessageDto("Uno o mas items no existen o estan inactivos."));
+
+        var itemMap = items.ToDictionary(x => x.Id, x => x);
+        var me = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == uid);
+        var meName = me?.FullName ?? (User.Identity?.Name ?? "Empleado");
+        var now = DateTime.UtcNow;
+        var globalNotes = (body.Notes ?? "").Trim();
+
+        foreach (var l in lines)
+        {
+            var info = itemMap[l.ItemId];
+            var lineNotes = (l.Notes ?? "").Trim();
+            var notes = string.Join("\n", new[] { globalNotes, lineNotes }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+            _db.InventoryMovements.Add(new InventoryMovement
+            {
+                ItemId = l.ItemId,
+                Type = type.Value,
+                Status = InventoryMovementStatus.Pending,
+                Quantity = l.Quantity,
+                ProjectId = body.ProjectId,
+                RequestedAt = now,
+                RequestedByUserId = uid,
+                RequestedByName = meName,
+                ResponsibleUserId = uid,
+                ResponsibleName = meName,
+                AssignedClientId = type.Value == InventoryMovementType.Out && !info.IsConsumable ? l.AssignedClientId : null,
+                SerialNumber = type.Value == InventoryMovementType.Out && !info.IsConsumable ? (l.SerialNumber ?? "").Trim() : "",
+                Reference = type.Value == InventoryMovementType.In ? (l.Reference ?? "").Trim() : "",
+                Notes = notes
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new ApiMessageDto("Solicitud enviada para aprobacion."));
+    }
+
     [HttpGet("carriers")]
     [ProducesResponseType(typeof(List<CarrierClientDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -707,6 +823,85 @@ public class ModulesController : ControllerBase
         return Ok(rows);
     }
 
+    [HttpGet("exams/{assignmentId:guid}")]
+    [ProducesResponseType(typeof(ExamTakeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExamTake(Guid assignmentId)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Exams))
+            return Forbid();
+
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(uid)) return Unauthorized();
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+
+        var a = await _db.ExamAssignments
+            .Include(x => x.Exam!)
+                .ThenInclude(e => e.Questions)
+                    .ThenInclude(q => q.Choices)
+            .Include(x => x.Answers)
+                .ThenInclude(ans => ans.SelectedChoices)
+            .FirstOrDefaultAsync(x => x.Id == assignmentId);
+
+        if (a == null) return NotFound();
+        if (!isAdmin && a.UserId != uid) return Forbid();
+
+        if (a.Status == ExamAssignmentStatus.Assigned)
+            a.Status = ExamAssignmentStatus.InProgress;
+        a.StartedAt ??= DateTime.UtcNow;
+        if (a.MaxScore <= 0m) a.MaxScore = a.Exam?.Questions.Sum(q => q.Points) ?? 0m;
+        await _db.SaveChangesAsync();
+
+        var questions = (a.Exam?.Questions ?? new List<ExamQuestion>())
+            .OrderBy(q => q.Ordinal)
+            .Select(q =>
+            {
+                var ans = a.Answers.FirstOrDefault(x => x.QuestionId == q.Id);
+                return new ExamTakeQuestionDto(
+                    q.Id,
+                    q.Ordinal,
+                    q.Type.ToString(),
+                    q.Text,
+                    q.Points,
+                    q.IsRequired,
+                    ans?.TextAnswer ?? "",
+                    ans?.SelectedChoices.Select(sc => sc.ChoiceId).ToList() ?? new List<Guid>(),
+                    q.Choices.OrderBy(c => c.Ordinal).Select(c => new ExamTakeChoiceDto(c.Id, c.Ordinal, c.Text)).ToList()
+                );
+            }).ToList();
+
+        var dto = new ExamTakeDto(
+            a.Id,
+            a.Exam?.Title ?? "Examen",
+            a.Exam?.Description ?? "",
+            a.Status.ToString(),
+            a.DueAt,
+            a.Score,
+            a.MaxScore,
+            questions);
+
+        return Ok(dto);
+    }
+
+    [HttpPost("exams/{assignmentId:guid}/save")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExamSave(Guid assignmentId, [FromBody] ExamTakeSaveDto body)
+    {
+        return await SaveExamInternalAsync(assignmentId, body, submit: false);
+    }
+
+    [HttpPost("exams/{assignmentId:guid}/submit")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExamSubmit(Guid assignmentId, [FromBody] ExamTakeSaveDto body)
+    {
+        return await SaveExamInternalAsync(assignmentId, body, submit: true);
+    }
+
     [HttpGet("eval360")]
     [ProducesResponseType(typeof(List<Eval360ItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -734,5 +929,116 @@ public class ModulesController : ControllerBase
             .ToListAsync();
 
         return Ok(rows);
+    }
+
+    private async Task<IActionResult> SaveExamInternalAsync(Guid assignmentId, ExamTakeSaveDto body, bool submit)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Exams))
+            return Forbid();
+
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(uid)) return Unauthorized();
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+
+        var a = await _db.ExamAssignments
+            .Include(x => x.Exam!)
+                .ThenInclude(e => e.Questions)
+                    .ThenInclude(q => q.Choices)
+            .Include(x => x.Answers)
+                .ThenInclude(ans => ans.SelectedChoices)
+            .FirstOrDefaultAsync(x => x.Id == assignmentId);
+
+        if (a == null) return NotFound();
+        if (!isAdmin && a.UserId != uid) return Forbid();
+        if (a.Status is ExamAssignmentStatus.Submitted or ExamAssignmentStatus.Graded)
+            return Ok(new ApiMessageDto("Este examen ya fue enviado."));
+
+        var questionMap = (a.Exam?.Questions ?? new List<ExamQuestion>()).ToDictionary(q => q.Id, q => q);
+        var inputMap = (body.Answers ?? new List<ExamTakeAnswerInputDto>()).ToDictionary(x => x.QuestionId, x => x);
+
+        foreach (var q in questionMap.Values)
+        {
+            if (!inputMap.TryGetValue(q.Id, out var input))
+                continue;
+
+            var ans = a.Answers.FirstOrDefault(x => x.QuestionId == q.Id);
+            if (ans == null)
+            {
+                ans = new ExamAnswer
+                {
+                    Id = Guid.NewGuid(),
+                    AssignmentId = a.Id,
+                    QuestionId = q.Id
+                };
+                _db.ExamAnswers.Add(ans);
+                a.Answers.Add(ans);
+            }
+
+            ans.TextAnswer = (input.TextAnswer ?? "").Trim();
+            ans.UpdatedAt = DateTime.UtcNow;
+
+            if (q.Type != ExamQuestionType.OpenText && q.Type != ExamQuestionType.Attachment)
+            {
+                ans.SelectedChoices.Clear();
+                var selected = (input.ChoiceIds ?? new List<Guid>())
+                    .Distinct()
+                    .Where(cid => q.Choices.Any(c => c.Id == cid))
+                    .ToList();
+                foreach (var cid in selected)
+                {
+                    ans.SelectedChoices.Add(new ExamAnswerChoice
+                    {
+                        Id = Guid.NewGuid(),
+                        ExamAnswerId = ans.Id,
+                        ChoiceId = cid
+                    });
+                }
+            }
+        }
+
+        a.Status = ExamAssignmentStatus.InProgress;
+        a.StartedAt ??= DateTime.UtcNow;
+        a.MaxScore = (a.Exam?.Questions ?? new List<ExamQuestion>()).Sum(q => q.Points);
+
+        if (submit)
+        {
+            foreach (var q in a.Exam?.Questions ?? new List<ExamQuestion>())
+            {
+                var ans = a.Answers.FirstOrDefault(x => x.QuestionId == q.Id);
+                if (ans == null) continue;
+                ans.AutoScore = 0m;
+
+                if (q.Type is ExamQuestionType.OpenText or ExamQuestionType.Attachment)
+                {
+                    ans.AutoScore = 0m;
+                }
+                else
+                {
+                    var correct = q.Choices.Where(c => c.IsCorrect).Select(c => c.Id).ToHashSet();
+                    var selected = ans.SelectedChoices.Select(sc => sc.ChoiceId).ToHashSet();
+                    var ok = correct.Count > 0 && correct.SetEquals(selected);
+                    ans.AutoScore = ok ? q.Points : 0m;
+                }
+            }
+
+            a.Score = a.Answers.Sum(x => x.AutoScore + x.ManualScore);
+            a.SubmittedAt = DateTime.UtcNow;
+
+            var hasManualReview = (a.Exam?.Questions ?? new List<ExamQuestion>())
+                .Any(q => q.Type is ExamQuestionType.OpenText or ExamQuestionType.Attachment);
+
+            if (hasManualReview)
+            {
+                a.Status = ExamAssignmentStatus.Submitted;
+            }
+            else
+            {
+                a.Status = ExamAssignmentStatus.Graded;
+                a.GradedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new ApiMessageDto(submit ? "Examen enviado." : "Avance guardado."));
     }
 }

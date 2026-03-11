@@ -67,7 +67,7 @@ public class DetailsModel : PageModel
 
         using var tx = await _db.Database.BeginTransactionAsync();
 
-        // 2) cargar lÃ­neas con tracking
+        // 2) cargar líneas con tracking
         var lines = await LoadOrderLinesTrackedAsync(anchor);
 
         if (lines.Count == 0) return NotFound();
@@ -79,7 +79,7 @@ public class DetailsModel : PageModel
             return await OnGetAsync(id);
         }
 
-        // 3) validaciÃ³n y actualizaciÃ³n de stock
+        // 3) validación y actualización de stock
         if (lines.First().Type == InventoryMovementType.Out)
         {
             var byItem = lines.GroupBy(x => x.ItemId)
@@ -122,7 +122,7 @@ public class DetailsModel : PageModel
             }
         }
 
-        // 4) aprobar lÃ­neas
+        // 4) aprobar líneas
         var note = (Input.AdminNote ?? "").Trim();
         var now = DateTime.UtcNow;
 
@@ -211,4 +211,5 @@ public class DetailsModel : PageModel
             .ToListAsync();
     }
 }
+
 

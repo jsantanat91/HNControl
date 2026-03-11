@@ -3,13 +3,13 @@
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Movimientos de almacÃ©n";
+    ViewData["Title"] = "Movimientos de almac&eacute;n";
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Movimientos de almacÃ©n</h1>
-        <div class="text-muted small">Log general de entradas/salidas. (SÃ­, aquÃ­ sÃ­ vemos â€œquÃ© pasÃ³â€).</div>
+        <h1 class="h4 mb-0">Movimientos de almac&eacute;n</h1>
+        <div class="text-muted small">Log general de entradas/salidas. (S&iacute;, aqu&iacute; s&iacute; vemos qu&eacute; pas&oacute;).</div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
@@ -24,7 +24,7 @@
         <div class="row g-2 align-items-end">
             <div class="col-12 col-lg-4">
                 <label class="form-label small text-muted mb-1">Buscar</label>
-                <input class="form-control" name="q" value="@Model.Q" placeholder="Item, SKU, solicitÃ³, responsable, serie, referencia, notas..." />
+                <input class="form-control" name="q" value="@Model.Q" placeholder="Item, SKU, solicit&oacute;, responsable, serie, referencia, notas..." />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-3">
@@ -82,7 +82,7 @@
                         <th>Item</th>
                         <th class="text-end">Cantidad</th>
                         <th>Proyecto</th>
-                        <th>SolicitÃ³</th>
+                        <th>Solicit&oacute;</th>
                         <th>Responsable</th>
                         <th>Status</th>
                         <th class="text-end">Acciones</th>
@@ -98,7 +98,7 @@
                         </td>
                         <td>
                             <div class="fw-semibold">@m.Item?.Name</div>
-                            <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "â€”" : m.Item?.Sku)</div>
+                            <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "—" : m.Item?.Sku)</div>
                             @if (m.AssignedClient != null)
                             {
                                 <div class="text-muted small">Cliente: @m.AssignedClient.Name</div>
@@ -109,9 +109,9 @@
                             }
                         </td>
                         <td class="text-end fw-semibold">@m.Quantity @m.Item?.Unit</td>
-                        <td>@(m.Project?.Title ?? "â€”")</td>
-                        <td>@(string.IsNullOrWhiteSpace(m.RequestedByName) ? "â€”" : m.RequestedByName)</td>
-                        <td>@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "â€”" : m.ResponsibleName)</td>
+                        <td>@(m.Project?.Title ?? "—")</td>
+                        <td>@(string.IsNullOrWhiteSpace(m.RequestedByName) ? "—" : m.RequestedByName)</td>
+                        <td>@(string.IsNullOrWhiteSpace(m.ResponsibleName) ? "—" : m.ResponsibleName)</td>
                         <td>
                             @if (m.Status == InventoryMovementStatus.Pending)
                             {

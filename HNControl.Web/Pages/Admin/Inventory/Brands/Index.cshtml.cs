@@ -86,7 +86,7 @@ public class IndexModel : PageModel
         var newName = (name ?? "").Trim();
         if (string.IsNullOrWhiteSpace(newName))
         {
-            Error = "El nombre no puede ir vacÃ­o.";
+            Error = "El nombre no puede ir vacío.";
             return RedirectToPage();
         }
 
@@ -108,4 +108,5 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 }
+
 

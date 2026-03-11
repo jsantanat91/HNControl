@@ -150,7 +150,7 @@ public class EditModel : PageModel
             .OrderBy(b => b.Name)
             .Select(b => new SelectListItem(b.Name, b.Id.ToString()))
             .ToListAsync();
-        BrandOptions.Insert(0, new SelectListItem("â€” Sin marca â€”", ""));
+        BrandOptions.Insert(0, new SelectListItem("— Sin marca —", ""));
 
         CategoryOptions = await _db.InventoryCategories
             .AsNoTracking()
@@ -158,7 +158,7 @@ public class EditModel : PageModel
             .OrderBy(c => c.Name)
             .Select(c => new SelectListItem(c.Name, c.Name))
             .ToListAsync();
-        CategoryOptions.Insert(0, new SelectListItem("â€” Sin categorÃ­a â€”", ""));
+        CategoryOptions.Insert(0, new SelectListItem("— Sin categoría —", ""));
 
         LocationOptions = await _db.InventoryLocations
             .AsNoTracking()
@@ -166,7 +166,7 @@ public class EditModel : PageModel
             .OrderBy(l => l.Name)
             .Select(l => new SelectListItem(l.Name, l.Name))
             .ToListAsync();
-        LocationOptions.Insert(0, new SelectListItem("â€” Sin ubicaciÃ³n â€”", ""));
+        LocationOptions.Insert(0, new SelectListItem("— Sin ubicación —", ""));
     }
 
     private async Task LoadRecentMovementsAsync(Guid itemId, string unit)
@@ -191,4 +191,5 @@ public class EditModel : PageModel
             .ToListAsync();
     }
 }
+
 

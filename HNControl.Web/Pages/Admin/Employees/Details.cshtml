@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Employees.DetailsModel
 @{
     Layout = "_Layout";
@@ -12,7 +12,7 @@
     <div>
         <h3 class="mb-0">@Model.Employee.FullName</h3>
         <div class="text-muted small">
-            @Model.Employee.Position · @Model.Employee.Email · @Model.Employee.Phone
+            @Model.Employee.Position &middot; @Model.Employee.Email &middot; @Model.Employee.Phone
         </div>
     </div>
 
@@ -22,7 +22,7 @@
         <a class="btn btn-outline-primary"
            asp-page="/Admin/Viaticos/Index"
            asp-route-UserId="@Model.Employee.UserId">
-            Viáticos
+            Vi&aacute;ticos
         </a>
 
         <a class="btn btn-outline-warning"
@@ -42,12 +42,52 @@
 </div>
 
 <div class="row g-3">
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Neto quincenal estimado</div>
+                <div class="fs-3 fw-bold">@Model.CurrentNetQuincenal.ToString("C")</div>
+                <div class="text-muted small">Periodo: @Model.CurrentPayrollPeriod</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Variable 80/20 actual</div>
+                <div class="fs-3 fw-bold">@((Model.CurrentVariablePercent * 100m).ToString("0.##"))%</div>
+                <div class="text-muted small">Deducciones: @Model.CurrentDeductionsTotal.ToString("C")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Bonos del periodo</div>
+                <div class="fs-3 fw-bold">@Model.CurrentBonusesTotal.ToString("C")</div>
+                <div class="text-muted small">Vacaciones disponibles: @Model.VacationRemaining</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-3">
+        <div class="card shadow-soft">
+            <div class="card-body">
+                <div class="text-muted small">Ex&aacute;menes pendientes</div>
+                <div class="fs-3 fw-bold">@Model.ExamsPendingCount</div>
+                <div class="text-muted small">Vista informativa tipo empleado</div>
+            </div>
+        </div>
+    </div>
+
     <div class="col-12 col-lg-4">
         <div class="card shadow-soft">
             <div class="card-body">
-                <div class="text-muted small">KPI promedio (90 días)</div>
+                <div class="text-muted small">KPI promedio (90 d&iacute;as)</div>
                 <div class="fs-3 fw-bold">@Model.KPIAvgScore.ToString("0.0")</div>
-                <div class="text-muted small">Escala 1–5</div>
+                <div class="text-muted small">Escala 1-5</div>
             </div>
         </div>
     </div>
@@ -65,7 +105,7 @@
     <div class="col-12 col-lg-4">
         <div class="card shadow-soft">
             <div class="card-body">
-                <div class="text-muted small">Viáticos mes actual</div>
+                <div class="text-muted small">Vi&aacute;ticos mes actual</div>
                 <div class="fs-3 fw-bold">@Model.CurrentMonthViaticTotal.ToString("C")</div>
                 <div class="text-muted small">Suma de semanas del mes</div>
             </div>
@@ -88,7 +128,7 @@
                     </form>
                 </div>
                 <canvas id="kpiMonthChart" height="160"></canvas>
-                <div class="text-muted small mt-2">Promedio por categoría del mes seleccionado (@Model.SelectedYm).</div>
+                <div class="text-muted small mt-2">Promedio por categor&iacute;a del mes seleccionado (@Model.SelectedYm).</div>
             </div>
         </div>
     </div>
@@ -98,10 +138,10 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="fw-semibold">Variable (historial)</div>
-                    <div class="text-muted small">Últimos 12 periodos</div>
+                    <div class="text-muted small">&Uacute;ltimos 12 periodos</div>
                 </div>
                 <canvas id="varHistChart" height="160"></canvas>
-                <div class="text-muted small mt-2">Línea en porcentaje por periodo evaluado.</div>
+                <div class="text-muted small mt-2">L&iacute;nea en porcentaje por periodo evaluado.</div>
             </div>
         </div>
     </div>
@@ -110,8 +150,8 @@
         <div class="card shadow-soft">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Viáticos del mes (semanas)</div>
-                    <div class="text-muted small">4–5 semanas (según el mes)</div>
+                    <div class="fw-semibold">Vi&aacute;ticos del mes (semanas)</div>
+                    <div class="text-muted small">4-5 semanas (seg&uacute;n el mes)</div>
                 </div>
 
                 <div class="row g-3">
@@ -123,10 +163,10 @@
                                     <div>
                                         <div class="fw-semibold">@w.WeekLabel</div>
                                         <div class="text-muted small">
-                                            @w.WeekStart.ToString("yyyy-MM-dd") → @w.WeekEnd.ToString("yyyy-MM-dd")
+                                            @w.WeekStart.ToString("yyyy-MM-dd") &rarr; @w.WeekEnd.ToString("yyyy-MM-dd")
                                         </div>
                                         <div class="text-muted small">
-                                            Facturable: @w.Billable.ToString("C") · No facturable: @w.NonBillable.ToString("C")
+                                            Facturable: @w.Billable.ToString("C") &middot; No facturable: @w.NonBillable.ToString("C")
                                         </div>
                                     </div>
                                     <a class="btn btn-sm btn-outline-secondary"

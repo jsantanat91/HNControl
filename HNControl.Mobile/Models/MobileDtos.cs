@@ -321,6 +321,47 @@ public sealed class InventoryModuleOrderDto
     public string ItemsPreview { get; set; } = "";
 }
 
+public sealed class InventoryCatalogItemDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Sku { get; set; } = "";
+    public string Category { get; set; } = "";
+    public string Location { get; set; } = "";
+    public string Unit { get; set; } = "";
+    public decimal Stock { get; set; }
+}
+
+public sealed class InventoryProjectDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = "";
+}
+
+public sealed class InventoryCatalogDto
+{
+    public List<InventoryCatalogItemDto> Items { get; set; } = new();
+    public List<InventoryProjectDto> Projects { get; set; } = new();
+}
+
+public sealed class InventoryRequestLineDto
+{
+    public Guid ItemId { get; set; }
+    public decimal Quantity { get; set; }
+    public Guid? AssignedClientId { get; set; }
+    public string SerialNumber { get; set; } = "";
+    public string Reference { get; set; } = "";
+    public string Notes { get; set; } = "";
+}
+
+public sealed class InventoryCreateRequestDto
+{
+    public string Type { get; set; } = "Out";
+    public Guid? ProjectId { get; set; }
+    public string Notes { get; set; } = "";
+    public List<InventoryRequestLineDto> Lines { get; set; } = new();
+}
+
 public sealed class CarrierClientDto
 {
     public Guid ClientId { get; set; }
@@ -411,6 +452,50 @@ public sealed class ExamModuleItemDto
     public DateTime? DueAt { get; set; }
     public decimal Score { get; set; }
     public decimal MaxScore { get; set; }
+}
+
+public sealed class ExamTakeChoiceDto
+{
+    public Guid ChoiceId { get; set; }
+    public int Ordinal { get; set; }
+    public string Text { get; set; } = "";
+}
+
+public sealed class ExamTakeQuestionDto
+{
+    public Guid QuestionId { get; set; }
+    public int Ordinal { get; set; }
+    public string Type { get; set; } = "";
+    public string Text { get; set; } = "";
+    public decimal Points { get; set; }
+    public bool IsRequired { get; set; }
+    public string TextAnswer { get; set; } = "";
+    public List<Guid> SelectedChoiceIds { get; set; } = new();
+    public List<ExamTakeChoiceDto> Choices { get; set; } = new();
+}
+
+public sealed class ExamTakeDto
+{
+    public Guid AssignmentId { get; set; }
+    public string Title { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Status { get; set; } = "";
+    public DateTime? DueAt { get; set; }
+    public decimal Score { get; set; }
+    public decimal MaxScore { get; set; }
+    public List<ExamTakeQuestionDto> Questions { get; set; } = new();
+}
+
+public sealed class ExamTakeAnswerInputDto
+{
+    public Guid QuestionId { get; set; }
+    public string? TextAnswer { get; set; }
+    public List<Guid>? ChoiceIds { get; set; }
+}
+
+public sealed class ExamTakeSaveDto
+{
+    public List<ExamTakeAnswerInputDto> Answers { get; set; } = new();
 }
 
 public sealed class Eval360ModuleItemDto

@@ -48,7 +48,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Esa ubicaciÃ³n ya existe.";
+            Error = "Esa ubicación ya existe.";
             return RedirectToPage();
         }
 
@@ -61,7 +61,7 @@ public class IndexModel : PageModel
         });
 
         await _db.SaveChangesAsync();
-        Info = "UbicaciÃ³n agregada.";
+        Info = "Ubicación agregada.";
         return RedirectToPage();
     }
 
@@ -74,7 +74,7 @@ public class IndexModel : PageModel
         l.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
-        Info = l.IsActive ? "UbicaciÃ³n activada." : "UbicaciÃ³n desactivada.";
+        Info = l.IsActive ? "Ubicación activada." : "Ubicación desactivada.";
         return RedirectToPage();
     }
 
@@ -86,7 +86,7 @@ public class IndexModel : PageModel
         var newName = (name ?? "").Trim();
         if (string.IsNullOrWhiteSpace(newName))
         {
-            Error = "El nombre no puede ir vacÃ­o.";
+            Error = "El nombre no puede ir vacío.";
             return RedirectToPage();
         }
 
@@ -96,7 +96,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Ya existe otra ubicaciÃ³n con ese nombre.";
+            Error = "Ya existe otra ubicación con ese nombre.";
             return RedirectToPage();
         }
 
@@ -104,8 +104,9 @@ public class IndexModel : PageModel
         l.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Info = "UbicaciÃ³n actualizada.";
+        Info = "Ubicación actualizada.";
         return RedirectToPage();
     }
 }
+
 

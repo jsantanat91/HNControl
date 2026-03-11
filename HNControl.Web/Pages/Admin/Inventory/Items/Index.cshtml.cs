@@ -212,13 +212,13 @@ public class IndexModel : PageModel
         {
             "Nombre",
             "SKU (opcional)",
-            "CategorÃ­a",
+            "Categoría",
             "Marca",
             "Modelo",
-            "UbicaciÃ³n",
+            "Ubicación",
             "Unidad",
             "Existencia",
-            "Stock mÃ­nimo",
+            "Stock mínimo",
             "Activo (TRUE/FALSE)",
             "Notas"
         };
@@ -235,7 +235,7 @@ public class IndexModel : PageModel
         ws.Cell(2, 3).Value = "Routers";
         ws.Cell(2, 4).Value = "Ubiquiti";
         ws.Cell(2, 5).Value = "ER-X";
-        ws.Cell(2, 6).Value = "AlmacÃ©n Matamoros";
+        ws.Cell(2, 6).Value = "Almacén Matamoros";
         ws.Cell(2, 7).Value = "pza";
         ws.Cell(2, 8).Value = 5;
         ws.Cell(2, 9).Value = 2;
@@ -273,7 +273,7 @@ public class IndexModel : PageModel
 
         if (file.Length > 10 * 1024 * 1024)
         {
-            Error = "El archivo es muy grande (mÃ¡ximo 10MB).";
+            Error = "El archivo es muy grande (máximo 10MB).";
             return RedirectToPage();
         }
 
@@ -328,7 +328,7 @@ public class IndexModel : PageModel
         var headerRow = ws.Row(1);
         var headerMap = BuildHeaderMap(headerRow);
 
-        // Required columns (mÃ­nimo)
+        // Required columns (mínimo)
         if (!headerMap.ContainsKey("name"))
         {
             Error = "Falta la columna 'Nombre'.";
@@ -376,7 +376,7 @@ public class IndexModel : PageModel
             brandName = string.IsNullOrWhiteSpace(brandName) ? null : brandName.Trim();
             unit = unit.Trim();
 
-            // Asegura catÃ¡logo categorÃ­a (si vino)
+            // Asegura catálogo categoría (si vino)
             if (!string.IsNullOrWhiteSpace(category))
             {
                 var ck = category.ToLowerInvariant();
@@ -394,7 +394,7 @@ public class IndexModel : PageModel
                 }
             }
 
-            // Asegura catÃ¡logo ubicaciÃ³n (si vino)
+            // Asegura catálogo ubicación (si vino)
             if (!string.IsNullOrWhiteSpace(location))
             {
                 var lk = location.ToLowerInvariant();
@@ -471,18 +471,18 @@ public class IndexModel : PageModel
             // Upsert fields
             item.Name = name;
             item.Sku = sku;
-            item.Category = category;          // texto seleccionado desde catÃ¡logo
-            item.BrandId = brandId;            // FK a catÃ¡logo de marcas
+            item.Category = category;          // texto seleccionado desde catálogo
+            item.BrandId = brandId;            // FK a catálogo de marcas
             item.Model = model;
-            item.Location = location;          // texto seleccionado desde catÃ¡logo
+            item.Location = location;          // texto seleccionado desde catálogo
 
             item.Unit = unit;
             item.QuantityOnHand = onHand;
             item.ReorderLevel = reorder;
             item.IsActive = active;
 
-            // Consumible vs hardware (si traes columna "tipo" en tu template viejo, aquÃ­ puedes mapearlo)
-            // Si no viene, NO lo tocamos para no cambiar tu lÃ³gica:
+            // Consumible vs hardware (si traes columna "tipo" en tu template viejo, aquí puedes mapearlo)
+            // Si no viene, NO lo tocamos para no cambiar tu lógica:
             // item.IsConsumable = item.IsConsumable;
 
             item.Notes = notes;
@@ -491,7 +491,7 @@ public class IndexModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        Info = $"ImportaciÃ³n lista: {created} creados, {updated} actualizados, {skipped} saltados.";
+        Info = $"Importación lista: {created} creados, {updated} actualizados, {skipped} saltados.";
         return RedirectToPage();
     }
 
@@ -513,14 +513,14 @@ public class IndexModel : PageModel
 
             // Aliases
             if (k is "nombre" or "name") map["name"] = c;
-            else if (k is "sku" or "codigo" or "cÃ³digo" or "clave") map["sku"] = c;
-            else if (k is "categoria" or "categorÃ­a" or "category") map["category"] = c;
+            else if (k is "sku" or "codigo" or "código" or "clave") map["sku"] = c;
+            else if (k is "categoria" or "categoría" or "category") map["category"] = c;
             else if (k is "marca" or "brand") map["brand"] = c;
             else if (k is "modelo" or "model") map["model"] = c;
-            else if (k is "ubicacion" or "ubicaciÃ³n" or "location") map["location"] = c;
+            else if (k is "ubicacion" or "ubicación" or "location") map["location"] = c;
             else if (k is "unidad" or "unit") map["unit"] = c;
             else if (k is "existencia" or "onhand" or "on hand" or "qty" or "cantidad") map["onhand"] = c;
-            else if (k is "stockminimo" or "stock mÃ­nimo" or "stock minimo" or "reorder" or "reorderlevel" or "min") map["reorder"] = c;
+            else if (k is "stockminimo" or "stock mínimo" or "stock minimo" or "reorder" or "reorderlevel" or "min") map["reorder"] = c;
             else if (k is "activo" or "active") map["active"] = c;
             else if (k is "notas" or "notes" or "nota") map["notes"] = c;
         }
@@ -531,7 +531,7 @@ public class IndexModel : PageModel
     private static string NormalizeHeader(string s)
     {
         s = s.Trim().ToLowerInvariant();
-        s = s.Replace("Ã¡", "a").Replace("Ã©", "e").Replace("Ã­", "i").Replace("Ã³", "o").Replace("Ãº", "u").Replace("Ã¼", "u");
+        s = s.Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u").Replace("ü", "u");
         s = s.Replace("(", "").Replace(")", "");
         s = s.Replace("_", " ").Replace("-", " ");
         s = string.Join(" ", s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
@@ -579,7 +579,8 @@ public class IndexModel : PageModel
         var txt = cell.GetString()?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(txt)) return defaultValue;
 
-        return txt is "true" or "1" or "si" or "sÃ­" or "yes" or "y";
+        return txt is "true" or "1" or "si" or "sí" or "yes" or "y";
     }
 }
+
 

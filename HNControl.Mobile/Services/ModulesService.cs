@@ -21,6 +21,10 @@ public sealed class ModulesService
 
     public Task<List<InventoryModuleOrderDto>> GetInventoryRequestsAsync()
         => _api.GetJsonAsync<List<InventoryModuleOrderDto>>("api/mobile/modules/inventory/my-requests");
+    public Task<InventoryCatalogDto> GetInventoryCatalogAsync()
+        => _api.GetJsonAsync<InventoryCatalogDto>("api/mobile/modules/inventory/catalog");
+    public Task<ApiMessageDto> CreateInventoryRequestAsync(InventoryCreateRequestDto body)
+        => _api.PostJsonAsync<InventoryCreateRequestDto, ApiMessageDto>("api/mobile/modules/inventory/request", body);
 
     public Task<List<CarrierClientDto>> GetCarriersAsync()
         => _api.GetJsonAsync<List<CarrierClientDto>>("api/mobile/modules/carriers");
@@ -40,6 +44,12 @@ public sealed class ModulesService
 
     public Task<List<ExamModuleItemDto>> GetExamsAsync()
         => _api.GetJsonAsync<List<ExamModuleItemDto>>("api/mobile/modules/exams");
+    public Task<ExamTakeDto> GetExamTakeAsync(Guid assignmentId)
+        => _api.GetJsonAsync<ExamTakeDto>($"api/mobile/modules/exams/{assignmentId}");
+    public Task<ApiMessageDto> SaveExamAsync(Guid assignmentId, ExamTakeSaveDto body)
+        => _api.PostJsonAsync<ExamTakeSaveDto, ApiMessageDto>($"api/mobile/modules/exams/{assignmentId}/save", body);
+    public Task<ApiMessageDto> SubmitExamAsync(Guid assignmentId, ExamTakeSaveDto body)
+        => _api.PostJsonAsync<ExamTakeSaveDto, ApiMessageDto>($"api/mobile/modules/exams/{assignmentId}/submit", body);
 
     public Task<List<Eval360ModuleItemDto>> GetEval360Async()
         => _api.GetJsonAsync<List<Eval360ModuleItemDto>>("api/mobile/modules/eval360");

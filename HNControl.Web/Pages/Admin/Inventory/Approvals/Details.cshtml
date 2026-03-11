@@ -11,7 +11,7 @@
         <h1 class="h4 mb-0">Revisar orden de inventario</h1>
         <div class="text-muted small">Aprueba o rechaza la orden completa. Si apruebas, impacta stock.</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="./Index">â† Volver</a>
+    <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
 
 @if (Model.Anchor == null)
@@ -37,19 +37,19 @@ else
 
                 <div class="col-md-6">
                     <div class="text-muted small">Proyecto</div>
-                    <div class="fw-semibold">@(a.Project?.Title ?? "â€”")</div>
+                    <div class="fw-semibold">@(a.Project?.Title ?? "—")</div>
                 </div>
                 <div class="col-md-6">
                     <div class="text-muted small">Responsable</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.ResponsibleName) ? "â€”" : a.ResponsibleName)</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.ResponsibleName) ? "—" : a.ResponsibleName)</div>
                 </div>
 
                 <div class="col-md-6">
-                    <div class="text-muted small">SolicitÃ³</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.RequestedByName) ? "â€”" : a.RequestedByName)</div>
+                    <div class="text-muted small">Solicitó</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.RequestedByName) ? "—" : a.RequestedByName)</div>
                 </div>
                 <div class="col-md-6">
-                    <div class="text-muted small">LÃ­neas</div>
+                    <div class="text-muted small">Líneas</div>
                     <div class="fw-semibold">@lines.Count</div>
                 </div>
 
@@ -57,7 +57,7 @@ else
                 {
                     <div class="col-12">
                         <div class="alert alert-warning mb-0">
-                            Esta orden tiene estatus mezclados (algunas lÃ­neas ya fueron procesadas). Para evitar inconsistencias, el sistema desactiva la aprobaciÃ³n/rechazo por orden.
+                            Esta orden tiene estatus mezclados (algunas líneas ya fueron procesadas). Para evitar inconsistencias, el sistema desactiva la aprobación/rechazo por orden.
                         </div>
                     </div>
                 }
@@ -66,7 +66,7 @@ else
     </div>
 
     <div class="card mb-3">
-        <div class="card-header fw-semibold">Detalle de lÃ­neas</div>
+        <div class="card-header fw-semibold">Detalle de líneas</div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table align-middle">
@@ -85,15 +85,15 @@ else
                         <tr>
                             <td>
                                 <div class="fw-semibold">@m.Item?.Name</div>
-                                <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "â€”" : m.Item?.Sku)</div>
+                                <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "—" : m.Item?.Sku)</div>
                                 @if (!string.IsNullOrWhiteSpace(m.Notes))
                                 {
                                     <div class="text-muted small">Notas: @m.Notes</div>
                                 }
                             </td>
                             <td class="text-end fw-semibold">@m.Quantity @m.Item?.Unit</td>
-                            <td>@(m.AssignedClient?.Name ?? "â€”")</td>
-                            <td>@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "â€”" : m.SerialNumber)</td>
+                            <td>@(m.AssignedClient?.Name ?? "—")</td>
+                            <td>@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "—" : m.SerialNumber)</td>
                             <td>
                                 @if (m.Status == InventoryMovementStatus.Pending)
                                 {
@@ -130,7 +130,7 @@ else
         <div class="card-body">
             <form method="post" asp-route-id="@a.Id" class="mb-2">
                 <label class="form-label">Nota admin (opcional)</label>
-                <textarea class="form-control" asp-for="Input.AdminNote" rows="3" placeholder="Comentario de aprobaciÃ³n/rechazo..."></textarea>
+                <textarea class="form-control" asp-for="Input.AdminNote" rows="3" placeholder="Comentario de aprobación/rechazo..."></textarea>
                 <div class="d-flex gap-2 mt-3">
                     <button class="btn btn-success" type="submit" asp-page-handler="Approve" disabled="@(!Model.CanDecide)">
                         Aprobar orden
@@ -150,4 +150,5 @@ else
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+
 

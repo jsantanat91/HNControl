@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.InventoryRequestPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Solicitar material"
+    Background="#E9EEF7">
+    <ScrollView>
+        <VerticalStackLayout Margin="14,12,14,24" Spacing="10">
+            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+                <VerticalStackLayout Spacing="4">
+                    <Label x:Name="HeaderTitleLabel" FontAttributes="Bold" FontSize="22" Text="Solicitud de salida" TextColor="White" />
+                    <Label x:Name="HeaderSubLabel" FontSize="12" Opacity="0.85" Text="Captura item y cantidad para solicitar aprobacion." TextColor="#C5D5F0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" Text="Item" />
+                    <Picker x:Name="ItemPicker" ItemDisplayBinding="{Binding Display}" Title="Selecciona un item" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label FontAttributes="Bold" Text="Cantidad" />
+                            <Entry x:Name="QtyEntry" Keyboard="Numeric" Placeholder="1" Text="1" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label FontAttributes="Bold" Text="Proyecto (opcional)" />
+                            <Picker x:Name="ProjectPicker" ItemDisplayBinding="{Binding Title}" Title="Sin proyecto" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Label FontAttributes="Bold" Text="Notas de la linea (opcional)" />
+                    <Entry x:Name="LineNotesEntry" Placeholder="Detalle de esta linea..." />
+
+                    <Button
+                        BackgroundColor="#2252D5"
+                        Clicked="OnAddLineClicked"
+                        CornerRadius="10"
+                        HeightRequest="40"
+                        Text="Agregar linea"
+                        TextColor="White" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" Text="Lineas capturadas" />
+                    <CollectionView x:Name="LinesCollection" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.65" Text="Aun no agregas lineas." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Padding="10" Background="#F8FAFF" StrokeShape="RoundRectangle 12">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                        <Label FontAttributes="Bold" Text="{Binding ItemName}" />
+                                        <Button
+                                            Grid.Column="1"
+                                            BackgroundColor="#FDE7E7"
+                                            Clicked="OnRemoveLineClicked"
+                                            CommandParameter="{Binding Id}"
+                                            CornerRadius="8"
+                                            FontSize="11"
+                                            HeightRequest="30"
+                                            Text="Quitar"
+                                            TextColor="#A42323" />
+                                        <Label Grid.Row="1" FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" Text="Notas globales (opcional)" />
+                    <Editor x:Name="GlobalNotesEditor" AutoSize="TextChanges" Placeholder="Contexto general de la solicitud..." />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button
+                BackgroundColor="#1D8F58"
+                Clicked="OnSubmitClicked"
+                CornerRadius="12"
+                HeightRequest="46"
+                Text="Enviar solicitud"
+                TextColor="White" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -46,6 +46,9 @@ public class DashboardModel : PageModel
     public string QuoteSalesValuesJson { get; set; } = "[]";
     public string TicketsClosedLabelsJson { get; set; } = "[]";
     public string TicketsClosedValuesJson { get; set; } = "[]";
+    public record PayrollSummaryVm(string UserId, string Name, decimal SalaryBase, decimal VariablePct, decimal Deductions, decimal Bonuses, decimal NetEstimated);
+    public List<PayrollSummaryVm> PayrollRows { get; set; } = new();
+    public string PayrollPeriodLabel { get; set; } = "";
 
     public async Task OnGetAsync()
     {
@@ -106,6 +109,7 @@ public class DashboardModel : PageModel
             .SumAsync(q => q.EstimatedTotal ?? 0m);
 
         Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems, openTickets, ticketSlaBreached, quotesAcceptedMonth, quotesRevenueMonth);
+        await LoadPayrollSummaryAsync();
 
         // Top variable (última evaluación por empleado)
         var latest = await _db.PerformanceReviews
@@ -190,5 +194,106 @@ public class DashboardModel : PageModel
         var closedValues = days.Select(d => ticketsClosed.FirstOrDefault(x => x.Day == d)?.Cnt ?? 0).ToList();
         TicketsClosedLabelsJson = JsonSerializer.Serialize(labels);
         TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
+    }
+
+    private async Task LoadPayrollSummaryAsync()
+    {
+        var (periodStart, periodEnd) = ResolveCurrentPeriodUtc();
+        PayrollPeriodLabel = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+
+        var emps = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .OrderBy(e => e.FullName)
+            .ToListAsync();
+
+        var latest = await _db.PerformanceReviews
+            .AsNoTracking()
+            .GroupBy(r => r.UserId)
+            .Select(g => g.OrderByDescending(x => x.PeriodStart).ThenByDescending(x => x.UpdatedAt).First())
+            .ToListAsync();
+
+        var latestMap = latest.ToDictionary(x => x.UserId, x => x.VariablePercent);
+        var rows = new List<PayrollSummaryVm>();
+
+        foreach (var e in emps)
+        {
+            var vp = latestMap.TryGetValue(e.UserId, out var v) ? v : 0m;
+            if (vp < 0m) vp = 0m;
+            if (vp > 1m) vp = 1m;
+
+            var baseQ = e.SalaryBase / 2m;
+            var total = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * vp), 2);
+            var (deductions, bonuses) = await CalcPayrollAdjustmentsAsync(e.UserId, baseQ, total, periodStart, periodEnd);
+            var net = Math.Max(0m, Math.Round(total - deductions + bonuses, 2));
+
+            rows.Add(new PayrollSummaryVm(e.UserId, e.FullName, e.SalaryBase, vp, deductions, bonuses, net));
+        }
+
+        PayrollRows = rows.OrderByDescending(x => x.NetEstimated).Take(40).ToList();
+    }
+
+    private static (DateTime start, DateTime end) ResolveCurrentPeriodUtc()
+    {
+        var now = DateTime.Now.Date;
+        if (now.Day <= 15)
+            return (new DateTime(now.Year, now.Month, 1),
+                    new DateTime(now.Year, now.Month, 15));
+
+        return (new DateTime(now.Year, now.Month, 16),
+                new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month)));
+    }
+
+    private async Task<(decimal deductions, decimal bonuses)> CalcPayrollAdjustmentsAsync(
+        string userId,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        try
+        {
+            var periodDate = periodEnd.Date;
+            var currentHalf = periodDate.Day <= 15
+                ? EmployeeDeductionApplyOnHalf.First
+                : EmployeeDeductionApplyOnHalf.Second;
+
+            var active = await _db.EmployeeDeductions
+                .AsNoTracking()
+                .Where(d => d.UserId == userId && d.IsActive)
+                .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
+                .Where(d => d.Frequency == EmployeeDeductionFrequency.Biweekly
+                            || (d.Frequency == EmployeeDeductionFrequency.Monthly
+                                && (d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf)))
+                .ToListAsync();
+
+            decimal deductions = 0m;
+            decimal bonuses = 0m;
+            foreach (var d in active)
+            {
+                var amount = d.Mode switch
+                {
+                    EmployeeDeductionMode.FixedAmount => d.Amount,
+                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
+                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
+                    _ => d.Amount
+                };
+                amount = Math.Round(Math.Max(0m, amount), 2);
+
+                if (d.RemainingAmount.HasValue)
+                {
+                    if (d.RemainingAmount.Value <= 0m) continue;
+                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
+                }
+
+                if (d.Direction == EmployeeDeductionDirection.Bonus) bonuses += amount;
+                else deductions += amount;
+            }
+
+            return (Math.Round(deductions, 2), Math.Round(bonuses, 2));
+        }
+        catch
+        {
+            return (0m, 0m);
+        }
     }
 }

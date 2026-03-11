@@ -48,7 +48,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Esa categorÃ­a ya existe.";
+            Error = "Esa categoría ya existe.";
             return RedirectToPage();
         }
 
@@ -61,7 +61,7 @@ public class IndexModel : PageModel
         });
 
         await _db.SaveChangesAsync();
-        Info = "CategorÃ­a agregada.";
+        Info = "Categoría agregada.";
         return RedirectToPage();
     }
 
@@ -74,7 +74,7 @@ public class IndexModel : PageModel
         c.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
-        Info = c.IsActive ? "CategorÃ­a activada." : "CategorÃ­a desactivada.";
+        Info = c.IsActive ? "Categoría activada." : "Categoría desactivada.";
         return RedirectToPage();
     }
 
@@ -86,7 +86,7 @@ public class IndexModel : PageModel
         var newName = (name ?? "").Trim();
         if (string.IsNullOrWhiteSpace(newName))
         {
-            Error = "El nombre no puede ir vacÃ­o.";
+            Error = "El nombre no puede ir vacío.";
             return RedirectToPage();
         }
 
@@ -96,7 +96,7 @@ public class IndexModel : PageModel
 
         if (exists)
         {
-            Error = "Ya existe otra categorÃ­a con ese nombre.";
+            Error = "Ya existe otra categoría con ese nombre.";
             return RedirectToPage();
         }
 
@@ -104,8 +104,9 @@ public class IndexModel : PageModel
         c.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Info = "CategorÃ­a actualizada.";
+        Info = "Categoría actualizada.";
         return RedirectToPage();
     }
 }
+
 
