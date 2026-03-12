@@ -25,6 +25,9 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        [MaxLength(40)]
+        public string? ModelCode { get; set; }
+
         [MaxLength(60)]
         public string? Sku { get; set; }  // opcional
 
@@ -73,6 +76,7 @@ public class CreateModel : PageModel
 
         // Normaliza strings
         Input.Name = (Input.Name ?? "").Trim();
+        Input.ModelCode = string.IsNullOrWhiteSpace(Input.ModelCode) ? null : Input.ModelCode.Trim().ToUpperInvariant();
         Input.Sku = string.IsNullOrWhiteSpace(Input.Sku) ? null : Input.Sku.Trim();
         Input.Category = (Input.Category ?? "").Trim();
         Input.Model = string.IsNullOrWhiteSpace(Input.Model) ? null : Input.Model.Trim();
@@ -84,6 +88,24 @@ public class CreateModel : PageModel
         {
             Error = "Revisa los campos marcados.";
             return Page();
+        }
+
+        if (!string.IsNullOrWhiteSpace(Input.ModelCode))
+        {
+            var modelCodeKey = Input.ModelCode.ToLowerInvariant();
+            var existsModelCode = await _db.InventoryItems
+                .AsNoTracking()
+                .AnyAsync(x => x.ModelCode != null && x.ModelCode.ToLower() == modelCodeKey);
+
+            if (existsModelCode)
+            {
+                Error = "Ya existe un item con ese ID de modelo.";
+                return Page();
+            }
+        }
+        else
+        {
+            Input.ModelCode = await NextModelCodeAsync();
         }
 
         // (Opcional) Si SKU viene, evita duplicados por SKU
@@ -105,6 +127,7 @@ public class CreateModel : PageModel
         {
             Id = Guid.NewGuid(),
             Name = Input.Name,
+            ModelCode = Input.ModelCode,
             Sku = Input.Sku,
 
             Category = Input.Category,     // texto elegido desde catálogo
@@ -128,6 +151,25 @@ public class CreateModel : PageModel
         await _db.SaveChangesAsync();
 
         return RedirectToPage("./Index");
+    }
+
+    private async Task<string> NextModelCodeAsync()
+    {
+        var max = await _db.InventoryItems.AsNoTracking()
+            .Where(x => x.ModelCode != null && x.ModelCode.StartsWith("MDL-"))
+            .Select(x => x.ModelCode!)
+            .ToListAsync();
+
+        var current = 0;
+        foreach (var code in max)
+        {
+            if (code.Length >= 8 && int.TryParse(code.AsSpan(4), out var n) && n > current)
+            {
+                current = n;
+            }
+        }
+
+        return $"MDL-{(current + 1):D6}";
     }
 
     private async Task LoadCatalogsAsync()

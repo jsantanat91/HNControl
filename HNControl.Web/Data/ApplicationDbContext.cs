@@ -434,6 +434,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
 
             e.Property(x => x.Sku).HasMaxLength(60);
+            e.Property(x => x.ModelCode).HasMaxLength(40);
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.Category).HasMaxLength(100);
 
@@ -447,6 +448,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.ReorderLevel).HasColumnType("numeric(18,3)");
 
             e.HasIndex(x => x.Sku).IsUnique(false);
+            e.HasIndex(x => x.ModelCode).IsUnique(true);
             e.HasIndex(x => x.BrandId);
 
             e.HasOne(x => x.Brand)

@@ -46,6 +46,61 @@
 
             <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" FontSize="18" Text="KPI y retro del admin" />
+                    <Label x:Name="KpiRetroMetaLabel" FontSize="12" Opacity="0.7" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label x:Name="KpiRetroTitleLabel" FontAttributes="Bold" />
+                        <Label x:Name="KpiRetroScoreLabel" Grid.Column="1" FontAttributes="Bold" TextColor="#175CD3" />
+                    </Grid>
+                    <CollectionView x:Name="KpiMetricsCollection" SelectionMode="None" ItemsLayout="VerticalList">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.7" Text="Sin rubros evaluados en este periodo." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                                    <Label Text="{Binding Name}" />
+                                    <Label Grid.Column="1" FontAttributes="Bold" Text="{Binding ScoreText}" TextColor="#344054" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                    <Border Background="#F8FAFC" Padding="10" StrokeShape="RoundRectangle 10">
+                        <Label x:Name="KpiRetroNotesLabel" LineBreakMode="WordWrap" />
+                    </Border>
+                    <Button x:Name="RhCommentsButton" Text="Comentarios de RH" Clicked="OnRhCommentsClicked" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="8">
+                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluacion 360" />
+                    <Label x:Name="Eval360MetaLabel" FontSize="12" Opacity="0.7" />
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Label x:Name="Eval360TitleLabel" FontAttributes="Bold" />
+                        <Label x:Name="Eval360AutoScoreLabel" Grid.Column="1" HorizontalTextAlignment="End" TextColor="#175CD3" />
+                        <Label x:Name="Eval360OthersScoreLabel" Grid.Column="2" HorizontalTextAlignment="End" TextColor="#067647" Margin="10,0,0,0" />
+                    </Grid>
+                    <CollectionView x:Name="Eval360CommentsCollection" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Opacity="0.7" Text="Sin comentarios de retroalimentacion por ahora." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,8" Padding="10" StrokeShape="RoundRectangle 12">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label FontAttributes="Bold" Text="{Binding Competency}" />
+                                        <Label Text="{Binding Comment}" LineBreakMode="WordWrap" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+                <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Tickets atendidos" />
                     <Label FontSize="12" Opacity="0.7" Text="Ultimos 6 meses" />
                     <CollectionView x:Name="TicketHistoryCollection" SelectionMode="None">

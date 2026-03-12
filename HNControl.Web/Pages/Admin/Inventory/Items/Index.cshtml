@@ -138,6 +138,7 @@
                     <tr>
                         <th>Categoría</th>
                         <th>Item</th>
+                        <th>ID modelo</th>
                         <th>SKU</th>
                         <th>Marca</th>
                         <th>Modelo</th>
@@ -157,6 +158,7 @@
                         <tr>
                             <td><span class="hn-badge @badge">@catLabel</span></td>
                             <td class="fw-semibold">@i.Name</td>
+                            <td><span class="hn-badge hn-badge-cyan">@(string.IsNullOrWhiteSpace(i.ModelCode) ? "—" : i.ModelCode)</span></td>
                             <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "—" : i.Sku)</td>
                             <td>@(i.Brand?.Name ?? "—")</td>
                             <td>@(string.IsNullOrWhiteSpace(i.Model) ? "—" : i.Model)</td>

@@ -8,6 +8,7 @@ public partial class EmployeeDashboardPage : ContentPage
     private readonly EmployeeService _employeeService;
     private readonly AuthService _auth;
     private bool _isBusy;
+    private string _rhFullNotes = "";
 
     public EmployeeDashboardPage(EmployeeService employeeService, AuthService auth)
     {
@@ -62,6 +63,72 @@ public partial class EmployeeDashboardPage : ContentPage
         DeductionsTotalLabel.Text = "-" + data.Payroll.DeductionsQuincenal.ToString("C2");
         BonusesTotalLabel.Text = "+" + data.Payroll.BonusesQuincenal.ToString("C2");
 
+        if (data.KpiFeedback is not null)
+        {
+            KpiRetroMetaLabel.Text = $"Periodo: {data.KpiFeedback.Period} | Calificado por: {data.KpiFeedback.RatedBy}";
+            KpiRetroTitleLabel.Text = "Retro KPI vigente";
+            KpiRetroScoreLabel.Text = $"{data.KpiFeedback.VariablePercent:0.##}%";
+            _rhFullNotes = string.IsNullOrWhiteSpace(data.KpiFeedback.Notes) ? "" : data.KpiFeedback.Notes;
+            KpiRetroNotesLabel.Text = string.IsNullOrWhiteSpace(_rhFullNotes)
+                ? "Sin retroalimentacion escrita por RH."
+                : CompactPreview(_rhFullNotes, 130);
+
+            KpiMetricsCollection.ItemsSource = data.KpiFeedback.Metrics.Select(x => new KpiMetricVm
+            {
+                Name = x.Name,
+                ScoreText = $"{x.Score:0.0}/5"
+            }).ToList();
+            RhCommentsButton.IsVisible = !string.IsNullOrWhiteSpace(_rhFullNotes);
+        }
+        else
+        {
+            KpiRetroMetaLabel.Text = "Sin evaluacion KPI registrada.";
+            KpiRetroTitleLabel.Text = "KPI";
+            KpiRetroScoreLabel.Text = "0%";
+            KpiRetroNotesLabel.Text = "Aun no hay retroalimentacion de RH.";
+            KpiMetricsCollection.ItemsSource = new List<KpiMetricVm>();
+            RhCommentsButton.IsVisible = false;
+            _rhFullNotes = "";
+        }
+
+        if (data.Eval360Feedback is not null)
+        {
+            Eval360TitleLabel.Text = data.Eval360Feedback.CampaignTitle;
+            Eval360MetaLabel.Text = $"Periodo: {data.Eval360Feedback.Period}";
+
+            if (!data.Eval360Feedback.VisibleToEmployee)
+            {
+                Eval360AutoScoreLabel.Text = "";
+                Eval360OthersScoreLabel.Text = "";
+                Eval360CommentsCollection.ItemsSource = new List<EvalCommentVm>
+                {
+                    new()
+                    {
+                        Competency = "Resultados no publicados",
+                        Comment = "Tu administrador aun no habilita visibilidad de resultados para esta campana."
+                    }
+                };
+            }
+            else
+            {
+                Eval360AutoScoreLabel.Text = $"Auto: {data.Eval360Feedback.AutoPercent:0}%";
+                Eval360OthersScoreLabel.Text = $"Equipo: {data.Eval360Feedback.OthersPercent:0}%";
+                Eval360CommentsCollection.ItemsSource = data.Eval360Feedback.Comments.Select(x => new EvalCommentVm
+                {
+                    Competency = x.Competency,
+                    Comment = x.Comment
+                }).ToList();
+            }
+        }
+        else
+        {
+            Eval360TitleLabel.Text = "Sin campana cerrada";
+            Eval360MetaLabel.Text = "Aun no hay resultados de evaluacion 360 para mostrar.";
+            Eval360AutoScoreLabel.Text = "";
+            Eval360OthersScoreLabel.Text = "";
+            Eval360CommentsCollection.ItemsSource = new List<EvalCommentVm>();
+        }
+
         VacationSummaryLabel.Text =
             $"{data.Vacations.Year}\nDisponibles: {data.Vacations.RemainingDays} / {data.Vacations.AllowanceDays}\nPendientes: {data.Vacations.PendingRequests}";
 
@@ -107,6 +174,21 @@ public partial class EmployeeDashboardPage : ContentPage
         }).ToList();
     }
 
+    private async void OnRhCommentsClicked(object? sender, EventArgs e)
+    {
+        var text = string.IsNullOrWhiteSpace(_rhFullNotes)
+            ? "Aun no hay comentarios de RH."
+            : _rhFullNotes;
+        await DisplayAlertAsync("Comentarios de RH", text, "OK");
+    }
+
+    private static string CompactPreview(string text, int max)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return "";
+        var trimmed = text.Trim();
+        return trimmed.Length <= max ? trimmed : trimmed[..max] + "...";
+    }
+
     private sealed class HistoryVm
     {
         public string Label { get; set; } = "";
@@ -130,6 +212,18 @@ public partial class EmployeeDashboardPage : ContentPage
         public string Label { get; set; } = "";
         public double Ratio { get; set; }
         public string ValueText { get; set; } = "";
+    }
+
+    private sealed class EvalCommentVm
+    {
+        public string Competency { get; set; } = "";
+        public string Comment { get; set; } = "";
+    }
+
+    private sealed class KpiMetricVm
+    {
+        public string Name { get; set; } = "";
+        public string ScoreText { get; set; } = "";
     }
 
     private sealed class InventoryVm

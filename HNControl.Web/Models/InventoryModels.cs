@@ -47,6 +47,9 @@ public class InventoryItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    [MaxLength(40)]
+    public string? ModelCode { get; set; }
+
     // SKU es opcional (puede venir null)
     [MaxLength(60)]
     public string? Sku { get; set; }

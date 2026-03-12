@@ -18,13 +18,20 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public string? Status { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string? Type { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public Guid? ItemId { get; set; }
+    [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
 
     public List<SelectListItem> ItemOptions { get; set; } = new();
     public List<InventoryMovement> Rows { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
+    public int From { get; set; }
+    public int To { get; set; }
 
     public async Task OnGetAsync()
     {
         await LoadItemOptionsAsync();
+        if (Page < 1) Page = 1;
+        const int pageSize = 20;
 
         var qry = _db.InventoryMovements
             .AsNoTracking()
@@ -69,10 +76,26 @@ public class IndexModel : PageModel
                 EF.Functions.ILike(m.Notes ?? "", pat));
         }
 
+        TotalCount = await qry.CountAsync();
+        TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)pageSize));
+        if (Page > TotalPages) Page = TotalPages;
+
         Rows = await qry
             .OrderByDescending(m => m.RequestedAt)
-            .Take(1000)
+            .Skip((Page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+
+        if (TotalCount == 0)
+        {
+            From = 0;
+            To = 0;
+        }
+        else
+        {
+            From = ((Page - 1) * pageSize) + 1;
+            To = Math.Min(Page * pageSize, TotalCount);
+        }
     }
 
     private async Task LoadItemOptionsAsync()

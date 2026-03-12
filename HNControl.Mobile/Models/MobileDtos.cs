@@ -165,11 +165,46 @@ public sealed class EmployeeDashboardDto
     public PayrollDto Payroll { get; set; } = new();
     public List<PayrollHistoryPointDto> PayrollHistory { get; set; } = new();
     public List<TicketHistoryPointDto> TicketHistory { get; set; } = new();
+    public KpiFeedbackDto? KpiFeedback { get; set; }
+    public Eval360FeedbackDto? Eval360Feedback { get; set; }
     public List<DeductionDto> Deductions { get; set; } = new();
     public VacationsDto Vacations { get; set; } = new();
     public ExamsDto Exams { get; set; } = new();
     public ViaticWeekDto? CurrentViaticWeek { get; set; }
     public List<InventoryOrderDto> InventoryOrders { get; set; } = new();
+}
+
+public sealed class KpiFeedbackDto
+{
+    public string Period { get; set; } = "";
+    public decimal VariablePercent { get; set; }
+    public string Notes { get; set; } = "";
+    public string RatedBy { get; set; } = "";
+    public DateTime? RatedAt { get; set; }
+    public List<KpiMetricDto> Metrics { get; set; } = new();
+}
+
+public sealed class KpiMetricDto
+{
+    public string Name { get; set; } = "";
+    public decimal Score { get; set; }
+}
+
+public sealed class Eval360FeedbackDto
+{
+    public string CampaignTitle { get; set; } = "";
+    public string Period { get; set; } = "";
+    public decimal AutoPercent { get; set; }
+    public decimal OthersPercent { get; set; }
+    public int OthersCount { get; set; }
+    public bool VisibleToEmployee { get; set; }
+    public List<Eval360CommentDto> Comments { get; set; } = new();
+}
+
+public sealed class Eval360CommentDto
+{
+    public string Competency { get; set; } = "";
+    public string Comment { get; set; } = "";
 }
 
 public sealed class TicketHistoryPointDto

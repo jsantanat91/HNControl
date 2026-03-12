@@ -42,6 +42,9 @@ public class EditModel : PageModel
     {
         public Guid Id { get; set; }
 
+        [MaxLength(40)]
+        public string? ModelCode { get; set; }
+
         [MaxLength(60)]
         public string? Sku { get; set; }
 
@@ -81,6 +84,7 @@ public class EditModel : PageModel
         {
             Id = item.Id,
             Name = item.Name,
+            ModelCode = item.ModelCode,
             Sku = item.Sku,
             Category = item.Category ?? "",
             BrandId = item.BrandId,
@@ -104,6 +108,7 @@ public class EditModel : PageModel
         await LoadCatalogsAsync();
 
         Input.Name = (Input.Name ?? "").Trim();
+        Input.ModelCode = string.IsNullOrWhiteSpace(Input.ModelCode) ? null : Input.ModelCode.Trim().ToUpperInvariant();
         Input.Sku = string.IsNullOrWhiteSpace(Input.Sku) ? null : Input.Sku.Trim();
         Input.Category = (Input.Category ?? "").Trim();
         Input.Model = string.IsNullOrWhiteSpace(Input.Model) ? null : Input.Model.Trim();
@@ -121,7 +126,26 @@ public class EditModel : PageModel
         var item = await _db.InventoryItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (item == null) return NotFound();
 
+        if (!string.IsNullOrWhiteSpace(Input.ModelCode))
+        {
+            var key = Input.ModelCode.ToLowerInvariant();
+            var existsModelCode = await _db.InventoryItems
+                .AsNoTracking()
+                .AnyAsync(x => x.Id != Input.Id && x.ModelCode != null && x.ModelCode.ToLower() == key);
+            if (existsModelCode)
+            {
+                Error = "Ya existe otro item con ese ID de modelo.";
+                await LoadRecentMovementsAsync(Input.Id, Input.Unit);
+                return Page();
+            }
+        }
+        else
+        {
+            Input.ModelCode = await NextModelCodeAsync(Input.Id);
+        }
+
         item.Name = Input.Name;
+        item.ModelCode = Input.ModelCode;
         item.Sku = Input.Sku;
         item.Category = Input.Category;
         item.BrandId = Input.BrandId;
@@ -140,6 +164,25 @@ public class EditModel : PageModel
 
         await _db.SaveChangesAsync();
         return RedirectToPage("./Index");
+    }
+
+    private async Task<string> NextModelCodeAsync(Guid currentId)
+    {
+        var all = await _db.InventoryItems.AsNoTracking()
+            .Where(x => x.Id != currentId && x.ModelCode != null && x.ModelCode.StartsWith("MDL-"))
+            .Select(x => x.ModelCode!)
+            .ToListAsync();
+
+        var current = 0;
+        foreach (var code in all)
+        {
+            if (code.Length >= 8 && int.TryParse(code.AsSpan(4), out var n) && n > current)
+            {
+                current = n;
+            }
+        }
+
+        return $"MDL-{(current + 1):D6}";
     }
 
     private async Task LoadCatalogsAsync()

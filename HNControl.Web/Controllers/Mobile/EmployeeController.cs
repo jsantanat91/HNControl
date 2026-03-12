@@ -64,6 +64,17 @@ public class EmployeeController : ControllerBase
         DateTime? NextEnd);
 
     public record ExamsDto(int Assigned, int InProgress, int Submitted, int Graded);
+    public record KpiMetricDto(string Name, decimal Score);
+    public record KpiFeedbackDto(string Period, decimal VariablePercent, string Notes, string RatedBy, DateTime? RatedAt, List<KpiMetricDto> Metrics);
+    public record Eval360CommentDto(string Competency, string Comment);
+    public record Eval360FeedbackDto(
+        string CampaignTitle,
+        string Period,
+        decimal AutoPercent,
+        decimal OthersPercent,
+        int OthersCount,
+        bool VisibleToEmployee,
+        List<Eval360CommentDto> Comments);
 
     public record ViaticWeekDto(Guid Id, DateTime WeekStart, string Status, decimal Total, decimal Billable);
     public record TicketHistoryPointDto(string Label, int Resolved);
@@ -83,6 +94,8 @@ public class EmployeeController : ControllerBase
         PayrollDto Payroll,
         List<PayrollHistoryPointDto> PayrollHistory,
         List<TicketHistoryPointDto> TicketHistory,
+        KpiFeedbackDto? KpiFeedback,
+        Eval360FeedbackDto? Eval360Feedback,
         List<DeductionDto> Deductions,
         VacationsDto Vacations,
         ExamsDto Exams,
@@ -142,6 +155,26 @@ public class EmployeeController : ControllerBase
         var variablePercent = latestReview?.VariablePercent ?? 0m;
         if (variablePercent < 0m) variablePercent = 0m;
         if (variablePercent > 1m) variablePercent = 1m;
+        var isAdmin = User.IsInRole(AppRoles.Admin);
+
+        string ratedBy = "-";
+        if (!string.IsNullOrWhiteSpace(latestReview?.RatedByUserId))
+        {
+            ratedBy = await _db.EmployeeProfiles
+                .AsNoTracking()
+                .Where(x => x.UserId == latestReview.RatedByUserId)
+                .Select(x => x.FullName)
+                .FirstOrDefaultAsync() ?? "-";
+
+            if (ratedBy == "-")
+            {
+                ratedBy = await _db.Users
+                    .AsNoTracking()
+                    .Where(x => x.Id == latestReview.RatedByUserId)
+                    .Select(x => x.Email ?? x.UserName ?? "-")
+                    .FirstOrDefaultAsync() ?? "-";
+            }
+        }
 
         var baseQuincenal = profile.SalaryBase / 2m;
         var fixed80 = baseQuincenal * 0.80m;
@@ -340,6 +373,104 @@ public class EmployeeController : ControllerBase
             ticketHistory.Add(new TicketHistoryPointDto(month.ToString("MM/yy"), count));
         }
 
+        KpiFeedbackDto? kpiFeedback = null;
+        if (latestReview != null)
+        {
+            var periodText = $"{latestReview.PeriodStart:yyyy-MM-dd} a {latestReview.PeriodEnd:yyyy-MM-dd}";
+            var metrics = new List<KpiMetricDto>
+            {
+                new("Actitud", latestReview.PersonalPerformance),
+                new("Puntualidad", latestReview.PunctualityAttendance),
+                new("Trabajo en equipo", latestReview.Teamwork),
+                new("Ejecucion", latestReview.ProjectExecution),
+                new("Orden y limpieza", latestReview.OrderCleanliness),
+                new("Habilidad tecnica", latestReview.TechnicalSkills),
+            };
+            kpiFeedback = new KpiFeedbackDto(
+                periodText,
+                Math.Round(variablePercent * 100m, 2),
+                string.IsNullOrWhiteSpace(latestReview.Notes) ? "-" : latestReview.Notes.Trim(),
+                ratedBy,
+                latestReview.RatedAt,
+                metrics);
+        }
+
+        Eval360FeedbackDto? eval360Feedback = null;
+        var evalCampaign = await _db.Eval360Campaigns
+            .AsNoTracking()
+            .Where(c => c.Status == Eval360CampaignStatus.Closed)
+            .Where(c => _db.Eval360Assignments.Any(a => a.CampaignId == c.Id
+                                                       && a.SubjectUserId == userId
+                                                       && a.Status == Eval360AssignmentStatus.Submitted))
+            .OrderByDescending(c => c.PeriodEnd ?? c.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (evalCampaign != null)
+        {
+            var visibleToEmployee = isAdmin || evalCampaign.ResultsVisibleToEmployee;
+            var evalPeriod = $"{(evalCampaign.PeriodStart ?? evalCampaign.CreatedAt):yyyy-MM-dd} a {(evalCampaign.PeriodEnd ?? evalCampaign.CreatedAt):yyyy-MM-dd}";
+
+            decimal autoPct = 0m;
+            decimal othersPct = 0m;
+            int othersCount = 0;
+            var evalComments = new List<Eval360CommentDto>();
+
+            if (visibleToEmployee)
+            {
+                var answers = await _db.Eval360Answers
+                    .AsNoTracking()
+                    .Where(a => a.Assignment!.CampaignId == evalCampaign.Id
+                                && a.Assignment.SubjectUserId == userId
+                                && a.Assignment.Status == Eval360AssignmentStatus.Submitted)
+                    .Select(a => new
+                    {
+                        a.Assignment!.IsSelf,
+                        a.Assignment.EvaluatorUserId,
+                        a.Score
+                    })
+                    .ToListAsync();
+
+                if (answers.Any())
+                {
+                    var selfScores = answers.Where(x => x.IsSelf).Select(x => (decimal)x.Score).ToList();
+                    var othScores = answers.Where(x => !x.IsSelf).Select(x => (decimal)x.Score).ToList();
+                    var autoAvg = selfScores.Any() ? selfScores.Average() : 0m;
+                    var othAvg = othScores.Any() ? othScores.Average() : 0m;
+
+                    autoPct = Math.Round((autoAvg / 5m) * 100m, 0);
+                    othersPct = Math.Round((othAvg / 5m) * 100m, 0);
+                    othersCount = answers.Where(x => !x.IsSelf)
+                        .Select(x => x.EvaluatorUserId)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Distinct()
+                        .Count();
+                }
+
+                evalComments = await _db.Eval360Comments
+                    .AsNoTracking()
+                    .Where(c => c.Assignment!.CampaignId == evalCampaign.Id
+                                && c.Assignment.SubjectUserId == userId
+                                && !c.Assignment.IsSelf
+                                && c.Assignment.Status == Eval360AssignmentStatus.Submitted
+                                && !string.IsNullOrWhiteSpace(c.CommentText))
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new Eval360CommentDto(
+                        c.Competency != null ? c.Competency.Name : "Competencia",
+                        c.CommentText.Trim()))
+                    .Take(8)
+                    .ToListAsync();
+            }
+
+            eval360Feedback = new Eval360FeedbackDto(
+                evalCampaign.Title,
+                evalPeriod,
+                autoPct,
+                othersPct,
+                othersCount,
+                visibleToEmployee,
+                evalComments);
+        }
+
         var dto = new EmployeeDashboardDto(
             new EmployeeProfileDto(
                 profile.FullName,
@@ -362,6 +493,8 @@ public class EmployeeController : ControllerBase
                 netQuincenal),
             history,
             ticketHistory,
+            kpiFeedback,
+            eval360Feedback,
             deductions,
             new VacationsDto(
                 year,

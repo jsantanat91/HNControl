@@ -147,6 +147,7 @@ public class IndexModel : PageModel
             var l = q.ToLowerInvariant();
             query = query.Where(i =>
                 (i.Name ?? "").ToLower().Contains(l) ||
+                (i.ModelCode ?? "").ToLower().Contains(l) ||
                 (i.Sku ?? "").ToLower().Contains(l) ||
                 (i.Category ?? "").ToLower().Contains(l) ||
                 (i.Location ?? "").ToLower().Contains(l) ||
@@ -211,6 +212,7 @@ public class IndexModel : PageModel
         var headers = new[]
         {
             "Nombre",
+            "ID modelo único (opcional)",
             "SKU (opcional)",
             "Categoría",
             "Marca",
@@ -231,16 +233,17 @@ public class IndexModel : PageModel
 
         // Example row
         ws.Cell(2, 1).Value = "Router AC";
-        ws.Cell(2, 2).Value = ""; // SKU opcional
-        ws.Cell(2, 3).Value = "Routers";
-        ws.Cell(2, 4).Value = "Ubiquiti";
-        ws.Cell(2, 5).Value = "ER-X";
-        ws.Cell(2, 6).Value = "Almacén Matamoros";
-        ws.Cell(2, 7).Value = "pza";
-        ws.Cell(2, 8).Value = 5;
-        ws.Cell(2, 9).Value = 2;
-        ws.Cell(2, 10).Value = "TRUE";
-        ws.Cell(2, 11).Value = "Equipo demo";
+        ws.Cell(2, 2).Value = "MDL-000001";
+        ws.Cell(2, 3).Value = ""; // SKU opcional
+        ws.Cell(2, 4).Value = "Routers";
+        ws.Cell(2, 5).Value = "Ubiquiti";
+        ws.Cell(2, 6).Value = "ER-X";
+        ws.Cell(2, 7).Value = "Almacén Matamoros";
+        ws.Cell(2, 8).Value = "pza";
+        ws.Cell(2, 9).Value = 5;
+        ws.Cell(2, 10).Value = 2;
+        ws.Cell(2, 11).Value = "TRUE";
+        ws.Cell(2, 12).Value = "Equipo demo";
 
         ws.Columns().AdjustToContents();
 
@@ -354,7 +357,10 @@ public class IndexModel : PageModel
             }
 
             var sku = GetString(row, headerMap, "sku")?.Trim();
+            var modelCode = GetString(row, headerMap, "modelcode")?.Trim();
             if (string.IsNullOrWhiteSpace(sku)) sku = null;
+            if (string.IsNullOrWhiteSpace(modelCode)) modelCode = null;
+            else modelCode = modelCode.ToUpperInvariant();
 
             var category = GetString(row, headerMap, "category")?.Trim() ?? "";
             var brandName = GetString(row, headerMap, "brand")?.Trim();
@@ -470,6 +476,7 @@ public class IndexModel : PageModel
 
             // Upsert fields
             item.Name = name;
+            item.ModelCode = modelCode;
             item.Sku = sku;
             item.Category = category;          // texto seleccionado desde catálogo
             item.BrandId = brandId;            // FK a catálogo de marcas
@@ -513,6 +520,7 @@ public class IndexModel : PageModel
 
             // Aliases
             if (k is "nombre" or "name") map["name"] = c;
+            else if (k is "idmodelo" or "id modelo" or "modeloid" or "modelcode" or "id modelo unico" or "id modelo único") map["modelcode"] = c;
             else if (k is "sku" or "codigo" or "código" or "clave") map["sku"] = c;
             else if (k is "categoria" or "categoría" or "category") map["category"] = c;
             else if (k is "marca" or "brand") map["brand"] = c;

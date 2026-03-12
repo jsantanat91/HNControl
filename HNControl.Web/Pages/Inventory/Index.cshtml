@@ -14,9 +14,9 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-primary" asp-page="./RequestIn">+ Solicitar entrada</a>
-        <a class="btn btn-outline-primary" asp-page="./RequestOut">- Solicitar salida</a>
-        <a class="btn btn-outline-secondary" asp-page="./MyRequests">Mis solicitudes</a>
+        <a class="btn btn-success" asp-page="./RequestIn">+ Solicitar entrada</a>
+        <a class="btn btn-warning" asp-page="./RequestOut">- Solicitar salida</a>
+        <a class="btn btn-outline-primary" asp-page="./MyRequests">Solicitudes</a>
         <a class="btn btn-outline-secondary" asp-page="./ExportItems">Exportar items (Excel)</a>
         @if (User.IsInRole(AppRoles.Admin))
         {

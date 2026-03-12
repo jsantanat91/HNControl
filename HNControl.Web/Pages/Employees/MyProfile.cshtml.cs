@@ -31,8 +31,12 @@ public class MyProfileModel : PageModel
     public record PerfMini(string Period, decimal VariablePercent, decimal TotalQuincenal, decimal DeductionsQuincenal, decimal BonusesQuincenal, decimal NetQuincenal);
     public PerfMini? CurrentPay { get; set; }
     public string LatestAdminNotes { get; set; } = "";
+    public string LatestAdminNotesPreview { get; set; } = "";
     public bool HasCurrentMonthReview { get; set; }
     public string CurrentReviewPeriodText { get; set; } = "";
+    public decimal CurrentKpiAverageScore { get; set; } = 0m;
+    public record KpiMetricMini(string Name, decimal Score);
+    public List<KpiMetricMini> CurrentKpiMetrics { get; set; } = new();
     public string KpiHistoryLabelsJson { get; set; } = "[]";
     public string KpiHistoryValuesJson { get; set; } = "[]";
 
@@ -185,6 +189,26 @@ public class MyProfileModel : PageModel
 
         CurrentPay = new PerfMini(period, vp, total, DeductionsTotal, BonusesTotal, net);
         LatestAdminNotes = (review?.Notes ?? "").Trim();
+        LatestAdminNotesPreview = string.IsNullOrWhiteSpace(LatestAdminNotes)
+            ? ""
+            : (LatestAdminNotes.Length <= 180 ? LatestAdminNotes : LatestAdminNotes[..180] + "...");
+
+        CurrentKpiMetrics = new();
+        CurrentKpiAverageScore = 0m;
+        if (review != null)
+        {
+            CurrentKpiMetrics = new()
+            {
+                new("Actitud", review.PersonalPerformance),
+                new("Puntualidad", review.PunctualityAttendance),
+                new("Trabajo en equipo", review.Teamwork),
+                new("Ejecucion", review.ProjectExecution),
+                new("Orden y limpieza", review.OrderCleanliness),
+                new("Habilidad tecnica", review.TechnicalSkills),
+            };
+
+            CurrentKpiAverageScore = Math.Round(CurrentKpiMetrics.Average(x => x.Score), 1);
+        }
 
         var payLabels = new[] { "Neto", "Deducciones", "Bonos" };
         var payValues = new[] { net, DeductionsTotal, BonusesTotal };
