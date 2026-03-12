@@ -27,12 +27,14 @@ public class PayrollReceiptService : IPayrollReceiptService
         var pStart = periodStart.Date;
         var pEnd = periodEnd.Date;
         var pDate = payrollDate.Date;
+        var pStartUtc = TimeUtil.UtcDate(pStart);
+        var pEndUtc = TimeUtil.UtcDate(pEnd);
 
         var review = await _db.PerformanceReviews
             .AsNoTracking()
             .Where(r => r.UserId == userId
-                        && r.PeriodStart >= pStart && r.PeriodStart < pStart.AddDays(1)
-                        && r.PeriodEnd >= pEnd && r.PeriodEnd < pEnd.AddDays(1))
+                        && r.PeriodStart >= pStartUtc && r.PeriodStart < pStartUtc.AddDays(1)
+                        && r.PeriodEnd >= pEndUtc && r.PeriodEnd < pEndUtc.AddDays(1))
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
