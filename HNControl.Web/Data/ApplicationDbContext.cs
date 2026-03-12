@@ -56,6 +56,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     // Nómina (Deducciones)
     // --------------------
     public DbSet<EmployeeDeduction> EmployeeDeductions => Set<EmployeeDeduction>();
+    public DbSet<PayrollReceiptDispatch> PayrollReceiptDispatches => Set<PayrollReceiptDispatch>();
 
     // --------------------
     // Monitoreo
@@ -144,6 +145,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .HasForeignKey(x => x.UserId)
                 .HasPrincipalKey(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PayrollReceiptDispatch>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.RecipientEmail).HasMaxLength(256);
+            e.Property(x => x.PeriodStart).HasColumnType("date");
+            e.Property(x => x.PeriodEnd).HasColumnType("date");
+            e.Property(x => x.PayrollDate).HasColumnType("date");
+            e.Property(x => x.LastError).HasMaxLength(1200);
+
+            e.HasIndex(x => new { x.UserId, x.PeriodStart, x.PeriodEnd }).IsUnique();
+            e.HasIndex(x => new { x.PayrollDate, x.IsSent });
         });
 
         b.Entity<ViaticWeek>(w =>
@@ -448,7 +463,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.ReorderLevel).HasColumnType("numeric(18,3)");
 
             e.HasIndex(x => x.Sku).IsUnique(false);
-            e.HasIndex(x => x.ModelCode).IsUnique(true);
+            e.HasIndex(x => x.ModelCode)
+                .IsUnique(true)
+                .HasFilter("\"ModelCode\" IS NOT NULL AND \"ModelCode\" <> ''");
             e.HasIndex(x => x.BrandId);
 
             e.HasOne(x => x.Brand)

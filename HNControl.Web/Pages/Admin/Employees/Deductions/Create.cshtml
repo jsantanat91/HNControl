@@ -31,11 +31,11 @@
                         <select class="form-select" asp-for="Input.Direction" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionDirection>()"></select>
                         <div class="form-text">Deducci&oacute;n resta. Bono suma.</div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4" id="wrapType">
                         <label class="form-label">Tipo</label>
                         <select class="form-select" asp-for="Input.Type" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionType>()"></select>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4" id="wrapMode">
                         <label class="form-label">C&aacute;lculo</label>
                         <select class="form-select" asp-for="Input.Mode" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionMode>()"></select>
                     </div>
@@ -54,7 +54,7 @@
 
                     <div class="col-12"><hr class="my-1" /></div>
 
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4" id="wrapFrequency">
                         <label class="form-label">Frecuencia</label>
                         <select class="form-select" asp-for="Input.Frequency" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.EmployeeDeductionFrequency>()"></select>
                         <div class="form-text">Quincenal: cada n&oacute;mina. Mensual: 1 vez al mes.</div>
@@ -67,7 +67,7 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4" id="wrapStartDate">
                         <label class="form-label">Inicio</label>
                         <input class="form-control" asp-for="Input.StartDate" type="date" />
                     </div>
@@ -137,17 +137,23 @@
         (function () {
             const modeEl = document.getElementById('Input_Mode');
             const typeEl = document.getElementById('Input_Type');
+            const directionEl = document.getElementById('Input_Direction');
             const freqEl = document.getElementById('Input_Frequency');
             const applyEl = document.getElementById('Input_ApplyOnHalf');
             const termEl = document.getElementById('Input_TermCount');
             const startEl = document.getElementById('Input_StartDate');
+            const endEl = document.getElementById('Input_EndDate');
 
             const wrapAmount = document.getElementById('wrapAmount');
             const wrapRate = document.getElementById('wrapRate');
+            const wrapMode = document.getElementById('wrapMode');
+            const wrapFrequency = document.getElementById('wrapFrequency');
             const wrapApplyOnHalf = document.getElementById('wrapApplyOnHalf');
+            const wrapType = document.getElementById('wrapType');
             const wrapLoan = document.getElementById('wrapLoan');
             const wrapTerm = document.getElementById('wrapTerm');
             const wrapEndDate = document.getElementById('wrapEndDate');
+            const wrapStartDate = document.getElementById('wrapStartDate');
             const endPreview = document.getElementById('endPreview');
 
             function setSection(el, show) {
@@ -214,24 +220,47 @@
                 const mode = modeEl ? parseInt(modeEl.value || '1', 10) : 1;
                 const freq = freqEl ? parseInt(freqEl.value || '1', 10) : 1;
                 const type = typeEl ? parseInt(typeEl.value || '99', 10) : 99;
+                const direction = directionEl ? parseInt(directionEl.value || '1', 10) : 1;
+                const isBonus = direction === 2;
+
+                if (isBonus) {
+                    if (modeEl) modeEl.value = '1';
+                    if (typeEl) typeEl.value = '99';
+                    if (freqEl) freqEl.value = '1';
+                    if (applyEl) applyEl.value = '';
+                    if (termEl) termEl.value = '';
+
+                    const now = new Date();
+                    const yyyy = now.getFullYear();
+                    const mm = String(now.getMonth() + 1).padStart(2, '0');
+                    const dd = now.getDate();
+                    const start = dd <= 15 ? `${yyyy}-${mm}-01` : `${yyyy}-${mm}-16`;
+                    const end = dd <= 15 ? `${yyyy}-${mm}-15` : `${yyyy}-${mm}-${String(new Date(yyyy, now.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+                    if (startEl) startEl.value = start;
+                    if (endEl) endEl.value = end;
+                }
 
                 const isPercent = mode !== 1;
                 setSection(wrapAmount, !isPercent);
                 setSection(wrapRate, isPercent);
 
-                const isMonthly = freq === 2;
+                const isMonthly = !isBonus && freq === 2;
                 setSection(wrapApplyOnHalf, isMonthly);
+                setSection(wrapFrequency, !isBonus);
+                setSection(wrapMode, !isBonus);
 
-                const isLoan = type === 2;
+                const isLoan = !isBonus && type === 2;
                 setSection(wrapLoan, isLoan);
                 setSection(wrapTerm, isLoan);
+                setSection(wrapType, !isBonus);
+                setSection(wrapStartDate, !isBonus);
 
                 const hasTerm = isLoan && termEl && termEl.value && parseInt(termEl.value || '0', 10) > 0;
-                setSection(wrapEndDate, !hasTerm);
+                setSection(wrapEndDate, !hasTerm && !isBonus);
                 calcEndPreview();
             }
 
-            [modeEl, typeEl, freqEl, applyEl, termEl, startEl].forEach(el => {
+            [modeEl, typeEl, directionEl, freqEl, applyEl, termEl, startEl].forEach(el => {
                 if (!el) return;
                 el.addEventListener('change', refresh);
                 el.addEventListener('input', refresh);

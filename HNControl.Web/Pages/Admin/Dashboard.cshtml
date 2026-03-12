@@ -161,6 +161,7 @@
                                     <td class="text-end fw-semibold">@r.NetEstimated.ToString("C")</td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
+                                        <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Employees/PayrollReceipt" asp-route-userId="@r.UserId">Recibo PDF</a>
                                     </td>
                                 </tr>
                             }

@@ -199,7 +199,9 @@ builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Se
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
 builder.Services.AddScoped<IQuoteRequestPdfRenderer, QuoteRequestPdfRenderer>();
+builder.Services.AddScoped<IPayrollReceiptService, PayrollReceiptService>();
 builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
+builder.Services.AddHostedService<PayrollReceiptDispatchWorker>();
 
 // QuestPDF licencia community
 QuestPDF.Settings.License = LicenseType.Community;

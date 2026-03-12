@@ -84,6 +84,20 @@ public class EditModel : PageModel
             ? (Input.ApplyOnHalf ?? EmployeeDeductionApplyOnHalf.First)
             : (EmployeeDeductionApplyOnHalf?)null;
 
+        // Bono: aplicacion unica en quincena actual.
+        if (Input.Direction == EmployeeDeductionDirection.Bonus)
+        {
+            var (bonusStart, bonusEnd) = ResolveCurrentPeriod(DateTime.Now.Date);
+            start = bonusStart;
+            Input.StartDate = bonusStart;
+            Input.EndDate = bonusEnd;
+            Input.Type = EmployeeDeductionType.Otro;
+            Input.Mode = EmployeeDeductionMode.FixedAmount;
+            freq = EmployeeDeductionFrequency.Biweekly;
+            applyHalf = null;
+            Input.TermCount = null;
+        }
+
         var isLoan = Input.Type == EmployeeDeductionType.Prestamo;
         var termCount = isLoan ? Input.TermCount : null;
 
@@ -213,5 +227,14 @@ public class EditModel : PageModel
 
             return end;
         }
+    }
+
+    private static (DateTime Start, DateTime End) ResolveCurrentPeriod(DateTime date)
+    {
+        if (date.Day <= 15)
+            return (new DateTime(date.Year, date.Month, 1), new DateTime(date.Year, date.Month, 15));
+
+        return (new DateTime(date.Year, date.Month, 16),
+            new DateTime(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month)));
     }
 }

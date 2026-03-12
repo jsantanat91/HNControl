@@ -3,6 +3,7 @@ using System;
 using HNControl.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HNControl.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312022925_AddInventoryModelCodeAndRestockFlow")]
+    partial class AddInventoryModelCodeAndRestockFlow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1140,8 +1143,7 @@ namespace HNControl.Web.Migrations
                     b.HasIndex("BrandId");
 
                     b.HasIndex("ModelCode")
-                        .IsUnique()
-                        .HasFilter("\"ModelCode\" IS NOT NULL AND \"ModelCode\" <> ''");
+                        .IsUnique();
 
                     b.HasIndex("Sku");
 
@@ -1625,57 +1627,6 @@ namespace HNControl.Web.Migrations
                     b.HasIndex("IsActive", "NextCheckAt");
 
                     b.ToTable("MonitorTargets");
-                });
-
-            modelBuilder.Entity("HNControl.Web.Models.PayrollReceiptDispatch", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsSent")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastAttemptAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(1200)
-                        .HasColumnType("character varying(1200)");
-
-                    b.Property<DateTime>("PayrollDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("PeriodEnd")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("PeriodStart")
-                        .HasColumnType("date");
-
-                    b.Property<string>("RecipientEmail")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTime?>("SentAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PayrollDate", "IsSent");
-
-                    b.HasIndex("UserId", "PeriodStart", "PeriodEnd")
-                        .IsUnique();
-
-                    b.ToTable("PayrollReceiptDispatches");
                 });
 
             modelBuilder.Entity("HNControl.Web.Models.PerformanceReview", b =>

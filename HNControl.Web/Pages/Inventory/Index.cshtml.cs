@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -38,6 +39,9 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string? Dir { get; set; } // asc|desc
 
+    [BindProperty(SupportsGet = true)]
+    public string? Stock { get; set; } // all|low|zero
+
     // Paging
     [BindProperty(SupportsGet = true)]
     public int Page { get; set; } = 1;
@@ -51,6 +55,21 @@ public class IndexModel : PageModel
 
     public int From => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
     public int To => Math.Min(Page * PageSize, TotalCount);
+
+    public record ZeroStockItemVm(Guid Id, string Name, string? Sku, string Unit);
+    public List<ZeroStockItemVm> ZeroStockItems { get; private set; } = new();
+
+    [BindProperty]
+    public Guid RestockItemId { get; set; }
+
+    [BindProperty]
+    public decimal RestockQty { get; set; } = 1m;
+
+    [BindProperty]
+    public string? RestockNotes { get; set; }
+
+    [TempData] public string? Info { get; set; }
+    [TempData] public string? Error { get; set; }
 
     // Data
     public List<InventoryItem> Items { get; set; } = new();
@@ -115,7 +134,7 @@ public class IndexModel : PageModel
             .ToListAsync();
 
         var q = (Q ?? "").Trim();
-        var query = _db.InventoryItems
+        var queryBase = _db.InventoryItems
             .AsNoTracking()
             .Include(i => i.Brand)
             .Where(i => i.IsActive)
@@ -125,31 +144,32 @@ public class IndexModel : PageModel
         if (!string.IsNullOrWhiteSpace(Cat))
         {
             if (Cat == "__none")
-                query = query.Where(i => (i.Category ?? "") == "");
+                queryBase = queryBase.Where(i => (i.Category ?? "") == "");
             else
-                query = query.Where(i => i.Category == Cat);
+                queryBase = queryBase.Where(i => i.Category == Cat);
         }
 
         if (!string.IsNullOrWhiteSpace(Loc))
         {
             if (Loc == "__none")
-                query = query.Where(i => i.Location == null || i.Location == "");
+                queryBase = queryBase.Where(i => i.Location == null || i.Location == "");
             else
-                query = query.Where(i => i.Location == Loc);
+                queryBase = queryBase.Where(i => i.Location == Loc);
         }
 
         if (BrandId.HasValue && BrandId.Value != Guid.Empty)
-            query = query.Where(i => i.BrandId == BrandId.Value);
+            queryBase = queryBase.Where(i => i.BrandId == BrandId.Value);
 
         if (BrandId.HasValue && BrandId.Value == Guid.Empty)
-            query = query.Where(i => i.BrandId == null);
+            queryBase = queryBase.Where(i => i.BrandId == null);
 
         // Search (any field)
         if (!string.IsNullOrWhiteSpace(q))
         {
             var l = q.ToLowerInvariant();
-            query = query.Where(i =>
+            queryBase = queryBase.Where(i =>
                 (i.Name ?? "").ToLower().Contains(l) ||
+                (i.ModelCode ?? "").ToLower().Contains(l) ||
                 (i.Sku ?? "").ToLower().Contains(l) ||
                 (i.Category ?? "").ToLower().Contains(l) ||
                 (i.Location ?? "").ToLower().Contains(l) ||
@@ -160,9 +180,18 @@ public class IndexModel : PageModel
             );
         }
 
+        LowStockCount = await queryBase.CountAsync(i => i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel);
+        ZeroStockCount = await queryBase.CountAsync(i => i.QuantityOnHand <= 0);
+
+        var stock = (Stock ?? "all").Trim().ToLowerInvariant();
+        var query = stock switch
+        {
+            "low" => queryBase.Where(i => i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel),
+            "zero" => queryBase.Where(i => i.QuantityOnHand <= 0),
+            _ => queryBase
+        };
+
         TotalCount = await query.CountAsync();
-        LowStockCount = await query.CountAsync(i => i.ReorderLevel > 0 && i.QuantityOnHand <= i.ReorderLevel);
-        ZeroStockCount = await query.CountAsync(i => i.QuantityOnHand <= 0);
 
         if (Page < 1) Page = 1;
         var totalPages = TotalPages;
@@ -199,5 +228,75 @@ public class IndexModel : PageModel
             .Skip((Page - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync();
+
+        ZeroStockItems = await queryBase
+            .Where(i => i.QuantityOnHand <= 0)
+            .OrderBy(i => i.Name)
+            .Select(i => new ZeroStockItemVm(i.Id, i.Name, i.Sku, i.Unit))
+            .Take(200)
+            .ToListAsync();
+    }
+
+    public async Task<IActionResult> OnPostRequestRestockAsync()
+    {
+        if (RestockItemId == Guid.Empty || RestockQty <= 0)
+        {
+            Error = "Selecciona item y cantidad válida.";
+            return RedirectToPage(new
+            {
+                q = Q,
+                cat = Cat,
+                loc = Loc,
+                brandId = BrandId,
+                sort = Sort,
+                dir = Dir,
+                stock = "zero",
+                page = 1
+            });
+        }
+
+        var item = await _db.InventoryItems
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == RestockItemId && i.IsActive);
+        if (item == null)
+        {
+            Error = "El item seleccionado no existe o está inactivo.";
+            return RedirectToPage();
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var prof = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId);
+        var now = DateTime.UtcNow;
+
+        var notes = $"Solicitud por sin stock.\n{(RestockNotes ?? "").Trim()}".Trim();
+
+        _db.InventoryMovements.Add(new InventoryMovement
+        {
+            ItemId = item.Id,
+            Type = InventoryMovementType.In,
+            Status = InventoryMovementStatus.Pending,
+            Quantity = RestockQty,
+            Notes = notes,
+            RequestedAt = now,
+            RequestedByUserId = userId,
+            RequestedByName = prof?.FullName ?? (User.Identity?.Name ?? ""),
+            ResponsibleUserId = userId,
+            ResponsibleName = prof?.FullName ?? (User.Identity?.Name ?? "")
+        });
+
+        await _db.SaveChangesAsync();
+        Info = $"Solicitud de reposición enviada: {item.Name} ({RestockQty} {item.Unit}).";
+
+        return RedirectToPage(new
+        {
+            q = Q,
+            cat = Cat,
+            loc = Loc,
+            brandId = BrandId,
+            sort = Sort,
+            dir = Dir,
+            stock = "zero",
+            page = 1
+        });
     }
 }
