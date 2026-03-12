@@ -103,7 +103,7 @@ public class EditModel : PageModel
         var variablePercent = Math.Round(sum / 35m, 4);
         variablePercent = Math.Clamp(variablePercent, 0m, 1m);
 
-        var adminId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? "";
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var now = DateTime.UtcNow;
 
         await _db.Database.ExecuteSqlInterpolatedAsync($@"

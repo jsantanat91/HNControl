@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace HNControl.Web.Services;
 
@@ -61,7 +64,7 @@ public class PayrollReceiptService : IPayrollReceiptService
         var (deductions, bonuses, lines) = await CalcPayrollAdjustmentsAsync(userId, baseQ, grossEstimated, pEnd);
         var net = Math.Max(0m, Math.Round(grossEstimated - deductions + bonuses, 2));
 
-        var imss = BuildImssLines();
+        var imss = BuildImssLines(baseQ);
 
         return new PayrollReceiptData
         {
@@ -91,6 +94,11 @@ public class PayrollReceiptService : IPayrollReceiptService
     public byte[] RenderPdf(PayrollReceiptData data)
     {
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var logoBytes = LoadLogoBytes();
+        var periodLabel = BuildPeriodLabel(data.PayrollDate);
+        var paidAmount = data.NetEstimated;
+        var grossWithImss = Math.Round(data.GrossEstimated + data.ImssPeriodTotal, 2);
+        var signatureHash = BuildReceiptHash(data, periodLabel);
 
         var doc = Document.Create(c =>
         {
@@ -100,12 +108,19 @@ public class PayrollReceiptService : IPayrollReceiptService
                 p.Margin(24);
                 p.DefaultTextStyle(x => x.FontSize(10));
 
-                p.Header().Column(col =>
+                p.Header().Row(r =>
                 {
-                    col.Item().Text(company).FontSize(15).SemiBold();
-                    col.Item().Text("Recibo de nomina quincenal").FontSize(12).FontColor(Colors.Grey.Darken2);
-                    col.Item().Text($"Periodo: {data.PeriodStart:yyyy-MM-dd} a {data.PeriodEnd:yyyy-MM-dd}");
-                    col.Item().Text($"Pago: {data.PayrollDate:yyyy-MM-dd}");
+                    r.RelativeItem().Column(col =>
+                    {
+                        if (logoBytes is { Length: > 0 })
+                            col.Item().Height(52).Width(160).Image(logoBytes).FitArea();
+                        else
+                            col.Item().Text(company).FontSize(15).SemiBold();
+
+                        col.Item().Text("Recibo de nomina quincenal").FontSize(12).FontColor(Colors.Grey.Darken2);
+                        col.Item().Text($"Periodo: {periodLabel}");
+                        col.Item().Text($"Pago: {data.PayrollDate:dd-MM-yyyy}");
+                    });
                 });
 
                 p.Content().PaddingTop(10).Column(col =>
@@ -126,10 +141,11 @@ public class PayrollReceiptService : IPayrollReceiptService
                         r.ConstantItem(250).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
                         {
                             x.Item().Text("Resumen quincena").SemiBold();
-                            x.Item().Text($"Sueldo mensual neto base: {Money(data.SalaryBaseMonthly)}");
+                            x.Item().Text($"Sueldo neto base: {Money(data.SalaryBaseMonthly)}");
                             x.Item().Text($"Base quincenal: {Money(data.BaseQuincenal)}");
-                            x.Item().Text($"Variable 80/20: {(data.VariablePercent * 100m):0.#}%");
-                            x.Item().Text($"Neto estimado: {Money(data.NetEstimated)}").SemiBold();
+                            x.Item().Text($"Variable: {(data.VariablePercent * 100m):0.#}%");
+                            x.Item().Text($"Sueldo bruto: {Money(grossWithImss)}");
+                            x.Item().PaddingTop(3).Text($"Pago: {Money(paidAmount)}").FontSize(14).SemiBold();
                         });
                     });
 
@@ -148,12 +164,12 @@ public class PayrollReceiptService : IPayrollReceiptService
                             t.Cell().Element(CellHead).AlignRight().Text("Importe");
 
                             Row(t, "80% fijo", data.Fixed80);
-                            Row(t, "20% variable max", data.Max20);
-                            Row(t, $"Variable aplicado ({(data.VariablePercent * 100m):0.#}%)", data.VariableAmount);
-                            Row(t, "Total quincenal (sin ajustes)", data.GrossEstimated);
-                            Row(t, "Deducciones", -data.Deductions);
-                            Row(t, "Bonos", data.Bonuses);
-                            Row(t, "Neto estimado", data.NetEstimated, true);
+                            Row(t, $"Variable ({(data.VariablePercent * 100m):0.#}%)", data.VariableAmount);
+                            Row(t, "Subtotal quincena", data.GrossEstimated);
+                            Row(t, "IMSS empleado (quincena)", -data.ImssEmployeePeriodTotal, false, Colors.Red.Darken1);
+                            Row(t, "Deducciones aplicadas", -data.Deductions, false, Colors.Red.Darken1);
+                            Row(t, "Bonos extra", data.Bonuses, false, Colors.Green.Darken2);
+                            Row(t, "Pago", paidAmount, true);
                         });
                     });
 
@@ -175,9 +191,11 @@ public class PayrollReceiptService : IPayrollReceiptService
                                 t.Cell().Element(CellHead).AlignRight().Text("Importe");
                                 foreach (var a in data.AppliedAdjustments)
                                 {
+                                    var isBonus = string.Equals(a.Kind, "Bono", StringComparison.OrdinalIgnoreCase);
                                     t.Cell().Element(CellBody).Text(a.Concept);
-                                    t.Cell().Element(CellBody).Text(a.Kind);
-                                    t.Cell().Element(CellBody).AlignRight().Text(Money(a.Amount));
+                                    t.Cell().Element(CellBody).Text(a.Kind).FontColor(isBonus ? Colors.Green.Darken2 : Colors.Red.Darken1);
+                                    t.Cell().Element(CellBody).AlignRight().Text($"{(isBonus ? "+" : "-")}{Money(a.Amount)}")
+                                        .FontColor(isBonus ? Colors.Green.Darken2 : Colors.Red.Darken1);
                                 }
                             });
                         });
@@ -185,33 +203,44 @@ public class PayrollReceiptService : IPayrollReceiptService
 
                     col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
                     {
-                        x.Item().Text("Aportaciones IMSS (informativo)").SemiBold();
-                        x.Item().Text("No se descuentan del neto; se muestran para comprobante interno.").FontColor(Colors.Grey.Darken2);
+                        x.Item().Text("Aportaciones IMSS (quincena)").SemiBold();
                         x.Item().PaddingTop(5).Table(t =>
                         {
                             t.ColumnsDefinition(cd =>
                             {
                                 cd.RelativeColumn(2);
+                                cd.ConstantColumn(80);
                                 cd.ConstantColumn(120);
+                                cd.ConstantColumn(80);
                                 cd.ConstantColumn(120);
                             });
                             t.Cell().Element(CellHead).Text("Concepto");
-                            t.Cell().Element(CellHead).AlignRight().Text("Mensual");
-                            t.Cell().Element(CellHead).AlignRight().Text("Quincena");
+                            t.Cell().Element(CellHead).AlignRight().Text("% Patrón");
+                            t.Cell().Element(CellHead).AlignRight().Text("Patrón");
+                            t.Cell().Element(CellHead).AlignRight().Text("% Empleado");
+                            t.Cell().Element(CellHead).AlignRight().Text("Empleado");
                             foreach (var l in data.ImssLines)
                             {
                                 t.Cell().Element(CellBody).Text(l.Concept);
-                                t.Cell().Element(CellBody).AlignRight().Text(Money(l.MonthlyAmount));
-                                t.Cell().Element(CellBody).AlignRight().Text(Money(l.PeriodAmount));
+                                t.Cell().Element(CellBody).AlignRight().Text($"{l.EmployerRate:0.###}%");
+                                t.Cell().Element(CellBody).AlignRight().Text($"-{Money(l.EmployerPeriodAmount)}").FontColor(Colors.Red.Darken1);
+                                t.Cell().Element(CellBody).AlignRight().Text($"{l.EmployeeRate:0.###}%");
+                                t.Cell().Element(CellBody).AlignRight().Text($"-{Money(l.EmployeePeriodAmount)}").FontColor(Colors.Red.Darken1);
                             }
                             t.Cell().Element(CellHead).Text("Total");
-                            t.Cell().Element(CellHead).AlignRight().Text(Money(data.ImssMonthlyTotal));
-                            t.Cell().Element(CellHead).AlignRight().Text(Money(data.ImssPeriodTotal));
+                            t.Cell().Element(CellHead).AlignRight().Text("-");
+                            t.Cell().Element(CellHead).AlignRight().Text($"-{Money(data.ImssEmployerPeriodTotal)}").FontColor(Colors.Red.Darken1);
+                            t.Cell().Element(CellHead).AlignRight().Text("-");
+                            t.Cell().Element(CellHead).AlignRight().Text($"-{Money(data.ImssEmployeePeriodTotal)}").FontColor(Colors.Red.Darken1);
                         });
                     });
                 });
 
-                p.Footer().AlignCenter().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm}").FontSize(9).FontColor(Colors.Grey.Darken1);
+                p.Footer().Column(col =>
+                {
+                    col.Item().AlignCenter().Text($"Generado por HN Control - Nomina ({periodLabel})").FontSize(9).FontColor(Colors.Grey.Darken1);
+                    col.Item().AlignCenter().Text($"Firma digital: {signatureHash}").FontSize(8).FontColor(Colors.Grey.Darken1);
+                });
             });
         });
 
@@ -270,33 +299,99 @@ public class PayrollReceiptService : IPayrollReceiptService
         return (Math.Round(deductions, 2), Math.Round(bonuses, 2), lines.OrderBy(x => x.Kind).ThenBy(x => x.Concept).ToList());
     }
 
-    private static List<PayrollImssLine> BuildImssLines()
+    private static List<PayrollImssLine> BuildImssLines(decimal baseQuincenal)
     {
-        var monthly = new List<PayrollImssLine>
+        // Tasas aproximadas de referencia para simulación de recibo.
+        // Se aplican sobre base quincenal para mostrar desglose patrón/empleado.
+        var rates = new List<(string Concept, decimal EmployerRate, decimal EmployeeRate)>
         {
-            new("IMSS Cesantia y vejez", 700m, 350m),
-            new("IMSS Invalidez y vida", 500m, 250m),
-            new("IMSS Enfermedades y maternidad", 400m, 200m),
-            new("IMSS Riesgo de trabajo", 400m, 200m)
+            ("Cesantía y vejez", 3.150m, 1.125m),
+            ("Invalidez y vida", 1.750m, 0.625m),
+            ("Enfermedades y maternidad", 1.050m, 0.400m),
+            ("Riesgo de trabajo", 0.543m, 0.000m)
         };
-        return monthly;
+
+        return rates.Select(x => new PayrollImssLine(
+            x.Concept,
+            x.EmployerRate,
+            x.EmployeeRate,
+            Math.Round(baseQuincenal * (x.EmployerRate / 100m), 2),
+            Math.Round(baseQuincenal * (x.EmployeeRate / 100m), 2)))
+            .ToList();
     }
 
-    private static void Row(TableDescriptor t, string concept, decimal value, bool strong = false)
+    private static void Row(TableDescriptor t, string concept, decimal value, bool strong = false, string? color = null)
     {
-        var v = Money(value);
+        var v = value < 0m ? $"-{Money(Math.Abs(value))}" : value > 0m && color == Colors.Green.Darken2 ? $"+{Money(value)}" : Money(value);
         if (strong)
         {
             t.Cell().Element(CellHead).Text(concept);
-            t.Cell().Element(CellHead).AlignRight().Text(v);
+            t.Cell().Element(CellHead).AlignRight().Text(v).FontSize(12).SemiBold();
             return;
         }
-        t.Cell().Element(CellBody).Text(concept);
-        t.Cell().Element(CellBody).AlignRight().Text(v);
+        if (color is not null)
+        {
+            t.Cell().Element(CellBody).Text(concept).FontColor(color);
+            t.Cell().Element(CellBody).AlignRight().Text(v).FontColor(color);
+        }
+        else
+        {
+            t.Cell().Element(CellBody).Text(concept);
+            t.Cell().Element(CellBody).AlignRight().Text(v);
+        }
     }
 
     private static IContainer CellHead(IContainer c) => c.Background(Colors.Grey.Lighten3).Border(1).BorderColor(Colors.Grey.Lighten1).Padding(5);
     private static IContainer CellBody(IContainer c) => c.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5);
     private static string Money(decimal? v) => (v ?? 0m).ToString("C2");
     private static string ValueOrDash(string? v) => string.IsNullOrWhiteSpace(v) ? "-" : v.Trim();
+
+    private static string BuildPeriodLabel(DateTime payrollDate)
+    {
+        var q = payrollDate.Day <= 15 ? 1 : 2;
+        var monthLabel = payrollDate.ToString("MMMM yyyy", new CultureInfo("es-MX"));
+        return $"{char.ToUpper(monthLabel[0])}{monthLabel[1..]} (Quincena {q})";
+    }
+
+    private byte[]? LoadLogoBytes()
+    {
+        var configured = (_cfg["Branding:LogoPath"] ?? "").Trim();
+        var candidates = new List<string>();
+        if (!string.IsNullOrWhiteSpace(configured))
+            candidates.Add(configured);
+        candidates.Add("assets/logo.png");
+        candidates.Add("wwwroot/assets/logo.png");
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "assets", "logo.png"));
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "wwwroot", "assets", "logo.png"));
+        candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "assets", "logo.png"));
+        candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "assets", "logo.png"));
+
+        foreach (var path in candidates.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
+        {
+            try
+            {
+                if (File.Exists(path))
+                    return File.ReadAllBytes(path);
+            }
+            catch { }
+        }
+        return null;
+    }
+
+    private static string BuildReceiptHash(PayrollReceiptData data, string periodLabel)
+    {
+        var payload = string.Join("|",
+            data.UserId,
+            data.FullName,
+            periodLabel,
+            data.PayrollDate.ToString("yyyyMMdd"),
+            data.BaseQuincenal.ToString("0.00", CultureInfo.InvariantCulture),
+            data.VariablePercent.ToString("0.0000", CultureInfo.InvariantCulture),
+            data.Deductions.ToString("0.00", CultureInfo.InvariantCulture),
+            data.Bonuses.ToString("0.00", CultureInfo.InvariantCulture),
+            data.NetEstimated.ToString("0.00", CultureInfo.InvariantCulture));
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(bytes)[..16];
+    }
 }

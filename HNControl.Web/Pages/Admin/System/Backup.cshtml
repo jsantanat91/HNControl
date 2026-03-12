@@ -1,0 +1,48 @@
+﻿@page
+@model HNControl.Web.Pages.Admin.SystemPages.BackupModel
+@{
+    ViewData["Title"] = "Sistema · Respaldo BD";
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-warning">@Model.Error</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-info">@Model.Info</div>
+}
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <h1 class="h4 mb-1">Respaldo de base de datos</h1>
+        <div class="text-muted mb-3">Genera y descarga un respaldo SQL completo de PostgreSQL.</div>
+
+        <div class="alert alert-light border mb-3">
+            <div class="fw-semibold mb-1">Formato</div>
+            <div class="small text-muted">Se descarga un archivo <code>.sql</code> compatible con <code>psql</code> para restauración directa.</div>
+        </div>
+
+        <form method="post" asp-page-handler="Download">
+            <button type="submit" class="btn btn-primary">Descargar respaldo (.sql)</button>
+        </form>
+
+        <hr />
+
+        <div class="alert alert-warning border mb-3">
+            <div class="fw-semibold mb-1">Restaurar base de datos</div>
+            <div class="small mb-2">Esta acción sobrescribe información existente en la base destino. Úsala solo en mantenimiento controlado.</div>
+            <form method="post" asp-page-handler="Restore" enctype="multipart/form-data" class="d-flex gap-2 flex-wrap align-items-center">
+                <input class="form-control" type="file" name="RestoreFile" accept=".sql" style="max-width:360px" />
+                <button type="submit" class="btn btn-outline-danger">Restaurar respaldo (.sql)</button>
+            </form>
+        </div>
+
+        <hr />
+
+        <div class="small text-muted">
+            <div><strong>Restore ejemplo:</strong></div>
+            <code>psql -h HOST -U USER -d DB -f respaldo.sql</code>
+        </div>
+    </div>
+</div>

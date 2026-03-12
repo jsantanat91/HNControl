@@ -1,19 +1,23 @@
-@page "{id:guid}"
+ï»¿@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Viaticos.WeekModel
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Viáticos · Revisión";
+    ViewData["Title"] = "Viaticos Â· Revision";
 
     if (Model.Week == null)
     {
-        <div class="alert alert-info">No se encontró la semana.</div>
+        <div class="alert alert-info">No se encontro la semana.</div>
         return;
     }
 
     var week = Model.Week;
     var isTravel = week.FlowType == ViaticFlowType.TravelAdvance;
     var nonBillable = Math.Max(0m, week.TotalAmount - week.BillableAmount);
+    var difference = week.TotalAmount - week.ApprovedAdvanceAmount;
+    var differenceAbs = Math.Abs(difference);
+    var isDifferencePositive = difference > 0m;
+    var isDifferenceNegative = difference < 0m;
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -27,12 +31,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h1 class="h4 m-0">Revisión de viáticos</h1>
+        <h1 class="h4 m-0">Revision de viaticos</h1>
         <div class="text-muted small">
             Empleado: <strong>@(week.EmployeeProfile?.FullName ?? week.UserId)</strong>
-            · Semana: <strong>@week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
-            · Flujo: <strong>@week.FlowType.GetDisplayName()</strong>
-            · Estado: <strong>@week.Status.GetDisplayName()</strong>
+            Â· Semana: <strong>@week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
+            Â· Flujo: <strong>@week.FlowType.GetDisplayName()</strong>
+            Â· Estado: <strong>@week.Status.GetDisplayName()</strong>
         </div>
     </div>
 
@@ -40,7 +44,7 @@
         <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index">Volver</a>
         <a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/ExportWeek" asp-route-id="@week.Id">Exportar CSV</a>
 
-        <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Eliminar esta semana completa?');">
+        <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('Â¿Eliminar esta semana completa?');">
             <input type="hidden" name="id" value="@week.Id" />
             <button class="btn btn-outline-danger" type="submit">Eliminar semana</button>
         </form>
@@ -51,7 +55,7 @@
     <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="fs-4 fw-semibold">@week.TotalAmount.ToString("0.00")</div></div></div></div>
     <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Facturable</div><div class="fs-4 fw-semibold">@week.BillableAmount.ToString("0.00")</div><div class="text-muted small">Reembolso esperado</div></div></div></div>
     <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">No facturable</div><div class="fs-4 fw-semibold">@nonBillable.ToString("0.00")</div><div class="text-muted small">Gasto absorbido</div></div></div></div>
-    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <strong>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong><br />Aprobación: <strong>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong></div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <strong>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong><br />Aprobacion: <strong>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong></div></div></div></div>
 </div>
 
 @if (isTravel)
@@ -64,16 +68,57 @@
                 <div class="col-md-4">Destino: <b>@(string.IsNullOrWhiteSpace(week.TripDestination) ? "-" : week.TripDestination)</b></div>
                 <div class="col-md-4">Solicitado: <b>@week.RequestedAdvanceAmount.ToString("C")</b></div>
                 <div class="col-md-4">Aprobado: <b>@week.ApprovedAdvanceAmount.ToString("C")</b></div>
-                <div class="col-md-4">Depósito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
+                <div class="col-md-4">Deposito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
                 <div class="col-md-12">Motivo: <b>@(string.IsNullOrWhiteSpace(week.TripPurpose) ? "-" : week.TripPurpose)</b></div>
             </div>
         </div>
     </div>
+
+    @if (week.Status == ViaticWeekStatus.SettlementSubmitted)
+    {
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card shadow-soft h-100 @(isDifferencePositive ? "border-success" : "border-light")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="text-muted small">Diferencia positiva</div>
+                                <div class="fs-4 fw-semibold text-success">+ @((isDifferencePositive ? differenceAbs : 0m).ToString("C"))</div>
+                                <div class="small text-muted">Comprobado mayor al monto depositado.</div>
+                            </div>
+                            @if (isDifferencePositive)
+                            {
+                                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#differenceAdjustModal" data-mode="bonus">Abonar</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-soft h-100 @(isDifferenceNegative ? "border-danger" : "border-light")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="text-muted small">Diferencia negativa</div>
+                                <div class="fs-4 fw-semibold text-danger">- @((isDifferenceNegative ? differenceAbs : 0m).ToString("C"))</div>
+                                <div class="small text-muted">Comprobado menor al monto depositado.</div>
+                            </div>
+                            @if (isDifferenceNegative)
+                            {
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#differenceAdjustModal" data-mode="deduct">Descontar</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 <div class="card shadow-sm hn-hover mb-3">
     <div class="card-header fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>Acciones de revisión</span>
+        <span>Acciones de revision</span>
         @if (week.Status == ViaticWeekStatus.Submitted)
         {
             <div class="d-flex flex-wrap gap-2">
@@ -98,12 +143,12 @@
             <div class="d-flex flex-wrap gap-2">
                 <form method="post" asp-page-handler="ApproveSettlement" class="d-inline">
                     <input type="hidden" name="id" value="@week.Id" />
-                    <button class="btn btn-sm btn-success" type="submit">Aprobar comprobación final</button>
+                    <button class="btn btn-sm btn-success" type="submit">Aprobar comprobacion final</button>
                 </form>
                 <form method="post" asp-page-handler="Reject" class="d-flex gap-2">
                     <input type="hidden" name="id" value="@week.Id" />
                     <input class="form-control form-control-sm" style="width:260px" name="reason" placeholder="Motivo del rechazo" required />
-                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar comprobación</button>
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar comprobacion</button>
                 </form>
             </div>
         }
@@ -113,9 +158,9 @@
         <table class="table table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Día</th>
-                    <th>Categoría</th>
-                    <th>Descripción</th>
+                    <th>Dia</th>
+                    <th>Categoria</th>
+                    <th>Descripcion</th>
                     <th class="text-end">Monto</th>
                     <th class="text-center">Facturable</th>
                     <th>Comprobante</th>
@@ -129,7 +174,7 @@
                         <td>@e.Category</td>
                         <td>@e.Description</td>
                         <td class="text-end">@e.Amount.ToString("0.00")</td>
-                        <td class="text-center">@(e.IsBillable ? "Sí" : "No")</td>
+                        <td class="text-center">@(e.IsBillable ? "Si" : "No")</td>
                         <td>
                             @if (e.Attachment != null)
                             {
@@ -154,3 +199,74 @@
         </div>
     }
 </div>
+
+@if (isTravel && week.Status == ViaticWeekStatus.SettlementSubmitted && difference != 0m)
+{
+    <div class="modal fade" id="differenceAdjustModal" tabindex="-1" aria-labelledby="differenceAdjustModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="CreateDifferenceAdjustment">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="differenceAdjustModalLabel">Generar ajuste de nomina</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="@week.Id" />
+                        <input type="hidden" id="differenceAdjustMode" name="mode" value="" />
+
+                        <div class="mb-2">
+                            <div class="text-muted small">Empleado</div>
+                            <div class="fw-semibold">@(week.EmployeeProfile?.FullName ?? week.UserId)</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="text-muted small">Semana viatico</div>
+                            <div class="fw-semibold">@week.WeekStartDate.ToString("yyyy-MM-dd")</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="text-muted small">Monto diferencia</div>
+                            <div class="fw-semibold">@differenceAbs.ToString("C")</div>
+                        </div>
+
+                        <div class="alert alert-light mb-0" id="differenceAdjustActionText">
+                            Se creara el ajuste correspondiente.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="differenceAdjustSubmitBtn">Guardar ajuste</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts
+{
+    <script>
+        (() => {
+            const modal = document.getElementById('differenceAdjustModal');
+            if (!modal) return;
+            const modeInput = document.getElementById('differenceAdjustMode');
+            const actionText = document.getElementById('differenceAdjustActionText');
+            const submitBtn = document.getElementById('differenceAdjustSubmitBtn');
+
+            modal.addEventListener('show.bs.modal', function (event) {
+                const btn = event.relatedTarget;
+                const mode = btn?.getAttribute('data-mode') || '';
+                modeInput.value = mode;
+                if (mode === 'bonus') {
+                    actionText.textContent = 'Se creara un BONO quincenal unico para abonar la diferencia.';
+                    submitBtn.className = 'btn btn-success';
+                    submitBtn.textContent = 'Confirmar abono';
+                } else {
+                    actionText.textContent = 'Se creara una DEDUCCION quincenal unica para descontar la diferencia.';
+                    submitBtn.className = 'btn btn-danger';
+                    submitBtn.textContent = 'Confirmar descuento';
+                }
+            });
+        })();
+    </script>
+}

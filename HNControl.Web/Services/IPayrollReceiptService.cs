@@ -2,7 +2,12 @@ using HNControl.Web.Models;
 
 namespace HNControl.Web.Services;
 
-public record PayrollImssLine(string Concept, decimal MonthlyAmount, decimal PeriodAmount);
+public record PayrollImssLine(
+    string Concept,
+    decimal EmployerRate,
+    decimal EmployeeRate,
+    decimal EmployerPeriodAmount,
+    decimal EmployeePeriodAmount);
 public record PayrollAdjustmentLine(string Concept, string Kind, decimal Amount);
 
 public class PayrollReceiptData
@@ -30,8 +35,9 @@ public class PayrollReceiptData
 
     public List<PayrollAdjustmentLine> AppliedAdjustments { get; set; } = new();
     public List<PayrollImssLine> ImssLines { get; set; } = new();
-    public decimal ImssMonthlyTotal => ImssLines.Sum(x => x.MonthlyAmount);
-    public decimal ImssPeriodTotal => ImssLines.Sum(x => x.PeriodAmount);
+    public decimal ImssEmployerPeriodTotal => ImssLines.Sum(x => x.EmployerPeriodAmount);
+    public decimal ImssEmployeePeriodTotal => ImssLines.Sum(x => x.EmployeePeriodAmount);
+    public decimal ImssPeriodTotal => ImssEmployerPeriodTotal + ImssEmployeePeriodTotal;
 }
 
 public interface IPayrollReceiptService
@@ -39,4 +45,3 @@ public interface IPayrollReceiptService
     Task<PayrollReceiptData?> BuildAsync(string userId, DateTime periodStart, DateTime periodEnd, DateTime payrollDate);
     byte[] RenderPdf(PayrollReceiptData data);
 }
-

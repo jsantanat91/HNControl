@@ -5,15 +5,12 @@
 }
 
 <div class="container-xxl py-4">
-
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h2 class="mb-0">@ViewData["Title"]</h2>
-            <div class="text-muted">Define qué módulos/pestañas puede ver un empleado con este rol.</div>
+            <div class="text-muted">Ajusta módulos, estado y parámetros del rol.</div>
         </div>
-        <a class="btn btn-outline-secondary" asp-page="./Index">
-            <i class="bi bi-arrow-left"></i> Volver
-        </a>
+        <a class="btn btn-outline-secondary" asp-page="./Index">Volver</a>
     </div>
 
     @if (TempData["Error"] is string err && !string.IsNullOrWhiteSpace(err))
@@ -25,9 +22,8 @@
         <div class="alert alert-success">@ok</div>
     }
 
-    <form method="post" class="card shadow-sm border-0">
+    <form method="post" class="card shadow-soft border-0">
         <div class="card-body p-4">
-
             <input type="hidden" asp-for="Input.Id" />
 
             <div class="row g-3">
@@ -54,13 +50,9 @@
                 <div class="col-12">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" asp-for="Input.IsDefault" />
-                        <label class="form-check-label" asp-for="Input.IsDefault">
-                            Rol por defecto (para empleados nuevos)
-                        </label>
+                        <label class="form-check-label" asp-for="Input.IsDefault">Rol por defecto (empleados nuevos)</label>
                     </div>
-                    <div class="text-muted small">
-                        Si marcas este rol como default, se desmarca automáticamente en los demás.
-                    </div>
+                    <div class="text-muted small">Si lo marcas como default, se desmarca automáticamente en los demás.</div>
                 </div>
             </div>
 
@@ -78,7 +70,7 @@
                     var isChecked = Model.Input.SelectedModules?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
 
                     <div class="col-12 col-md-6 col-lg-4">
-                        <label class="d-flex align-items-center gap-2 border rounded-3 p-2 hover-shadow-sm" style="cursor:pointer;">
+                        <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-module-item" style="cursor:pointer;">
                             <input class="form-check-input m-0"
                                    type="checkbox"
                                    name="Input.SelectedModules"
@@ -92,14 +84,11 @@
                     </div>
                 }
             </div>
-
         </div>
 
         <div class="card-footer bg-white border-0 d-flex justify-content-end gap-2 p-3">
             <a class="btn btn-outline-secondary" asp-page="./Index">Cancelar</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-save"></i> Guardar cambios
-            </button>
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
         </div>
     </form>
 </div>
@@ -109,8 +98,9 @@
 }
 
 <style>
-    .hover-shadow-sm:hover {
+    .role-module-item:hover {
         box-shadow: 0 .25rem .75rem rgba(0,0,0,.08);
         transition: box-shadow .15s ease-in-out;
     }
 </style>
+

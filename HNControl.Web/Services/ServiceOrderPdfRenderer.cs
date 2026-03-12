@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Hosting;
@@ -79,6 +81,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
 
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
+        var digitalHash = BuildOrderHash(o);
 
         // Labels en espanol
         var typeLabel = GetDisplayName(o.Type);
@@ -356,8 +359,13 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                 });
 
                 // FOOTER
-                page.Footer().AlignCenter().Text($"{footer} - {DateTime.Now:yyyy-MM-dd HH:mm}")
-                    .FontSize(9).FontColor(Colors.Grey.Darken2);
+                page.Footer().Column(f =>
+                {
+                    f.Item().AlignCenter().Text($"{footer} - {DateTime.Now:yyyy-MM-dd HH:mm}")
+                        .FontSize(9).FontColor(Colors.Grey.Darken2);
+                    f.Item().AlignCenter().Text($"Firma digital: {digitalHash}")
+                        .FontSize(8).FontColor(Colors.Grey.Darken1);
+                });
             });
         });
 
@@ -480,7 +488,24 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         var attr = field.GetCustomAttribute<DisplayAttribute>();
         return string.IsNullOrWhiteSpace(attr?.Name) ? name : attr!.Name!;
     }
-}
+    private static string BuildOrderHash(ServiceOrder o)
+    {
+        var payload = string.Join("|",
+            o.Id,
+            o.ClientId,
+            o.Type,
+            o.Status,
+            o.CreatedAt.ToUniversalTime().ToString("yyyyMMddHHmmss"),
+            (o.FinalizedAt ?? o.StartedAt ?? o.SubmittedForReviewAt ?? o.CreatedAt).ToUniversalTime().ToString("yyyyMMddHHmmss"),
+            o.Title ?? "",
+            o.Description ?? "",
+            o.Checklist.Count,
+            o.Evidences.Count,
+            o.Signatures.Count);
 
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(bytes)[..16];
+    }
+}
 
 

@@ -6,13 +6,16 @@
 }
 
 <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h4 mb-0">Nuevo rol de permisos</h1>
+    <div>
+        <h1 class="h4 mb-1">Nuevo rol de permisos</h1>
+        <div class="text-muted">Define qué módulos verá el empleado bajo este rol.</div>
+    </div>
     <a class="btn btn-outline-secondary" asp-page="./Index">Volver</a>
 </div>
 
 <form method="post" class="card shadow-soft">
     <div class="card-body">
-        <div asp-validation-summary="All" class="text-danger"></div>
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
 
         <div class="row g-3">
             <div class="col-md-6">
@@ -27,7 +30,7 @@
             <div class="col-md-3">
                 <div class="form-check mt-4">
                     <input class="form-check-input" asp-for="Input.IsDefault" />
-                    <label class="form-check-label">Marcar como Default</label>
+                    <label class="form-check-label">Marcar como default</label>
                 </div>
             </div>
             <div class="col-md-3">
@@ -41,20 +44,20 @@
         <hr class="my-4" />
 
         <h2 class="h6 mb-2">Módulos permitidos</h2>
-        <div class="text-muted small mb-3">Selecciona las pestañas a las que el Employee puede entrar (la navegación se ajusta sola).</div>
+        <div class="text-muted small mb-3">Selecciona los módulos que el empleado podrá usar con este rol.</div>
 
-        <div class="row row-cols-1 row-cols-lg-2 g-2">
-        @foreach (var m in Model.Modules)
-        {
-            var id = $"m_{m.Key}";
-            <div class="col">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
-                           @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
-                    <label class="form-check-label" for="@id">@m.Label</label>
+        <div class="row g-2">
+            @foreach (var m in Model.Modules)
+            {
+                var id = $"m_{m.Key}";
+                <div class="col-12 col-md-6 col-lg-4">
+                    <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-module-item" for="@id" style="cursor:pointer;">
+                        <input class="form-check-input m-0" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
+                               @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                        <span class="fw-semibold">@m.Label</span>
+                    </label>
                 </div>
-            </div>
-        }
+            }
         </div>
     </div>
 
@@ -67,3 +70,8 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+
+<style>
+    .role-module-item:hover { box-shadow: 0 .2rem .6rem rgba(0,0,0,.08); }
+</style>
+
