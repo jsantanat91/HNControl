@@ -380,6 +380,7 @@ public class EmployeeController : ControllerBase
             var metrics = new List<KpiMetricDto>
             {
                 new("Actitud", latestReview.PersonalPerformance),
+                new("Participacion en equipo", latestReview.ParticipationInTeam),
                 new("Puntualidad", latestReview.PunctualityAttendance),
                 new("Trabajo en equipo", latestReview.Teamwork),
                 new("Ejecucion", latestReview.ProjectExecution),

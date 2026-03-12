@@ -1,8 +1,19 @@
 @page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Viaticos.WeekModel
+@using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "ViÃ¡ticos Â· RevisiÃ³n";
+    ViewData["Title"] = "Viáticos · Revisión";
+
+    if (Model.Week == null)
+    {
+        <div class="alert alert-info">No se encontró la semana.</div>
+        return;
+    }
+
+    var week = Model.Week;
+    var isTravel = week.FlowType == ViaticFlowType.TravelAdvance;
+    var nonBillable = Math.Max(0m, week.TotalAmount - week.BillableAmount);
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -14,115 +25,111 @@
     <div class="alert alert-success">@Model.Info</div>
 }
 
-@if (Model.Week == null)
-{
-    <div class="alert alert-info">No se encontrÃ³ la semana.</div>
-    return;
-}
-
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h1 class="h4 m-0">RevisiÃ³n de viÃ¡ticos</h1>
+        <h1 class="h4 m-0">Revisión de viáticos</h1>
         <div class="text-muted small">
-            Empleado: <strong>@(Model.Week.EmployeeProfile?.FullName ?? Model.Week.UserId)</strong>
-            Â· Semana: <strong>@Model.Week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
-            Â· Estado: <strong>@Model.Week.Status.GetDisplayName()</strong>
+            Empleado: <strong>@(week.EmployeeProfile?.FullName ?? week.UserId)</strong>
+            · Semana: <strong>@week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
+            · Flujo: <strong>@week.FlowType.GetDisplayName()</strong>
+            · Estado: <strong>@week.Status.GetDisplayName()</strong>
         </div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index">Volver</a>
-        <a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/ExportWeek" asp-route-id="@Model.Week.Id">Exportar CSV</a>
+        <a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/ExportWeek" asp-route-id="@week.Id">Exportar CSV</a>
 
-        <form method="post" asp-page-handler="Delete" class="d-inline">
-            <input type="hidden" name="id" value="@Model.Week.Id" />
-            <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Â¿Eliminar esta semana COMPLETA? (se borra todo, incluso si estaba aprobada)');">Eliminar semana</button>
+        <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Eliminar esta semana completa?');">
+            <input type="hidden" name="id" value="@week.Id" />
+            <button class="btn btn-outline-danger" type="submit">Eliminar semana</button>
         </form>
-
-        @if (Model.Week.Status == HNControl.Web.Models.ViaticWeekStatus.Submitted)
-        {
-            <form method="post" asp-page-handler="Approve" class="d-inline">
-                <input type="hidden" name="id" value="@Model.Week.Id" />
-                <button class="btn btn-success" type="submit" onclick="return confirm('Â¿Aprobar esta semana?');">Aprobar</button>
-            </form>
-
-            <form method="post" asp-page-handler="Reject" class="d-inline">
-                <input type="hidden" name="id" value="@Model.Week.Id" />
-                <input class="form-control form-control-sm d-inline" style="width: 260px" name="reason" placeholder="Motivo del rechazo" required />
-                <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Â¿Rechazar esta semana?');">Rechazar</button>
-            </form>
-        }
     </div>
 </div>
-
-@{ var nonBillable = Math.Max(0m, Model.Week.TotalAmount - Model.Week.BillableAmount); }
 
 <div class="row g-3 mb-3">
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Total semana</div>
-                <div class="fs-4 fw-semibold">@Model.Week.TotalAmount.ToString("0.00")</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Facturable</div>
-                <div class="fs-4 fw-semibold">@Model.Week.BillableAmount.ToString("0.00")</div>
-                <div class="text-muted small">Reembolso esperado</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">No facturable</div>
-                <div class="fs-4 fw-semibold">@nonBillable.ToString("0.00")</div>
-                <div class="text-muted small">Gasto absorbido / no deducible</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-body">
-                <div class="text-muted small">Flujo</div>
-                <div class="small">
-                    Enviado: <strong>@(Model.Week.SubmittedAt.HasValue ? Model.Week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "â€”")</strong><br />
-                    Aprobado: <strong>@(Model.Week.ApprovedAt.HasValue ? Model.Week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "â€”")</strong>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="fs-4 fw-semibold">@week.TotalAmount.ToString("0.00")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Facturable</div><div class="fs-4 fw-semibold">@week.BillableAmount.ToString("0.00")</div><div class="text-muted small">Reembolso esperado</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">No facturable</div><div class="fs-4 fw-semibold">@nonBillable.ToString("0.00")</div><div class="text-muted small">Gasto absorbido</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <strong>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong><br />Aprobación: <strong>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong></div></div></div></div>
 </div>
 
-<div class="card shadow-sm hn-hover hn-hover hn-hover">
-    <div class="card-header fw-semibold">Gastos (desglose por dÃ­a)</div>
+@if (isTravel)
+{
+    <div class="card shadow-soft hn-hover mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-2">Datos de viaje anticipado</div>
+            <div class="row g-2 small">
+                <div class="col-md-4">Orden: <b>@(week.RelatedServiceOrder?.Title ?? "Sin orden")</b></div>
+                <div class="col-md-4">Destino: <b>@(string.IsNullOrWhiteSpace(week.TripDestination) ? "-" : week.TripDestination)</b></div>
+                <div class="col-md-4">Solicitado: <b>@week.RequestedAdvanceAmount.ToString("C")</b></div>
+                <div class="col-md-4">Aprobado: <b>@week.ApprovedAdvanceAmount.ToString("C")</b></div>
+                <div class="col-md-4">Depósito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
+                <div class="col-md-12">Motivo: <b>@(string.IsNullOrWhiteSpace(week.TripPurpose) ? "-" : week.TripPurpose)</b></div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm hn-hover mb-3">
+    <div class="card-header fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>Acciones de revisión</span>
+        @if (week.Status == ViaticWeekStatus.Submitted)
+        {
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" asp-page-handler="Approve" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@week.Id" />
+                    @if (isTravel)
+                    {
+                        <input class="form-control form-control-sm" style="width:180px" type="number" step="0.01" min="0.01" name="approvedAdvanceAmount" value="@week.RequestedAdvanceAmount" />
+                    }
+                    <button class="btn btn-sm btn-success" type="submit">Aprobar @(isTravel ? "y depositar" : "")</button>
+                </form>
+
+                <form method="post" asp-page-handler="Reject" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@week.Id" />
+                    <input class="form-control form-control-sm" style="width:260px" name="reason" placeholder="Motivo del rechazo" required />
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar</button>
+                </form>
+            </div>
+        }
+        else if (isTravel && week.Status == ViaticWeekStatus.SettlementSubmitted)
+        {
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" asp-page-handler="ApproveSettlement" class="d-inline">
+                    <input type="hidden" name="id" value="@week.Id" />
+                    <button class="btn btn-sm btn-success" type="submit">Aprobar comprobación final</button>
+                </form>
+                <form method="post" asp-page-handler="Reject" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@week.Id" />
+                    <input class="form-control form-control-sm" style="width:260px" name="reason" placeholder="Motivo del rechazo" required />
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar comprobación</button>
+                </form>
+            </div>
+        }
+    </div>
+
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th>DÃ­a</th>
-                    <th>CategorÃ­a</th>
-                    <th>DescripciÃ³n</th>
+                    <th>Día</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
                     <th class="text-end">Monto</th>
                     <th class="text-center">Facturable</th>
                     <th>Comprobante</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var e in Model.Week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
+                @foreach (var e in week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
                 {
                     <tr>
                         <td>@e.DayDate.ToString("yyyy-MM-dd")</td>
                         <td>@e.Category</td>
                         <td>@e.Description</td>
                         <td class="text-end">@e.Amount.ToString("0.00")</td>
-                        <td class="text-center">@(e.IsBillable ? "SÃ­" : "No")</td>
+                        <td class="text-center">@(e.IsBillable ? "Sí" : "No")</td>
                         <td>
                             @if (e.Attachment != null)
                             {
@@ -130,7 +137,7 @@
                             }
                             else
                             {
-                                <span class="text-muted">â€”</span>
+                                <span class="text-muted">-</span>
                             }
                         </td>
                     </tr>
@@ -139,11 +146,11 @@
         </table>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.Week.AdminNotes))
+    @if (!string.IsNullOrWhiteSpace(week.AdminNotes))
     {
         <div class="card-footer">
-            <div class="text-muted small">Nota admin (rechazo):</div>
-            <div>@Model.Week.AdminNotes</div>
+            <div class="text-muted small">Nota admin:</div>
+            <div>@week.AdminNotes</div>
         </div>
     }
 </div>

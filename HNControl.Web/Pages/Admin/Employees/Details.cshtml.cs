@@ -167,7 +167,7 @@ public class DetailsModel : PageModel
             .Select(r => new
             {
                 Label = $"{r.PeriodStart:dd MMM}",
-                Score = (decimal)(r.PersonalPerformance + r.Teamwork + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 6m
+                Score = (decimal)(r.PersonalPerformance + r.Teamwork + r.ParticipationInTeam + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 7m
             })
             .ToListAsync();
 
@@ -182,7 +182,7 @@ public class DetailsModel : PageModel
         var scores = await _db.PerformanceReviews
             .AsNoTracking()
             .Where(r => r.UserId == employeeId && r.CreatedAt >= since)
-            .Select(r => (decimal)(r.PersonalPerformance + r.Teamwork + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 6m)
+            .Select(r => (decimal)(r.PersonalPerformance + r.Teamwork + r.ParticipationInTeam + r.PunctualityAttendance + r.ProjectExecution + r.OrderCleanliness + r.TechnicalSkills) / 7m)
             .ToListAsync();
 
         KPIAvgScore = scores.Count == 0 ? 0m : Math.Round(scores.Average(), 2);

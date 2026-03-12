@@ -59,14 +59,12 @@ public class AddEntryModel : PageModel
         var week = await _db.ViaticWeeks.FirstOrDefaultAsync(w => w.Id == weekId && w.UserId == userId);
         if (week == null) return Forbid();
 
-        // Solo Draft es editable
-        if (week.Status is not ViaticWeekStatus.Draft and not ViaticWeekStatus.Rejected)
+        if (!CanEditWeek(week))
         {
-            Error = "La semana ya fue enviada/validada. No se puede agregar gastos.";
+            Error = "Esta semana no est� editable en su estado actual.";
             return Page();
         }
 
-        // Asegura que el día caiga dentro de la semana
         var start = week.WeekStartDate.Date;
         var end = start.AddDays(6);
         if (DayDate.Date < start || DayDate.Date > end)
@@ -84,26 +82,23 @@ public class AddEntryModel : PageModel
 
         if (week == null) return Forbid();
 
-        // Solo Draft es editable
-        if (week.Status is not ViaticWeekStatus.Draft and not ViaticWeekStatus.Rejected)
+        if (!CanEditWeek(week))
         {
-            Error = "La semana ya fue enviada/validada. No se puede agregar gastos.";
+            Error = "Esta semana no est� editable en su estado actual.";
             return Page();
         }
 
-        // Validación: el día debe estar dentro de la semana
         var start = week.WeekStartDate.Date;
         var end = start.AddDays(6);
         if (DayDate.Date < start || DayDate.Date > end)
         {
-            Error = "Ese día no cae dentro de la semana.";
+            Error = "Ese d�a no cae dentro de la semana.";
             return Page();
         }
 
-        // Validación: si es facturable, PDF obligatorio
         if (IsBillable && (PdfFile == null || PdfFile.Length == 0))
         {
-            Error = "Si es facturable, el PDF es obligatorio.";
+            Error = "Si es facturable, el comprobante es obligatorio (PDF o imagen).";
             return Page();
         }
 
@@ -122,21 +117,27 @@ public class AddEntryModel : PageModel
 
         _db.ViaticEntries.Add(entry);
 
-        // Adjuntar PDF si aplica
-        if (IsBillable && PdfFile != null)
+        if (PdfFile != null && PdfFile.Length > 0)
         {
             var attachment = new ViaticAttachment
             {
                 EntryId = entry.Id,
                 OriginalFileName = Path.GetFileName(PdfFile.FileName),
-                ContentType = "application/pdf",
                 UploadedAt = DateTime.UtcNow
             };
 
-            // guardamos con ID único
-            var (path, size) = await _storage.SavePdfAsync(PdfFile, $"viaticos/{week.Id}", attachment.Id.ToString("N"));
+            var allowed = new[] { ".pdf", ".png", ".jpg", ".jpeg", ".jfif", ".webp", ".heic" };
+            var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
+                PdfFile,
+                $"viaticos/{week.Id}",
+                attachment.Id.ToString("N"),
+                allowed,
+                25 * 1024 * 1024);
+
             attachment.StoragePath = path;
             attachment.SizeBytes = size;
+            attachment.ContentType = contentType;
+            attachment.OriginalFileName = originalName;
 
             _db.ViaticAttachments.Add(attachment);
         }
@@ -145,5 +146,13 @@ public class AddEntryModel : PageModel
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Viaticos/Week", new { id = WeekId });
+    }
+
+    private static bool CanEditWeek(ViaticWeek week)
+    {
+        if (week.FlowType == ViaticFlowType.Weekly)
+            return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected;
+
+        return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected or ViaticWeekStatus.Approved;
     }
 }

@@ -200,6 +200,7 @@ public class MyProfileModel : PageModel
             CurrentKpiMetrics = new()
             {
                 new("Actitud", review.PersonalPerformance),
+                new("Participacion en equipo", review.ParticipationInTeam),
                 new("Puntualidad", review.PunctualityAttendance),
                 new("Trabajo en equipo", review.Teamwork),
                 new("Ejecucion", review.ProjectExecution),

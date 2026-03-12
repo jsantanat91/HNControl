@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Viaticos.EditEntryModel
 @{
     Layout = "_Layout";
@@ -13,7 +13,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h1 class="h4 m-0">Editar gasto</h1>
-        <div class="text-muted small">Ajusta datos, monto y archivo PDF.</div>
+        <div class="text-muted small">Ajusta datos, monto y comprobante.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Viaticos/Week" asp-route-id="@(Model.Week?.Id)">Volver</a>
 </div>
@@ -56,16 +56,16 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">PDF (factura/recibo)</label>
-                        <input class="form-control" asp-for="PdfFile" type="file" accept="application/pdf" />
+                        <label class="form-label fw-semibold">Comprobante (factura/recibo)</label>
+                        <input class="form-control" asp-for="PdfFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.jfif,.webp,.heic" />
                         <span class="text-danger" asp-validation-for="PdfFile"></span>
-                        <div class="form-text">Si marcas facturable, el PDF es obligatorio.</div>
+                        <div class="form-text">Si marcas facturable, el comprobante es obligatorio (PDF o imagen).</div>
                     </div>
 
                     <div class="col-12">
                         <div class="form-check">
                             <input class="form-check-input" asp-for="RemovePdf" />
-                            <label class="form-check-label">Eliminar PDF actual</label>
+                            <label class="form-check-label">Eliminar comprobante actual</label>
                         </div>
                         <span class="text-danger" asp-validation-for="RemovePdf"></span>
                     </div>
@@ -84,8 +84,8 @@
             <div class="card-body">
                 <div class="fw-semibold mb-2">Reglas rapidas</div>
                 <div class="small text-muted">1. El dia debe estar dentro de la semana.</div>
-                <div class="small text-muted">2. Si es facturable, sube PDF.</div>
-                <div class="small text-muted">3. Si quitas PDF, no puede quedar facturable.</div>
+                <div class="small text-muted">2. Si es facturable, sube comprobante.</div>
+                <div class="small text-muted">3. Si quitas comprobante, no puede quedar facturable.</div>
             </div>
         </div>
     </div>

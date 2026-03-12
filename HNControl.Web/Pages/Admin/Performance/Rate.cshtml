@@ -170,6 +170,17 @@
 
             <div class="col-lg-4">
                 <div class="hn-metric hn-hover">
+                    <div class="hn-metric-title">Participación en equipo</div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input asp-for="Input.ParticipationInTeam" type="range" class="form-range hn-range" min="1" max="5" step="1" />
+                        <div class="hn-pill"><span class="val"></span><span class="den">/5</span><span class="word d-none d-sm-inline"></span></div>
+                    </div>
+                    <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="hn-metric hn-hover">
                     <div class="hn-metric-title">Puntualidad / asistencia</div>
                     <div class="d-flex align-items-center gap-3">
                         <input asp-for="Input.PunctualityAttendance" type="range" class="form-range hn-range" min="1" max="5" step="1" />

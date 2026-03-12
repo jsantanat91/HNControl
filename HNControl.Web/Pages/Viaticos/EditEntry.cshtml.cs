@@ -71,9 +71,9 @@ public class EditEntryModel : PageModel
 
         Week = Entry.Week;
 
-        if (Week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+        if (!CanEditWeek(Week))
         {
-            Error = "Semana enviada/aprobada: no se puede editar.";
+            Error = "La semana no está editable en su estado actual.";
             return RedirectToPage("/Viaticos/Week", new { id = Week.Id });
         }
 
@@ -101,34 +101,31 @@ public class EditEntryModel : PageModel
 
         var week = entry.Week;
 
-        if (week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+        if (!CanEditWeek(week))
         {
-            Error = "Semana enviada/aprobada: no se puede editar.";
+            Error = "La semana no está editable en su estado actual.";
             return RedirectToPage("/Viaticos/Week", new { id = week.Id });
         }
 
-        // DÃ­a dentro de semana
         var start = week.WeekStartDate.Date;
         var end = start.AddDays(6);
         if (DayDate.Date < start || DayDate.Date > end)
         {
-            ModelState.AddModelError(nameof(DayDate), "Ese dÃ­a no cae dentro de la semana.");
+            ModelState.AddModelError(nameof(DayDate), "Ese día no cae dentro de la semana.");
         }
 
-        // PDF rules
         if (RemovePdf && IsBillable)
         {
-            ModelState.AddModelError(nameof(RemovePdf), "No puedes borrar el PDF si el gasto es facturable.");
+            ModelState.AddModelError(nameof(RemovePdf), "No puedes borrar el comprobante si el gasto es facturable.");
         }
 
         if (IsBillable && entry.Attachment == null && (PdfFile == null || PdfFile.Length == 0))
         {
-            ModelState.AddModelError(nameof(PdfFile), "Si es facturable, el PDF es obligatorio.");
+            ModelState.AddModelError(nameof(PdfFile), "Si es facturable, el comprobante es obligatorio.");
         }
 
         if (!ModelState.IsValid)
         {
-            // Rehidratar para vista
             Week = week;
             Entry = entry;
             return Page();
@@ -142,6 +139,7 @@ public class EditEntryModel : PageModel
 
         if (RemovePdf && entry.Attachment != null)
         {
+            await _storage.DeleteIfExistsAsync(entry.Attachment.StoragePath);
             _db.ViaticAttachments.Remove(entry.Attachment);
             entry.Attachment = null;
         }
@@ -153,21 +151,24 @@ public class EditEntryModel : PageModel
                 entry.Attachment = new ViaticAttachment
                 {
                     EntryId = entry.Id,
-                    OriginalFileName = Path.GetFileName(PdfFile.FileName),
-                    ContentType = "application/pdf",
                     UploadedAt = DateTime.UtcNow
                 };
                 _db.ViaticAttachments.Add(entry.Attachment);
             }
-            else
-            {
-                entry.Attachment.OriginalFileName = Path.GetFileName(PdfFile.FileName);
-                entry.Attachment.UploadedAt = DateTime.UtcNow;
-            }
 
-            var (path, size) = await _storage.SavePdfAsync(PdfFile, $"viaticos/{week.Id}", entry.Attachment.Id.ToString("N"));
+            var allowed = new[] { ".pdf", ".png", ".jpg", ".jpeg", ".jfif", ".webp", ".heic" };
+            var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
+                PdfFile,
+                $"viaticos/{week.Id}",
+                entry.Attachment.Id.ToString("N"),
+                allowed,
+                25 * 1024 * 1024);
+
             entry.Attachment.StoragePath = path;
             entry.Attachment.SizeBytes = size;
+            entry.Attachment.ContentType = contentType;
+            entry.Attachment.OriginalFileName = originalName;
+            entry.Attachment.UploadedAt = DateTime.UtcNow;
         }
 
         week.UpdatedAt = DateTime.UtcNow;
@@ -179,5 +180,13 @@ public class EditEntryModel : PageModel
 
         Info = "Gasto actualizado.";
         return RedirectToPage("/Viaticos/Week", new { id = week.Id });
+    }
+
+    private static bool CanEditWeek(ViaticWeek week)
+    {
+        if (week.FlowType == ViaticFlowType.Weekly)
+            return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected;
+
+        return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected or ViaticWeekStatus.Approved;
     }
 }

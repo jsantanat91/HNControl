@@ -20,6 +20,7 @@ public class PerformanceReview
     // 1–5
     [Range(1, 5)] public int PersonalPerformance { get; set; } = 3;
     [Range(1, 5)] public int Teamwork { get; set; } = 3;
+    [Range(1, 5)] public int ParticipationInTeam { get; set; } = 3;
     [Range(1, 5)] public int PunctualityAttendance { get; set; } = 3;
     [Range(1, 5)] public int ProjectExecution { get; set; } = 3;
     [Range(1, 5)] public int OrderCleanliness { get; set; } = 3;
@@ -41,8 +42,8 @@ public class PerformanceReview
 
     public void Recalc()
     {
-        var avg = (PersonalPerformance + Teamwork + PunctualityAttendance +
-                   ProjectExecution + OrderCleanliness + TechnicalSkills) / 6m;
+        var avg = (PersonalPerformance + Teamwork + ParticipationInTeam + PunctualityAttendance +
+                   ProjectExecution + OrderCleanliness + TechnicalSkills) / 7m;
 
         VariablePercent = Math.Round(avg / 5m, 4); // 0..1
         UpdatedAt = DateTime.UtcNow;

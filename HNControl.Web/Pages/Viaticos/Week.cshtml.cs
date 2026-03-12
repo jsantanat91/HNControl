@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,7 +24,6 @@ public class WeekModel : PageModel
     }
 
     public ViaticWeek? Week { get; set; }
-
     public DateTime WeekStart { get; set; }
 
     [TempData] public string? Error { get; set; }
@@ -34,10 +33,10 @@ public class WeekModel : PageModel
     {
         var userId = _userMgr.GetUserId(User)!;
 
-        // ✅ Si viene por ID, cargamos esa semana (evita que te mande “a la semana actual” y parezca que jaló datos viejos).
         if (id.HasValue)
         {
             Week = await _db.ViaticWeeks
+                .Include(w => w.RelatedServiceOrder)
                 .Include(w => w.Entries).ThenInclude(e => e.Attachment)
                 .FirstOrDefaultAsync(w => w.Id == id.Value && w.UserId == userId);
 
@@ -49,12 +48,12 @@ public class WeekModel : PageModel
             return Page();
         }
 
-        // ✅ Fallback: por semana (fecha) o semana actual
         WeekStart = GetWeekStart((weekStart ?? DateTime.UtcNow.Date).Date);
 
         Week = await _db.ViaticWeeks
+            .Include(w => w.RelatedServiceOrder)
             .Include(w => w.Entries).ThenInclude(e => e.Attachment)
-            .FirstOrDefaultAsync(w => w.UserId == userId && w.WeekStartDate == WeekStart);
+            .FirstOrDefaultAsync(w => w.UserId == userId && w.FlowType == ViaticFlowType.Weekly && w.WeekStartDate == WeekStart);
 
         if (Week == null)
         {
@@ -62,6 +61,7 @@ public class WeekModel : PageModel
             {
                 UserId = userId,
                 WeekStartDate = WeekStart,
+                FlowType = ViaticFlowType.Weekly,
                 Status = ViaticWeekStatus.Draft,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -85,14 +85,12 @@ public class WeekModel : PageModel
             .FirstOrDefaultAsync(w => w.Id == weekId && w.UserId == userId);
 
         if (week == null) return NotFound();
-
-        if (week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+        if (!CanEditWeek(week))
         {
-            Error = "Semana enviada/aprobada: no se puede limpiar.";
+            Error = "La semana ya fue enviada o cerrada; no se puede limpiar.";
             return RedirectToPage("/Viaticos/Week", new { id = weekId });
         }
 
-        // Borramos entradas (attachments se van por cascade, pero las removemos explícito por claridad)
         foreach (var e in week.Entries.ToList())
         {
             if (e.Attachment != null)
@@ -110,7 +108,7 @@ public class WeekModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        Info = "Semana limpiada. Ahora sí: hoja en blanco.";
+        Info = "Semana limpiada.";
         return RedirectToPage("/Viaticos/Week", new { id = weekId });
     }
 
@@ -124,10 +122,9 @@ public class WeekModel : PageModel
             .FirstOrDefaultAsync(e => e.Id == entryId);
 
         if (entry?.Week == null || entry.Week.UserId != userId) return NotFound();
-
-        if (entry.Week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+        if (!CanEditWeek(entry.Week))
         {
-            Error = "Semana enviada/aprobada: no se puede modificar.";
+            Error = "La semana ya fue enviada o cerrada; no se puede modificar.";
             return RedirectToPage("/Viaticos/Week", new { id = entry.WeekId });
         }
 
@@ -156,9 +153,9 @@ public class WeekModel : PageModel
 
         if (week == null) return NotFound();
 
-        if (week.Status != ViaticWeekStatus.Draft)
+        if (week.Status != ViaticWeekStatus.Draft && week.Status != ViaticWeekStatus.Rejected)
         {
-            Error = "Solo puedes eliminar semanas en estado Borrador.";
+            Error = "Solo puedes eliminar semanas en estado borrador o rechazado.";
             return RedirectToPage("/Viaticos/Week", new { id = weekId });
         }
 
@@ -185,17 +182,15 @@ public class WeekModel : PageModel
             .FirstOrDefaultAsync(e => e.Id == entryId);
 
         if (entry?.Week == null || entry.Week.UserId != userId) return NotFound();
-
-        if (entry.Week.Status is ViaticWeekStatus.Submitted or ViaticWeekStatus.Approved)
+        if (!CanEditWeek(entry.Week))
         {
-            Error = "Semana enviada/aprobada: no se puede modificar.";
+            Error = "La semana ya fue enviada o cerrada; no se puede modificar.";
             return RedirectToPage("/Viaticos/Week", new { id = entry.WeekId });
         }
 
-        // Si lo quieres poner facturable, debe existir PDF
         if (!entry.IsBillable && entry.Attachment == null)
         {
-            Error = "Para marcar facturable necesitas subir PDF (usa el botón Editar).";
+            Error = "Para marcar facturable necesitas adjuntar evidencia (PDF o imagen).";
             return RedirectToPage("/Viaticos/Week", new { id = entry.WeekId });
         }
 
@@ -218,26 +213,73 @@ public class WeekModel : PageModel
 
         if (week == null) return NotFound();
 
-        if (week.Status is ViaticWeekStatus.Approved)
-            return RedirectToPage("/Viaticos/Week", new { id = weekId });
+        await ViaticTotalsHelper.RecalcWeekAsync(_db, week.Id);
 
-        // Regla: si hay entries billables sin PDF, no deja enviar
-        var bad = week.Entries.Any(e => e.IsBillable && e.Attachment == null);
-        if (bad)
+        if (week.FlowType == ViaticFlowType.Weekly)
         {
-            Error = "Tienes gastos facturables sin PDF. Corrígelo antes de enviar.";
+            if (week.Status == ViaticWeekStatus.Approved)
+                return RedirectToPage("/Viaticos/Week", new { id = weekId });
+
+            var badWeekly = week.Entries.Any(e => e.IsBillable && e.Attachment == null);
+            if (badWeekly)
+            {
+                Error = "Tienes gastos facturables sin comprobante. Corrige antes de enviar.";
+                return RedirectToPage("/Viaticos/Week", new { id = weekId });
+            }
+
+            week.Status = ViaticWeekStatus.Submitted;
+            week.SubmittedAt = DateTime.UtcNow;
+            week.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            Info = "Semana enviada al admin para revisión.";
             return RedirectToPage("/Viaticos/Week", new { id = weekId });
         }
 
-        await ViaticTotalsHelper.RecalcWeekAsync(_db, week.Id);
+        // Flujo anticipado de viaje
+        if (week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected)
+        {
+            if (week.RequestedAdvanceAmount <= 0m || string.IsNullOrWhiteSpace(week.TripDestination) || string.IsNullOrWhiteSpace(week.TripPurpose))
+            {
+                Error = "Completa destino, motivo y monto solicitado antes de enviar la solicitud.";
+                return RedirectToPage("/Viaticos/Week", new { id = weekId });
+            }
 
-        week.Status = ViaticWeekStatus.Submitted;
-        week.SubmittedAt = DateTime.UtcNow;
-        week.UpdatedAt = DateTime.UtcNow;
+            week.Status = ViaticWeekStatus.Submitted;
+            week.SubmittedAt = DateTime.UtcNow;
+            week.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
 
-        await _db.SaveChangesAsync();
-        Info = "Semana enviada al admin para revisión.";
+            Info = "Solicitud anticipada enviada al admin para autorización.";
+            return RedirectToPage("/Viaticos/Week", new { id = weekId });
+        }
+
+        if (week.Status == ViaticWeekStatus.Approved)
+        {
+            if (!week.Entries.Any())
+            {
+                Error = "Agrega al menos un gasto comprobado para enviar a revisión final.";
+                return RedirectToPage("/Viaticos/Week", new { id = weekId });
+            }
+            week.Status = ViaticWeekStatus.SettlementSubmitted;
+            week.SettlementSubmittedAt = DateTime.UtcNow;
+            week.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            Info = "Comprobación enviada a revisión final del admin.";
+            return RedirectToPage("/Viaticos/Week", new { id = weekId });
+        }
+
+        Error = "Esta semana no está en estado editable para enviar.";
         return RedirectToPage("/Viaticos/Week", new { id = weekId });
+    }
+
+    private static bool CanEditWeek(ViaticWeek week)
+    {
+        if (week.FlowType == ViaticFlowType.Weekly)
+            return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected;
+
+        return week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected or ViaticWeekStatus.Approved;
     }
 
     private static DateTime GetWeekStart(DateTime dateUtc)
@@ -247,3 +289,4 @@ public class WeekModel : PageModel
         return d;
     }
 }
+

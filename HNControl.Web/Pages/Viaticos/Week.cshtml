@@ -1,8 +1,17 @@
 ﻿@page
 @model HNControl.Web.Pages.Viaticos.WeekModel
+@using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Mis vi&aacute;ticos";
+    ViewData["Title"] = "Mis viáticos";
+
+    var week = Model.Week;
+    var isTravel = week?.FlowType == ViaticFlowType.TravelAdvance;
+    var canEdit = week != null && (isTravel
+        ? week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected or ViaticWeekStatus.Approved
+        : week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected);
+
+    var nonBillable = week == null ? 0m : Math.Max(0m, week.TotalAmount - week.BillableAmount);
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -16,12 +25,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h1 class="h4 m-0">Mis vi&aacute;ticos</h1>
+        <h1 class="h4 m-0">Mis viáticos</h1>
         <div class="text-muted small">
             Semana: <strong>@Model.WeekStart.ToString("yyyy-MM-dd")</strong>
-            @if (Model.Week != null)
+            @if (week != null)
             {
-                var wkKey = Model.Week.Status.GetDisplayName().ToLowerInvariant();
+                var wkKey = week.Status.GetDisplayName().ToLowerInvariant();
                 var wkChip = wkKey.Contains("aprob")
                     ? "hn-chip-status-up"
                     : wkKey.Contains("rechaz")
@@ -29,7 +38,10 @@
                         : wkKey.Contains("envi")
                             ? "hn-chip-status-progress"
                             : "hn-chip-neutral";
-                <span> · Estado: <span class="hn-chip @wkChip">@Model.Week.Status.GetDisplayName()</span></span>
+                var flowChip = isTravel ? "hn-chip-status-progress" : "hn-chip-neutral";
+
+                <span> · Flujo: <span class="hn-chip @flowChip">@week.FlowType.GetDisplayName()</span></span>
+                <span> · Estado: <span class="hn-chip @wkChip">@week.Status.GetDisplayName()</span></span>
             }
         </div>
     </div>
@@ -37,62 +49,100 @@
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-secondary" asp-page="/Viaticos/Index">Volver</a>
 
-        @if (Model.Week != null && Model.Week.Status is not HNControl.Web.Models.ViaticWeekStatus.Submitted and not HNControl.Web.Models.ViaticWeekStatus.Approved)
+        @if (week != null && canEdit)
         {
-            <a class="btn btn-outline-primary" asp-page="/Viaticos/AddEntry" asp-route-weekId="@Model.Week.Id">+ Agregar gasto</a>
+            <a class="btn btn-outline-primary" asp-page="/Viaticos/AddEntry" asp-route-weekId="@week.Id">+ Agregar gasto</a>
 
-            @if (Model.Week.Entries.Any())
+            @if (week.Entries.Any())
             {
-                <form method="post" asp-page-handler="ClearWeek" class="d-inline" onsubmit="return confirm('Limpiar TODOS los gastos de la semana?');">
-                    <input type="hidden" name="weekId" value="@Model.Week.Id" />
+                <form method="post" asp-page-handler="ClearWeek" class="d-inline" onsubmit="return confirm('¿Limpiar todos los gastos de esta semana?');">
+                    <input type="hidden" name="weekId" value="@week.Id" />
                     <button class="btn btn-outline-danger" type="submit">Limpiar semana</button>
                 </form>
             }
 
-            @if (Model.Week.Status == HNControl.Web.Models.ViaticWeekStatus.Draft)
+            @if (week.Status is ViaticWeekStatus.Draft or ViaticWeekStatus.Rejected)
             {
-                <form method="post" asp-page-handler="DeleteWeek" class="d-inline" onsubmit="return confirm('Eliminar esta semana COMPLETA?');">
-                    <input type="hidden" name="weekId" value="@Model.Week.Id" />
+                <form method="post" asp-page-handler="DeleteWeek" class="d-inline" onsubmit="return confirm('¿Eliminar esta semana completa?');">
+                    <input type="hidden" name="weekId" value="@week.Id" />
                     <button class="btn btn-outline-danger" type="submit">Eliminar semana</button>
                 </form>
             }
 
             <form method="post" asp-page-handler="SubmitWeek" class="d-inline">
-                <input type="hidden" name="weekId" value="@Model.Week.Id" />
-                <button class="btn btn-primary" type="submit">Enviar semana</button>
+                <input type="hidden" name="weekId" value="@week.Id" />
+                @if (isTravel && week.Status == ViaticWeekStatus.Approved)
+                {
+                    <button class="btn btn-success" type="submit">Enviar comprobación</button>
+                }
+                else if (isTravel)
+                {
+                    <button class="btn btn-primary" type="submit">Enviar solicitud</button>
+                }
+                else
+                {
+                    <button class="btn btn-primary" type="submit">Enviar semana</button>
+                }
             </form>
         }
     </div>
 </div>
 
-@if (Model.Week == null)
+@if (week == null)
 {
     <div class="alert alert-info">Cargando semana...</div>
 }
 else
 {
-    var nonBillable = Math.Max(0m, Model.Week.TotalAmount - Model.Week.BillableAmount);
-
     <div class="row g-3 mb-3">
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Total semana</div><div class="h3 mb-0">@Model.Week.TotalAmount.ToString("0.00")</div></div></div></div>
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Facturable</div><div class="h3 mb-0">@Model.Week.BillableAmount.ToString("0.00")</div><div class="small text-muted">Reembolso esperado</div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="h3 mb-0">@week.TotalAmount.ToString("0.00")</div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Facturable</div><div class="h3 mb-0">@week.BillableAmount.ToString("0.00")</div><div class="small text-muted">Reembolso esperado</div></div></div></div>
         <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">No facturable</div><div class="h3 mb-0">@nonBillable.ToString("0.00")</div><div class="small text-muted">Gasto absorbido</div></div></div></div>
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Enviado: <b>@(Model.Week.SubmittedAt.HasValue ? Model.Week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div><div class="small">Aprobado: <b>@(Model.Week.ApprovedAt.HasValue ? Model.Week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <b>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div><div class="small">Aprobación admin: <b>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div></div></div></div>
     </div>
 
-    @if (Model.Week.Status == HNControl.Web.Models.ViaticWeekStatus.Rejected && !string.IsNullOrWhiteSpace(Model.Week.AdminNotes))
+    @if (isTravel)
     {
-        <div class="alert alert-warning"><strong>Rechazado:</strong> @Model.Week.AdminNotes</div>
+        <div class="card shadow-soft hn-hover mb-3">
+            <div class="card-body">
+                <div class="fw-semibold mb-2">Datos de viaje anticipado</div>
+                <div class="row g-2 small">
+                    <div class="col-md-4">Orden: <b>@(week.RelatedServiceOrder?.Title ?? "Sin orden")</b></div>
+                    <div class="col-md-4">Destino: <b>@(string.IsNullOrWhiteSpace(week.TripDestination) ? "-" : week.TripDestination)</b></div>
+                    <div class="col-md-4">Monto solicitado: <b>@week.RequestedAdvanceAmount.ToString("C")</b></div>
+                    <div class="col-md-4">Monto aprobado: <b>@week.ApprovedAdvanceAmount.ToString("C")</b></div>
+                    <div class="col-md-4">Depósito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
+                    <div class="col-md-12">Motivo: <b>@(string.IsNullOrWhiteSpace(week.TripPurpose) ? "-" : week.TripPurpose)</b></div>
+                </div>
+                @if (week.Status == ViaticWeekStatus.Approved)
+                {
+                    <div class="alert alert-info mt-3 mb-0">Ya fue autorizado y depositado. Ahora carga comprobantes (si aplica) y usa <b>Enviar comprobación</b>.</div>
+                }
+                @if (week.Status == ViaticWeekStatus.SettlementSubmitted)
+                {
+                    <div class="alert alert-warning mt-3 mb-0">Comprobación enviada, en revisión final de administración.</div>
+                }
+                @if (week.Status == ViaticWeekStatus.SettlementApproved)
+                {
+                    <div class="alert alert-success mt-3 mb-0">Comprobación final aprobada.</div>
+                }
+            </div>
+        </div>
     }
 
-    @if (!Model.Week.Entries.Any())
+    @if (week.Status == ViaticWeekStatus.Rejected && !string.IsNullOrWhiteSpace(week.AdminNotes))
+    {
+        <div class="alert alert-warning"><strong>Rechazado:</strong> @week.AdminNotes</div>
+    }
+
+    @if (!week.Entries.Any())
     {
         <div class="alert alert-light border">No hay gastos cargados en esta semana.</div>
     }
     else
     {
         <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
-            @foreach (var e in Model.Week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
+            @foreach (var e in week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
             {
                 <div class="col d-flex">
                     <div class="card shadow-soft hn-hover w-100">
@@ -105,11 +155,11 @@ else
                                 <span class="hn-chip @(e.IsBillable ? "hn-chip-status-up" : "hn-chip-neutral")">@(e.IsBillable ? "Facturable" : "No facturable")</span>
                             </div>
 
-                            <div class="small mt-2">Categor&iacute;a: <b>@e.Category</b></div>
+                            <div class="small mt-2">Categoría: <b>@e.Category</b></div>
                             <div class="small">Monto: <b>@e.Amount.ToString("0.00")</b></div>
 
                             <div class="small mt-2">
-                                PDF:
+                                Comprobante:
                                 @if (e.Attachment != null)
                                 {
                                     <a asp-page="/Viaticos/Download" asp-route-attachmentId="@e.Attachment.Id">@e.Attachment.OriginalFileName</a>
@@ -120,7 +170,7 @@ else
                                 }
                             </div>
 
-                            @if (Model.Week.Status is not HNControl.Web.Models.ViaticWeekStatus.Submitted and not HNControl.Web.Models.ViaticWeekStatus.Approved)
+                            @if (canEdit)
                             {
                                 <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
                                     <a class="btn btn-sm btn-outline-secondary" asp-page="/Viaticos/EditEntry" asp-route-entryId="@e.Id">Editar</a>
@@ -130,7 +180,7 @@ else
                                         <button class="btn btn-sm btn-outline-primary" type="submit">@(e.IsBillable ? "No facturable" : "Facturable")</button>
                                     </form>
 
-                                    <form method="post" asp-page-handler="DeleteEntry" class="d-inline" onsubmit="return confirm('Eliminar gasto?');">
+                                    <form method="post" asp-page-handler="DeleteEntry" class="d-inline" onsubmit="return confirm('¿Eliminar gasto?');">
                                         <input type="hidden" name="entryId" value="@e.Id" />
                                         <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
                                     </form>

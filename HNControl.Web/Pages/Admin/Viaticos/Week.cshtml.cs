@@ -31,6 +31,7 @@ public class WeekModel : PageModel
     {
         Week = await _db.ViaticWeeks
             .Include(w => w.EmployeeProfile)
+            .Include(w => w.RelatedServiceOrder)
             .Include(w => w.Entries).ThenInclude(e => e.Attachment)
             .FirstOrDefaultAsync(w => w.Id == id);
 
@@ -38,7 +39,7 @@ public class WeekModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostApproveAsync(Guid id)
+    public async Task<IActionResult> OnPostApproveAsync(Guid id, decimal? approvedAdvanceAmount)
     {
         var adminId = _userMgr.GetUserId(User)!;
 
@@ -50,7 +51,7 @@ public class WeekModel : PageModel
 
         if (week.Status != ViaticWeekStatus.Submitted)
         {
-            Error = "Solo puedes aprobar semanas en estado Submitted.";
+            Error = "Solo puedes aprobar semanas en estado Enviado.";
             return RedirectToPage(new { id });
         }
 
@@ -61,8 +62,47 @@ public class WeekModel : PageModel
         week.ApprovedByUserId = adminId;
         week.UpdatedAt = DateTime.UtcNow;
 
+        if (week.FlowType == ViaticFlowType.TravelAdvance)
+        {
+            var finalApproved = approvedAdvanceAmount.GetValueOrDefault();
+            if (finalApproved <= 0m)
+                finalApproved = week.RequestedAdvanceAmount;
+
+            week.ApprovedAdvanceAmount = finalApproved;
+            week.DepositedAt = DateTime.UtcNow;
+            week.DepositedByUserId = adminId;
+        }
+
         await _db.SaveChangesAsync();
-        Info = "Semana aprobada.";
+        Info = week.FlowType == ViaticFlowType.TravelAdvance
+            ? "Solicitud de viaje aprobada y marcada como depositada."
+            : "Semana aprobada.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostApproveSettlementAsync(Guid id)
+    {
+        var adminId = _userMgr.GetUserId(User)!;
+
+        var week = await _db.ViaticWeeks
+            .Include(w => w.Entries).ThenInclude(e => e.Attachment)
+            .FirstOrDefaultAsync(w => w.Id == id);
+
+        if (week == null) return NotFound();
+
+        if (week.FlowType != ViaticFlowType.TravelAdvance || week.Status != ViaticWeekStatus.SettlementSubmitted)
+        {
+            Error = "Solo aplica para comprobaciones enviadas de viaje anticipado.";
+            return RedirectToPage(new { id });
+        }
+
+        week.Status = ViaticWeekStatus.SettlementApproved;
+        week.SettlementApprovedAt = DateTime.UtcNow;
+        week.SettlementApprovedByUserId = adminId;
+        week.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        Info = "Comprobación final aprobada.";
         return RedirectToPage(new { id });
     }
 
@@ -71,9 +111,9 @@ public class WeekModel : PageModel
         var week = await _db.ViaticWeeks.FirstOrDefaultAsync(w => w.Id == id);
         if (week == null) return NotFound();
 
-        if (week.Status != ViaticWeekStatus.Submitted)
+        if (week.Status is not ViaticWeekStatus.Submitted and not ViaticWeekStatus.SettlementSubmitted)
         {
-            Error = "Solo puedes rechazar semanas en estado Submitted.";
+            Error = "Solo puedes rechazar semanas en estado Enviado o Comprobación enviada.";
             return RedirectToPage(new { id });
         }
 

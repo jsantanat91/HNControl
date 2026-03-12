@@ -237,6 +237,19 @@
                 <!-- 3 -->
                 <div class="col-md-4">
                     <div class="hn-metric">
+                        <label class="form-label">Participación en equipo</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="Input.ParticipationInTeam" type="range" min="1" max="5" step="1"
+                                   class="form-range hn-range hn-kpi" />
+                            <div class="hn-pill"><span class="hn-val">-</span><small>/5</small></div>
+                        </div>
+                        <div class="hn-scale"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                    </div>
+                </div>
+
+                <!-- 4 -->
+                <div class="col-md-4">
+                    <div class="hn-metric">
                         <label class="form-label">Puntualidad / asistencia</label>
                         <div class="d-flex align-items-center gap-3">
                             <input asp-for="Input.PunctualityAttendance" type="range" min="1" max="5" step="1"
@@ -247,7 +260,7 @@
                     </div>
                 </div>
 
-                <!-- 4 -->
+                <!-- 5 -->
                 <div class="col-md-4">
                     <div class="hn-metric">
                         <label class="form-label">Ejecución de proyectos</label>
@@ -260,7 +273,7 @@
                     </div>
                 </div>
 
-                <!-- 5 -->
+                <!-- 6 -->
                 <div class="col-md-4">
                     <div class="hn-metric">
                         <label class="form-label">Orden y limpieza</label>
@@ -273,7 +286,7 @@
                     </div>
                 </div>
 
-                <!-- 6 -->
+                <!-- 7 -->
                 <div class="col-md-4">
                     <div class="hn-metric">
                         <label class="form-label">Habilidades técnicas</label>

@@ -157,6 +157,7 @@ public class DashboardModel : PageModel
         {
             r.PersonalPerformance,
             r.Teamwork,
+            r.ParticipationInTeam,
             r.PunctualityAttendance,
             r.ProjectExecution,
             r.OrderCleanliness,

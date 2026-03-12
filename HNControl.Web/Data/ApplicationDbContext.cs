@@ -166,14 +166,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             w.HasKey(x => x.Id);
             w.Property(x => x.WeekStartDate).HasColumnType("date");
             w.Property(x => x.UpdatedAt).IsConcurrencyToken(false);
+            w.Property(x => x.TripDestination).HasMaxLength(220);
+            w.Property(x => x.TripPurpose).HasMaxLength(1200);
+            w.Property(x => x.RequestedAdvanceAmount).HasColumnType("numeric(12,2)");
+            w.Property(x => x.ApprovedAdvanceAmount).HasColumnType("numeric(12,2)");
+            w.Property(x => x.FlowType).HasConversion<string>().HasMaxLength(30);
+            w.Property(x => x.DepositedByUserId).HasMaxLength(64);
+            w.Property(x => x.SettlementApprovedByUserId).HasMaxLength(64);
 
-            w.HasIndex(x => new { x.UserId, x.WeekStartDate }).IsUnique();
+            w.HasIndex(x => new { x.UserId, x.FlowType, x.WeekStartDate });
 
             // Link con perfil (para panel admin)
             w.HasOne(x => x.EmployeeProfile)
              .WithMany()
              .HasForeignKey(x => x.UserId)
              .HasPrincipalKey(p => p.UserId);
+
+            w.HasOne(x => x.RelatedServiceOrder)
+             .WithMany()
+             .HasForeignKey(x => x.RelatedServiceOrderId)
+             .OnDelete(DeleteBehavior.SetNull);
 
             w.HasMany(x => x.Entries)
              .WithOne(e => e.Week!)
@@ -314,6 +326,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
             e.HasIndex(x => new { x.UserId, x.PeriodStart, x.PeriodEnd }).IsUnique();
             e.Property(x => x.VariablePercent).HasColumnType("numeric(5,4)");
+            e.Property(x => x.Notes).HasMaxLength(3600);
         });
 
         // --------------------

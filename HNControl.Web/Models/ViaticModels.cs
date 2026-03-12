@@ -23,7 +23,22 @@ public enum ViaticWeekStatus
     Approved = 3,
 
     [Display(Name = "Rechazado")]
-    Rejected = 4
+    Rejected = 4,
+
+    [Display(Name = "Comprobacion enviada")]
+    SettlementSubmitted = 5,
+
+    [Display(Name = "Comprobacion aprobada")]
+    SettlementApproved = 6
+}
+
+public enum ViaticFlowType
+{
+    [Display(Name = "Semanal")]
+    Weekly = 1,
+
+    [Display(Name = "Viaje anticipado")]
+    TravelAdvance = 2
 }
 
 public class ViaticWeek
@@ -43,6 +58,30 @@ public class ViaticWeek
     }
 
     public ViaticWeekStatus Status { get; set; } = ViaticWeekStatus.Draft;
+    public ViaticFlowType FlowType { get; set; } = ViaticFlowType.Weekly;
+
+    public Guid? RelatedServiceOrderId { get; set; }
+    public ServiceOrder? RelatedServiceOrder { get; set; }
+
+    [MaxLength(220)]
+    public string TripDestination { get; set; } = "";
+
+    [MaxLength(1200)]
+    public string TripPurpose { get; set; } = "";
+
+    public decimal RequestedAdvanceAmount { get; set; } = 0m;
+    public decimal ApprovedAdvanceAmount { get; set; } = 0m;
+
+    public DateTime? DepositedAt { get; set; }
+
+    [MaxLength(64)]
+    public string? DepositedByUserId { get; set; }
+
+    public DateTime? SettlementSubmittedAt { get; set; }
+    public DateTime? SettlementApprovedAt { get; set; }
+
+    [MaxLength(64)]
+    public string? SettlementApprovedByUserId { get; set; }
 
     // ✅ Totales “congelables”
     public decimal TotalAmount { get; set; } = 0m;

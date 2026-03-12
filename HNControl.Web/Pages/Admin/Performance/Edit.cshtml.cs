@@ -30,6 +30,7 @@ public class EditModel : PageModel
 
         [Range(1, 5)] public int PersonalPerformance { get; set; } = 3;
         [Range(1, 5)] public int Teamwork { get; set; } = 3;
+        [Range(1, 5)] public int ParticipationInTeam { get; set; } = 3;
         [Range(1, 5)] public int PunctualityAttendance { get; set; } = 3;
         [Range(1, 5)] public int ProjectExecution { get; set; } = 3;
         [Range(1, 5)] public int OrderCleanliness { get; set; } = 3;
@@ -67,6 +68,7 @@ public class EditModel : PageModel
                 PeriodEnd = existing.PeriodEnd,
                 PersonalPerformance = existing.PersonalPerformance,
                 Teamwork = existing.Teamwork,
+                ParticipationInTeam = existing.ParticipationInTeam,
                 PunctualityAttendance = existing.PunctualityAttendance,
                 ProjectExecution = existing.ProjectExecution,
                 OrderCleanliness = existing.OrderCleanliness,
@@ -95,10 +97,10 @@ public class EditModel : PageModel
         var pe = TimeUtil.UtcDate(Input.PeriodEnd);
 
         var notes = (Input.Notes ?? "").Trim();
-        var sum = (decimal)(Input.PersonalPerformance + Input.Teamwork + Input.PunctualityAttendance +
+        var sum = (decimal)(Input.PersonalPerformance + Input.Teamwork + Input.ParticipationInTeam + Input.PunctualityAttendance +
                             Input.ProjectExecution + Input.OrderCleanliness + Input.TechnicalSkills);
 
-        var variablePercent = Math.Round(sum / 30m, 4);
+        var variablePercent = Math.Round(sum / 35m, 4);
         variablePercent = Math.Clamp(variablePercent, 0m, 1m);
 
         var adminId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? "";
@@ -107,17 +109,18 @@ public class EditModel : PageModel
         await _db.Database.ExecuteSqlInterpolatedAsync($@"
 INSERT INTO ""PerformanceReviews"" (
     ""Id"", ""UserId"", ""PeriodStart"", ""PeriodEnd"",
-    ""PersonalPerformance"", ""Teamwork"", ""PunctualityAttendance"", ""ProjectExecution"", ""OrderCleanliness"", ""TechnicalSkills"",
+    ""PersonalPerformance"", ""Teamwork"", ""ParticipationInTeam"", ""PunctualityAttendance"", ""ProjectExecution"", ""OrderCleanliness"", ""TechnicalSkills"",
     ""VariablePercent"", ""Notes"", ""RatedByUserId"", ""RatedAt"", ""CreatedAt"", ""UpdatedAt""
 ) VALUES (
     {Guid.NewGuid()}, {Input.UserId}, {ps}, {pe},
-    {Input.PersonalPerformance}, {Input.Teamwork}, {Input.PunctualityAttendance}, {Input.ProjectExecution}, {Input.OrderCleanliness}, {Input.TechnicalSkills},
+    {Input.PersonalPerformance}, {Input.Teamwork}, {Input.ParticipationInTeam}, {Input.PunctualityAttendance}, {Input.ProjectExecution}, {Input.OrderCleanliness}, {Input.TechnicalSkills},
     {variablePercent}, {notes}, {adminId}, {now}, {now}, {now}
 )
 ON CONFLICT (""UserId"", ""PeriodStart"", ""PeriodEnd"")
 DO UPDATE SET
     ""PersonalPerformance"" = EXCLUDED.""PersonalPerformance"",
     ""Teamwork"" = EXCLUDED.""Teamwork"",
+    ""ParticipationInTeam"" = EXCLUDED.""ParticipationInTeam"",
     ""PunctualityAttendance"" = EXCLUDED.""PunctualityAttendance"",
     ""ProjectExecution"" = EXCLUDED.""ProjectExecution"",
     ""OrderCleanliness"" = EXCLUDED.""OrderCleanliness"",
