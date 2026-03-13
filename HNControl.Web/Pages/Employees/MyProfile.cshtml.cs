@@ -77,7 +77,7 @@ public class MyProfileModel : PageModel
     public DateTime? NextVacationStart { get; set; }
     public DateTime? NextVacationEnd { get; set; }
 
-    // ExÃ¡menes
+    // Exámenes
     public int ExamsAssignedCount { get; set; }
     public int ExamsInProgressCount { get; set; }
     public int ExamsSubmittedCount { get; set; }
@@ -153,7 +153,7 @@ public class MyProfileModel : PageModel
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
-        // Si no hay review en la quincena, usamos la Ãºltima
+        // Si no hay review en la quincena, usamos la última
         var review = reviewCurrent;
 
         if (review == null)
@@ -200,12 +200,12 @@ public class MyProfileModel : PageModel
             CurrentKpiMetrics = new()
             {
                 new("Actitud", review.PersonalPerformance),
-                new("Participacion en equipo", review.ParticipationInTeam),
+                new("Participación en equipo", review.ParticipationInTeam),
                 new("Puntualidad", review.PunctualityAttendance),
                 new("Trabajo en equipo", review.Teamwork),
-                new("Ejecucion", review.ProjectExecution),
+                new("Ejecución", review.ProjectExecution),
                 new("Orden y limpieza", review.OrderCleanliness),
-                new("Habilidad tecnica", review.TechnicalSkills),
+                new("Habilidad técnica", review.TechnicalSkills),
             };
 
             CurrentKpiAverageScore = Math.Round(CurrentKpiMetrics.Average(x => x.Score), 1);
@@ -267,7 +267,7 @@ public class MyProfileModel : PageModel
                 ? EmployeeDeductionApplyOnHalf.First
                 : EmployeeDeductionApplyOnHalf.Second;
 
-            // Cierre automÃ¡tico (para que no se quede "activo" eternamente)
+            // Cierre automático (para que no se quede "activo" eternamente)
             var toClose = await _db.EmployeeDeductions
                 .Where(d => d.UserId == userId && d.IsActive)
                 .Where(d => (d.EndDate != null && d.EndDate.Value < today)
@@ -309,7 +309,7 @@ public class MyProfileModel : PageModel
                 amount = Math.Round(amount, 2);
                 if (amount < 0m) amount = 0m;
 
-                // Para prÃ©stamos con saldo, no descontamos mÃ¡s del saldo
+            // Para préstamos con saldo, no descontamos más del saldo
                 if (d.RemainingAmount.HasValue)
                 {
                     if (d.RemainingAmount.Value <= 0m) continue;
@@ -344,7 +344,7 @@ public class MyProfileModel : PageModel
         }
         catch
         {
-            // Tablas aÃºn no existen o no accesibles: nos quedamos sin deducciones.
+            // Tablas aún no existen o no accesibles: nos quedamos sin deducciones.
             ActiveDeductions = new();
             DeductionsTotal = 0m;
             BonusesTotal = 0m;
@@ -355,7 +355,7 @@ public class MyProfileModel : PageModel
     {
         var isAdmin = User.IsInRole(AppRoles.Admin);
 
-        // âœ… Tomar la Ãºltima campaÃ±a CERRADA donde este empleado sÃ­ tenga respuestas (si no, cae en "no hay resultados")
+        // Tomar la última campaña CERRADA donde este empleado sí tenga respuestas.
         var campaign = await _db.Eval360Campaigns
             .AsNoTracking()
             .Where(c => c.Status == Eval360CampaignStatus.Closed)
@@ -416,7 +416,7 @@ public class MyProfileModel : PageModel
     {
         VacYear = DateTime.Now.Year;
 
-        // âœ… Allowance automÃ¡tico por LFT (si no hay HireDate, usamos el valor manual)
+        // Allowance automático por LFT (si no hay HireDate, usamos el valor manual)
         VacationAllowance = (Profile?.HireDate != null)
             ? VacationPolicyMxLft.GetAnnualVacationDays(Profile.HireDate, DateTime.Now.Date)
             : (Profile?.VacationAllowanceDays ?? 0);
@@ -526,7 +526,7 @@ public class MyProfileModel : PageModel
 
         var years = months / 12;
         var rem = months % 12;
-        return $"{years} aÃ±o(s) {rem} mes(es)";
+        return $"{years} año(s) {rem} mes(es)";
     }
 
     private static DateTime ToMonday(DateTime d)
