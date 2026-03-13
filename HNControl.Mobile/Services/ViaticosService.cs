@@ -22,6 +22,11 @@ public sealed class ViaticosService
         return _api.PostJsonAsync<DateTime, ViaticEnsureWeekResponseDto>("api/mobile/viaticos/weeks", anyDayInWeek);
     }
 
+    public Task<ViaticEnsureWeekResponseDto> CreateTravelWeekAsync(ViaticCreateTravelWeekDto dto)
+    {
+        return _api.PostJsonAsync<ViaticCreateTravelWeekDto, ViaticEnsureWeekResponseDto>("api/mobile/viaticos/weeks/travel", dto);
+    }
+
     public Task<ViaticWeekDetailDto> GetWeekAsync(Guid id)
     {
         return _api.GetJsonAsync<ViaticWeekDetailDto>($"api/mobile/viaticos/week/{id}");

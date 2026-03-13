@@ -7,7 +7,7 @@
     Background="#E9EEF7">
     <Grid RowDefinitions="Auto,*" Padding="14,12">
         <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
                 <Label FontAttributes="Bold" FontSize="23" Text="Mis viaticos" TextColor="White" />
                 <Button Grid.Column="1"
                         BackgroundColor="#2B5FD9"
@@ -15,13 +15,22 @@
                         CornerRadius="10"
                         HeightRequest="40"
                         Padding="14,8"
-                        Text="+ Semana"
+                        Text="+ Semanal"
+                        TextColor="White" />
+                <Button Grid.Column="2"
+                        Margin="8,0,0,0"
+                        BackgroundColor="#1E9B58"
+                        Clicked="OnNewTravelClicked"
+                        CornerRadius="10"
+                        HeightRequest="40"
+                        Padding="14,8"
+                        Text="+ Viaje"
                         TextColor="White" />
                 <Label Grid.Row="1"
-                       Grid.ColumnSpan="2"
+                       Grid.ColumnSpan="3"
                        FontSize="12"
                        Opacity="0.85"
-                       Text="Carga semanal de gastos (vista movil)."
+                       Text="Apoyo Gastos/Transporte y Solicitud de Gastos."
                        TextColor="#C5D5F0" />
             </Grid>
         </Border>
@@ -49,6 +58,7 @@
                                            FontSize="12"
                                            Text="{Binding StatusLabel}" />
                                 </Grid>
+                                <Label FontSize="12" Text="{Binding FlowLabel}" TextColor="#8FA1C0" />
                                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                     <Border Grid.Column="0" BackgroundColor="#EEF3FF" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
                                         <VerticalStackLayout Spacing="0">

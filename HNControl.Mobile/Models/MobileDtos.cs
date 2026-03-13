@@ -610,10 +610,16 @@ public sealed class ViaticWeekListItemDto
 {
     public Guid Id { get; set; }
     public DateTime WeekStartDate { get; set; }
+    public int FlowType { get; set; }
     public int Status { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal BillableAmount { get; set; }
     public int EntriesCount { get; set; }
+    public decimal RequestedAdvanceAmount { get; set; }
+    public decimal? ApprovedAdvanceAmount { get; set; }
+
+    [JsonIgnore]
+    public string FlowLabel => FlowType == 2 ? "Solicitud de Gastos" : "Apoyo Gastos/Transporte";
 
     [JsonIgnore]
     public string StatusLabel => Status switch
@@ -622,6 +628,8 @@ public sealed class ViaticWeekListItemDto
         2 => "Enviado",
         3 => "Aprobado",
         4 => "Rechazado",
+        5 => "Comprobacion enviada",
+        6 => "Comprobacion aprobada",
         _ => "Estatus " + Status
     };
 }
@@ -651,11 +659,20 @@ public sealed class ViaticWeekDetailDto
 {
     public Guid Id { get; set; }
     public DateTime WeekStartDate { get; set; }
+    public int FlowType { get; set; }
     public int Status { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal BillableAmount { get; set; }
     public DateTime? SubmittedAt { get; set; }
     public DateTime? ApprovedAt { get; set; }
+    public DateTime? SettlementSubmittedAt { get; set; }
+    public DateTime? SettlementApprovedAt { get; set; }
+    public Guid? RelatedServiceOrderId { get; set; }
+    public string TripDestination { get; set; } = "";
+    public string TripPurpose { get; set; } = "";
+    public decimal RequestedAdvanceAmount { get; set; }
+    public decimal? ApprovedAdvanceAmount { get; set; }
+    public DateTime? DepositedAt { get; set; }
     public List<ViaticEntryDto> Entries { get; set; } = new();
 }
 
@@ -676,4 +693,13 @@ public sealed class ViaticEnsureWeekRequestDto
 public sealed class ViaticEnsureWeekResponseDto
 {
     public Guid Id { get; set; }
+}
+
+public sealed class ViaticCreateTravelWeekDto
+{
+    public DateTime AnyDayInWeek { get; set; }
+    public string TripDestination { get; set; } = "";
+    public string TripPurpose { get; set; } = "";
+    public decimal RequestedAdvanceAmount { get; set; }
+    public Guid? RelatedServiceOrderId { get; set; }
 }

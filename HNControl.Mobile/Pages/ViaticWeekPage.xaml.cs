@@ -214,13 +214,16 @@ public partial class ViaticWeekPage : ContentPage
             return;
         }
 
-        if (_current.Status is 2 or 3)
+        if (_current.Status is 2 or 5 or 6)
         {
-            await DisplayAlertAsync("Viaticos", "Esta semana ya fue enviada/aprobada.", "OK");
+            await DisplayAlertAsync("Viaticos", "Este flujo ya fue enviado y no permite nuevo envio.", "OK");
             return;
         }
 
-        var ok = await DisplayAlertAsync("Enviar semana", "Se enviara al admin para revision.", "Enviar", "Cancelar");
+        var msg = _current.FlowType == 2 && _current.Status == 3
+            ? "Se enviara la comprobacion final al admin."
+            : "Se enviara al admin para revision.";
+        var ok = await DisplayAlertAsync("Enviar", msg, "Enviar", "Cancelar");
         if (!ok)
         {
             return;
@@ -229,8 +232,8 @@ public partial class ViaticWeekPage : ContentPage
         _isBusy = true;
         try
         {
-            var msg = await _viaticos.SubmitWeekAsync(_weekId);
-            await DisplayAlertAsync("Viaticos", string.IsNullOrWhiteSpace(msg.Message) ? "Semana enviada." : msg.Message, "OK");
+            var result = await _viaticos.SubmitWeekAsync(_weekId);
+            await DisplayAlertAsync("Viaticos", string.IsNullOrWhiteSpace(result.Message) ? "Semana enviada." : result.Message, "OK");
             await LoadWeekAsync();
         }
         catch (Exception ex)
@@ -261,6 +264,13 @@ public partial class ViaticWeekPage : ContentPage
             BillableLabel.Text = _current.BillableAmount.ToString("$#,##0.00");
             EntriesCountLabel.Text = $"{_current.Entries.Count} registro(s)";
             EntriesCollection.ItemsSource = _current.Entries.OrderByDescending(x => x.DayDate).ToList();
+            TravelInfoCard.IsVisible = _current.FlowType == 2;
+            if (_current.FlowType == 2)
+            {
+                TravelSummaryLabel.Text = $"Destino: {_current.TripDestination} | Motivo: {_current.TripPurpose}";
+                TravelRequestedLabel.Text = $"Monto solicitado: {_current.RequestedAdvanceAmount:N2}";
+                TravelApprovedLabel.Text = $"Monto aprobado: {(_current.ApprovedAdvanceAmount ?? 0m):N2}";
+            }
 
             var weekStart = _current.WeekStartDate.Date;
             DayDatePicker.MinimumDate = weekStart;
@@ -270,9 +280,14 @@ public partial class ViaticWeekPage : ContentPage
                 DayDatePicker.Date = weekStart;
             }
 
-            var canEdit = _current.Status is 1 or 4;
+            var canEdit = CanEditCurrent();
             FormCard.IsVisible = canEdit;
-            SubmitButton.IsVisible = canEdit;
+            SubmitButton.IsVisible = CanSubmitCurrent();
+            SubmitButton.Text = _current.FlowType == 2 && _current.Status == 3
+                ? "Enviar comprobacion"
+                : _current.FlowType == 2
+                    ? "Enviar solicitud al admin"
+                    : "Enviar semana al admin";
         }
         catch (Exception ex)
         {
@@ -306,8 +321,40 @@ public partial class ViaticWeekPage : ContentPage
             2 => "Enviado",
             3 => "Aprobado",
             4 => "Rechazado",
+            5 => "Comprobacion enviada",
+            6 => "Comprobacion aprobada",
             _ => "Estatus " + status
         };
+    }
+
+    private bool CanEditCurrent()
+    {
+        if (_current == null)
+        {
+            return false;
+        }
+
+        if (_current.FlowType == 2)
+        {
+            return _current.Status is 1 or 3 or 4;
+        }
+
+        return _current.Status is 1 or 4;
+    }
+
+    private bool CanSubmitCurrent()
+    {
+        if (_current == null)
+        {
+            return false;
+        }
+
+        if (_current.FlowType == 2)
+        {
+            return _current.Status is 1 or 3 or 4;
+        }
+
+        return _current.Status is 1 or 4;
     }
 
     private sealed record CategoryOption(int Value, string Label);

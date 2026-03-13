@@ -17,10 +17,10 @@
 
             <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="19" Text="Nomina quincenal" />
+                    <Label FontAttributes="Bold" FontSize="19" Text="Pago quincenal actual" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
                         <VerticalStackLayout>
-                            <Label FontSize="12" Opacity="0.7" Text="Neto estimado" />
+                            <Label FontSize="12" Opacity="0.7" Text="Pago actual" />
                             <Label x:Name="NetPayLabel" FontAttributes="Bold" FontSize="22" />
                         </VerticalStackLayout>
                         <VerticalStackLayout Grid.Column="1">
@@ -46,7 +46,7 @@
 
             <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="KPI y retro del admin" />
+                    <Label FontAttributes="Bold" FontSize="18" Text="KPI y retro de RH" />
                     <Label x:Name="KpiRetroMetaLabel" FontSize="12" Opacity="0.7" />
                     <Grid ColumnDefinitions="*,Auto">
                         <Label x:Name="KpiRetroTitleLabel" FontAttributes="Bold" />
@@ -74,7 +74,7 @@
 
             <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluacion 360" />
+                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluación 360" />
                     <Label x:Name="Eval360MetaLabel" FontSize="12" Opacity="0.7" />
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <Label x:Name="Eval360TitleLabel" FontAttributes="Bold" />
@@ -167,7 +167,7 @@
                 </Border>
                 <Border Grid.Column="1" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                     <VerticalStackLayout>
-                        <Label FontAttributes="Bold" Text="Examenes" />
+                        <Label FontAttributes="Bold" Text="Exámenes" />
                         <Label x:Name="ExamsSummaryLabel" FontSize="13" Opacity="0.8" />
                     </VerticalStackLayout>
                 </Border>

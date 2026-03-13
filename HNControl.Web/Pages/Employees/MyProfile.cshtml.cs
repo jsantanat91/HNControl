@@ -211,7 +211,7 @@ public class MyProfileModel : PageModel
             CurrentKpiAverageScore = Math.Round(CurrentKpiMetrics.Average(x => x.Score), 1);
         }
 
-        var payLabels = new[] { "Neto", "Deducciones", "Bonos" };
+        var payLabels = new[] { "Pago neto", "Deducciones", "Bonos" };
         var payValues = new[] { net, DeductionsTotal, BonusesTotal };
         PayrollLabelsJson = JsonSerializer.Serialize(payLabels);
         PayrollValuesJson = JsonSerializer.Serialize(payValues);

@@ -23,6 +23,11 @@ public partial class Eval360ModulePage : ContentPage
                 x.Campaign,
                 x.Role,
                 x.Status,
+                StatusBg = string.Equals(x.Status, "Pending", StringComparison.OrdinalIgnoreCase)
+                    ? Color.FromArgb("#FFF4D6")
+                    : string.Equals(x.Status, "Submitted", StringComparison.OrdinalIgnoreCase)
+                        ? Color.FromArgb("#DDF8E8")
+                        : Color.FromArgb("#EEF2FF"),
                 Meta = $"Creada: {x.CreatedAt:yyyy-MM-dd}" + (x.SubmittedAt.HasValue ? $" | Enviada: {x.SubmittedAt:yyyy-MM-dd}" : "")
             }).ToList();
         }

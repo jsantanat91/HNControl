@@ -29,6 +29,15 @@
                 </Border>
             </Grid>
 
+            <Border x:Name="TravelInfoCard" IsVisible="False" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <VerticalStackLayout Spacing="4">
+                    <Label FontAttributes="Bold" FontSize="17" Text="Solicitud de Gastos" />
+                    <Label x:Name="TravelSummaryLabel" FontSize="13" />
+                    <Label x:Name="TravelRequestedLabel" FontSize="13" />
+                    <Label x:Name="TravelApprovedLabel" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+
             <Border x:Name="FormCard" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                 <VerticalStackLayout Spacing="8">
                     <Label x:Name="FormTitleLabel" FontAttributes="Bold" FontSize="17" Text="Agregar gasto" />
