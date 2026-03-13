@@ -1,92 +1,114 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="HNControl.Mobile.Pages.TicketDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Detalle ticket"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
-            <Border Background="#0E2242" StrokeShape="RoundRectangle 16" Padding="12">
-                <VerticalStackLayout Spacing="4">
+            <Border Style="{StaticResource HeaderCard}">
+                <VerticalStackLayout Spacing="6">
                     <Label x:Name="TicketNumberLabel" TextColor="#AFC5ED" FontSize="12" />
-                    <Label x:Name="TitleLabel" TextColor="White" FontAttributes="Bold" FontSize="24" />
-                    <Label x:Name="ClientLabel" TextColor="#DCE8FF" FontSize="14" />
-                    <Label x:Name="MetaLabel" TextColor="#DCE8FF" FontSize="12" />
+                    <Label x:Name="TitleLabel" TextColor="White" FontAttributes="Bold" FontSize="24" LineBreakMode="WordWrap" />
+                    <Label x:Name="ClientLabel" TextColor="#DCE8FF" FontSize="14" LineBreakMode="WordWrap" />
+
+                    <HorizontalStackLayout Spacing="6" Wrap="Wrap">
+                        <Border x:Name="StatusBadge" Style="{StaticResource PillBadgeBlue}">
+                            <Label x:Name="StatusBadgeText" FontAttributes="Bold" FontSize="12" TextColor="#1D4ED8" />
+                        </Border>
+                        <Border x:Name="PriorityBadge" Style="{StaticResource PillBadgeAmber}">
+                            <Label x:Name="PriorityBadgeText" FontAttributes="Bold" FontSize="12" TextColor="#B45309" />
+                        </Border>
+                    </HorizontalStackLayout>
+                    <Label x:Name="MetaLabel" TextColor="#DCE8FF" FontSize="12" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout>
                     <Label Text="Descripcion" FontAttributes="Bold" FontSize="20" />
-                    <Label x:Name="DescriptionLabel" FontSize="16" />
+                    <Label x:Name="DescriptionLabel" FontSize="16" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
-                <VerticalStackLayout Spacing="6">
+            <Border Style="{StaticResource SurfaceCard}">
+                <VerticalStackLayout Spacing="8">
                     <Label Text="Sucursal y carrier" FontAttributes="Bold" FontSize="18" />
-                    <Label x:Name="BranchLabel" FontSize="14" />
-                    <Label x:Name="BranchAddressLabel" FontSize="13" Opacity="0.8" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowSpacing="4">
-                        <Label Text="Carrier:" FontAttributes="Bold" />
-                        <Label Grid.Column="1" x:Name="CarrierLabel" />
-                        <Label Grid.Row="1" Text="Servicio:" FontAttributes="Bold" />
-                        <Label Grid.Row="1" Grid.Column="1" x:Name="CarrierServiceLabel" />
-                        <Label Grid.Row="2" Text="Cuenta:" FontAttributes="Bold" />
-                        <Label Grid.Row="2" Grid.Column="1" x:Name="CarrierAccountLabel" />
-                        <Label Grid.Row="3" Text="Circuito:" FontAttributes="Bold" />
-                        <Label Grid.Row="3" Grid.Column="1" x:Name="CarrierCircuitLabel" />
-                        <Label Grid.Row="4" Text="IP:" FontAttributes="Bold" />
-                        <Label Grid.Row="4" Grid.Column="1" x:Name="CarrierIpLabel" />
-                    </Grid>
+                    <Label x:Name="BranchLabel" FontSize="14" LineBreakMode="WordWrap" />
+                    <Label x:Name="BranchAddressLabel" FontSize="13" Opacity="0.8" LineBreakMode="WordWrap" />
+
+                    <Border BackgroundColor="#F8FAFC" Stroke="{StaticResource AppBorder}" StrokeShape="RoundRectangle 12" Padding="10">
+                        <VerticalStackLayout Spacing="6">
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
+                                <Label Text="Carrier:" FontAttributes="Bold" />
+                                <Label Grid.Column="1" x:Name="CarrierLabel" LineBreakMode="WordWrap" />
+                            </Grid>
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
+                                <Label Text="Servicio:" FontAttributes="Bold" />
+                                <Label Grid.Column="1" x:Name="CarrierServiceLabel" LineBreakMode="WordWrap" />
+                            </Grid>
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
+                                <Label Text="Cuenta:" FontAttributes="Bold" />
+                                <Label Grid.Column="1" x:Name="CarrierAccountLabel" LineBreakMode="WordWrap" />
+                            </Grid>
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
+                                <Label Text="Circuito:" FontAttributes="Bold" />
+                                <Label Grid.Column="1" x:Name="CarrierCircuitLabel" LineBreakMode="WordWrap" />
+                            </Grid>
+                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
+                                <Label Text="IP / Host:" FontAttributes="Bold" />
+                                <Label Grid.Column="1" x:Name="CarrierIpLabel" LineBreakMode="WordWrap" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Acciones" FontAttributes="Bold" FontSize="18" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="Tomar" Clicked="OnTakeClicked" />
-                        <Button Grid.Column="1" Text="Iniciar" Clicked="OnStartClicked" />
+                        <Button Text="Tomar" Clicked="OnTakeClicked" Style="{StaticResource GhostButton}" />
+                        <Button Grid.Column="1" Text="Iniciar" Clicked="OnStartClicked" Style="{StaticResource GhostButton}" />
                     </Grid>
                     <Entry x:Name="ResolveEntry" Placeholder="Resumen de solucion" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="Resolver" Clicked="OnResolveClicked" BackgroundColor="#16A34A" TextColor="White" />
-                        <Button Grid.Column="1" Text="Cerrar" Clicked="OnCloseClicked" BackgroundColor="#0F172A" TextColor="White" />
+                        <Button Text="Resolver" Clicked="OnResolveClicked" BackgroundColor="#16A34A" TextColor="White" CornerRadius="12" />
+                        <Button Grid.Column="1" Text="Cerrar" Clicked="OnCloseClicked" BackgroundColor="#0F172A" TextColor="White" CornerRadius="12" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
 
-            <Border x:Name="EvidenceCard" Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+            <Border x:Name="EvidenceCard" Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Nota y evidencia" FontAttributes="Bold" FontSize="18" />
-                    <Editor x:Name="NoteEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Bitácora técnica, diagnóstico, acciones realizadas..." />
+                    <Editor x:Name="NoteEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Bitacora tecnica, diagnostico y acciones realizadas..." />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="Archivo (PDF/Foto)" Clicked="OnPickEvidenceClicked" />
-                        <Button Grid.Column="1" Text="Tomar foto" Clicked="OnCaptureEvidenceClicked" />
+                        <Button Text="Archivo (PDF/Foto)" Clicked="OnPickEvidenceClicked" Style="{StaticResource GhostButton}" />
+                        <Button Grid.Column="1" Text="Tomar foto" Clicked="OnCaptureEvidenceClicked" Style="{StaticResource GhostButton}" />
                     </Grid>
                     <Label x:Name="SelectedEvidenceLabel" Text="Sin evidencia seleccionada" FontSize="12" TextColor="#64748B" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Text="Guardar nota" Clicked="OnAddNoteClicked" />
-                        <Button Grid.Column="1" Text="Subir evidencia" BackgroundColor="#2B5FD9" TextColor="White" Clicked="OnUploadEvidenceClicked" />
+                        <Button Text="Guardar nota" Clicked="OnAddNoteClicked" Style="{StaticResource GhostButton}" />
+                        <Button Grid.Column="1" Text="Subir evidencia" Clicked="OnUploadEvidenceClicked" Style="{StaticResource PrimaryButton}" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Evidencias" FontAttributes="Bold" FontSize="18" />
                     <CollectionView x:Name="AttachmentsCollection" SelectionMode="None" EmptyView="Sin evidencias adjuntas.">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#F8FAFC" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
+                                <Border Background="#F8FAFC" Stroke="{StaticResource AppBorder}" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                         <VerticalStackLayout>
                                             <Label Text="{Binding FileName}" FontSize="14" FontAttributes="Bold" />
                                             <Label Text="{Binding Meta}" FontSize="12" TextColor="#64748B" />
                                         </VerticalStackLayout>
-                                        <Button Grid.Column="1" Text="Abrir" Clicked="OnOpenAttachmentClicked" CommandParameter="{Binding Id}" />
+                                        <Button Grid.Column="1" Text="Abrir" Clicked="OnOpenAttachmentClicked" CommandParameter="{Binding Id}" Style="{StaticResource GhostButton}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -95,16 +117,16 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" StrokeShape="RoundRectangle 14" Padding="12">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label Text="Bitacora" FontAttributes="Bold" FontSize="18" />
                     <CollectionView x:Name="EventsCollection" SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#F8FAFC" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
+                                <Border Background="#F8FAFC" Stroke="{StaticResource AppBorder}" StrokeShape="RoundRectangle 12" Padding="10" Margin="0,0,0,6">
                                     <VerticalStackLayout>
                                         <Label Text="{Binding Top}" FontSize="12" TextColor="#64748B" />
-                                        <Label Text="{Binding Message}" FontSize="14" />
+                                        <Label Text="{Binding Message}" FontSize="14" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>

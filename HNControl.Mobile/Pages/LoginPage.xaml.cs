@@ -12,6 +12,21 @@ public partial class LoginPage : ContentPage
         _auth = auth;
     }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        HeroLayout.Opacity = 0;
+        HeroLayout.TranslationY = 18;
+        LoginCard.Opacity = 0;
+        LoginCard.TranslationY = 22;
+        await Task.WhenAll(
+            HeroLayout.FadeTo(1, 320, Easing.CubicOut),
+            HeroLayout.TranslateTo(0, 0, 320, Easing.CubicOut));
+        await Task.WhenAll(
+            LoginCard.FadeTo(1, 260, Easing.CubicOut),
+            LoginCard.TranslateTo(0, 0, 260, Easing.CubicOut));
+    }
+
     private async void OnLoginClicked(object sender, EventArgs e)
     {
         ErrorLabel.IsVisible = false;

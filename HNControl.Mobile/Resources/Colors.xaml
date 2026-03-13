@@ -31,4 +31,30 @@
     <Color x:Key="Blue200Accent">#72ACF1</Color>
     <Color x:Key="Blue300Accent">#A7CBF6</Color>
 
+    <!-- App modern palette -->
+    <Color x:Key="AppBgTop">#F2F7FF</Color>
+    <Color x:Key="AppBgBottom">#E8EEF9</Color>
+    <Color x:Key="AppSurface">#FFFFFF</Color>
+    <Color x:Key="AppText">#0F172A</Color>
+    <Color x:Key="AppMuted">#64748B</Color>
+    <Color x:Key="AppHeader">#0A1E42</Color>
+    <Color x:Key="AppAccent">#2B5FD9</Color>
+    <Color x:Key="AppAccentSoft">#DBE7FF</Color>
+    <Color x:Key="AppSuccess">#16A34A</Color>
+    <Color x:Key="AppSuccessSoft">#DCFCE7</Color>
+    <Color x:Key="AppDanger">#DC2626</Color>
+    <Color x:Key="AppDangerSoft">#FEE2E2</Color>
+    <Color x:Key="AppWarning">#C2410C</Color>
+    <Color x:Key="AppWarningSoft">#FFEDD5</Color>
+    <Color x:Key="AppBorder">#D8E2F2</Color>
+
+    <LinearGradientBrush x:Key="AppBackgroundBrush" EndPoint="0,1">
+        <GradientStop Color="{StaticResource AppBgTop}" Offset="0.0" />
+        <GradientStop Color="{StaticResource AppBgBottom}" Offset="1.0" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="HeaderGradientBrush" EndPoint="1,1">
+        <GradientStop Color="#0B1D45" Offset="0.0" />
+        <GradientStop Color="#10316B" Offset="1.0" />
+    </LinearGradientBrush>
+
 </ResourceDictionary>

@@ -1,4 +1,4 @@
-using HNControl.Mobile.Services;
+﻿using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
 
@@ -25,13 +25,23 @@ public partial class TicketDetailPage : ContentPage
     private async Task LoadAsync()
     {
         if (_ticketId == Guid.Empty) return;
+
         try
         {
             var d = await _tickets.DetailAsync(_ticketId);
+            var statusText = NormalizeStatus(d.Status);
+            var priorityText = NormalizePriority(d.Priority);
+
             TicketNumberLabel.Text = d.TicketNumber;
             TitleLabel.Text = d.Title;
             ClientLabel.Text = $"{d.Client} - {d.Contract}";
-            MetaLabel.Text = $"{NormalizeStatus(d.Status)} | {NormalizePriority(d.Priority)} | SLA: {d.SlaResolutionDueAt:yyyy-MM-dd HH:mm}";
+
+            StatusBadgeText.Text = statusText;
+            PriorityBadgeText.Text = priorityText;
+            ApplyStatusBadge(statusText);
+            ApplyPriorityBadge(priorityText);
+
+            MetaLabel.Text = $"SLA: {d.SlaResolutionDueAt:yyyy-MM-dd HH:mm}";
             DescriptionLabel.Text = d.Description;
 
             BranchLabel.Text = $"Sucursal: {Safe(d.Branch)}";
@@ -43,9 +53,11 @@ public partial class TicketDetailPage : ContentPage
             CarrierIpLabel.Text = Safe(d.CarrierIp);
 
             ResolveEntry.Text = d.ResolutionSummary;
+
             var canOperate = !d.Status.Equals("Closed", StringComparison.OrdinalIgnoreCase)
                              && !d.Status.Equals("Cancelado", StringComparison.OrdinalIgnoreCase)
                              && !d.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
+
             EvidenceCard.IsEnabled = canOperate;
             EvidenceCard.Opacity = canOperate ? 1 : 0.75;
 
@@ -112,7 +124,7 @@ public partial class TicketDetailPage : ContentPage
         var note = (NoteEditor.Text ?? "").Trim();
         if (string.IsNullOrWhiteSpace(note))
         {
-            await DisplayAlertAsync("Ticket", "Escribe una nota para guardar en la bitácora.", "OK");
+            await DisplayAlertAsync("Ticket", "Escribe una nota para guardar en la bitacora.", "OK");
             return;
         }
 
@@ -153,7 +165,7 @@ public partial class TicketDetailPage : ContentPage
         {
             if (!MediaPicker.Default.IsCaptureSupported)
             {
-                await DisplayAlertAsync("Evidencia", "Este dispositivo no soporta captura de cámara en la app.", "OK");
+                await DisplayAlertAsync("Evidencia", "Este dispositivo no soporta captura de camara en la app.", "OK");
                 return;
             }
 
@@ -179,6 +191,7 @@ public partial class TicketDetailPage : ContentPage
         await using var fileStream = await _selectedEvidence.OpenReadAsync();
         var note = (NoteEditor.Text ?? "").Trim();
         var r = await _tickets.AddEvidenceAsync(_ticketId, note, fileStream, _selectedEvidence.FileName, _selectedEvidence.ContentType);
+
         _selectedEvidence = null;
         NoteEditor.Text = "";
         SelectedEvidenceLabel.Text = "Sin evidencia seleccionada";
@@ -188,15 +201,18 @@ public partial class TicketDetailPage : ContentPage
     private async void OnOpenAttachmentClicked(object sender, EventArgs e)
     {
         if (sender is not Button b || b.CommandParameter is not Guid attachmentId) return;
+
         try
         {
             var detail = await _tickets.DetailAsync(_ticketId);
             var att = detail.Attachments.FirstOrDefault(x => x.Id == attachmentId);
             var fileName = att?.FileName;
             var bytes = await _tickets.DownloadAttachmentAsync(attachmentId);
+
             fileName = string.IsNullOrWhiteSpace(fileName) ? $"ticket_{attachmentId:N}.bin" : fileName;
             var path = Path.Combine(FileSystem.CacheDirectory, fileName);
             await File.WriteAllBytesAsync(path, bytes);
+
             await Launcher.Default.OpenAsync(new OpenFileRequest
             {
                 File = new ReadOnlyFile(path)
@@ -206,6 +222,57 @@ public partial class TicketDetailPage : ContentPage
         {
             await DisplayAlertAsync("Adjunto", ex.Message, "OK");
         }
+    }
+
+    private void ApplyStatusBadge(string status)
+    {
+        switch (status)
+        {
+            case "Cerrado":
+            case "Resuelto":
+                SetBadge(StatusBadge, StatusBadgeText, Color.FromArgb("#DCFCE7"), Color.FromArgb("#86EFAC"), Color.FromArgb("#166534"));
+                break;
+
+            case "Cancelado":
+                SetBadge(StatusBadge, StatusBadgeText, Color.FromArgb("#FEE2E2"), Color.FromArgb("#FCA5A5"), Color.FromArgb("#991B1B"));
+                break;
+
+            case "En proceso":
+            case "Asignado":
+                SetBadge(StatusBadge, StatusBadgeText, Color.FromArgb("#DBEAFE"), Color.FromArgb("#93C5FD"), Color.FromArgb("#1D4ED8"));
+                break;
+
+            default:
+                SetBadge(StatusBadge, StatusBadgeText, Color.FromArgb("#E2E8F0"), Color.FromArgb("#CBD5E1"), Color.FromArgb("#334155"));
+                break;
+        }
+    }
+
+    private void ApplyPriorityBadge(string priority)
+    {
+        switch (priority)
+        {
+            case "Urgente":
+            case "Alta":
+                SetBadge(PriorityBadge, PriorityBadgeText, Color.FromArgb("#FEE2E2"), Color.FromArgb("#FCA5A5"), Color.FromArgb("#B91C1C"));
+                break;
+
+            case "Intermedia":
+            case "Media":
+                SetBadge(PriorityBadge, PriorityBadgeText, Color.FromArgb("#FEF3C7"), Color.FromArgb("#FCD34D"), Color.FromArgb("#92400E"));
+                break;
+
+            default:
+                SetBadge(PriorityBadge, PriorityBadgeText, Color.FromArgb("#DCFCE7"), Color.FromArgb("#86EFAC"), Color.FromArgb("#166534"));
+                break;
+        }
+    }
+
+    private static void SetBadge(Border border, Label label, Color background, Color stroke, Color text)
+    {
+        border.BackgroundColor = background;
+        border.Stroke = stroke;
+        label.TextColor = text;
     }
 
     private sealed class EventVm
@@ -227,14 +294,21 @@ public partial class TicketDetailPage : ContentPage
     private static string NormalizePriority(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return "-";
-        return value.Equals("Urge", StringComparison.OrdinalIgnoreCase)
-            ? "Urgente"
-            : value;
+
+        return value switch
+        {
+            "Urge" => "Urgente",
+            "High" => "Alta",
+            "Medium" => "Intermedia",
+            "Low" => "Baja",
+            _ => value
+        };
     }
 
     private static string NormalizeStatus(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return "-";
+
         return value switch
         {
             "New" => "Nuevo",
