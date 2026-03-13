@@ -1,4 +1,4 @@
-using HNControl.Mobile.Services;
+﻿using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
 
@@ -24,9 +24,9 @@ public partial class MonitoringTargetDetailPage : ContentPage
             var d = await _modules.GetMonitoringDetailAsync(_targetId);
             NameLabel.Text = d.Name;
             ClientLabel.Text = d.Client;
-            StatusLabel.Text = $"Estatus: {d.Status} | Última latencia: {(d.LastLatencyMs.HasValue ? d.LastLatencyMs + " ms" : "-")}";
+            StatusLabel.Text = $"Estatus: {d.Status} | Ultima latencia: {(d.LastLatencyMs.HasValue ? d.LastLatencyMs + " ms" : "-")}";
             AddressLabel.Text = $"Host/IP: {d.Address}";
-            ProbeLabel.Text = $"Probe: {d.ProbeType} | Último check: {(d.LastCheckedAt.HasValue ? d.LastCheckedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")}";
+            ProbeLabel.Text = $"Probe: {d.ProbeType} | Ultimo check: {(d.LastCheckedAt.HasValue ? d.LastCheckedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")}";
             ContractLabel.Text = $"Contrato: {d.ContractLabel}";
             ServiceLabel.Text = $"Servicio carrier: {d.CarrierServiceLabel}";
             NotesLabel.Text = string.IsNullOrWhiteSpace(d.Notes) ? "Notas: -" : $"Notas: {d.Notes}";

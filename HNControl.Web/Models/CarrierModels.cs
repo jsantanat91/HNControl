@@ -78,6 +78,12 @@ public class ClientCarrierService
     [MaxLength(120)]
     public string ContractNumber { get; set; } = "";
 
+    [MaxLength(180)]
+    public string BusinessName { get; set; } = "";
+
+    [MaxLength(120)]
+    public string SerialNumber { get; set; } = "";
+
     [MaxLength(120)]
     public string CircuitId { get; set; } = "";
 

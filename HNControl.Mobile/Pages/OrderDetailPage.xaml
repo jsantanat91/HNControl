@@ -4,28 +4,28 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Detalle orden"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView x:Name="RootScroll">
         <VerticalStackLayout Padding="14,12,14,28" Spacing="10">
-            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="24" TextColor="White" />
                     <Label x:Name="ClientLabel" FontSize="13" Opacity="0.85" TextColor="#C5D5F0" />
-                    <HorizontalStackLayout Spacing="6">
-                        <Border x:Name="TypeChip" Background="#D9E8FF" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                    <FlexLayout Wrap="Wrap" Direction="Row" AlignItems="Center">
+                        <Border x:Name="TypeChip" Background="#D9E8FF" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}" Margin="0,0,6,4">
                             <Label x:Name="TypeLabel" FontAttributes="Bold" FontSize="11" />
                         </Border>
-                        <Border x:Name="StatusChip" Background="#DDF8E8" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                        <Border x:Name="StatusChip" Background="#DDF8E8" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}" Margin="0,0,6,4">
                             <Label x:Name="StatusLabel" FontAttributes="Bold" FontSize="11" />
                         </Border>
-                        <Border x:Name="AreaChip" Background="#D7F2FF" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                        <Border x:Name="AreaChip" Background="#D7F2FF" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}" Margin="0,0,6,4">
                             <Label x:Name="AreaLabel" FontAttributes="Bold" FontSize="11" />
                         </Border>
-                    </HorizontalStackLayout>
+                    </FlexLayout>
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="ClaimedByLabel" FontSize="13" Opacity="0.8" />
                     <Label x:Name="CreatedLabel" FontSize="13" Opacity="0.75" />
@@ -33,14 +33,14 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Descripción" />
                     <Label x:Name="DescriptionLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border x:Name="EditorCard" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border x:Name="EditorCard" Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="10">
                     <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />
                     <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
@@ -80,7 +80,7 @@
                         <CollectionView x:Name="ChecklistCollection" SelectionMode="None">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F8FAFE" Padding="10" Margin="0,4" StrokeShape="RoundRectangle 12">
+                                    <Border Background="#F8FAFE" Padding="10" Margin="0,4" StrokeShape="RoundRectangle 12" Stroke="{StaticResource AppBorder}">
                                         <VerticalStackLayout Spacing="6">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                                 <VerticalStackLayout>
@@ -101,9 +101,7 @@
                         <Button x:Name="SaveChecklistButton"
                                 Text="Guardar checklist"
                                 Clicked="OnSaveChecklistClicked"
-                                CornerRadius="10"
-                                BackgroundColor="#0E2242"
-                                TextColor="White" />
+                                Style="{StaticResource PrimaryButton}" />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout x:Name="CloseSection" Spacing="8" IsVisible="False">
@@ -141,13 +139,13 @@
                     </VerticalStackLayout>
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button x:Name="PreviousAreaButton" Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" CornerRadius="10" />
-                        <Button x:Name="NextAreaButton" Grid.Column="1" Text="Siguiente área" Clicked="OnNextAreaClicked" CornerRadius="10" BackgroundColor="#2252D5" TextColor="White" />
+                        <Button x:Name="PreviousAreaButton" Grid.Column="0" Text="Área anterior" Clicked="OnPreviousAreaClicked" Style="{StaticResource GhostButton}" />
+                        <Button x:Name="NextAreaButton" Grid.Column="1" Text="Siguiente área" Clicked="OnNextAreaClicked" Style="{StaticResource PrimaryButton}" />
                     </Grid>
 
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button x:Name="SaveButton" Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" CornerRadius="10" BackgroundColor="#0E2242" TextColor="White" />
-                        <Button x:Name="SubmitButton" Grid.Column="1" Text="Firmar y enviar" Clicked="OnSubmitClicked" CornerRadius="10" />
+                        <Button x:Name="SaveButton" Grid.Column="0" Text="Guardar" Clicked="OnSaveClicked" Style="{StaticResource PrimaryButton}" />
+                        <Button x:Name="SubmitButton" Grid.Column="1" Text="Firmar y enviar" Clicked="OnSubmitClicked" Style="{StaticResource GhostButton}" />
                     </Grid>
                 </VerticalStackLayout>
             </Border>

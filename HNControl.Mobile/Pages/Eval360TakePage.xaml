@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="HNControl.Mobile.Pages.Eval360TakePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Calificar 360"
+    Background="{StaticResource AppBackgroundBrush}">
+    <ScrollView>
+        <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
+            <Border Style="{StaticResource HeaderCard}">
+                <VerticalStackLayout Spacing="2">
+                    <Label x:Name="CampaignLabel" TextColor="White" FontAttributes="Bold" FontSize="21" />
+                    <Label x:Name="SubjectLabel" TextColor="#C5D5F0" FontSize="12" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource SurfaceCard}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Escala 1 a 5" FontAttributes="Bold" />
+                    <Label Text="1: Crítico · 2: A mejorar · 3: Cumple · 4: Bueno · 5: Excelente" FontSize="12" TextColor="#64748B" />
+                </VerticalStackLayout>
+            </Border>
+
+            <VerticalStackLayout x:Name="CompetenciesHost" Spacing="10" />
+
+            <Button Text="Enviar evaluación 360"
+                    Style="{StaticResource PrimaryButton}"
+                    Clicked="OnSubmitClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

@@ -45,6 +45,8 @@ public class EditModel : PageModel
         [MaxLength(140)] public string? Plan { get; set; }
         [MaxLength(120)] public string? AccountNumber { get; set; }
         [MaxLength(120)] public string? ContractNumber { get; set; }
+        [MaxLength(180)] public string? BusinessName { get; set; }
+        [MaxLength(120)] public string? SerialNumber { get; set; }
         [MaxLength(120)] public string? CircuitId { get; set; }
         [MaxLength(200)] public string? ServiceAddress { get; set; }
         [MaxLength(200)] public string? IpInfo { get; set; }
@@ -71,6 +73,8 @@ public class EditModel : PageModel
             Plan = svc.Plan,
             AccountNumber = svc.AccountNumber,
             ContractNumber = svc.ContractNumber,
+            BusinessName = svc.BusinessName,
+            SerialNumber = svc.SerialNumber,
             CircuitId = svc.CircuitId,
             ServiceAddress = svc.ServiceAddress,
             IpInfo = svc.IpInfo,
@@ -110,6 +114,8 @@ public class EditModel : PageModel
         svc.Plan = (Input.Plan ?? "").Trim();
         svc.AccountNumber = (Input.AccountNumber ?? "").Trim();
         svc.ContractNumber = (Input.ContractNumber ?? "").Trim();
+        svc.BusinessName = (Input.BusinessName ?? "").Trim();
+        svc.SerialNumber = (Input.SerialNumber ?? "").Trim();
         svc.CircuitId = (Input.CircuitId ?? "").Trim();
         svc.ServiceAddress = (Input.ServiceAddress ?? "").Trim();
         svc.IpInfo = (Input.IpInfo ?? "").Trim();

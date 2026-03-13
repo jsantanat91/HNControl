@@ -4,44 +4,40 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Examenes"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="Auto,*" Padding="14,12">
-        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
             <VerticalStackLayout Spacing="4">
                 <Label FontAttributes="Bold" FontSize="22" Text="Examenes asignados" TextColor="White" />
-                <Label FontSize="12" Opacity="0.85" Text="Resuelve y envia tus examenes desde aqui." TextColor="#C5D5F0" />
+                <Label FontSize="12" Opacity="0.85" Text="Resuelve y envia tus examenes desde aqui" TextColor="#C5D5F0" />
             </VerticalStackLayout>
         </Border>
 
         <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
             <CollectionView.EmptyView>
-                <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                <Border Style="{StaticResource SurfaceCard}" Padding="16">
                     <Label HorizontalOptions="Center" Opacity="0.7" Text="No hay examenes asignados." />
                 </Border>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
                         <VerticalStackLayout Spacing="6">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding Title}" />
+                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding Title}" LineBreakMode="WordWrap" />
                                 <Border Grid.Column="1" BackgroundColor="{Binding StatusBg}" Padding="8,4" StrokeShape="RoundRectangle 12" StrokeThickness="0">
                                     <Label FontAttributes="Bold" FontSize="11" Text="{Binding Status}" />
                                 </Border>
                             </Grid>
                             <Label FontSize="12" Opacity="0.75" Text="{Binding ScoreText}" />
-                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
                             <Grid ColumnDefinitions="Auto,*">
                                 <Button
-                                    BackgroundColor="#2252D5"
                                     Clicked="OnResolveClicked"
                                     CommandParameter="{Binding AssignmentId}"
-                                    CornerRadius="10"
-                                    HeightRequest="38"
                                     IsVisible="{Binding CanResolve}"
-                                    Padding="14,8"
-                                    Text="Resolver"
-                                    TextColor="White" />
+                                    Style="{StaticResource PrimaryButton}"
+                                    Text="Resolver" />
                             </Grid>
                         </VerticalStackLayout>
                     </Border>

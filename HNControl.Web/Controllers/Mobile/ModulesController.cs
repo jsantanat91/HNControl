@@ -49,6 +49,12 @@ public class ModulesController : ControllerBase
     public record ExamTakeAnswerInputDto(Guid QuestionId, string? TextAnswer, List<Guid>? ChoiceIds);
     public record ExamTakeSaveDto(List<ExamTakeAnswerInputDto> Answers);
     public record Eval360ItemDto(Guid AssignmentId, string Campaign, string Role, string Status, DateTime CreatedAt, DateTime? SubmittedAt);
+    public record Eval360TakeQuestionDto(Guid QuestionId, string Text, int Score);
+    public record Eval360TakeCompetencyDto(Guid CompetencyId, string Competency, string Comment, List<Eval360TakeQuestionDto> Questions);
+    public record Eval360TakeDto(Guid AssignmentId, string Campaign, string SubjectName, string Status, List<Eval360TakeCompetencyDto> Competencies);
+    public record Eval360SubmitScoreDto(Guid QuestionId, int Score);
+    public record Eval360SubmitCommentDto(Guid CompetencyId, string Comment);
+    public record Eval360SubmitDto(List<Eval360SubmitScoreDto> Scores, List<Eval360SubmitCommentDto> Comments);
     public record CarrierServiceDto(Guid Id, string Carrier, string ServiceLabel, string Plan, string AccountNumber, string ContractNumber, string CircuitId, string ServiceAddress, string IpInfo, string SupportPhone, string Notes, string LastNotesSummary);
     public record CarrierClientDetailDto(Guid ClientId, string ClientName, string Rfc, string Email, string Phone, List<CarrierServiceDto> Services);
     public record MonitorCheckDto(DateTime CheckedAt, bool Success, int? LatencyMs, string Error);
@@ -929,6 +935,166 @@ public class ModulesController : ControllerBase
             .ToListAsync();
 
         return Ok(rows);
+    }
+
+    [HttpGet("eval360/{assignmentId:guid}")]
+    [ProducesResponseType(typeof(Eval360TakeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Eval360Take(Guid assignmentId)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Eval360))
+            return Forbid();
+
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(uid)) return Unauthorized();
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+
+        var assignment = await _db.Eval360Assignments
+            .Include(a => a.Campaign)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+        if (assignment == null) return NotFound();
+        if (!isAdmin && assignment.EvaluatorUserId != uid) return Forbid();
+        if (!isAdmin && assignment.Campaign?.Status != Eval360CampaignStatus.Open) return Forbid();
+
+        if (assignment.StartedAt == null)
+        {
+            assignment.StartedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        var subjectName = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(e => e.UserId == assignment.SubjectUserId)
+            .Select(e => e.FullName)
+            .FirstOrDefaultAsync() ?? "Empleado";
+
+        var competencies = await _db.Eval360Competencies
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                Questions = c.Questions
+                    .Where(q => q.IsActive)
+                    .OrderBy(q => q.SortOrder)
+                    .Select(q => new { q.Id, q.Text })
+                    .ToList()
+            })
+            .ToListAsync();
+
+        var answerMap = await _db.Eval360Answers
+            .AsNoTracking()
+            .Where(a => a.AssignmentId == assignmentId)
+            .ToDictionaryAsync(a => a.QuestionId, a => a.Score);
+
+        var commentMap = await _db.Eval360Comments
+            .AsNoTracking()
+            .Where(c => c.AssignmentId == assignmentId)
+            .ToDictionaryAsync(c => c.CompetencyId, c => c.CommentText);
+
+        var dto = new Eval360TakeDto(
+            assignment.Id,
+            assignment.Campaign?.Title ?? "Evaluación 360",
+            subjectName,
+            assignment.Status == Eval360AssignmentStatus.Submitted ? "Enviado" : "Pendiente",
+            competencies.Select(c => new Eval360TakeCompetencyDto(
+                c.Id,
+                c.Name,
+                commentMap.TryGetValue(c.Id, out var cm) ? cm : "",
+                c.Questions.Select(q => new Eval360TakeQuestionDto(
+                    q.Id,
+                    q.Text,
+                    answerMap.TryGetValue(q.Id, out var sc) ? sc : 3)).ToList()
+            )).ToList()
+        );
+
+        return Ok(dto);
+    }
+
+    [HttpPost("eval360/{assignmentId:guid}/submit")]
+    [ProducesResponseType(typeof(ApiMessageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Eval360Submit(Guid assignmentId, [FromBody] Eval360SubmitDto body)
+    {
+        if (!await _moduleAccess.HasAccessAsync(User, AppModules.Eval360))
+            return Forbid();
+
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        if (string.IsNullOrWhiteSpace(uid)) return Unauthorized();
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
+
+        var assignment = await _db.Eval360Assignments
+            .Include(a => a.Campaign)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+        if (assignment == null) return NotFound();
+        if (!isAdmin && assignment.EvaluatorUserId != uid) return Forbid();
+        if (!isAdmin && assignment.Campaign?.Status != Eval360CampaignStatus.Open) return Forbid();
+
+        var validQuestionIds = (await _db.Eval360Questions
+            .AsNoTracking()
+            .Where(q => q.IsActive)
+            .Select(q => q.Id)
+            .ToListAsync())
+            .ToHashSet();
+
+        var validCompetencyIds = (await _db.Eval360Competencies
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .Select(c => c.Id)
+            .ToListAsync())
+            .ToHashSet();
+
+        var cleanScores = (body.Scores ?? new List<Eval360SubmitScoreDto>())
+            .Where(s => validQuestionIds.Contains(s.QuestionId))
+            .Select(s => new Eval360SubmitScoreDto(s.QuestionId, Math.Clamp(s.Score, 1, 5)))
+            .ToList();
+
+        if (cleanScores.Count == 0)
+            return BadRequest(new ApiMessageDto("No se enviaron respuestas válidas."));
+
+        var oldAnswers = await _db.Eval360Answers.Where(a => a.AssignmentId == assignmentId).ToListAsync();
+        _db.Eval360Answers.RemoveRange(oldAnswers);
+
+        var oldComments = await _db.Eval360Comments.Where(c => c.AssignmentId == assignmentId).ToListAsync();
+        _db.Eval360Comments.RemoveRange(oldComments);
+
+        foreach (var s in cleanScores)
+        {
+            _db.Eval360Answers.Add(new Eval360Answer
+            {
+                AssignmentId = assignmentId,
+                QuestionId = s.QuestionId,
+                Score = s.Score,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        foreach (var c in body.Comments ?? new List<Eval360SubmitCommentDto>())
+        {
+            if (!validCompetencyIds.Contains(c.CompetencyId)) continue;
+            var txt = (c.Comment ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(txt)) continue;
+
+            _db.Eval360Comments.Add(new Eval360Comment
+            {
+                AssignmentId = assignmentId,
+                CompetencyId = c.CompetencyId,
+                CommentText = txt,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        assignment.Status = Eval360AssignmentStatus.Submitted;
+        assignment.SubmittedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(new ApiMessageDto("Evaluación 360 enviada."));
     }
 
     private async Task<IActionResult> SaveExamInternalAsync(Guid assignmentId, ExamTakeSaveDto body, bool submit)

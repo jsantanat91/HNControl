@@ -1,4 +1,4 @@
-using HNControl.Mobile.Models;
+﻿using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
@@ -53,12 +53,15 @@ public partial class EmployeeDashboardPage : ContentPage
     private void Bind(EmployeeDashboardDto data)
     {
         FullNameLabel.Text = data.Profile.FullName;
-        PositionLabel.Text = $"{data.Profile.Position} | Antigüedad: {data.Profile.SeniorityText}";
+        PositionLabel.Text = $"{data.Profile.Position} | Antiguedad: {data.Profile.SeniorityText}";
         EmailLabel.Text = data.Profile.Email;
 
         NetPayLabel.Text = data.Payroll.NetQuincenal.ToString("C2");
         VariableLabel.Text = $"{data.Payroll.VariablePercent:0.##}%";
         PayrollPeriodLabel.Text = $"Periodo: {data.Payroll.Period}";
+        PayrollDonut.NetValue = (double)data.Payroll.NetQuincenal;
+        PayrollDonut.DeductionValue = (double)data.Payroll.DeductionsQuincenal;
+        PayrollDonut.BonusValue = (double)data.Payroll.BonusesQuincenal;
 
         DeductionsTotalLabel.Text = "-" + data.Payroll.DeductionsQuincenal.ToString("C2");
         BonusesTotalLabel.Text = "+" + data.Payroll.BonusesQuincenal.ToString("C2");
@@ -70,7 +73,7 @@ public partial class EmployeeDashboardPage : ContentPage
             KpiRetroScoreLabel.Text = $"{data.KpiFeedback.VariablePercent:0.##}%";
             _rhFullNotes = string.IsNullOrWhiteSpace(data.KpiFeedback.Notes) ? "" : data.KpiFeedback.Notes;
             KpiRetroNotesLabel.Text = string.IsNullOrWhiteSpace(_rhFullNotes)
-                ? "Sin retroalimentación escrita por RH."
+                ? "Sin retroalimentacion escrita por RH."
                 : CompactPreview(_rhFullNotes, 130);
 
             KpiMetricsCollection.ItemsSource = data.KpiFeedback.Metrics.Select(x => new KpiMetricVm
@@ -82,10 +85,10 @@ public partial class EmployeeDashboardPage : ContentPage
         }
         else
         {
-            KpiRetroMetaLabel.Text = "Sin evaluación KPI registrada.";
+            KpiRetroMetaLabel.Text = "Sin evaluacion KPI registrada.";
             KpiRetroTitleLabel.Text = "KPI";
             KpiRetroScoreLabel.Text = "0%";
-            KpiRetroNotesLabel.Text = "Aún no hay retroalimentación de RH.";
+            KpiRetroNotesLabel.Text = "Aun no hay retroalimentacion de RH.";
             KpiMetricsCollection.ItemsSource = new List<KpiMetricVm>();
             RhCommentsButton.IsVisible = false;
             _rhFullNotes = "";
@@ -105,7 +108,7 @@ public partial class EmployeeDashboardPage : ContentPage
                     new()
                     {
                         Competency = "Resultados no publicados",
-                            Comment = "Tu administrador aún no habilita visibilidad de resultados para esta campaña."
+                        Comment = "Tu administrador aun no habilita visibilidad de resultados para esta campana."
                     }
                 };
             }

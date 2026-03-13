@@ -27,18 +27,32 @@ public partial class TicketsModulePage : ContentPage
         {
             var status = GetStatusApiValue(StatusPicker.SelectedItem?.ToString());
             var list = await _tickets.ListAsync(status);
-            ItemsCollection.ItemsSource = list.Select(x => new TicketVm
+            ItemsCollection.ItemsSource = list.Select(x =>
             {
-                Id = x.Id,
-                TicketNumber = x.TicketNumber,
-                Title = x.Title,
-                Client = x.Client,
-                Status = NormalizeStatus(x.Status),
-                Priority = NormalizePriority(x.Priority),
-                Meta = $"{x.Source} | {x.CreatedAt:yyyy-MM-dd HH:mm}",
-                IsBreach = x.Breach,
-                BreachText = x.Breach ? "SLA vencido" : "",
-                CanTake = x.CanTake
+                var statusText = NormalizeStatus(x.Status);
+                var priorityText = NormalizePriority(x.Priority);
+                var statusColor = GetStatusColor(statusText);
+                var priorityColor = GetPriorityColor(priorityText);
+
+                return new TicketVm
+                {
+                    Id = x.Id,
+                    TicketNumber = x.TicketNumber,
+                    Title = x.Title,
+                    Client = x.Client,
+                    Status = statusText,
+                    Priority = priorityText,
+                    Meta = $"{x.Source} | {x.CreatedAt:yyyy-MM-dd HH:mm}",
+                    IsBreach = x.Breach,
+                    BreachText = x.Breach ? "SLA vencido" : "",
+                    CanTake = x.CanTake,
+                    StatusBg = statusColor.bg,
+                    StatusStroke = statusColor.stroke,
+                    StatusColor = statusColor.text,
+                    PriorityBg = priorityColor.bg,
+                    PriorityStroke = priorityColor.stroke,
+                    PriorityColor = priorityColor.text
+                };
             }).ToList();
         }
         catch (Exception ex)
@@ -76,7 +90,7 @@ public partial class TicketsModulePage : ContentPage
     private static string GetStatusApiValue(string? selected)
         => selected switch
         {
-            "Míos" => "mine",
+            "Mios" => "mine",
             "Cerrados" => "closed",
             _ => "open"
         };
@@ -105,6 +119,23 @@ public partial class TicketsModulePage : ContentPage
         };
     }
 
+    private static (Color bg, Color stroke, Color text) GetStatusColor(string value)
+        => value switch
+        {
+            "Cerrado" or "Resuelto" => (Color.FromArgb("#DCFCE7"), Color.FromArgb("#86EFAC"), Color.FromArgb("#166534")),
+            "Cancelado" => (Color.FromArgb("#FEE2E2"), Color.FromArgb("#FCA5A5"), Color.FromArgb("#991B1B")),
+            "Asignado" or "En proceso" => (Color.FromArgb("#DBEAFE"), Color.FromArgb("#93C5FD"), Color.FromArgb("#1D4ED8")),
+            _ => (Color.FromArgb("#E2E8F0"), Color.FromArgb("#CBD5E1"), Color.FromArgb("#334155"))
+        };
+
+    private static (Color bg, Color stroke, Color text) GetPriorityColor(string value)
+        => value switch
+        {
+            "Urgente" or "Alta" => (Color.FromArgb("#FEE2E2"), Color.FromArgb("#FCA5A5"), Color.FromArgb("#B91C1C")),
+            "Intermedia" or "Media" => (Color.FromArgb("#FEF3C7"), Color.FromArgb("#FCD34D"), Color.FromArgb("#92400E")),
+            _ => (Color.FromArgb("#DCFCE7"), Color.FromArgb("#86EFAC"), Color.FromArgb("#166534"))
+        };
+
     private sealed class TicketVm
     {
         public Guid Id { get; set; }
@@ -117,5 +148,13 @@ public partial class TicketsModulePage : ContentPage
         public bool IsBreach { get; set; }
         public string BreachText { get; set; } = "";
         public bool CanTake { get; set; }
+
+        public Color StatusBg { get; set; } = Color.FromArgb("#E2E8F0");
+        public Color StatusStroke { get; set; } = Color.FromArgb("#CBD5E1");
+        public Color StatusColor { get; set; } = Color.FromArgb("#334155");
+
+        public Color PriorityBg { get; set; } = Color.FromArgb("#E2E8F0");
+        public Color PriorityStroke { get; set; } = Color.FromArgb("#CBD5E1");
+        public Color PriorityColor { get; set; } = Color.FromArgb("#334155");
     }
 }

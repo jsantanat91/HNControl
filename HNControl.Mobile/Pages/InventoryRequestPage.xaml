@@ -4,17 +4,17 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Solicitar material"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Margin="14,12,14,24" Spacing="10">
-            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="HeaderTitleLabel" FontAttributes="Bold" FontSize="22" Text="Solicitud de salida" TextColor="White" />
-                    <Label x:Name="HeaderSubLabel" FontSize="12" Opacity="0.85" Text="Captura item y cantidad para solicitar aprobacion." TextColor="#C5D5F0" />
+                    <Label x:Name="HeaderSubLabel" FontSize="12" Opacity="0.85" Text="Captura item y cantidad para solicitar aprobación." TextColor="#C5D5F0" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" Text="Item" />
                     <Picker x:Name="ItemPicker" ItemDisplayBinding="{Binding Display}" Title="Selecciona un item" />
@@ -34,37 +34,33 @@
                     <Entry x:Name="LineNotesEntry" Placeholder="Detalle de esta linea..." />
 
                     <Button
-                        BackgroundColor="#2252D5"
+                        Style="{StaticResource PrimaryButton}"
                         Clicked="OnAddLineClicked"
-                        CornerRadius="10"
                         HeightRequest="40"
-                        Text="Agregar linea"
-                        TextColor="White" />
+                        Text="Agregar línea" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" Text="Lineas capturadas" />
+                    <Label FontAttributes="Bold" Text="Líneas capturadas" />
                     <CollectionView x:Name="LinesCollection" SelectionMode="None">
                         <CollectionView.EmptyView>
                             <Label Opacity="0.65" Text="Aun no agregas lineas." />
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="10" Background="#F8FAFF" StrokeShape="RoundRectangle 12">
+                                <Border Margin="0,0,0,8" Padding="10" Background="#F8FAFF" StrokeShape="RoundRectangle 12" Stroke="{StaticResource AppBorder}">
                                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                         <Label FontAttributes="Bold" Text="{Binding ItemName}" />
                                         <Button
                                             Grid.Column="1"
-                                            BackgroundColor="#FDE7E7"
+                                            Style="{StaticResource GhostButton}"
                                             Clicked="OnRemoveLineClicked"
                                             CommandParameter="{Binding Id}"
-                                            CornerRadius="8"
                                             FontSize="11"
                                             HeightRequest="30"
-                                            Text="Quitar"
-                                            TextColor="#A42323" />
+                                            Text="Quitar" />
                                         <Label Grid.Row="1" FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
                                     </Grid>
                                 </Border>
@@ -74,7 +70,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" Text="Notas globales (opcional)" />
                     <Editor x:Name="GlobalNotesEditor" AutoSize="TextChanges" Placeholder="Contexto general de la solicitud..." />

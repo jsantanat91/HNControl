@@ -109,6 +109,7 @@ public class IndexModel : PageModel
         {
             var closed = o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
             var isMine = o.ClaimedByUserId == userId;
+            var canTake = !closed && string.IsNullOrWhiteSpace(o.ClaimedByUserId);
 
             return new Row(
                 o.Id,
@@ -120,7 +121,7 @@ public class IndexModel : PageModel
                 o.ClaimedByEmployee?.FullName ?? "Sin tomar",
                 o.CreatedAt,
                 o.EstimatedEndDate?.ToLocalTime().ToString("yyyy-MM-dd") ?? "-",
-                !closed,
+                canTake,
                 isMine,
                 !string.IsNullOrWhiteSpace(o.PdfStoragePath)
             );
@@ -141,6 +142,12 @@ public class IndexModel : PageModel
         if (order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
         {
             TempData["Info"] = "La orden ya no acepta edicion.";
+            return RedirectToPage();
+        }
+
+        if (!string.IsNullOrWhiteSpace(order.ClaimedByUserId) && order.ClaimedByUserId != userId)
+        {
+            TempData["Info"] = "La orden ya fue tomada por otro técnico. Pide al admin desasignarla.";
             return RedirectToPage();
         }
 

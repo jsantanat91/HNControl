@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="HNControl.Mobile.Pages.TicketDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -10,17 +10,17 @@
             <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="TicketNumberLabel" TextColor="#AFC5ED" FontSize="12" />
-                    <Label x:Name="TitleLabel" TextColor="White" FontAttributes="Bold" FontSize="24" LineBreakMode="WordWrap" />
+                    <Label x:Name="TitleLabel" TextColor="White" FontAttributes="Bold" FontSize="21" LineBreakMode="WordWrap" />
                     <Label x:Name="ClientLabel" TextColor="#DCE8FF" FontSize="14" LineBreakMode="WordWrap" />
 
-                    <HorizontalStackLayout Spacing="6" Wrap="Wrap">
+                    <FlexLayout Wrap="Wrap" Direction="Row" JustifyContent="Start" AlignItems="Center">
                         <Border x:Name="StatusBadge" Style="{StaticResource PillBadgeBlue}">
                             <Label x:Name="StatusBadgeText" FontAttributes="Bold" FontSize="12" TextColor="#1D4ED8" />
                         </Border>
                         <Border x:Name="PriorityBadge" Style="{StaticResource PillBadgeAmber}">
                             <Label x:Name="PriorityBadgeText" FontAttributes="Bold" FontSize="12" TextColor="#B45309" />
                         </Border>
-                    </HorizontalStackLayout>
+                    </FlexLayout>
                     <Label x:Name="MetaLabel" TextColor="#DCE8FF" FontSize="12" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
@@ -36,30 +36,30 @@
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Sucursal y carrier" FontAttributes="Bold" FontSize="18" />
                     <Label x:Name="BranchLabel" FontSize="14" LineBreakMode="WordWrap" />
-                    <Label x:Name="BranchAddressLabel" FontSize="13" Opacity="0.8" LineBreakMode="WordWrap" />
+                    <Label x:Name="BranchAddressLabel" FontSize="13" Opacity="0.8" LineBreakMode="CharacterWrap" />
 
                     <Border BackgroundColor="#F8FAFC" Stroke="{StaticResource AppBorder}" StrokeShape="RoundRectangle 12" Padding="10">
-                        <VerticalStackLayout Spacing="6">
-                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
-                                <Label Text="Carrier:" FontAttributes="Bold" />
-                                <Label Grid.Column="1" x:Name="CarrierLabel" LineBreakMode="WordWrap" />
-                            </Grid>
-                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
-                                <Label Text="Servicio:" FontAttributes="Bold" />
-                                <Label Grid.Column="1" x:Name="CarrierServiceLabel" LineBreakMode="WordWrap" />
-                            </Grid>
-                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
-                                <Label Text="Cuenta:" FontAttributes="Bold" />
-                                <Label Grid.Column="1" x:Name="CarrierAccountLabel" LineBreakMode="WordWrap" />
-                            </Grid>
-                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
-                                <Label Text="Circuito:" FontAttributes="Bold" />
-                                <Label Grid.Column="1" x:Name="CarrierCircuitLabel" LineBreakMode="WordWrap" />
-                            </Grid>
-                            <Grid ColumnDefinitions="100,*" ColumnSpacing="6">
-                                <Label Text="IP / Host:" FontAttributes="Bold" />
-                                <Label Grid.Column="1" x:Name="CarrierIpLabel" LineBreakMode="WordWrap" />
-                            </Grid>
+                        <VerticalStackLayout Spacing="7">
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="Carrier" FontAttributes="Bold" FontSize="12" TextColor="#475467" />
+                                <Label x:Name="CarrierLabel" LineBreakMode="CharacterWrap" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="Servicio" FontAttributes="Bold" FontSize="12" TextColor="#475467" />
+                                <Label x:Name="CarrierServiceLabel" LineBreakMode="CharacterWrap" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="Cuenta" FontAttributes="Bold" FontSize="12" TextColor="#475467" />
+                                <Label x:Name="CarrierAccountLabel" LineBreakMode="CharacterWrap" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="Circuito" FontAttributes="Bold" FontSize="12" TextColor="#475467" />
+                                <Label x:Name="CarrierCircuitLabel" LineBreakMode="CharacterWrap" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="1">
+                                <Label Text="IP / Host" FontAttributes="Bold" FontSize="12" TextColor="#475467" />
+                                <Label x:Name="CarrierIpLabel" LineBreakMode="CharacterWrap" />
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>

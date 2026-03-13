@@ -4,17 +4,15 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Ordenes"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="Auto,*" Padding="14,12">
-        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                 <Label FontAttributes="Bold" FontSize="24" Text="Ordenes de servicio" TextColor="White" />
                 <Button Grid.Column="1"
-                        BackgroundColor="#2B5FD9"
+                        Style="{StaticResource PrimaryButton}"
                         Clicked="OnRefreshClicked"
-                        CornerRadius="10"
                         HeightRequest="40"
-                        Padding="14,8"
                         Text="Actualizar"
                         TextColor="White" />
                 <Label Grid.Row="1"
@@ -29,7 +27,7 @@
         <RefreshView x:Name="OrdersRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
             <CollectionView x:Name="OrdersCollection" Margin="0,12,0,0" SelectionMode="None">
                 <CollectionView.EmptyView>
-                    <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}">
                         <VerticalStackLayout Spacing="6">
                             <Label FontAttributes="Bold" FontSize="19" HorizontalOptions="Center" Text="Sin ordenes" />
                             <Label HorizontalOptions="Center" Opacity="0.7" Text="Desliza hacia abajo para recargar." />
@@ -38,7 +36,7 @@
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,12" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                        <Border Margin="0,0,0,12" Style="{StaticResource SurfaceCard}">
                             <VerticalStackLayout Spacing="7">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <VerticalStackLayout Spacing="0">
@@ -53,13 +51,13 @@
                                 </Grid>
 
                                 <HorizontalStackLayout Spacing="6">
-                                    <Border BackgroundColor="{Binding TypeBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                    <Border BackgroundColor="{Binding TypeBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
                                         <Label FontAttributes="Bold" FontSize="11" Text="{Binding TypeLabel}" />
                                     </Border>
-                                    <Border BackgroundColor="{Binding StatusBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                    <Border BackgroundColor="{Binding StatusBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
                                         <Label FontAttributes="Bold" FontSize="11" Text="{Binding StatusLabel}" />
                                     </Border>
-                                    <Border BackgroundColor="{Binding AreaBg}" Padding="8,4" StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                    <Border BackgroundColor="{Binding AreaBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
                                         <Label FontAttributes="Bold" FontSize="11" Text="{Binding AreaLabel}" />
                                     </Border>
                                 </HorizontalStackLayout>
@@ -69,27 +67,22 @@
                                 <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
                                     <Button Clicked="OnDetailClicked"
                                             CommandParameter="{Binding Id}"
-                                            CornerRadius="10"
+                                            Style="{StaticResource GhostButton}"
                                             HeightRequest="38"
-                                            Padding="14,8"
                                             Text="Detalle" />
                                     <Button Grid.Column="1"
                                             Clicked="OnPdfClicked"
                                             CommandParameter="{Binding Id}"
-                                            CornerRadius="10"
+                                            Style="{StaticResource GhostButton}"
                                             HeightRequest="38"
-                                            Padding="14,8"
                                             Text="PDF" />
                                     <Button Grid.Column="2"
-                                            BackgroundColor="#2252D5"
+                                            Style="{StaticResource PrimaryButton}"
                                             Clicked="OnTakeClicked"
                                             CommandParameter="{Binding Id}"
-                                            CornerRadius="10"
                                             HeightRequest="38"
                                             IsVisible="{Binding CanTake}"
-                                            Padding="14,8"
-                                            Text="Tomar orden"
-                                            TextColor="White" />
+                                            Text="Tomar orden" />
                                 </Grid>
                             </VerticalStackLayout>
                         </Border>

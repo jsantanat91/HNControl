@@ -4,10 +4,10 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Servicios carrier"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
-            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="ClientLabel" FontAttributes="Bold" FontSize="22" TextColor="White" />
                     <Label x:Name="ClientMetaLabel" FontSize="13" Opacity="0.85" TextColor="#C5D5F0" />
@@ -16,24 +16,26 @@
 
             <CollectionView x:Name="ServicesCollection" SelectionMode="None">
                 <CollectionView.EmptyView>
-                    <Border Background="White" Padding="14" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}" Padding="14">
                         <Label Opacity="0.75" Text="Sin servicios activos." />
                     </Border>
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                        <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
                             <VerticalStackLayout Spacing="5">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <Label FontAttributes="Bold" FontSize="17" Text="{Binding ServiceLabel}" />
-                                    <Label Grid.Column="1" FontSize="12" Opacity="0.75" Text="{Binding Carrier}" />
+                                    <Label FontAttributes="Bold" FontSize="17" Text="{Binding ServiceLabel}" LineBreakMode="WordWrap" />
+                                    <Border Grid.Column="1" Style="{StaticResource PillBadgeBlue}">
+                                        <Label FontSize="12" Text="{Binding Carrier}" TextColor="#1D4ED8" />
+                                    </Border>
                                 </Grid>
-                                <Label FontSize="12" Opacity="0.8" Text="{Binding Plan}" />
-                                <Label FontSize="12" Opacity="0.75" Text="{Binding Numbers}" />
-                                <Label FontSize="12" Opacity="0.75" Text="{Binding Address}" />
-                                <Label FontSize="12" Opacity="0.75" Text="{Binding Support}" />
-                                <Label FontSize="12" Text="{Binding Notes}" />
-                                <Label FontSize="11" Opacity="0.7" Text="{Binding LastNotes}" />
+                                <Label FontSize="12" Opacity="0.8" Text="{Binding Plan}" LineBreakMode="WordWrap" />
+                                <Label FontSize="12" Opacity="0.75" Text="{Binding Numbers}" LineBreakMode="WordWrap" />
+                                <Label FontSize="12" Opacity="0.75" Text="{Binding Address}" LineBreakMode="WordWrap" />
+                                <Label FontSize="12" Opacity="0.75" Text="{Binding Support}" LineBreakMode="WordWrap" />
+                                <Label FontSize="12" Text="{Binding Notes}" LineBreakMode="WordWrap" />
+                                <Label FontSize="11" Opacity="0.7" Text="{Binding LastNotes}" LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

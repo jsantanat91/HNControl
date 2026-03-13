@@ -60,6 +60,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ExamsModulePage>();
         builder.Services.AddTransient<ExamTakePage>();
         builder.Services.AddTransient<Eval360ModulePage>();
+        builder.Services.AddTransient<Eval360TakePage>();
         builder.Services.AddTransient<TicketsModulePage>();
         builder.Services.AddTransient<TicketDetailPage>();
         builder.Services.AddTransient<RootTabsPage>();

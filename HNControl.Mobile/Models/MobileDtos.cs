@@ -543,6 +543,48 @@ public sealed class Eval360ModuleItemDto
     public DateTime? SubmittedAt { get; set; }
 }
 
+public sealed class Eval360TakeDto
+{
+    public Guid AssignmentId { get; set; }
+    public string Campaign { get; set; } = "";
+    public string SubjectName { get; set; } = "";
+    public string Status { get; set; } = "";
+    public List<Eval360TakeCompetencyDto> Competencies { get; set; } = new();
+}
+
+public sealed class Eval360TakeCompetencyDto
+{
+    public Guid CompetencyId { get; set; }
+    public string Competency { get; set; } = "";
+    public string Comment { get; set; } = "";
+    public List<Eval360TakeQuestionDto> Questions { get; set; } = new();
+}
+
+public sealed class Eval360TakeQuestionDto
+{
+    public Guid QuestionId { get; set; }
+    public string Text { get; set; } = "";
+    public int Score { get; set; }
+}
+
+public sealed class Eval360SubmitScoreDto
+{
+    public Guid QuestionId { get; set; }
+    public int Score { get; set; }
+}
+
+public sealed class Eval360SubmitCommentDto
+{
+    public Guid CompetencyId { get; set; }
+    public string Comment { get; set; } = "";
+}
+
+public sealed class Eval360SubmitDto
+{
+    public List<Eval360SubmitScoreDto> Scores { get; set; } = new();
+    public List<Eval360SubmitCommentDto> Comments { get; set; } = new();
+}
+
 public sealed class TicketModuleItemDto
 {
     public Guid Id { get; set; }

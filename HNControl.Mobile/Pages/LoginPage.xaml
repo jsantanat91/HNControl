@@ -6,9 +6,11 @@
     Title="Login"
     Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="Auto,*">
-        <Grid Background="{StaticResource HeaderGradientBrush}" HeightRequest="220">
+        <Grid Background="{StaticResource HeaderGradientBrush}" HeightRequest="280">
+            <Image Source="tech_bg.svg" Aspect="AspectFill" Opacity="0.38" />
             <BoxView Color="#7CA6FF" Opacity="0.14" CornerRadius="220" WidthRequest="340" HeightRequest="340" HorizontalOptions="End" VerticalOptions="Start" TranslationX="120" TranslationY="-120" />
             <BoxView Color="#2ED3B7" Opacity="0.10" CornerRadius="220" WidthRequest="260" HeightRequest="260" HorizontalOptions="Start" VerticalOptions="End" TranslationX="-90" TranslationY="80" />
+
             <VerticalStackLayout Padding="24,56,24,24" Spacing="4">
                 <HorizontalStackLayout x:Name="HeroLayout" Spacing="12" VerticalOptions="Center" Opacity="0" TranslationY="18">
                     <Border Background="#243A63" Padding="0" StrokeShape="RoundRectangle 14" Stroke="#35507F" StrokeThickness="1">
@@ -23,16 +25,16 @@
                     </Border>
                     <VerticalStackLayout Spacing="0">
                         <Label FontAttributes="Bold" FontSize="31" Text="HN Control" TextColor="White" />
-                        <Label FontSize="14" Opacity="0.9" Text="Operación móvil" TextColor="#BBD0EE" />
+                        <Label FontSize="14" Opacity="0.9" Text="Operacion movil" TextColor="#BBD0EE" />
                     </VerticalStackLayout>
                 </HorizontalStackLayout>
             </VerticalStackLayout>
         </Grid>
 
-        <VerticalStackLayout Grid.Row="1" Margin="18,-58,18,18" Spacing="14">
+        <VerticalStackLayout Grid.Row="1" Margin="18,-74,18,18" Spacing="14">
             <Border x:Name="LoginCard" Background="White" Padding="18" StrokeShape="RoundRectangle 24" Stroke="{StaticResource AppBorder}" StrokeThickness="1" Opacity="0" TranslationY="22">
                 <VerticalStackLayout Spacing="12">
-                    <Label FontAttributes="Bold" FontSize="24" Text="Iniciar sesión" />
+                    <Label FontAttributes="Bold" FontSize="24" Text="Iniciar sesion" />
                     <Label FontSize="13" Opacity="0.7" Text="control.hubnet-solutions.net" />
 
                     <VerticalStackLayout Spacing="4">
@@ -41,7 +43,7 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label FontAttributes="Bold" FontSize="13" Text="Contraseña" />
+                        <Label FontAttributes="Bold" FontSize="13" Text="Contrasena" />
                         <Entry x:Name="PasswordEntry" IsPassword="True" Placeholder="********" />
                     </VerticalStackLayout>
 

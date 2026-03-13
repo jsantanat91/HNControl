@@ -89,8 +89,10 @@ else
 
                         <div class="hn-service-grid mt-2">
                             <div><span class="text-muted small">Cuenta</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)</div></div>
-                            <div><span class="text-muted small">Circuit ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)</div></div>
+                            <div><span class="text-muted small">Cuenta ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)</div></div>
                             <div><span class="text-muted small">Contrato ligado</span><div class="fw-semibold">@(s.ClientServiceContract?.Label ?? "-")</div></div>
+                            <div><span class="text-muted small">Razon social</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.BusinessName) ? "-" : s.BusinessName)</div></div>
+                            <div><span class="text-muted small">Numero serie</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SerialNumber) ? "-" : s.SerialNumber)</div></div>
                         </div>
 
                         <div class="mt-auto pt-3 d-flex justify-content-end gap-2">

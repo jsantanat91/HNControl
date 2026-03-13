@@ -3,11 +3,12 @@
     x:Class="HNControl.Mobile.Pages.EmployeeDashboardPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:HNControl.Mobile.Controls"
     Title="Mi ficha"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Padding="14,14,14,30" Spacing="12">
-            <Border Background="#0E2242" Padding="16" StrokeShape="RoundRectangle 18">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="FullNameLabel" FontAttributes="Bold" FontSize="24" TextColor="White" />
                     <Label x:Name="PositionLabel" Opacity="0.85" TextColor="#C8D3E8" />
@@ -15,7 +16,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="19" Text="Pago quincenal actual" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
@@ -29,6 +30,23 @@
                         </VerticalStackLayout>
                         <Label x:Name="PayrollPeriodLabel" Grid.Row="1" Grid.ColumnSpan="2" FontSize="12" Opacity="0.65" />
                     </Grid>
+
+                    <controls:DonutChartView x:Name="PayrollDonut" HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <HorizontalStackLayout Spacing="4">
+                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#2563EB" VerticalOptions="Center" />
+                            <Label FontSize="12" Text="Neto" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Grid.Column="1" Spacing="4">
+                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#F59E0B" VerticalOptions="Center" />
+                            <Label FontSize="12" Text="Deducciones" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <HorizontalStackLayout Grid.Column="2" Spacing="4">
+                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#10B981" VerticalOptions="Center" />
+                            <Label FontSize="12" Text="Bonos" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Grid>
+
                     <Label FontAttributes="Bold" Text="Ultimas 6 quincenas (variable %)" />
                     <CollectionView x:Name="HistoryCollection" SelectionMode="None">
                         <CollectionView.ItemTemplate>
@@ -44,7 +62,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="KPI y retro de RH" />
                     <Label x:Name="KpiRetroMetaLabel" FontSize="12" Opacity="0.7" />
@@ -68,13 +86,13 @@
                     <Border Background="#F8FAFC" Padding="10" StrokeShape="RoundRectangle 10">
                         <Label x:Name="KpiRetroNotesLabel" LineBreakMode="WordWrap" />
                     </Border>
-                    <Button x:Name="RhCommentsButton" Text="Comentarios de RH" Clicked="OnRhCommentsClicked" />
+                    <Button x:Name="RhCommentsButton" Text="Comentarios de RH" Clicked="OnRhCommentsClicked" Style="{StaticResource GhostButton}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluación 360" />
+                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluacion 360" />
                     <Label x:Name="Eval360MetaLabel" FontSize="12" Opacity="0.7" />
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <Label x:Name="Eval360TitleLabel" FontAttributes="Bold" />
@@ -99,7 +117,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Tickets atendidos" />
                     <Label FontSize="12" Opacity="0.7" Text="Ultimos 6 meses" />
@@ -120,7 +138,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
                     <Label FontAttributes="Bold" FontSize="18" Text="Deducciones y bonos" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
@@ -167,15 +185,15 @@
                 </Border>
                 <Border Grid.Column="1" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
                     <VerticalStackLayout>
-                        <Label FontAttributes="Bold" Text="Exámenes" />
+                        <Label FontAttributes="Bold" Text="Examenes" />
                         <Label x:Name="ExamsSummaryLabel" FontSize="13" Opacity="0.8" />
                     </VerticalStackLayout>
                 </Border>
             </Grid>
 
-            <Border Background="White" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Inventario - Mis solicitudes" />
+                    <Label FontAttributes="Bold" FontSize="18" Text="Inventario - Solicitudes" />
                     <CollectionView x:Name="InventoryCollection" SelectionMode="None">
                         <CollectionView.EmptyView>
                             <Label Opacity="0.7" Text="Sin solicitudes recientes." />
@@ -185,10 +203,10 @@
                                 <Border Margin="0,0,0,8" Padding="10" StrokeShape="RoundRectangle 12">
                                     <VerticalStackLayout Spacing="4">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <Label FontAttributes="Bold" Text="{Binding ItemsPreview}" />
+                                            <Label FontAttributes="Bold" Text="{Binding ItemsPreview}" LineBreakMode="WordWrap" />
                                             <Label Grid.Column="1" Opacity="0.8" Text="{Binding StatusLabel}" />
                                         </Grid>
-                                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>

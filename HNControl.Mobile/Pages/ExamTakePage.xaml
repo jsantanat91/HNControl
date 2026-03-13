@@ -4,20 +4,20 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Resolver examen"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="*,Auto" Padding="14,12,14,14">
         <ScrollView Grid.Row="0">
             <VerticalStackLayout Spacing="10">
-                <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+                <Border Style="{StaticResource HeaderCard}">
                     <VerticalStackLayout Spacing="4">
                         <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="22" Text="Examen" TextColor="White" />
                         <Label x:Name="MetaLabel" FontSize="12" Opacity="0.9" TextColor="#C5D5F0" />
                     </VerticalStackLayout>
                 </Border>
 
-                <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                <Border Style="{StaticResource SurfaceCard}">
                     <VerticalStackLayout Spacing="6">
-                        <Label FontAttributes="Bold" Text="Descripcion" />
+                        <Label FontAttributes="Bold" Text="Descripción" />
                         <Label x:Name="DescriptionLabel" Opacity="0.85" />
                     </VerticalStackLayout>
                 </Border>
@@ -29,12 +29,11 @@
         <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,10,0,0">
             <Button
                 Grid.Column="0"
-                BackgroundColor="#2252D5"
+                Style="{StaticResource PrimaryButton}"
                 Clicked="OnSaveClicked"
-                CornerRadius="12"
                 HeightRequest="44"
                 Text="Guardar avance"
-                TextColor="White" />
+                />
             <Button
                 Grid.Column="1"
                 BackgroundColor="#1D8F58"

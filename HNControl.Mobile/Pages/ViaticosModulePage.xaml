@@ -4,28 +4,22 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Viaticos"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="Auto,*" Padding="14,12">
-        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
             <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
                 <Label FontAttributes="Bold" FontSize="23" Text="Mis viaticos" TextColor="White" />
                 <Button Grid.Column="1"
-                        BackgroundColor="#2B5FD9"
                         Clicked="OnNewWeekClicked"
-                        CornerRadius="10"
-                        HeightRequest="40"
-                        Padding="14,8"
+                        Style="{StaticResource PrimaryButton}"
                         Text="+ Semanal"
-                        TextColor="White" />
+                        />
                 <Button Grid.Column="2"
                         Margin="8,0,0,0"
-                        BackgroundColor="#1E9B58"
                         Clicked="OnNewTravelClicked"
-                        CornerRadius="10"
-                        HeightRequest="40"
-                        Padding="14,8"
+                        Style="{StaticResource GhostButton}"
                         Text="+ Viaje"
-                        TextColor="White" />
+                        />
                 <Label Grid.Row="1"
                        Grid.ColumnSpan="3"
                        FontSize="12"
@@ -38,7 +32,7 @@
         <RefreshView x:Name="WeeksRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
             <CollectionView x:Name="WeeksCollection" Margin="0,12,0,0" SelectionMode="None">
                 <CollectionView.EmptyView>
-                    <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}" Padding="16">
                         <VerticalStackLayout Spacing="6">
                             <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Sin semanas" />
                             <Label HorizontalOptions="Center" Opacity="0.7" Text="Pulsa + Semana para iniciar." />
@@ -47,7 +41,7 @@
                 </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,10" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+                        <Border Margin="0,0,0,10" Style="{StaticResource SurfaceCard}">
                             <VerticalStackLayout Spacing="7">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <Label FontAttributes="Bold"
@@ -73,13 +67,11 @@
                                         </VerticalStackLayout>
                                     </Border>
                                 </Grid>
-                                <Button BackgroundColor="#2252D5"
-                                        Clicked="OnOpenWeekClicked"
+                                <Button Clicked="OnOpenWeekClicked"
                                         CommandParameter="{Binding Id}"
-                                        CornerRadius="10"
-                                        HeightRequest="38"
+                                        Style="{StaticResource PrimaryButton}"
                                         Text="Abrir semana"
-                                        TextColor="White" />
+                                        />
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

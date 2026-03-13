@@ -1,4 +1,4 @@
-using HNControl.Mobile.Services;
+﻿using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
 
@@ -26,7 +26,7 @@ public partial class LeaveDetailPage : ContentPage
             TitleLabel.Text = d.Type;
             StatusLabel.Text = d.Status;
             RangeLabel.Text = $"{d.StartDate:yyyy-MM-dd} a {d.EndDate:yyyy-MM-dd}";
-            MetaLabel.Text = $"Días: {d.TotalDays} | Solicitado: {d.RequestedAt:yyyy-MM-dd HH:mm}";
+            MetaLabel.Text = $"Dias: {d.TotalDays} | Solicitado: {d.RequestedAt:yyyy-MM-dd HH:mm}";
             ReviewedLabel.Text = d.ReviewedAt.HasValue ? $"Revisado: {d.ReviewedAt.Value:yyyy-MM-dd HH:mm}" : "Revisado: -";
             ReasonLabel.Text = string.IsNullOrWhiteSpace(d.Reason) ? "-" : d.Reason;
             AdminCommentLabel.Text = string.IsNullOrWhiteSpace(d.AdminComment) ? "-" : d.AdminComment;

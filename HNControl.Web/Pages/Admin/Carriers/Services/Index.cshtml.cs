@@ -46,6 +46,8 @@ public class IndexModel : PageModel
                 (s.AccountNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.ContractNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.CircuitId ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.BusinessName ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.SerialNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.ClientServiceContract != null && (s.ClientServiceContract.Label ?? "").ToLower().Contains(q.ToLower())) ||
                 (s.Client!.Name ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.Carrier!.Name ?? "").ToLower().Contains(q.ToLower()));

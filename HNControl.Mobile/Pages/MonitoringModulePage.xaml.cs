@@ -20,14 +20,23 @@ public partial class MonitoringModulePage : ContentPage
         try
         {
             var data = await _modules.GetMonitoringAsync();
-            ItemsCollection.ItemsSource = data.Select(x => new MonitorVm
+            ItemsCollection.ItemsSource = data.Select(x =>
             {
-                Id = x.Id,
-                Name = x.Name,
-                Client = x.Client,
-                Status = x.Status,
-                Address = x.Address,
-                Meta = $"{x.ProbeType} | {x.LastCheckedAt:yyyy-MM-dd HH:mm} | {(x.LastLatencyMs.HasValue ? x.LastLatencyMs + " ms" : "-")}"
+                var up = string.Equals(x.Status, "Up", StringComparison.OrdinalIgnoreCase);
+                var down = string.Equals(x.Status, "Down", StringComparison.OrdinalIgnoreCase);
+
+                return new MonitorVm
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Client = x.Client,
+                    StatusText = up ? "Arriba" : down ? "Abajo" : x.Status,
+                    Address = x.Address,
+                    Meta = $"{x.ProbeType} | {x.LastCheckedAt:yyyy-MM-dd HH:mm} | {(x.LastLatencyMs.HasValue ? x.LastLatencyMs + " ms" : "-")}",
+                    StatusBg = up ? Color.FromArgb("#DCFCE7") : down ? Color.FromArgb("#FEE2E2") : Color.FromArgb("#E2E8F0"),
+                    StatusStroke = up ? Color.FromArgb("#86EFAC") : down ? Color.FromArgb("#FCA5A5") : Color.FromArgb("#CBD5E1"),
+                    StatusTextColor = up ? Color.FromArgb("#166534") : down ? Color.FromArgb("#B91C1C") : Color.FromArgb("#334155")
+                };
             }).ToList();
         }
         catch (Exception ex)
@@ -49,8 +58,11 @@ public partial class MonitoringModulePage : ContentPage
         public Guid Id { get; set; }
         public string Name { get; set; } = "";
         public string Client { get; set; } = "";
-        public string Status { get; set; } = "";
+        public string StatusText { get; set; } = "";
         public string Address { get; set; } = "";
         public string Meta { get; set; } = "";
+        public Color StatusBg { get; set; } = Color.FromArgb("#E2E8F0");
+        public Color StatusStroke { get; set; } = Color.FromArgb("#CBD5E1");
+        public Color StatusTextColor { get; set; } = Color.FromArgb("#334155");
     }
 }

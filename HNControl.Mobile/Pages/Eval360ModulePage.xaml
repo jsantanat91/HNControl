@@ -3,28 +3,28 @@
     x:Class="HNControl.Mobile.Pages.Eval360ModulePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Evaluación 360"
-    Background="#E9EEF7">
+    Title="Evaluacion 360"
+    Background="{StaticResource AppBackgroundBrush}">
     <VerticalStackLayout Padding="14,12,14,12" Spacing="12">
-        <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+        <Border Style="{StaticResource HeaderCard}">
             <VerticalStackLayout Spacing="2">
-                <Label Text="Evaluación 360" TextColor="White" FontAttributes="Bold" FontSize="22" />
-                <Label Text="Pendientes y enviadas del periodo." TextColor="#C5D5F0" FontSize="12" />
+                <Label Text="Evaluacion 360" TextColor="White" FontAttributes="Bold" FontSize="22" />
+                <Label Text="Pendientes y enviadas del periodo" TextColor="#C5D5F0" FontSize="12" />
             </VerticalStackLayout>
         </Border>
 
         <CollectionView x:Name="ItemsCollection" SelectionMode="None">
             <CollectionView.EmptyView>
-                <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
+                <Border Style="{StaticResource SurfaceCard}" Padding="16">
                     <Label HorizontalOptions="Center" Opacity="0.7" Text="Sin asignaciones 360." />
                 </Border>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
                         <VerticalStackLayout Spacing="6">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding Campaign}" />
+                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding Campaign}" LineBreakMode="WordWrap" />
                                 <Border Grid.Column="1" BackgroundColor="{Binding StatusBg}" Padding="8,3" StrokeShape="RoundRectangle 20" StrokeThickness="0">
                                     <Label FontAttributes="Bold" FontSize="12" Text="{Binding Status}" />
                                 </Border>
@@ -33,8 +33,14 @@
                                 <Border BackgroundColor="#EEF2FF" Padding="8,3" StrokeShape="RoundRectangle 20" StrokeThickness="0">
                                     <Label FontAttributes="Bold" FontSize="12" Text="{Binding Role}" TextColor="#1D4ED8" />
                                 </Border>
-                                <Label Grid.Column="1" FontSize="12" Opacity="0.75" Text="{Binding Meta}" VerticalOptions="Center" />
+                                <Label Grid.Column="1" FontSize="12" Opacity="0.75" Text="{Binding Meta}" VerticalOptions="Center" LineBreakMode="WordWrap" />
                             </Grid>
+                            <Button Text="Calificar"
+                                    IsVisible="{Binding CanAnswer}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    HorizontalOptions="Start"
+                                    Clicked="OnAnswerClicked"
+                                    CommandParameter="{Binding AssignmentId}" />
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>

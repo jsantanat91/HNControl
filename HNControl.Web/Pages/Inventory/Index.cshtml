@@ -155,7 +155,7 @@
                        asp-page="./Index"
                        asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                        asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="zero" asp-route-page="1">Ver sin stock</a>
-                    @if (Model.ZeroStockItems.Count > 0)
+                    @if (Model.CanRequestRestock && Model.ZeroStockItems.Count > 0)
                     {
                         <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#restockModal">Solicitar item</button>
                     }
@@ -305,12 +305,13 @@
     </div>
 </div>
 
-@if (Model.ZeroStockItems.Count > 0)
+@if (Model.CanRequestRestock && Model.ZeroStockItems.Count > 0)
 {
     <div class="modal fade" id="restockModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <form method="post" asp-page-handler="RequestRestock">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" name="q" value="@Model.Q" />
                     <input type="hidden" name="cat" value="@Model.Cat" />
                     <input type="hidden" name="loc" value="@Model.Loc" />

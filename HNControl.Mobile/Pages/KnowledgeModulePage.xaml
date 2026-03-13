@@ -1,32 +1,42 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="HNControl.Mobile.Pages.KnowledgeModulePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Documentos"
-    Background="#E9EEF7">
-    <CollectionView x:Name="ItemsCollection" Margin="14,12,14,12" SelectionMode="None">
-        <CollectionView.EmptyView>
-            <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
-                <Label HorizontalOptions="Center" Opacity="0.7" Text="No hay documentos publicados." />
-            </Border>
-        </CollectionView.EmptyView>
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
-                    <VerticalStackLayout Spacing="5">
-                        <Label FontAttributes="Bold" FontSize="17" Text="{Binding Title}" />
-                        <Label FontSize="12" Opacity="0.75" Text="{Binding Category}" />
-                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
-                        <Button Clicked="OnOpenClicked"
-                                CommandParameter="{Binding Url}"
-                                CornerRadius="10"
-                                HeightRequest="36"
-                                IsVisible="{Binding HasUrl}"
-                                Text="Abrir enlace" />
-                    </VerticalStackLayout>
+    Background="{StaticResource AppBackgroundBrush}">
+    <Grid RowDefinitions="Auto,*" Padding="14,12,14,12">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="Documentos" TextColor="White" FontAttributes="Bold" FontSize="22" />
+                <Label Text="Base de conocimiento y manuales" TextColor="#C5D5F0" FontSize="12" />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <Border Style="{StaticResource SurfaceCard}" Padding="16">
+                    <Label HorizontalOptions="Center" Opacity="0.7" Text="No hay documentos publicados." />
                 </Border>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-    </CollectionView>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="5">
+                            <Label FontAttributes="Bold" FontSize="17" Text="{Binding Title}" LineBreakMode="WordWrap" />
+                            <Border Style="{StaticResource PillBadgeBlue}" HorizontalOptions="Start">
+                                <Label FontSize="12" Text="{Binding Category}" TextColor="#1D4ED8" />
+                            </Border>
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
+                            <Button Clicked="OnOpenClicked"
+                                    CommandParameter="{Binding Url}"
+                                    IsVisible="{Binding HasUrl}"
+                                    Style="{StaticResource GhostButton}"
+                                    Text="Abrir enlace" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 </ContentPage>

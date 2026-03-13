@@ -387,6 +387,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Plan).HasMaxLength(140);
             e.Property(x => x.AccountNumber).HasMaxLength(120);
             e.Property(x => x.ContractNumber).HasMaxLength(120);
+            e.Property(x => x.BusinessName).HasMaxLength(180);
+            e.Property(x => x.SerialNumber).HasMaxLength(120);
             e.Property(x => x.CircuitId).HasMaxLength(120);
             e.Property(x => x.ServiceAddress).HasMaxLength(200);
             e.Property(x => x.IpInfo).HasMaxLength(200);

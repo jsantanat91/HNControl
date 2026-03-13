@@ -4,24 +4,33 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Carriers"
-    Background="#E9EEF7">
-    <CollectionView x:Name="ItemsCollection" Margin="14,12,14,12" SelectionMode="None">
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
-                    <VerticalStackLayout Spacing="4">
-                        <Label FontAttributes="Bold" FontSize="17" Text="{Binding Name}" />
-                        <Label FontSize="12" Opacity="0.8" Text="{Binding ServicesCount, StringFormat='Servicios activos: {0}'}" />
-                        <Label FontSize="12" Opacity="0.75" Text="{Binding CarriersSummary}" />
-                        <Button Margin="0,6,0,0"
-                                HorizontalOptions="Start"
-                                Text="Ver servicios"
-                                CornerRadius="10"
-                                CommandParameter="{Binding ClientId}"
-                                Clicked="OnOpenClientClicked" />
-                    </VerticalStackLayout>
-                </Border>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-    </CollectionView>
+    Background="{StaticResource AppBackgroundBrush}">
+    <Grid RowDefinitions="Auto,*" Padding="14,12,14,12">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="Carriers" TextColor="White" FontAttributes="Bold" FontSize="22" />
+                <Label Text="Servicios y datos de soporte" TextColor="#C5D5F0" FontSize="12" />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="5">
+                            <Label FontAttributes="Bold" FontSize="17" Text="{Binding Name}" LineBreakMode="WordWrap" />
+                            <Label FontSize="12" Opacity="0.8" Text="{Binding ServicesCount, StringFormat='Servicios activos: {0}'}" />
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding CarriersSummary}" LineBreakMode="WordWrap" />
+                            <Button Margin="0,6,0,0"
+                                    HorizontalOptions="Start"
+                                    Text="Ver servicios"
+                                    Style="{StaticResource GhostButton}"
+                                    CommandParameter="{Binding ClientId}"
+                                    Clicked="OnOpenClientClicked" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 </ContentPage>

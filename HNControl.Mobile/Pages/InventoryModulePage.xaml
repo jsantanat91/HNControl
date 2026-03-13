@@ -4,33 +4,25 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Inventario"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <Grid RowDefinitions="Auto,*" Padding="14,12">
-        <Border Grid.Row="0" Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 18">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
             <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
                 <Button
-                    BackgroundColor="#2B5FD9"
                     Clicked="OnRequestInClicked"
-                    CornerRadius="10"
-                    HeightRequest="40"
-                    Padding="14,8"
-                    Text="+ Entrada"
-                    TextColor="White" />
+                    Style="{StaticResource PrimaryButton}"
+                    Text="+ Entrada" />
                 <Button
                     Grid.Column="1"
-                    BackgroundColor="#2252D5"
                     Clicked="OnRequestOutClicked"
-                    CornerRadius="10"
-                    HeightRequest="40"
-                    Padding="14,8"
-                    Text="- Salida"
-                    TextColor="White" />
+                    Style="{StaticResource GhostButton}"
+                    Text="- Salida" />
                 <Label
                     Grid.Column="2"
                     FontSize="12"
                     HorizontalTextAlignment="End"
                     Opacity="0.85"
-                    Text="Mis solicitudes"
+                    Text="Solicitudes"
                     TextColor="#C5D5F0"
                     VerticalTextAlignment="Center" />
             </Grid>
@@ -39,13 +31,15 @@
         <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
                         <VerticalStackLayout Spacing="4">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding ItemsPreview}" />
-                                <Label Grid.Column="1" Text="{Binding StatusLabel}" />
+                                <Label FontAttributes="Bold" FontSize="16" Text="{Binding ItemsPreview}" LineBreakMode="WordWrap" />
+                                <Border Grid.Column="1" Style="{StaticResource PillBadgeBlue}">
+                                    <Label Text="{Binding StatusLabel}" FontSize="12" TextColor="#1D4ED8" />
+                                </Border>
                             </Grid>
-                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>

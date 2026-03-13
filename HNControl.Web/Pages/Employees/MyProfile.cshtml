@@ -7,6 +7,103 @@
     var payrollImpact = Math.Round(Model.BonusesTotal - Model.DeductionsTotal, 2);
 }
 
+@section Styles {
+    <style>
+        .stat-card,
+        .profile-card {
+            border-radius: 20px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            transition: transform .18s ease, box-shadow .18s ease;
+        }
+
+        .stat-card:hover,
+        .profile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.10);
+        }
+
+        .stat-card .card-body {
+            padding: .95rem 1rem;
+        }
+
+        .stat-card {
+            min-height: 110px;
+        }
+
+        .stat-card .h3 {
+            font-size: 2rem;
+            line-height: 1.05;
+            margin-top: .2rem;
+        }
+
+        .profile-card,
+        .profile-card.h-100 {
+            height: auto !important;
+        }
+
+        .profile-card .card-body {
+            padding: 1rem 1rem 1.05rem;
+        }
+
+        .profile-note,
+        .profile-item-box {
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .72);
+        }
+
+        .chart-box-sm {
+            max-width: 220px;
+            margin-top: .65rem;
+        }
+
+        .chart-box-md {
+            max-width: 280px;
+            margin-top: .65rem;
+        }
+
+        .chart-box-full {
+            margin-top: .65rem;
+        }
+
+        .stack-col {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+        }
+
+        .stack-section {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+        }
+
+        .tight-list .hn-badge {
+            margin-bottom: .15rem;
+        }
+
+        #ticketsHandledChart {
+            max-height: 180px !important;
+        }
+
+        #kpiHistoryChart {
+            max-height: 160px !important;
+        }
+
+        #myExamsChart,
+        #payrollChart {
+            max-height: 190px !important;
+        }
+
+        @@media (max-width: 1199.98px) {
+            .stat-card {
+                min-height: 100px;
+            }
+        }
+    </style>
+}
+
 @if (Model.Profile == null)
 {
     <div class="alert alert-warning">No hay perfil cargado. Pide al admin que revise tu alta.</div>
@@ -21,9 +118,9 @@ else
         <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary">@Model.Profile.Position</span>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-3">
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Pago Quincenal Actual</div>
                     <div class="h3 mb-0">@((Model.CurrentPay?.NetQuincenal ?? 0m).ToString("C"))</div>
@@ -31,7 +128,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Ajustes activos</div>
                     <div class="h3 mb-0">@Model.ActiveDeductions.Count</div>
@@ -39,7 +136,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Vacaciones disponibles</div>
                     <div class="h3 mb-0">@Model.VacationRemaining</div>
@@ -47,7 +144,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Ex&aacute;menes pendientes</div>
                     <div class="h3 mb-0">@pendingExams</div>
@@ -55,7 +152,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Tickets asignados</div>
                     <div class="h3 mb-0">@Model.TicketsAssigned</div>
@@ -63,7 +160,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Tickets resueltos (mes)</div>
                     <div class="h3 mb-0">@Model.TicketsResolvedMonth</div>
@@ -71,7 +168,7 @@ else
             </div>
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-soft hn-hover h-100">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Tickets con SLA vencido</div>
                     <div class="h3 mb-0 text-danger">@Model.TicketsSlaBreach</div>
@@ -80,55 +177,102 @@ else
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-12 col-xl-4">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="text-muted small">Empleado</div>
-                            <div class="fs-5 fw-semibold">@Model.Profile.FullName</div>
-                            <div class="text-muted small">@Model.Profile.Email</div>
+    <div class="row g-2">
+        <div class="col-12 col-xl-5">
+            <div class="stack-col">
+                <div class="card shadow-soft hn-hover profile-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small">Empleado</div>
+                                <div class="fs-5 fw-semibold">@Model.Profile.FullName</div>
+                                <div class="text-muted small">@Model.Profile.Email</div>
+                            </div>
+                            <span class="hn-badge hn-badge-blue">Perfil</span>
                         </div>
-                        <span class="hn-badge hn-badge-blue">Perfil</span>
-                    </div>
 
-                    <hr />
+                        <hr />
 
-                    <dl class="row mb-0 small">
-                        <dt class="col-5 text-muted">Tel&eacute;fono</dt>
-                        <dd class="col-7">@Model.Profile.Phone</dd>
+                        <dl class="row mb-0 small">
+                            <dt class="col-5 text-muted">Tel&eacute;fono</dt>
+                            <dd class="col-7">@Model.Profile.Phone</dd>
 
-                        <dt class="col-5 text-muted">NSS</dt>
-                        <dd class="col-7">@Model.Profile.Nss</dd>
+                            <dt class="col-5 text-muted">NSS</dt>
+                            <dd class="col-7">@Model.Profile.Nss</dd>
 
-                        <dt class="col-5 text-muted">CURP</dt>
-                        <dd class="col-7">@Model.Profile.Curp</dd>
+                            <dt class="col-5 text-muted">CURP</dt>
+                            <dd class="col-7">@Model.Profile.Curp</dd>
 
-                        <dt class="col-5 text-muted">Ingreso</dt>
-                        <dd class="col-7">
-                            @(Model.Profile.HireDate?.ToString("yyyy-MM-dd") ?? "-")
-                            @if (!string.IsNullOrWhiteSpace(Model.SeniorityText))
+                            <dt class="col-5 text-muted">Ingreso</dt>
+                            <dd class="col-7">
+                                @(Model.Profile.HireDate?.ToString("yyyy-MM-dd") ?? "-")
+                                @if (!string.IsNullOrWhiteSpace(Model.SeniorityText))
+                                {
+                                    <span class="text-muted">&middot; @Model.SeniorityText</span>
+                                }
+                            </dd>
+
+                            <dt class="col-5 text-muted">Sueldo mensual</dt>
+                            <dd class="col-7 fw-semibold">@Model.Profile.SalaryBase.ToString("C")</dd>
+
+                            @if (!string.IsNullOrWhiteSpace(Model.Profile.Address))
                             {
-                                <span class="text-muted">&middot; @Model.SeniorityText</span>
+                                <dt class="col-5 text-muted">Direcci&oacute;n</dt>
+                                <dd class="col-7">@Model.Profile.Address</dd>
                             }
-                        </dd>
+                        </dl>
+                    </div>
+                </div>
 
-                        <dt class="col-5 text-muted">Sueldo mensual</dt>
-                        <dd class="col-7 fw-semibold">@Model.Profile.SalaryBase.ToString("C")</dd>
+                <div class="card shadow-soft hn-hover profile-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small">Evaluaci&oacute;n 360</div>
+                                <div class="fw-semibold">&Uacute;ltima campa&ntilde;a</div>
+                            </div>
+                            <span class="hn-badge hn-badge-blue">KPI 360</span>
+                        </div>
 
-                        @if (!string.IsNullOrWhiteSpace(Model.Profile.Address))
+                        @if (Model.LastEval360 == null)
                         {
-                            <dt class="col-5 text-muted">Direcci&oacute;n</dt>
-                            <dd class="col-7">@Model.Profile.Address</dd>
+                            <div class="text-muted small mt-3">A&uacute;n no hay resultados 360 disponibles.</div>
                         }
-                    </dl>
+                        else if (!Model.LastEval360.VisibleToEmployee)
+                        {
+                            <div class="text-muted small mt-3">
+                                La campa&ntilde;a <b>@Model.LastEval360.Title</b> ya existe, pero sus resultados a&uacute;n no est&aacute;n visibles para empleados.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="small text-muted mt-2">
+                                @Model.LastEval360.Title &middot; @Model.LastEval360.Start.ToString("yyyy-MM-dd") a @Model.LastEval360.End.ToString("yyyy-MM-dd")
+                            </div>
+                            <div class="d-flex justify-content-between mt-3">
+                                <div>
+                                    <div class="text-muted small">Autoevaluaci&oacute;n</div>
+                                    <div class="fs-4 fw-semibold">@Model.LastEval360.AutoPct.ToString("0")%</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-muted small">Equipo</div>
+                                    <div class="fs-4 fw-semibold">@Model.LastEval360.OthersPct.ToString("0")%</div>
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-2">Evaluadores: @Model.LastEval360.OthersCount</div>
+                            <div class="mt-2">
+                                <div class="progress" style="height:8px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width:@Model.LastEval360.OthersPct%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-xl-4">
-            <div class="card shadow-soft hn-hover h-100">
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-soft hn-hover profile-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -145,79 +289,32 @@ else
                     else
                     {
                         <div class="small text-muted mt-2">Periodo: @Model.CurrentPay.Period</div>
-                        <div class="d-flex justify-content-between mt-3">
+                        <div class="d-flex justify-content-between mt-3 gap-3 flex-wrap">
                             <div>
                                 <div class="text-muted small">Variable</div>
                                 <div class="fs-4 fw-semibold">@((Model.CurrentPay.VariablePercent * 100m).ToString("0"))%</div>
                             </div>
-                            <div class="text-end">
+                            <div class="text-end ms-auto">
                                 <div class="text-muted small">Pago quincenal actual</div>
                                 <div class="fs-4 fw-semibold">@Model.CurrentPay.NetQuincenal.ToString("C")</div>
                             </div>
                         </div>
 
-                        <div class="mt-3" style="max-width: 340px;">
-                            <canvas id="payrollChart" height="200"></canvas>
+                        <div class="chart-box-md mx-auto">
+                            <canvas id="payrollChart" height="170"></canvas>
                         </div>
                         <div class="small text-muted mt-1">El gr&aacute;fico desglosa pago neto, deducciones y bonos del periodo.</div>
                     }
                 </div>
             </div>
         </div>
-
-        <div class="col-12 col-xl-4">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="text-muted small">Evaluaci&oacute;n 360</div>
-                            <div class="fw-semibold">&Uacute;ltima campa&ntilde;a</div>
-                        </div>
-                        <span class="hn-badge hn-badge-blue">KPI 360</span>
-                    </div>
-
-                    @if (Model.LastEval360 == null)
-                    {
-                        <div class="text-muted small mt-3">A&uacute;n no hay resultados 360 disponibles.</div>
-                    }
-                    else if (!Model.LastEval360.VisibleToEmployee)
-                    {
-                        <div class="text-muted small mt-3">
-                            La campa&ntilde;a <b>@Model.LastEval360.Title</b> ya existe, pero sus resultados a&uacute;n no est&aacute;n visibles para empleados.
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="small text-muted mt-2">
-                            @Model.LastEval360.Title &middot; @Model.LastEval360.Start.ToString("yyyy-MM-dd") a @Model.LastEval360.End.ToString("yyyy-MM-dd")
-                        </div>
-                        <div class="d-flex justify-content-between mt-3">
-                            <div>
-                                <div class="text-muted small">Autoevaluaci&oacute;n</div>
-                                <div class="fs-4 fw-semibold">@Model.LastEval360.AutoPct.ToString("0")%</div>
-                            </div>
-                            <div class="text-end">
-                                <div class="text-muted small">Equipo</div>
-                                <div class="fs-4 fw-semibold">@Model.LastEval360.OthersPct.ToString("0")%</div>
-                            </div>
-                        </div>
-                        <div class="text-muted small mt-2">Evaluadores: @Model.LastEval360.OthersCount</div>
-                        <div class="mt-2">
-                            <div class="progress" style="height:8px;">
-                                <div class="progress-bar bg-primary" role="progressbar" style="width:@Model.LastEval360.OthersPct%"></div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
     </div>
 
-    <div class="row g-3 mt-0">
-        <div class="col-12 col-xl-6">
-            <div class="card shadow-soft hn-hover h-100">
+    <div class="row g-2 mt-0">
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-soft hn-hover profile-card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
                         <div>
                             <div class="text-muted small">KPI mensual</div>
                             <div class="fw-semibold">Calificacion y retro</div>
@@ -248,7 +345,7 @@ else
                     }
                     else
                     {
-                        <div class="d-flex flex-wrap gap-2 mt-1">
+                        <div class="d-flex flex-wrap gap-2 mt-1 tight-list">
                             @foreach (var m in Model.CurrentKpiMetrics)
                             {
                                 <span class="hn-badge hn-badge-gray">@m.Name: @m.Score.ToString("0.0")</span>
@@ -263,119 +360,121 @@ else
                     }
                     else
                     {
-                        <div class="border rounded-3 p-2 mt-1 small">@Model.LatestAdminNotesPreview</div>
+                        <div class="profile-note p-2 mt-1 small">@Model.LatestAdminNotesPreview</div>
                         <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#kpiRhNotesModal">
                             Ver comentarios de RH
                         </button>
                     }
 
                     <div class="mt-3 text-muted small">Tendencia mensual (&uacute;ltimos 6 meses)</div>
-                    <div class="mt-2">
-                        <canvas id="kpiHistoryChart" height="120"></canvas>
+                    <div class="chart-box-full">
+                        <canvas id="kpiHistoryChart" height="110"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-xl-6">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="text-muted small">N&oacute;mina</div>
-                            <div class="fw-semibold">Deducciones y bonos</div>
+        <div class="col-12 col-xl-5">
+            <div class="stack-col">
+                <div class="card shadow-soft hn-hover profile-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <div class="text-muted small">N&oacute;mina</div>
+                                <div class="fw-semibold">Deducciones y bonos</div>
+                            </div>
+                            <span class="hn-badge @(payrollImpact >= 0 ? "hn-badge-green" : "hn-badge-amber")">Impacto: @payrollImpact.ToString("C")</span>
                         </div>
-                        <span class="hn-badge @(payrollImpact >= 0 ? "hn-badge-green" : "hn-badge-amber")">Impacto: @payrollImpact.ToString("C")</span>
-                    </div>
 
-                    @if (!Model.ActiveDeductions.Any())
-                    {
-                        <div class="text-muted small mt-3">No tienes ajustes activos.</div>
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-column gap-2 mt-3">
-                            @foreach (var d in Model.ActiveDeductions)
-                            {
-                                var sign = d.Direction == EmployeeDeductionDirection.Bonus ? "+" : "-";
-                                var tagClass = d.Direction == EmployeeDeductionDirection.Bonus ? "hn-badge-green" : "hn-badge-amber";
-                                var hasProgress = d.ProgressPaidPeriods.HasValue && d.ProgressTotalPeriods.HasValue && d.ProgressTotalPeriods.Value > 0;
-                                var progressPct = hasProgress ? Math.Round((d.ProgressPaidPeriods!.Value * 100m) / d.ProgressTotalPeriods!.Value, 0) : 0;
+                        @if (!Model.ActiveDeductions.Any())
+                        {
+                            <div class="text-muted small mt-3">No tienes ajustes activos.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column gap-2 mt-3">
+                                @foreach (var d in Model.ActiveDeductions)
+                                {
+                                    var sign = d.Direction == EmployeeDeductionDirection.Bonus ? "+" : "-";
+                                    var tagClass = d.Direction == EmployeeDeductionDirection.Bonus ? "hn-badge-green" : "hn-badge-amber";
+                                    var hasProgress = d.ProgressPaidPeriods.HasValue && d.ProgressTotalPeriods.HasValue && d.ProgressTotalPeriods.Value > 0;
+                                    var progressPct = hasProgress ? Math.Round((d.ProgressPaidPeriods!.Value * 100m) / d.ProgressTotalPeriods!.Value, 0) : 0;
 
-                                <div class="border rounded-3 p-2">
-                                    <div class="d-flex justify-content-between align-items-center gap-2">
-                                        <div>
-                                            <div class="fw-semibold">@d.Concept</div>
-                                            <div class="small text-muted">@d.Type.GetDisplayName() &middot; @d.Mode.GetDisplayName() &middot; @d.Frequency.GetDisplayName()</div>
+                                    <div class="profile-item-box p-2">
+                                        <div class="d-flex justify-content-between align-items-center gap-2">
+                                            <div>
+                                                <div class="fw-semibold">@d.Concept</div>
+                                                <div class="small text-muted">@d.Type.GetDisplayName() &middot; @d.Mode.GetDisplayName() &middot; @d.Frequency.GetDisplayName()</div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="hn-badge @tagClass">@d.Direction.GetDisplayName()</span>
+                                                <div class="fw-semibold">@sign@d.PeriodAmount.ToString("C")</div>
+                                            </div>
                                         </div>
-                                        <div class="text-end">
-                                            <span class="hn-badge @tagClass">@d.Direction.GetDisplayName()</span>
-                                            <div class="fw-semibold">@sign@d.PeriodAmount.ToString("C")</div>
-                                        </div>
+
+                                        @if (hasProgress)
+                                        {
+                                            <div class="mt-2">
+                                                <div class="d-flex justify-content-between small">
+                                                    <span>Progreso</span>
+                                                    <span>Pago @d.ProgressPaidPeriods de @d.ProgressTotalPeriods</span>
+                                                </div>
+                                                <div class="progress" style="height:6px;">
+                                                    <div class="progress-bar" role="progressbar" style="width:@progressPct%"></div>
+                                                </div>
+                                            </div>
+                                        }
                                     </div>
-
-                                    @if (hasProgress)
-                                    {
-                                        <div class="mt-2">
-                                            <div class="d-flex justify-content-between small">
-                                                <span>Progreso</span>
-                                                <span>Pago @d.ProgressPaidPeriods de @d.ProgressTotalPeriods</span>
-                                            </div>
-                                            <div class="progress" style="height:6px;">
-                                                <div class="progress-bar" role="progressbar" style="width:@progressPct%"></div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="row g-3 mt-0">
-        <div class="col-12 col-xl-6">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="text-muted small">Vacaciones</div>
-                            <div class="fw-semibold">@Model.VacYear</div>
+                <div class="card shadow-soft hn-hover profile-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small">Vacaciones</div>
+                                <div class="fw-semibold">@Model.VacYear</div>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Leaves/Index">Abrir</a>
                         </div>
-                        <a class="btn btn-sm btn-outline-primary" asp-page="/Leaves/Index">Abrir</a>
+                        <div class="d-flex justify-content-between mt-3">
+                            <div>
+                                <div class="text-muted small">Disponibles</div>
+                                <div class="fs-4 fw-semibold">@Model.VacationRemaining</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small">Usadas</div>
+                                <div class="fs-4 fw-semibold">@Model.VacationUsed</div>
+                            </div>
+                        </div>
+                        <div class="text-muted small mt-2">Asignadas: @Model.VacationAllowance &middot; Pendientes: @Model.VacationPending</div>
                     </div>
-                    <div class="d-flex justify-content-between mt-3">
-                        <div><div class="text-muted small">Disponibles</div><div class="fs-4 fw-semibold">@Model.VacationRemaining</div></div>
-                        <div class="text-end"><div class="text-muted small">Usadas</div><div class="fs-4 fw-semibold">@Model.VacationUsed</div></div>
-                    </div>
-                    <div class="text-muted small mt-2">Asignadas: @Model.VacationAllowance &middot; Pendientes: @Model.VacationPending</div>
                 </div>
-            </div>
-        </div>
 
-        <div class="col-12 col-xl-6">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="text-muted small">Ex&aacute;menes</div>
-                            <div class="fw-semibold">Estatus</div>
+                <div class="card shadow-soft hn-hover profile-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small">Ex&aacute;menes</div>
+                                <div class="fw-semibold">Estatus</div>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Exams/Index">Abrir</a>
                         </div>
-                        <a class="btn btn-sm btn-outline-primary" asp-page="/Exams/Index">Abrir</a>
-                    </div>
-                    <div class="mt-3" style="max-width: 300px;">
-                        <canvas id="myExamsChart" height="200"></canvas>
+                        <div class="chart-box-sm mx-auto">
+                            <canvas id="myExamsChart" height="165"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mt-0">
-        <div class="col-12">
-            <div class="card shadow-soft hn-hover h-100">
+    <div class="row g-2 mt-0">
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-soft hn-hover profile-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                         <div>
@@ -384,16 +483,17 @@ else
                         </div>
                         <span class="hn-badge hn-badge-blue">Ultimos 6 meses</span>
                     </div>
-                    <div class="mt-3">
-                        <canvas id="ticketsHandledChart" height="120"></canvas>
+                    <div class="chart-box-full">
+                        <canvas id="ticketsHandledChart" height="105"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-12">
-            <div class="card shadow-soft hn-hover h-100">
+
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-soft hn-hover profile-card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
                         <div>
                             <div class="text-muted small">Vi&aacute;ticos</div>
                             <div class="fw-semibold">Semanas recientes</div>
@@ -407,7 +507,7 @@ else
                             @foreach (var w in Model.RecentWeeks)
                             {
                                 <div class="col d-flex">
-                                    <div class="border rounded-3 p-2 w-100">
+                                    <div class="profile-item-box p-2 w-100">
                                         <div class="small text-muted">Semana</div>
                                         <div class="fw-semibold">@w.WeekStart.ToString("yyyy-MM-dd")</div>
                                         <div class="small mt-1">@w.Status.GetDisplayName()</div>

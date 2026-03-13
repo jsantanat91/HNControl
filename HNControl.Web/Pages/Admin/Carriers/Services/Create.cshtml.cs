@@ -43,6 +43,8 @@ public class CreateModel : PageModel
         [MaxLength(140)] public string? Plan { get; set; }
         [MaxLength(120)] public string? AccountNumber { get; set; }
         [MaxLength(120)] public string? ContractNumber { get; set; }
+        [MaxLength(180)] public string? BusinessName { get; set; }
+        [MaxLength(120)] public string? SerialNumber { get; set; }
         [MaxLength(120)] public string? CircuitId { get; set; }
         [MaxLength(200)] public string? ServiceAddress { get; set; }
         [MaxLength(200)] public string? IpInfo { get; set; }
@@ -96,6 +98,8 @@ public class CreateModel : PageModel
             Plan = (Input.Plan ?? "").Trim(),
             AccountNumber = (Input.AccountNumber ?? "").Trim(),
             ContractNumber = (Input.ContractNumber ?? "").Trim(),
+            BusinessName = (Input.BusinessName ?? "").Trim(),
+            SerialNumber = (Input.SerialNumber ?? "").Trim(),
             CircuitId = (Input.CircuitId ?? "").Trim(),
             ServiceAddress = (Input.ServiceAddress ?? "").Trim(),
             IpInfo = (Input.IpInfo ?? "").Trim(),

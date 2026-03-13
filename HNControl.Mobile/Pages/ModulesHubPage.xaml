@@ -4,10 +4,10 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Modulos"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Padding="14,12,14,26" Spacing="10">
-            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label FontAttributes="Bold" FontSize="23" Text="Modulos operativos" TextColor="White" />
                     <Label FontSize="12" Opacity="0.85" Text="Visibles segun permisos del usuario." TextColor="#C5D5F0" />
@@ -17,21 +17,21 @@
             <CollectionView x:Name="ModulesCollection" SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <VerticalStackLayout Spacing="2">
+                        <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border Style="{StaticResource PillBadgeBlue}" VerticalOptions="Start">
+                                    <Label Text="{Binding Key}" FontAttributes="Bold" FontSize="10" TextColor="#1D4ED8" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
                                     <Label FontAttributes="Bold" FontSize="18" Text="{Binding Label}" TextColor="#0F172A" />
                                     <Label FontSize="12" Opacity="0.85" Text="{Binding Key}" TextColor="#64748B" />
                                 </VerticalStackLayout>
-                                <Button Grid.Column="1"
-                                        BackgroundColor="#2B5FD9"
+                                <Button Grid.Column="2"
                                         Clicked="OnOpenModuleClicked"
                                         CommandParameter="{Binding Key}"
-                                        CornerRadius="10"
-                                        HeightRequest="38"
-                                        Padding="14,8"
+                                        Style="{StaticResource PrimaryButton}"
                                         Text="Abrir"
-                                        TextColor="White" />
+                                        VerticalOptions="Center" />
                             </Grid>
                         </Border>
                     </DataTemplate>

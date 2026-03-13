@@ -4,17 +4,17 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Detalle solicitud"
-    Background="#E9EEF7">
+    Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
         <VerticalStackLayout Padding="14,12,14,24" Spacing="10">
-            <Border Background="#0E2242" Padding="14" StrokeShape="RoundRectangle 16">
+            <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="TitleLabel" FontAttributes="Bold" FontSize="22" TextColor="White" />
                     <Label x:Name="StatusLabel" FontSize="13" Opacity="0.85" TextColor="#C5D5F0" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="RangeLabel" />
                     <Label x:Name="MetaLabel" FontSize="12" Opacity="0.75" />
@@ -22,21 +22,21 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Motivo" />
                     <Label x:Name="ReasonLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Comentario admin" />
                     <Label x:Name="AdminCommentLabel" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
+            <Border Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" Text="Evidencias" />
                     <CollectionView x:Name="EvidenceCollection" SelectionMode="None">

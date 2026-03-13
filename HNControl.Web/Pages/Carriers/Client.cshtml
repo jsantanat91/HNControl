@@ -104,7 +104,9 @@
                         <div class="hn-carrier-grid mt-3">
                             <div><span class="text-muted small">Cuenta</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.AccountNumber) ? "-" : s.Service.AccountNumber)</div></div>
                             <div><span class="text-muted small">Contrato</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ContractNumber) ? "-" : s.Service.ContractNumber)</div></div>
-                            <div><span class="text-muted small">Circuit ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.CircuitId) ? "-" : s.Service.CircuitId)</div></div>
+                            <div><span class="text-muted small">Cuenta ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.CircuitId) ? "-" : s.Service.CircuitId)</div></div>
+                            <div><span class="text-muted small">Razon social</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.BusinessName) ? "-" : s.Service.BusinessName)</div></div>
+                            <div><span class="text-muted small">Numero serie</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.SerialNumber) ? "-" : s.Service.SerialNumber)</div></div>
                             <div><span class="text-muted small">Direcci&oacute;n servicio</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.ServiceAddress) ? "-" : s.Service.ServiceAddress)</div></div>
                             <div><span class="text-muted small">IP info</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.Service.IpInfo) ? "-" : s.Service.IpInfo)</div></div>
                             <div><span class="text-muted small">Ejecutivo</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CarrierExecutive) ? "-" : s.CarrierExecutive)</div></div>

@@ -4,26 +4,37 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Proyectos"
-    Background="#E9EEF7">
-    <CollectionView x:Name="ItemsCollection" Margin="14,12,14,12" SelectionMode="None">
-        <CollectionView.EmptyView>
-            <Border Background="White" Padding="16" StrokeShape="RoundRectangle 14">
-                <Label HorizontalOptions="Center" Opacity="0.7" Text="No tienes proyectos asignados." />
-            </Border>
-        </CollectionView.EmptyView>
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <Border Background="White" Margin="0,0,0,10" Padding="12" StrokeShape="RoundRectangle 14">
-                    <VerticalStackLayout Spacing="4">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <Label FontAttributes="Bold" FontSize="17" Text="{Binding Title}" />
-                            <Label Grid.Column="1" FontAttributes="Bold" FontSize="12" Text="{Binding Status}" />
-                        </Grid>
-                        <Label FontSize="12" Opacity="0.75" Text="{Binding Client}" />
-                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" />
-                    </VerticalStackLayout>
+    Background="{StaticResource AppBackgroundBrush}">
+    <Grid RowDefinitions="Auto,*" Padding="14,12,14,12">
+        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="Proyectos" TextColor="White" FontAttributes="Bold" FontSize="22" />
+                <Label Text="Seguimiento por responsable" TextColor="#C5D5F0" FontSize="12" />
+            </VerticalStackLayout>
+        </Border>
+
+        <CollectionView x:Name="ItemsCollection" Grid.Row="1" Margin="0,12,0,0" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <Border Style="{StaticResource SurfaceCard}" Padding="16">
+                    <Label HorizontalOptions="Center" Opacity="0.7" Text="No tienes proyectos asignados." />
                 </Border>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-    </CollectionView>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label FontAttributes="Bold" FontSize="17" Text="{Binding Title}" LineBreakMode="WordWrap" />
+                                <Border Grid.Column="1" Style="{StaticResource PillBadgeBlue}">
+                                    <Label Text="{Binding Status}" FontSize="12" TextColor="#1D4ED8" />
+                                </Border>
+                            </Grid>
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding Client}" LineBreakMode="WordWrap" />
+                            <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 </ContentPage>
