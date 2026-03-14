@@ -50,7 +50,10 @@ public class CreateTargetModel : PageModel
                 if (Input.ClientServiceContractId == Guid.Empty && svc.ClientServiceContractId.HasValue)
                     Input.ClientServiceContractId = svc.ClientServiceContractId.Value;
                 if (string.IsNullOrWhiteSpace(Input.Name)) Input.Name = svc.ServiceLabel;
-                if (string.IsNullOrWhiteSpace(Input.IpAddress)) Input.IpAddress = svc.IpInfo;
+                // Estos campos siempre se sincronizan desde el servicio carrier seleccionado.
+                Input.IpAddress = svc.IpInfo;
+                Input.SubnetMask = svc.Gateway;
+                Input.Gateway = svc.GatewayLink;
             }
         }
 
@@ -119,6 +122,8 @@ public class CreateTargetModel : PageModel
                 {
                     name = s.ServiceLabel,
                     ipInfo = s.IpInfo,
+                    subnetMask = s.Gateway,
+                    gateway = s.GatewayLink,
                     contractId = s.ClientServiceContractId?.ToString() ?? "",
                     notes = s.Notes
                 });

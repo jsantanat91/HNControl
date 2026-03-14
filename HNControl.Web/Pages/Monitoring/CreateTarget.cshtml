@@ -59,11 +59,11 @@
 
                     <div class="col-12 col-md-6">
                         <label class="form-label">Mascara</label>
-                        <input class="form-control" asp-for="Input.SubnetMask" placeholder="255.255.255.0" />
+                        <input class="form-control" asp-for="Input.SubnetMask" id="subnetMask" placeholder="255.255.255.0" />
                     </div>
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Gateway</label>
-                        <input class="form-control" asp-for="Input.Gateway" placeholder="189.10.10.1" />
+                        <label class="form-label">Puerta de enlace</label>
+                        <input class="form-control" asp-for="Input.Gateway" id="gateway" placeholder="189.10.10.1" />
                     </div>
 
                     <div class="col-12 col-md-6">
@@ -119,7 +119,15 @@
             const contractSel = document.getElementById('contractSel');
             const targetName = document.getElementById('targetName');
             const ipAddress = document.getElementById('ipAddress');
+            const subnetMask = document.getElementById('subnetMask');
+            const gateway = document.getElementById('gateway');
             const map = @Html.Raw(Model.CarrierServiceMapJson);
+
+            function lockNetworkFields(locked) {
+                if (ipAddress) ipAddress.readOnly = locked;
+                if (subnetMask) subnetMask.readOnly = locked;
+                if (gateway) gateway.readOnly = locked;
+            }
 
             if (clientSel) {
                 clientSel.addEventListener('change', () => {
@@ -133,12 +141,25 @@
 
             if (serviceSel) {
                 serviceSel.addEventListener('change', () => {
+                    if (!serviceSel.value) {
+                        lockNetworkFields(false);
+                        return;
+                    }
                     const s = map[serviceSel.value];
                     if (!s) return;
                     if (targetName && !targetName.value) targetName.value = s.name || '';
-                    if (ipAddress && !ipAddress.value && s.ipInfo) ipAddress.value = s.ipInfo;
+                    if (ipAddress) ipAddress.value = s.ipInfo || '';
+                    if (subnetMask) subnetMask.value = s.subnetMask || '';
+                    if (gateway) gateway.value = s.gateway || '';
                     if (contractSel && s.contractId) contractSel.value = s.contractId;
+                    lockNetworkFields(true);
                 });
+
+                if (serviceSel.value) {
+                    serviceSel.dispatchEvent(new Event('change'));
+                } else {
+                    lockNetworkFields(false);
+                }
             }
         })();
     </script>
