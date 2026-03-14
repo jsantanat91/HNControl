@@ -1,13 +1,13 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Leaves.RequestVacationModel
 @{
-    ViewData["Title"] = "Solicitar vacaciones";
+    ViewData["Title"] = "Solicitar solicitud";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Solicitar vacaciones</h1>
-        <div class="text-muted small">El admin decide… tú solo ruega bonito 😄</div>
+        <h1 class="h4 m-0">Solicitar vacaciones o incidencia</h1>
+        <div class="text-muted small">Ambas siguen el mismo flujo de aprobacion del admin.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Leaves/Index">Volver</a>
 </div>
@@ -17,6 +17,15 @@
         <div asp-validation-summary="All" class="text-danger"></div>
 
         <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Tipo de solicitud</label>
+                <select class="form-select" asp-for="Input.RequestKind">
+                    <option value="Vacation">Vacaciones</option>
+                    <option value="Incidence">Incidencia</option>
+                </select>
+                <div class="form-text">Incidencia no consume saldo vacacional.</div>
+            </div>
+
             <div class="col-md-4">
                 <label class="form-label">Inicio</label>
                 <input class="form-control" asp-for="Input.StartDate" type="date" />
@@ -28,7 +37,7 @@
             <div class="col-md-4">
                 <label class="form-label">Evidencias (opcional)</label>
                 <input class="form-control" asp-for="Input.EvidenceFiles" type="file" multiple />
-                <div class="form-text">PDF/PNG/JPG/WEBP/HEIC · max 15MB c/u</div>
+                <div class="form-text">PDF/PNG/JPG/WEBP/HEIC - max 15MB c/u</div>
             </div>
 
             <div class="col-12">

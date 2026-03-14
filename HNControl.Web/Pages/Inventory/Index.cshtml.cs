@@ -250,63 +250,68 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostRequestRestockAsync()
     {
-        if (!HasRestockPermission())
-        {
-            Error = "No tienes permiso para solicitar reposicion de stock.";
-            return RedirectToPage();
-        }
-
-        if (RestockItemId == Guid.Empty || RestockQty <= 0)
-        {
-            Error = "Selecciona item y cantidad valida.";
-            return RedirectToPage(new
-            {
-                q = Q,
-                cat = Cat,
-                loc = Loc,
-                brandId = BrandId,
-                sort = Sort,
-                dir = Dir,
-                stock = "zero",
-                page = 1
-            });
-        }
-
-        var item = await _db.InventoryItems
-            .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Id == RestockItemId && i.IsActive);
-        if (item == null)
-        {
-            Error = "El item seleccionado no existe o esta inactivo.";
-            return RedirectToPage();
-        }
-
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            Error = "No se pudo identificar el usuario autenticado.";
-            return RedirectToPage();
-        }
-
-        var prof = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId);
-        var now = DateTime.UtcNow;
-
-        var notes = $"Solicitud por sin stock.\n{(RestockNotes ?? "").Trim()}".Trim();
-
         try
         {
+            if (!HasRestockPermission())
+            {
+                Error = "No tienes permiso para solicitar reposicion de stock.";
+                return RedirectToPage("./Index");
+            }
+
+            if (RestockItemId == Guid.Empty || RestockQty <= 0)
+            {
+                Error = "Selecciona item y cantidad valida.";
+                return RedirectToPage("./Index", new
+                {
+                    q = Q,
+                    cat = Cat,
+                    loc = Loc,
+                    brandId = BrandId,
+                    sort = Sort,
+                    dir = Dir,
+                    stock = "zero",
+                    page = 1
+                });
+            }
+
+            var item = await _db.InventoryItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == RestockItemId && i.IsActive);
+            if (item == null)
+            {
+                Error = "El item seleccionado no existe o esta inactivo.";
+                return RedirectToPage("./Index");
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+                userId = "system";
+
+            var prof = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId);
+            var displayName = (prof?.FullName ?? User.Identity?.Name ?? "Sistema").Trim();
+            if (string.IsNullOrWhiteSpace(displayName))
+                displayName = "Sistema";
+
+            var now = DateTime.UtcNow;
+            var notes = $"Solicitud por sin stock.{Environment.NewLine}{(RestockNotes ?? "").Trim()}".Trim();
+
             _db.InventoryMovements.Add(new InventoryMovement
             {
                 ItemId = item.Id,
                 Type = InventoryMovementType.In,
                 Status = InventoryMovementStatus.Pending,
                 Quantity = RestockQty,
+                ProjectId = null,
+                AssignedClientId = null,
+                SerialNumber = "",
+                Reference = "",
                 Notes = notes,
+                AdminNote = "",
                 RequestedAt = now,
                 RequestedByUserId = userId,
-                RequestedByName = prof?.FullName ?? (User.Identity?.Name ?? ""),
+                RequestedByName = displayName,
                 ResponsibleUserId = userId,
-                ResponsibleName = prof?.FullName ?? (User.Identity?.Name ?? "")
+                ResponsibleName = displayName
             });
 
             await _db.SaveChangesAsync();
@@ -314,11 +319,11 @@ public class IndexModel : PageModel
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al solicitar reposicion de item {ItemId}", RestockItemId);
-            Error = "No se pudo enviar la solicitud. Intenta de nuevo o contacta al administrador.";
+            _logger.LogError(ex, "Error al solicitar reposicion desde sin stock. ItemId={ItemId}, Qty={Qty}", RestockItemId, RestockQty);
+            Error = "No se pudo enviar la solicitud de reposicion. Ya no debe tronar la pantalla; revisa que el item siga activo e intenta de nuevo.";
         }
 
-        return RedirectToPage(new
+        return RedirectToPage("./Index", new
         {
             q = Q,
             cat = Cat,

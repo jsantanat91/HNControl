@@ -43,11 +43,16 @@ public class IndexModel : PageModel
         {
             query = query.Where(s =>
                 (s.ServiceLabel ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.ServiceType ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.AccountNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.ContractNumber ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.CircuitId ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.BusinessName ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.SerialNumber ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.IpInfo ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.Gateway ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.GatewayLink ?? "").ToLower().Contains(q.ToLower()) ||
+                (s.Fqdn ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.ClientServiceContract != null && (s.ClientServiceContract.Label ?? "").ToLower().Contains(q.ToLower())) ||
                 (s.Client!.Name ?? "").ToLower().Contains(q.ToLower()) ||
                 (s.Carrier!.Name ?? "").ToLower().Contains(q.ToLower()));

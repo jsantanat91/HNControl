@@ -29,6 +29,9 @@ public class RequestVacationModel : PageModel
 
     public class InputModel
     {
+        [Required]
+        public string RequestKind { get; set; } = "Vacation";
+
         [Required, DataType(DataType.Date)]
         public DateTime? StartDate { get; set; }
 
@@ -41,12 +44,15 @@ public class RequestVacationModel : PageModel
         public IFormFile[] EvidenceFiles { get; set; } = Array.Empty<IFormFile>();
     }
 
-    public void OnGet()
+    public void OnGet(string? kind = null)
     {
         // Defaults: hoy + 1
         var d = DateTime.Now.Date;
         Input.StartDate = d;
         Input.EndDate = d;
+        Input.RequestKind = string.Equals(kind, "incidencia", StringComparison.OrdinalIgnoreCase)
+            ? "Incidence"
+            : "Vacation";
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -78,28 +84,33 @@ public class RequestVacationModel : PageModel
             return Page();
         }
 
-        // ✅ Validación simple de saldo (calendario anual).
-        // Nota: la LFT opera por "año de servicios"; aquí usamos el año calendario para mantener consistencia con el módulo.
-        var year = start.Year;
-        var allowance = profile.HireDate.HasValue
-            ? VacationPolicyMxLft.GetAnnualVacationDays(profile.HireDate, start)
-            : profile.VacationAllowanceDays;
+        var isIncidence = string.Equals(Input.RequestKind, "Incidence", StringComparison.OrdinalIgnoreCase);
+        var leaveType = isIncidence ? LeaveRequestType.Other : LeaveRequestType.Vacation;
 
-        var usedDays = await _db.LeaveRequests
-            .AsNoTracking()
-            .Where(x => x.UserId == userId
-                        && x.Type == LeaveRequestType.Vacation
-                        && x.Status == LeaveRequestStatus.Approved
-                        && x.StartDate.Year == year)
-            .SumAsync(x => (int?)x.TotalDays) ?? 0;
-
-        var remaining = allowance - usedDays;
-        if (remaining < 0) remaining = 0;
-
-        if (days > remaining)
+        if (!isIncidence)
         {
-            ModelState.AddModelError("", $"No tienes saldo suficiente. Te quedan {remaining} día(s) para {year}.");
-            return Page();
+            // Validación de saldo solo para vacaciones.
+            var year = start.Year;
+            var allowance = profile.HireDate.HasValue
+                ? VacationPolicyMxLft.GetAnnualVacationDays(profile.HireDate, start)
+                : profile.VacationAllowanceDays;
+
+            var usedDays = await _db.LeaveRequests
+                .AsNoTracking()
+                .Where(x => x.UserId == userId
+                            && x.Type == LeaveRequestType.Vacation
+                            && x.Status == LeaveRequestStatus.Approved
+                            && x.StartDate.Year == year)
+                .SumAsync(x => (int?)x.TotalDays) ?? 0;
+
+            var remaining = allowance - usedDays;
+            if (remaining < 0) remaining = 0;
+
+            if (days > remaining)
+            {
+                ModelState.AddModelError("", $"No tienes saldo suficiente. Te quedan {remaining} día(s) para {year}.");
+                return Page();
+            }
         }
 
 
@@ -107,7 +118,7 @@ public class RequestVacationModel : PageModel
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Type = LeaveRequestType.Vacation,
+            Type = leaveType,
             StartDate = start,
             EndDate = end,
             TotalDays = days,

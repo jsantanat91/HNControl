@@ -67,7 +67,7 @@ public class ClientCarrierService
     public ClientServiceContract? ClientServiceContract { get; set; }
 
     [Required, MaxLength(140)]
-    public string ServiceLabel { get; set; } = ""; // Nombre interno: "Matriz - Dedicado"
+    public string ServiceLabel { get; set; } = "";
 
     [MaxLength(140)]
     public string Plan { get; set; } = "";
@@ -84,6 +84,9 @@ public class ClientCarrierService
     [MaxLength(120)]
     public string SerialNumber { get; set; } = "";
 
+    [MaxLength(40)]
+    public string ServiceType { get; set; } = "";
+
     [MaxLength(120)]
     public string CircuitId { get; set; } = "";
 
@@ -91,10 +94,19 @@ public class ClientCarrierService
     public string ServiceAddress { get; set; } = "";
 
     [MaxLength(200)]
-    public string IpInfo { get; set; } = ""; // IP pública, rango, gateway (texto corto)
+    public string IpInfo { get; set; } = "";
+
+    [MaxLength(120)]
+    public string Gateway { get; set; } = "";
+
+    [MaxLength(120)]
+    public string GatewayLink { get; set; } = "";
+
+    [MaxLength(180)]
+    public string Fqdn { get; set; } = "";
 
     [MaxLength(40)]
-    public string SupportPhoneOverride { get; set; } = ""; // si este servicio tiene teléfono distinto
+    public string SupportPhoneOverride { get; set; } = "";
 
     [MaxLength(2000)]
     public string Notes { get; set; } = "";
@@ -115,7 +127,7 @@ public enum CarrierNoteType
 }
 
 /// <summary>
-/// Bitácora interna: contacto con carrier, ticket, falla, etc.
+/// Bitacora interna: contacto con carrier, ticket, falla, etc.
 /// (Empleado: puede agregar; Admin: puede ver + crear/editar servicios)
 /// </summary>
 public class ClientCarrierNote

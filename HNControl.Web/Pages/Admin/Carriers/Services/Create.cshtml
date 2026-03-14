@@ -36,21 +36,45 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Plan / ancho de banda</label>
-                <input class="form-control" asp-for="Input.Plan" />
+                <label class="form-label">Tipo de servicio</label>
+                <select class="form-select" asp-for="Input.ServiceType">
+                    <option value="">(Opcional)</option>
+                    <option value="Dedicado">Dedicado</option>
+                    <option value="Empresarial">Empresarial</option>
+                    <option value="Residencial">Residencial</option>
+                    <option value="Satelital">Satelital</option>
+                    <option value="LTE">LTE</option>
+                </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Direccion del servicio</label>
-                <input class="form-control" asp-for="Input.ServiceAddress" />
+                <input class="form-control" asp-for="Input.ServiceAddress" id="serviceAddress" readonly />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Ancho de banda</label>
+                <select class="form-select" asp-for="Input.Plan" id="planSel">
+                    <option value="">(Opcional)</option>
+                    <option value="50/50 MB">50/50 MB</option>
+                    <option value="100/100 MB">100/100 MB</option>
+                    <option value="200/200 MB">200/200 MB</option>
+                    <option value="300/300 MB">300/300 MB</option>
+                    <option value="500/500 MB">500/500 MB</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+            <div class="col-md-6" id="planOtherWrap" style="display:none;">
+                <label class="form-label">Otro ancho de banda</label>
+                <input class="form-control" asp-for="Input.PlanOther" id="planOther" placeholder="Ej. 700/700 MB" />
             </div>
 
             <div class="col-md-4">
                 <label class="form-label">Numero de cuenta</label>
-                <input class="form-control" asp-for="Input.AccountNumber" id="accountNumber" />
+                <input class="form-control" asp-for="Input.AccountNumber" id="accountNumber" readonly />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Numero de contrato</label>
-                <input class="form-control" asp-for="Input.ContractNumber" id="contractNumber" />
+                <input class="form-control" asp-for="Input.ContractNumber" id="contractNumber" readonly />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Cuenta ID</label>
@@ -67,17 +91,24 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">IP info</label>
-                <input class="form-control" asp-for="Input.IpInfo" placeholder="/30, gateway, IP publica, etc." />
+                <label class="form-label">IP fija</label>
+                <input class="form-control" asp-for="Input.IpInfo" placeholder="IP publica o privada" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Telefono soporte override (opcional)</label>
-                <input class="form-control" asp-for="Input.SupportPhoneOverride" />
+                <label class="form-label">Mascara Red</label>
+                <input class="form-control" asp-for="Input.Gateway" />
             </div>
-
-            <div class="col-12">
-                <label class="form-label">Notas</label>
-                <textarea class="form-control" asp-for="Input.Notes" rows="4"></textarea>
+            <div class="col-md-6">
+                <label class="form-label">Puerta de enlace</label>
+                <input class="form-control" asp-for="Input.GatewayLink" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">FQDN</label>
+                <input class="form-control" asp-for="Input.Fqdn" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Telefono Soporte</label>
+                <input class="form-control" asp-for="Input.SupportPhoneOverride" />
             </div>
 
             <div class="col-12">
@@ -103,8 +134,18 @@
             const contractSel = document.getElementById('contractSel');
             const carrierSel = document.getElementById('carrierSel');
             const serviceLabel = document.getElementById('serviceLabel');
+            const serviceAddress = document.getElementById('serviceAddress');
             const accountNumber = document.getElementById('accountNumber');
             const contractNumber = document.getElementById('contractNumber');
+            const planSel = document.getElementById('planSel');
+            const planOtherWrap = document.getElementById('planOtherWrap');
+
+            function syncPlanOther() {
+                if (!planSel || !planOtherWrap) return;
+                planOtherWrap.style.display = planSel.value === 'Otro' ? '' : 'none';
+            }
+            syncPlanOther();
+            if (planSel) planSel.addEventListener('change', syncPlanOther);
 
             const map = @Html.Raw(Model.ContractMapJson);
             const carrierOptions = Array.from((carrierSel && carrierSel.options) || []).map(o => ({ value: o.value, text: (o.text || '').toLowerCase() }));
@@ -124,8 +165,9 @@
                     if (!c) return;
 
                     if (serviceLabel && !serviceLabel.value) serviceLabel.value = c.label || '';
-                    if (accountNumber && !accountNumber.value) accountNumber.value = c.accountNumber || '';
-                    if (contractNumber && !contractNumber.value) contractNumber.value = c.contractNumber || '';
+                    if (serviceAddress) serviceAddress.value = c.branchAddress || '';
+                    if (accountNumber) accountNumber.value = c.accountNumber || '';
+                    if (contractNumber) contractNumber.value = c.contractNumber || '';
 
                     if (carrierSel && c.provider) {
                         const p = String(c.provider).toLowerCase();
@@ -133,6 +175,9 @@
                         if (found) carrierSel.value = found.value;
                     }
                 });
+                if (contractSel.value) {
+                    contractSel.dispatchEvent(new Event('change'));
+                }
             }
         })();
     </script>

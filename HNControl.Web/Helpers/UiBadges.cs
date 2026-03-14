@@ -34,9 +34,9 @@ public static class UiBadges
     public static (string text, string css) LeaveType(LeaveRequestType t) => t switch
     {
         LeaveRequestType.Vacation => ("Vacaciones", "bg-primary"),
-        LeaveRequestType.Medical => ("Médica", "bg-danger"),
-        LeaveRequestType.Personal => ("Personal", "bg-dark"),
-        _ => ("Otra", "bg-secondary")
+        LeaveRequestType.Medical => ("Incidencia medica", "hn-badge-purple"),
+        LeaveRequestType.Personal => ("Incidencia personal", "hn-badge-purple"),
+        _ => ("Incidencia", "hn-badge-purple")
     };
 
     public static (string text, string css) ServiceOrderStatusBadge(ServiceOrderStatus s) => s switch

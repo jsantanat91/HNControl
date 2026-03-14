@@ -40,7 +40,9 @@ public class CreateModel : PageModel
         [Required, MaxLength(140)]
         public string ServiceLabel { get; set; } = "";
 
+        [MaxLength(40)] public string? ServiceType { get; set; }
         [MaxLength(140)] public string? Plan { get; set; }
+        [MaxLength(140)] public string? PlanOther { get; set; }
         [MaxLength(120)] public string? AccountNumber { get; set; }
         [MaxLength(120)] public string? ContractNumber { get; set; }
         [MaxLength(180)] public string? BusinessName { get; set; }
@@ -48,8 +50,10 @@ public class CreateModel : PageModel
         [MaxLength(120)] public string? CircuitId { get; set; }
         [MaxLength(200)] public string? ServiceAddress { get; set; }
         [MaxLength(200)] public string? IpInfo { get; set; }
+        [MaxLength(120)] public string? Gateway { get; set; }
+        [MaxLength(120)] public string? GatewayLink { get; set; }
+        [MaxLength(180)] public string? Fqdn { get; set; }
         [MaxLength(40)] public string? SupportPhoneOverride { get; set; }
-        [MaxLength(2000)] public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;
     }
 
@@ -76,6 +80,7 @@ public class CreateModel : PageModel
                 if (string.IsNullOrWhiteSpace(Input.ServiceLabel)) Input.ServiceLabel = contract.Label;
                 if (string.IsNullOrWhiteSpace(Input.AccountNumber)) Input.AccountNumber = contract.AccountNumber;
                 if (string.IsNullOrWhiteSpace(Input.ContractNumber)) Input.ContractNumber = contract.ContractNumber;
+                Input.ServiceAddress = contract.BranchAddress;
 
                 if (Input.CarrierId == Guid.Empty && !string.IsNullOrWhiteSpace(contract.Provider))
                 {
@@ -95,7 +100,8 @@ public class CreateModel : PageModel
             CarrierId = Input.CarrierId,
             ClientServiceContractId = Input.ClientServiceContractId,
             ServiceLabel = Input.ServiceLabel.Trim(),
-            Plan = (Input.Plan ?? "").Trim(),
+            ServiceType = (Input.ServiceType ?? "").Trim(),
+            Plan = ResolvePlan(Input.Plan, Input.PlanOther),
             AccountNumber = (Input.AccountNumber ?? "").Trim(),
             ContractNumber = (Input.ContractNumber ?? "").Trim(),
             BusinessName = (Input.BusinessName ?? "").Trim(),
@@ -103,8 +109,10 @@ public class CreateModel : PageModel
             CircuitId = (Input.CircuitId ?? "").Trim(),
             ServiceAddress = (Input.ServiceAddress ?? "").Trim(),
             IpInfo = (Input.IpInfo ?? "").Trim(),
+            Gateway = (Input.Gateway ?? "").Trim(),
+            GatewayLink = (Input.GatewayLink ?? "").Trim(),
+            Fqdn = (Input.Fqdn ?? "").Trim(),
             SupportPhoneOverride = (Input.SupportPhoneOverride ?? "").Trim(),
-            Notes = (Input.Notes ?? "").Trim(),
             IsActive = Input.IsActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -149,9 +157,18 @@ public class CreateModel : PageModel
                     label = c.Label,
                     provider = c.Provider,
                     accountNumber = c.AccountNumber,
-                    contractNumber = c.ContractNumber
+                    contractNumber = c.ContractNumber,
+                    branchAddress = c.BranchAddress
                 });
             ContractMapJson = JsonSerializer.Serialize(map);
         }
+    }
+
+    private static string ResolvePlan(string? selectedPlan, string? otherPlan)
+    {
+        var value = (selectedPlan ?? "").Trim();
+        if (value.Equals("Otro", StringComparison.OrdinalIgnoreCase))
+            return (otherPlan ?? "").Trim();
+        return value;
     }
 }

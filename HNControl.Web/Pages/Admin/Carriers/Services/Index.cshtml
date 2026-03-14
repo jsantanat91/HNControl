@@ -72,6 +72,10 @@ else
                             </div>
                             <div class="d-flex gap-1 flex-wrap justify-content-end hn-service-badges">
                                 <span class="hn-chip hn-chip-neutral">@(s.Carrier?.Name ?? "-")</span>
+                                @if (!string.IsNullOrWhiteSpace(s.ServiceType))
+                                {
+                                    <span class="hn-chip hn-chip-type">@s.ServiceType</span>
+                                }
                                 @if (!string.IsNullOrWhiteSpace(s.Plan))
                                 {
                                     <span class="hn-chip hn-chip-type">@s.Plan</span>
@@ -88,11 +92,12 @@ else
                         </div>
 
                         <div class="hn-service-grid mt-2">
-                            <div><span class="text-muted small">Cuenta</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)</div></div>
+                            <div><span class="text-muted small">Numero de cuenta</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)</div></div>
                             <div><span class="text-muted small">Cuenta ID</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)</div></div>
                             <div><span class="text-muted small">Contrato ligado</span><div class="fw-semibold">@(s.ClientServiceContract?.Label ?? "-")</div></div>
                             <div><span class="text-muted small">Razon social</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.BusinessName) ? "-" : s.BusinessName)</div></div>
                             <div><span class="text-muted small">Numero serie</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.SerialNumber) ? "-" : s.SerialNumber)</div></div>
+                            <div><span class="text-muted small">IP fija</span><div class="fw-semibold">@(string.IsNullOrWhiteSpace(s.IpInfo) ? "-" : s.IpInfo)</div></div>
                         </div>
 
                         <div class="mt-auto pt-3 d-flex justify-content-end gap-2">

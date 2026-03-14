@@ -42,7 +42,9 @@ public class EditModel : PageModel
         [Required, MaxLength(140)]
         public string ServiceLabel { get; set; } = "";
 
+        [MaxLength(40)] public string? ServiceType { get; set; }
         [MaxLength(140)] public string? Plan { get; set; }
+        [MaxLength(140)] public string? PlanOther { get; set; }
         [MaxLength(120)] public string? AccountNumber { get; set; }
         [MaxLength(120)] public string? ContractNumber { get; set; }
         [MaxLength(180)] public string? BusinessName { get; set; }
@@ -50,8 +52,10 @@ public class EditModel : PageModel
         [MaxLength(120)] public string? CircuitId { get; set; }
         [MaxLength(200)] public string? ServiceAddress { get; set; }
         [MaxLength(200)] public string? IpInfo { get; set; }
+        [MaxLength(120)] public string? Gateway { get; set; }
+        [MaxLength(120)] public string? GatewayLink { get; set; }
+        [MaxLength(180)] public string? Fqdn { get; set; }
         [MaxLength(40)] public string? SupportPhoneOverride { get; set; }
-        [MaxLength(2000)] public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;
     }
 
@@ -70,7 +74,9 @@ public class EditModel : PageModel
             CarrierId = svc.CarrierId,
             ClientServiceContractId = svc.ClientServiceContractId,
             ServiceLabel = svc.ServiceLabel,
-            Plan = svc.Plan,
+            ServiceType = svc.ServiceType,
+            Plan = ResolvePlanOption(svc.Plan),
+            PlanOther = ResolvePlanOther(svc.Plan),
             AccountNumber = svc.AccountNumber,
             ContractNumber = svc.ContractNumber,
             BusinessName = svc.BusinessName,
@@ -78,8 +84,10 @@ public class EditModel : PageModel
             CircuitId = svc.CircuitId,
             ServiceAddress = svc.ServiceAddress,
             IpInfo = svc.IpInfo,
+            Gateway = svc.Gateway,
+            GatewayLink = svc.GatewayLink,
+            Fqdn = svc.Fqdn,
             SupportPhoneOverride = svc.SupportPhoneOverride,
-            Notes = svc.Notes,
             IsActive = svc.IsActive
         };
         return Page();
@@ -101,6 +109,7 @@ public class EditModel : PageModel
                 if (string.IsNullOrWhiteSpace(Input.ServiceLabel)) Input.ServiceLabel = contract.Label;
                 if (string.IsNullOrWhiteSpace(Input.AccountNumber)) Input.AccountNumber = contract.AccountNumber;
                 if (string.IsNullOrWhiteSpace(Input.ContractNumber)) Input.ContractNumber = contract.ContractNumber;
+                Input.ServiceAddress = contract.BranchAddress;
             }
         }
 
@@ -111,7 +120,8 @@ public class EditModel : PageModel
         svc.CarrierId = Input.CarrierId;
         svc.ClientServiceContractId = Input.ClientServiceContractId;
         svc.ServiceLabel = Input.ServiceLabel.Trim();
-        svc.Plan = (Input.Plan ?? "").Trim();
+        svc.ServiceType = (Input.ServiceType ?? "").Trim();
+        svc.Plan = ResolvePlan(Input.Plan, Input.PlanOther);
         svc.AccountNumber = (Input.AccountNumber ?? "").Trim();
         svc.ContractNumber = (Input.ContractNumber ?? "").Trim();
         svc.BusinessName = (Input.BusinessName ?? "").Trim();
@@ -119,8 +129,10 @@ public class EditModel : PageModel
         svc.CircuitId = (Input.CircuitId ?? "").Trim();
         svc.ServiceAddress = (Input.ServiceAddress ?? "").Trim();
         svc.IpInfo = (Input.IpInfo ?? "").Trim();
+        svc.Gateway = (Input.Gateway ?? "").Trim();
+        svc.GatewayLink = (Input.GatewayLink ?? "").Trim();
+        svc.Fqdn = (Input.Fqdn ?? "").Trim();
         svc.SupportPhoneOverride = (Input.SupportPhoneOverride ?? "").Trim();
-        svc.Notes = (Input.Notes ?? "").Trim();
         svc.IsActive = Input.IsActive;
         svc.UpdatedAt = DateTime.UtcNow;
 
@@ -156,9 +168,37 @@ public class EditModel : PageModel
                     label = c.Label,
                     provider = c.Provider,
                     accountNumber = c.AccountNumber,
-                    contractNumber = c.ContractNumber
+                    contractNumber = c.ContractNumber,
+                    branchAddress = c.BranchAddress
                 });
             ContractMapJson = JsonSerializer.Serialize(map);
         }
+    }
+
+    private static readonly HashSet<string> PlanCatalog = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "50/50 MB", "100/100 MB", "200/200 MB", "300/300 MB", "500/500 MB"
+    };
+
+    private static string ResolvePlan(string? selectedPlan, string? otherPlan)
+    {
+        var value = (selectedPlan ?? "").Trim();
+        if (value.Equals("Otro", StringComparison.OrdinalIgnoreCase))
+            return (otherPlan ?? "").Trim();
+        return value;
+    }
+
+    private static string ResolvePlanOption(string? storedPlan)
+    {
+        var value = (storedPlan ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        return PlanCatalog.Contains(value) ? value : "Otro";
+    }
+
+    private static string ResolvePlanOther(string? storedPlan)
+    {
+        var value = (storedPlan ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        return PlanCatalog.Contains(value) ? "" : value;
     }
 }

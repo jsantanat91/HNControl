@@ -44,7 +44,7 @@
             </select>
         </div>
         <div class="col-6 col-xl-1"><label class="form-label">Por p&aacute;gina</label><select class="form-select form-select-sm" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
-        <div class="col-12 col-xl-3 d-flex gap-2 justify-content-start justify-content-xl-end flex-wrap">
+        <div class="col-12 col-xl-2 d-flex gap-2 justify-content-start flex-wrap">
             <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
             <a class="btn btn-outline-secondary btn-sm" asp-page="/ServiceOrders/Index">Limpiar</a>
         </div>
