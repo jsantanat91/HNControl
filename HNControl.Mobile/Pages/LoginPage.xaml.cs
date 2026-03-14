@@ -15,6 +15,14 @@ public partial class LoginPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        var saved = await _auth.Session.LoadSavedCredentialsAsync();
+        RememberCheck.IsChecked = saved.Remember;
+        if (saved.Remember)
+        {
+            EmailEntry.Text = saved.User;
+            PasswordEntry.Text = saved.Password;
+        }
+
         HeroLayout.Opacity = 0;
         HeroLayout.TranslationY = 18;
         LoginCard.Opacity = 0;
@@ -36,6 +44,10 @@ public partial class LoginPage : ContentPage
             await _auth.LoginAsync(
                 EmailEntry.Text ?? "",
                 PasswordEntry.Text ?? "");
+            await _auth.Session.SaveCredentialsAsync(
+                EmailEntry.Text ?? "",
+                PasswordEntry.Text ?? "",
+                RememberCheck.IsChecked);
 
             App.SwitchToMain();
         }

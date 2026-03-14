@@ -8,12 +8,16 @@ public sealed class AuthSession
     private const string UserNameKey = "mobile_auth_name";
     private const string UserEmailKey = "mobile_auth_email";
     private const string ExpiresAtKey = "mobile_auth_expires";
+    private const string RememberMeKey = "mobile_auth_remember_me";
+    private const string SavedUserKey = "mobile_auth_saved_user";
+    private const string SavedPasswordKey = "mobile_auth_saved_password";
 
     public string Token { get; private set; } = "";
     public string FullName { get; private set; } = "";
     public string Email { get; private set; } = "";
     public DateTime ExpiresAtUtc { get; private set; }
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(Token) && ExpiresAtUtc > DateTime.UtcNow.AddMinutes(-1);
+    public bool RememberMe => Preferences.Get(RememberMeKey, false);
 
     public AuthSession()
     {
@@ -52,5 +56,45 @@ public sealed class AuthSession
         Preferences.Remove(UserNameKey);
         Preferences.Remove(UserEmailKey);
         Preferences.Remove(ExpiresAtKey);
+    }
+
+    public async Task<(bool Remember, string User, string Password)> LoadSavedCredentialsAsync()
+    {
+        var remember = Preferences.Get(RememberMeKey, false);
+        if (!remember) return (false, "", "");
+
+        var user = Preferences.Get(SavedUserKey, "");
+        string password = "";
+        try
+        {
+            password = await SecureStorage.Default.GetAsync(SavedPasswordKey) ?? "";
+        }
+        catch
+        {
+            password = "";
+        }
+
+        return (true, user, password);
+    }
+
+    public async Task SaveCredentialsAsync(string user, string password, bool remember)
+    {
+        Preferences.Set(RememberMeKey, remember);
+        if (!remember)
+        {
+            Preferences.Remove(SavedUserKey);
+            try { SecureStorage.Default.Remove(SavedPasswordKey); } catch { }
+            return;
+        }
+
+        Preferences.Set(SavedUserKey, user ?? "");
+        try
+        {
+            await SecureStorage.Default.SetAsync(SavedPasswordKey, password ?? "");
+        }
+        catch
+        {
+            // Ignora error de secure storage (emuladores/dispositivos restringidos).
+        }
     }
 }
