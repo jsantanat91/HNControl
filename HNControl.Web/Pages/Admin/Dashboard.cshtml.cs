@@ -253,14 +253,13 @@ public class DashboardModel : PageModel
     {
         try
         {
-            var periodDate = periodEnd.Date;
             var active = await _db.EmployeeDeductions
                 .AsNoTracking()
                 .Where(d => d.UserId == userId && d.IsActive)
-                .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
+                .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
                 .ToListAsync();
 
-            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodDate);
+            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
             return (result.deductions, result.bonuses);
         }
         catch

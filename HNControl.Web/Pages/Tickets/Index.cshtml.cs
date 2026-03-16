@@ -156,7 +156,17 @@ public class IndexModel : PageModel
         return RedirectToPage(new { status = StatusFilter, q = Search });
     }
 
+    public async Task<IActionResult> OnPostExportClientMonthPdfAsync(Guid clientId, string month)
+    {
+        return await ExportClientMonthPdfAsync(clientId, month);
+    }
+
     public async Task<IActionResult> OnGetExportClientMonthPdfAsync(Guid clientId, string month)
+    {
+        return await ExportClientMonthPdfAsync(clientId, month);
+    }
+
+    private async Task<IActionResult> ExportClientMonthPdfAsync(Guid clientId, string month)
     {
         if (!IsAdmin) return Forbid();
 

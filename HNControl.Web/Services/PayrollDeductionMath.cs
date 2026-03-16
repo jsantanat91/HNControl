@@ -14,6 +14,45 @@ public static class PayrollDeductionMath
         IEnumerable<EmployeeDeduction> deductions,
         decimal baseQuincenal,
         decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        var start = periodStart.Date;
+        var end = periodEnd.Date;
+        if (end < start)
+            (start, end) = (end, start);
+
+        decimal totalDeductions = 0m;
+        decimal totalBonuses = 0m;
+        var lines = new List<PayrollAdjustmentLine>();
+
+        foreach (var d in deductions)
+        {
+            var eval = EvaluateForPeriod(d, baseQuincenal, estimatedQuincenal, start, end);
+            if (eval.AmountForPeriod <= 0m) continue;
+
+            if (d.Direction == EmployeeDeductionDirection.Bonus)
+            {
+                totalBonuses += eval.AmountForPeriod;
+                lines.Add(new PayrollAdjustmentLine(d.Concept, "Bono", eval.AmountForPeriod));
+            }
+            else
+            {
+                totalDeductions += eval.AmountForPeriod;
+                lines.Add(new PayrollAdjustmentLine(d.Concept, "Deduccion", eval.AmountForPeriod));
+            }
+        }
+
+        return (
+            Math.Round(totalDeductions, 2),
+            Math.Round(totalBonuses, 2),
+            lines.OrderBy(x => x.Kind).ThenBy(x => x.Concept).ToList());
+    }
+
+    public static (decimal deductions, decimal bonuses, List<PayrollAdjustmentLine> lines) CalculateTotals(
+        IEnumerable<EmployeeDeduction> deductions,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
         DateTime periodDate)
     {
         decimal totalDeductions = 0m;
@@ -41,6 +80,27 @@ public static class PayrollDeductionMath
             Math.Round(totalDeductions, 2),
             Math.Round(totalBonuses, 2),
             lines.OrderBy(x => x.Kind).ThenBy(x => x.Concept).ToList());
+    }
+
+    public static PayrollDeductionEval EvaluateForPeriod(
+        EmployeeDeduction d,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        var start = periodStart.Date;
+        var end = periodEnd.Date;
+        if (end < start)
+            (start, end) = (end, start);
+
+        if (!d.IsActive || d.StartDate.Date > end || (d.EndDate.HasValue && d.EndDate.Value.Date < start))
+            return new PayrollDeductionEval(0m, ResolveRemaining(d, 0m, end), ResolvePaidPeriods(d, 0m, end), ResolveTotalPeriods(d, 0m));
+
+        if (!OccursInPeriod(d, start, end))
+            return new PayrollDeductionEval(0m, ResolveRemaining(d, 0m, end), ResolvePaidPeriods(d, 0m, end), ResolveTotalPeriods(d, 0m));
+
+        return EvaluateForDate(d, baseQuincenal, estimatedQuincenal, end);
     }
 
     public static PayrollDeductionEval EvaluateForDate(
@@ -121,6 +181,23 @@ public static class PayrollDeductionMath
             : EmployeeDeductionApplyOnHalf.Second;
 
         return d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf;
+    }
+
+    public static bool OccursInPeriod(EmployeeDeduction d, DateTime periodStart, DateTime periodEnd)
+    {
+        var start = periodStart.Date;
+        var end = periodEnd.Date;
+        if (end < start)
+            (start, end) = (end, start);
+
+        var firstApplicable = d.StartDate.Date;
+        var effectiveStart = firstApplicable > start ? firstApplicable : start;
+        if (effectiveStart > end)
+            return false;
+
+        var before = CountPeriodsOccurred(d.StartDate.Date, effectiveStart.AddDays(-1), d.Frequency, d.ApplyOnHalf);
+        var inEnd = CountPeriodsOccurred(d.StartDate.Date, end, d.Frequency, d.ApplyOnHalf);
+        return inEnd - before > 0;
     }
 
     public static int? ResolveTotalPeriods(EmployeeDeduction d, decimal periodAmount)

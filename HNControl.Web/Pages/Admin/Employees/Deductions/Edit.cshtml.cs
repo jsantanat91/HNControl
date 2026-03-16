@@ -9,6 +9,12 @@ namespace HNControl.Web.Pages.Admin.Employees.Deductions;
 
 public class EditModel : PageModel
 {
+    public enum SingleApplyOption
+    {
+        Current = 1,
+        Next = 2
+    }
+
     private readonly ApplicationDbContext _db;
 
     public EditModel(ApplicationDbContext db)
@@ -51,6 +57,7 @@ public class EditModel : PageModel
             RatePercent = Math.Round(d.Rate * 100m, 2),
             StartDate = d.StartDate,
             EndDate = d.EndDate,
+            SingleApplyIn = ResolveSingleApplyOption(d.StartDate.Date, DateTime.Now.Date),
             TotalAmount = d.TotalAmount,
             RemainingAmount = d.RemainingAmount,
             IsActive = d.IsActive
@@ -83,6 +90,7 @@ public class EditModel : PageModel
         var applyHalf = freq == EmployeeDeductionFrequency.Monthly
             ? (Input.ApplyOnHalf ?? EmployeeDeductionApplyOnHalf.First)
             : (EmployeeDeductionApplyOnHalf?)null;
+        var oneShotDeduct = Input.Direction == EmployeeDeductionDirection.Deduct && IsSinglePaymentType(Input.Type);
 
         // Bono: aplicacion unica en quincena actual.
         if (Input.Direction == EmployeeDeductionDirection.Bonus)
@@ -93,6 +101,16 @@ public class EditModel : PageModel
             Input.EndDate = bonusEnd;
             Input.Type = EmployeeDeductionType.Otro;
             Input.Mode = EmployeeDeductionMode.FixedAmount;
+            freq = EmployeeDeductionFrequency.Biweekly;
+            applyHalf = null;
+            Input.TermCount = null;
+        }
+        else if (oneShotDeduct)
+        {
+            var (oneStart, oneEnd) = ResolveSelectedPeriod(DateTime.Now.Date, Input.SingleApplyIn);
+            start = oneStart;
+            Input.StartDate = oneStart;
+            Input.EndDate = oneEnd;
             freq = EmployeeDeductionFrequency.Biweekly;
             applyHalf = null;
             Input.TermCount = null;
@@ -166,6 +184,7 @@ public class EditModel : PageModel
 
         public DateTime? StartDate { get; set; } = DateTime.UtcNow.Date;
         public DateTime? EndDate { get; set; } = null;
+        public SingleApplyOption SingleApplyIn { get; set; } = SingleApplyOption.Current;
 
         public decimal? TotalAmount { get; set; } = null;
         public decimal? RemainingAmount { get; set; } = null;
@@ -237,4 +256,27 @@ public class EditModel : PageModel
         return (new DateTime(date.Year, date.Month, 16),
             new DateTime(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month)));
     }
+
+    private static (DateTime Start, DateTime End) ResolveSelectedPeriod(DateTime now, SingleApplyOption option)
+    {
+        var (start, end) = ResolveCurrentPeriod(now);
+        if (option == SingleApplyOption.Next)
+        {
+            var nextAnchor = end.AddDays(1);
+            return ResolveCurrentPeriod(nextAnchor);
+        }
+        return (start, end);
+    }
+
+    private static SingleApplyOption ResolveSingleApplyOption(DateTime startDate, DateTime now)
+    {
+        var (_, currentEnd) = ResolveCurrentPeriod(now);
+        return startDate > currentEnd ? SingleApplyOption.Next : SingleApplyOption.Current;
+    }
+
+    private static bool IsSinglePaymentType(EmployeeDeductionType type) =>
+        type is EmployeeDeductionType.PensionAlimenticia
+            or EmployeeDeductionType.PrimaVacacional
+            or EmployeeDeductionType.DiferenciaViaticos
+            or EmployeeDeductionType.Otro;
 }

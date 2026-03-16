@@ -61,7 +61,7 @@ public class PayrollReceiptService : IPayrollReceiptService
         var variableAmount = Math.Round(max20 * vp, 2);
         var grossEstimated = Math.Round(fixed80 + variableAmount, 2);
 
-        var (deductions, bonuses, lines) = await CalcPayrollAdjustmentsAsync(userId, baseQ, grossEstimated, pEnd);
+        var (deductions, bonuses, lines) = await CalcPayrollAdjustmentsAsync(userId, baseQ, grossEstimated, pStart, pEnd);
         var net = Math.Max(0m, Math.Round(grossEstimated - deductions + bonuses, 2));
 
         var imss = BuildImssLines(baseQ);
@@ -248,15 +248,15 @@ public class PayrollReceiptService : IPayrollReceiptService
     }
 
     private async Task<(decimal deductions, decimal bonuses, List<PayrollAdjustmentLine> lines)> CalcPayrollAdjustmentsAsync(
-        string userId, decimal baseQuincenal, decimal estimatedQuincenal, DateTime periodDate)
+        string userId, decimal baseQuincenal, decimal estimatedQuincenal, DateTime periodStart, DateTime periodEnd)
     {
         var active = await _db.EmployeeDeductions
             .AsNoTracking()
             .Where(d => d.UserId == userId && d.IsActive)
-            .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
+            .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
             .ToListAsync();
 
-        return PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodDate);
+        return PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
     }
 
     private static List<PayrollImssLine> BuildImssLines(decimal baseQuincenal)

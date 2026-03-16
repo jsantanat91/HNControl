@@ -66,6 +66,11 @@
                         </select>
                     </div>
 
+                    <div class="col-12 col-md-4" id="wrapSingleApply">
+                        <label class="form-label">Aplicar descuento en</label>
+                        <select class="form-select" asp-for="Input.SingleApplyIn" asp-items="Html.GetEnumSelectList<HNControl.Web.Pages.Admin.Employees.Deductions.EditModel.SingleApplyOption>()"></select>
+                    </div>
+
                     <div class="col-12 col-md-4" id="wrapStartDate">
                         <label class="form-label">Inicio</label>
                         <input class="form-control" asp-for="Input.StartDate" type="date" />
@@ -147,6 +152,7 @@
             const wrapTerm = document.getElementById('wrapTerm');
             const wrapEndDate = document.getElementById('wrapEndDate');
             const wrapStartDate = document.getElementById('wrapStartDate');
+            const wrapSingleApply = document.getElementById('wrapSingleApply');
             const endPreview = document.getElementById('endPreview');
 
             function setSection(el, show) {
@@ -215,6 +221,7 @@
                 const type = typeEl ? parseInt(typeEl.value || '99', 10) : 99;
                 const direction = directionEl ? parseInt(directionEl.value || '1', 10) : 1;
                 const isBonus = direction === 2;
+                const isSingleDeductType = !isBonus && (type === 1 || type === 3 || type === 4 || type === 99);
 
                 if (isBonus) {
                     if (modeEl) modeEl.value = '1';
@@ -239,17 +246,18 @@
 
                 const isMonthly = !isBonus && freq === 2;
                 setSection(wrapApplyOnHalf, isMonthly);
-                setSection(wrapFrequency, !isBonus);
+                setSection(wrapFrequency, !isBonus && !isSingleDeductType);
                 setSection(wrapMode, !isBonus);
+                setSection(wrapSingleApply, isSingleDeductType);
 
                 const isLoan = !isBonus && type === 2;
                 setSection(wrapLoan, isLoan);
                 setSection(wrapTerm, isLoan);
                 setSection(wrapType, !isBonus);
-                setSection(wrapStartDate, !isBonus);
+                setSection(wrapStartDate, !isBonus && !isSingleDeductType);
 
                 const hasTerm = isLoan && termEl && termEl.value && parseInt(termEl.value || '0', 10) > 0;
-                setSection(wrapEndDate, !hasTerm && !isBonus);
+                setSection(wrapEndDate, !hasTerm && !isBonus && !isSingleDeductType);
                 calcEndPreview();
             }
 
