@@ -298,23 +298,9 @@ public class MyProfileModel : PageModel
 
             foreach (var d in deds)
             {
-                var amount = d.Mode switch
-                {
-                    EmployeeDeductionMode.FixedAmount => d.Amount,
-                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
-                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
-                    _ => d.Amount
-                };
-
-                amount = Math.Round(amount, 2);
-                if (amount < 0m) amount = 0m;
-
-            // Para préstamos con saldo, no descontamos más del saldo
-                if (d.RemainingAmount.HasValue)
-                {
-                    if (d.RemainingAmount.Value <= 0m) continue;
-                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
-                }
+                var eval = PayrollDeductionMath.EvaluateForDate(d, baseQuincenal, estimatedQuincenal, today);
+                var amount = eval.AmountForPeriod;
+                if (amount <= 0m) continue;
 
                 ActiveDeductions.Add(new DeductionMini(
                     d.Concept,
@@ -325,10 +311,10 @@ public class MyProfileModel : PageModel
                     d.ApplyOnHalf,
                     amount,
                     d.TermCount,
-                    d.RemainingAmount,
+                    eval.RemainingToDate,
                     d.TotalAmount,
-                    CalcPaidPeriods(d, amount),
-                    CalcTotalPeriods(d, amount),
+                    eval.PaidPeriods,
+                    eval.TotalPeriods,
                     d.StartDate,
                     d.EndDate
                 ));
@@ -536,67 +522,6 @@ public class MyProfileModel : PageModel
         return date.AddDays(-diff);
     }
 
-    private static int? CalcTotalPeriods(EmployeeDeduction d, decimal periodAmount)
-    {
-        if (d.TermCount.HasValue && d.TermCount.Value > 0)
-            return d.TermCount.Value;
-
-        if (d.TotalAmount.HasValue && d.TotalAmount.Value > 0m && periodAmount > 0m)
-            return (int)Math.Ceiling(d.TotalAmount.Value / periodAmount);
-
-        return null;
-    }
-
-    private static int? CalcPaidPeriods(EmployeeDeduction d, decimal periodAmount)
-    {
-        var total = CalcTotalPeriods(d, periodAmount);
-        if (!total.HasValue || total.Value <= 0)
-            return null;
-
-        if (d.RemainingAmount.HasValue && d.TotalAmount.HasValue && d.TotalAmount.Value > 0m && periodAmount > 0m)
-        {
-            var remainingPeriods = (int)Math.Ceiling(Math.Max(0m, d.RemainingAmount.Value) / periodAmount);
-            var paid = total.Value - remainingPeriods;
-            if (paid < 0) paid = 0;
-            if (paid > total.Value) paid = total.Value;
-            return paid;
-        }
-
-        var occurred = CountPeriodsOccurred(d.StartDate, DateTime.UtcNow.Date, d.Frequency, d.ApplyOnHalf);
-        if (occurred < 0) occurred = 0;
-        if (occurred > total.Value) occurred = total.Value;
-        return occurred;
-    }
-
-    private static int CountPeriodsOccurred(DateTime start, DateTime end, EmployeeDeductionFrequency freq, EmployeeDeductionApplyOnHalf? applyOnHalf)
-    {
-        if (end < start) return 0;
-
-        if (freq == EmployeeDeductionFrequency.Biweekly)
-        {
-            var count = 0;
-            var cursor = start;
-            while (cursor <= end)
-            {
-                count++;
-                cursor = cursor.Day <= 15
-                    ? new DateTime(cursor.Year, cursor.Month, DateTime.DaysInMonth(cursor.Year, cursor.Month))
-                    : new DateTime(cursor.Year, cursor.Month, 15).AddMonths(1);
-            }
-            return count;
-        }
-
-        var half = applyOnHalf ?? EmployeeDeductionApplyOnHalf.First;
-        var monthCursor = new DateTime(start.Year, start.Month, 1);
-        var countMonthly = 0;
-        while (monthCursor <= end)
-        {
-            var day = half == EmployeeDeductionApplyOnHalf.First ? 15 : DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month);
-            var hit = new DateTime(monthCursor.Year, monthCursor.Month, day);
-            if (hit >= start && hit <= end) countMonthly++;
-            monthCursor = monthCursor.AddMonths(1);
-        }
-        return countMonthly;
-    }
 }
+
 

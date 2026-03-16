@@ -147,7 +147,13 @@ public class CreateModel : PageModel
                 .ToListAsync();
 
             ContractOptions = contracts
-                .Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Label })
+                .Select(c => new SelectListItem
+                {
+                    Value = c.Id.ToString(),
+                    Text = string.IsNullOrWhiteSpace(c.Branch)
+                        ? c.Label
+                        : $"{c.Label} - {c.Branch.Trim()}"
+                })
                 .ToList();
 
             var map = contracts.ToDictionary(

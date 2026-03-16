@@ -4,26 +4,29 @@ namespace HNControl.Web.Models;
 
 public enum EmployeeDeductionType
 {
-    [Display(Name = "Pensión alimenticia")]
+    [Display(Name = "Pension alimenticia")]
     PensionAlimenticia = 1,
 
-    [Display(Name = "Préstamo")]
+    [Display(Name = "Prestamo")]
     Prestamo = 2,
 
     [Display(Name = "Prima vacacional")]
     PrimaVacacional = 3,
+
+    [Display(Name = "Diferencia viaticos")]
+    DiferenciaViaticos = 4,
 
     [Display(Name = "Otro")]
     Otro = 99
 }
 
 /// <summary>
-/// Dirección del ajuste:
-/// 1 = Deducción (resta), 2 = Bono (suma).
+/// Direccion del ajuste:
+/// 1 = Deduccion (resta), 2 = Bono (suma).
 /// </summary>
 public enum EmployeeDeductionDirection
 {
-    [Display(Name = "Deducción")]
+    [Display(Name = "Deduccion")]
     Deduct = 1,
 
     [Display(Name = "Bono")]
@@ -41,7 +44,7 @@ public enum EmployeeDeductionMode
     PercentOfBase = 2,
 
     /// <summary>Porcentaje sobre el estimado quincenal (80/20 ya aplicado).</summary>
-    [Display(Name = "% sobre nómina estimada (80/20)")]
+    [Display(Name = "% sobre nomina estimada (80/20)")]
     PercentOfEstimatedPay = 3
 }
 
@@ -56,17 +59,17 @@ public enum EmployeeDeductionFrequency
 
 public enum EmployeeDeductionApplyOnHalf
 {
-    [Display(Name = "1ª quincena (1–15)")]
+    [Display(Name = "1a quincena (1-15)")]
     First = 1,
 
-    [Display(Name = "2ª quincena (16–fin)")]
+    [Display(Name = "2a quincena (16-fin)")]
     Second = 2
 }
 
 /// <summary>
-/// Deducciones del empleado para cálculo de nómina.
+/// Deducciones del empleado para calculo de nomina.
 /// - Puede ser con vencimiento (EndDate) o indefinida (EndDate NULL).
-/// - Para préstamos, puedes llevar saldo (RemainingAmount) para cortar al llegar a cero.
+/// - Para prestamos, puedes llevar saldo (RemainingAmount) para cortar al llegar a cero.
 /// </summary>
 public class EmployeeDeduction
 {
@@ -86,29 +89,29 @@ public class EmployeeDeduction
     public EmployeeDeductionMode Mode { get; set; } = EmployeeDeductionMode.FixedAmount;
 
     /// <summary>
-    /// Frecuencia de aplicación:
-    /// - Quincenal: aplica en cada nómina.
-    /// - Mensual: aplica 1 vez al mes (según ApplyOnHalf).
+    /// Frecuencia de aplicacion:
+    /// - Quincenal: aplica en cada nomina.
+    /// - Mensual: aplica 1 vez al mes (segun ApplyOnHalf).
     /// </summary>
     public EmployeeDeductionFrequency Frequency { get; set; } = EmployeeDeductionFrequency.Biweekly;
 
     /// <summary>
-    /// Solo si Frequency = Monthly: en qué quincena se aplica.
-    /// NULL = por defecto 1ª quincena.
+    /// Solo si Frequency = Monthly: en que quincena se aplica.
+    /// NULL = por defecto 1a quincena.
     /// </summary>
     public EmployeeDeductionApplyOnHalf? ApplyOnHalf { get; set; }
 
     /// <summary>
     /// Plazo en periodos.
-    /// - Quincenal: número de quincenas
-    /// - Mensual: número de meses
+    /// - Quincenal: numero de quincenas
+    /// - Mensual: numero de meses
     /// NULL = indefinido
     /// </summary>
     public int? TermCount { get; set; }
 
     /// <summary>
     /// Para FixedAmount: importe por periodo.
-    /// Para modos Percent*: se usa como respaldo (opcional), el cálculo usa Rate.
+    /// Para modos Percent*: se usa como respaldo (opcional), el calculo usa Rate.
     /// </summary>
     public decimal Amount { get; set; } = 0m;
 
@@ -121,12 +124,12 @@ public class EmployeeDeduction
     public DateTime? EndDate { get; set; }
 
     /// <summary>
-    /// Solo para préstamos: saldo restante. Si es NULL, se considera indefinido.
+    /// Solo para prestamos: saldo restante. Si es NULL, se considera indefinido.
     /// </summary>
     public decimal? RemainingAmount { get; set; }
 
     /// <summary>
-    /// Solo para préstamos (opcional): monto original del préstamo (para referencia).
+    /// Solo para prestamos (opcional): monto original del prestamo (para referencia).
     /// </summary>
     public decimal? TotalAmount { get; set; }
 

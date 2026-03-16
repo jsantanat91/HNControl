@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -41,23 +42,45 @@ public class IndexModel : PageModel
             .ThenByDescending(x => x.StartDate)
             .ToListAsync();
 
-        Items = deds.Select(d => new Row
+        var latestReview = await _db.PerformanceReviews
+            .AsNoTracking()
+            .Where(r => r.UserId == UserId)
+            .OrderByDescending(r => r.PeriodStart)
+            .ThenByDescending(r => r.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var variablePct = latestReview?.VariablePercent ?? 0m;
+        if (variablePct < 0m) variablePct = 0m;
+        if (variablePct > 1m) variablePct = 1m;
+        var baseQ = Employee.SalaryBase / 2m;
+        var estimatedQ = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * variablePct), 2);
+        var today = DateTime.UtcNow.Date;
+
+        Items = deds.Select(d =>
         {
-            Id = d.Id,
-            Concept = d.Concept,
-            Type = d.Type,
-            Direction = d.Direction,
-            Mode = d.Mode,
-            Frequency = d.Frequency,
-            ApplyOnHalf = d.ApplyOnHalf,
-            Amount = d.Amount,
-            Rate = d.Rate,
-            StartDate = d.StartDate,
-            EndDate = d.EndDate,
-            IsActive = d.IsActive,
-            RemainingAmount = d.RemainingAmount,
-            TotalAmount = d.TotalAmount,
-            TermCount = d.TermCount
+            var eval = PayrollDeductionMath.EvaluateForDate(d, baseQ, estimatedQ, today);
+            return new Row
+            {
+                Id = d.Id,
+                Concept = d.Concept,
+                Type = d.Type,
+                Direction = d.Direction,
+                Mode = d.Mode,
+                Frequency = d.Frequency,
+                ApplyOnHalf = d.ApplyOnHalf,
+                Amount = d.Amount,
+                Rate = d.Rate,
+                StartDate = d.StartDate,
+                EndDate = d.EndDate,
+                IsActive = d.IsActive,
+                RemainingAmount = d.RemainingAmount,
+                TotalAmount = d.TotalAmount,
+                TermCount = d.TermCount,
+                DisplayPerPeriodAmount = eval.AmountForPeriod,
+                DisplayRemainingAmount = eval.RemainingToDate,
+                DisplayPaidPeriods = eval.PaidPeriods,
+                DisplayTotalPeriods = eval.TotalPeriods
+            };
         }).ToList();
 
         DeductTotal = Items.Where(x => x.IsActive && x.Direction == EmployeeDeductionDirection.Deduct).Sum(x => x.PerPeriodAmount);
@@ -99,11 +122,18 @@ public class IndexModel : PageModel
         public decimal? RemainingAmount { get; set; }
         public decimal? TotalAmount { get; set; }
         public int? TermCount { get; set; }
+        public decimal? DisplayPerPeriodAmount { get; set; }
+        public decimal? DisplayRemainingAmount { get; set; }
+        public int? DisplayPaidPeriods { get; set; }
+        public int? DisplayTotalPeriods { get; set; }
 
         public decimal PerPeriodAmount
         {
             get
             {
+                if (DisplayPerPeriodAmount.HasValue && DisplayPerPeriodAmount.Value > 0m)
+                    return Math.Round(DisplayPerPeriodAmount.Value, 2);
+
                 var amount = Mode switch
                 {
                     EmployeeDeductionMode.FixedAmount => Amount,
@@ -147,7 +177,7 @@ public class IndexModel : PageModel
 
                 if (RemainingAmount.HasValue && TotalAmount.HasValue && TotalAmount.Value > 0m && PerPeriodAmount > 0m)
                 {
-                    var remainingPeriods = (int)Math.Ceiling(Math.Max(0m, RemainingAmount.Value) / PerPeriodAmount);
+                    var remainingPeriods = (int)Math.Ceiling(Math.Max(0m, (DisplayRemainingAmount ?? RemainingAmount).Value) / PerPeriodAmount);
                     var paid = total.Value - remainingPeriods;
                     if (paid < 0) paid = 0;
                     if (paid > total.Value) paid = total.Value;
@@ -157,6 +187,10 @@ public class IndexModel : PageModel
                 return null;
             }
         }
+
+        public decimal? RemainingAmountView => DisplayRemainingAmount ?? RemainingAmount;
+        public int? PaidPeriodsView => DisplayPaidPeriods ?? PaidPeriods;
+        public int? TotalPeriodsView => DisplayTotalPeriods ?? TotalPeriods;
     }
 
     private async Task FinalizeExpiredAsync(string userId)

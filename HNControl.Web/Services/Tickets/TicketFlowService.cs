@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,11 +10,15 @@ public class TicketFlowService : ITicketFlowService
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly IEmailSender _email;
+    private readonly IConfiguration _cfg;
 
-    public TicketFlowService(ApplicationDbContext db, IFileStorage storage)
+    public TicketFlowService(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IConfiguration cfg)
     {
         _db = db;
         _storage = storage;
+        _email = email;
+        _cfg = cfg;
     }
 
     public async Task<Ticket> CreatePublicAsync(
@@ -83,6 +88,7 @@ public class TicketFlowService : ITicketFlowService
 
         _db.Tickets.Add(ticket);
         await _db.SaveChangesAsync(ct);
+        await SendCreatedEmailAsync(ticket, client.Name, contract?.Branch, ct);
         return ticket;
     }
 
@@ -261,8 +267,107 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
+
+        var clientName = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.Id == t.ClientId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync(ct);
+
+        var branch = await _db.ClientServiceContracts
+            .AsNoTracking()
+            .Where(c => c.Id == t.ClientServiceContractId)
+            .Select(c => c.Branch)
+            .FirstOrDefaultAsync(ct);
+
+        await SendClosedEmailAsync(t, clientName, branch, ct);
         return true;
     }
+
+    private async Task SendCreatedEmailAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
+    {
+        var to = (ticket.RequesterEmail ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(to)) return;
+
+        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
+        var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
+        var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
+
+        var subject = $"Ticket recibido: {ticket.TicketNumber}";
+        var body = $@"
+            <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
+                <h2 style='margin:0 0 10px 0'>HN Control · Ticket recibido</h2>
+                <p>Hola <strong>{System.Net.WebUtility.HtmlEncode(ticket.RequesterName)}</strong>,</p>
+                <p>Hemos recibido tu solicitud y ya fue registrada con el folio <strong>{ticket.TicketNumber}</strong>.</p>
+                <p>
+                    <strong>Cliente:</strong> {System.Net.WebUtility.HtmlEncode(clientName ?? "-")}<br/>
+                    <strong>Sucursal:</strong> {System.Net.WebUtility.HtmlEncode(sucursal)}<br/>
+                    <strong>Asunto:</strong> {System.Net.WebUtility.HtmlEncode(ticket.Title)}<br/>
+                    <strong>Prioridad:</strong> {ToPriorityLabel(ticket.Priority)}<br/>
+                    <strong>Estado inicial:</strong> Nuevo
+                </p>
+                <p>El equipo de soporte dará seguimiento y te contactará en cuanto avancemos con el caso.</p>
+                <p>Puedes consultar el portal en: <a href='{portalUrl}'>{portalUrl}</a></p>
+                <hr style='border:none;border-top:1px solid #e2e8f0'/>
+                <small>Mensaje automático de HN Control.</small>
+            </div>";
+
+        try
+        {
+            await _email.SendAsync(to, subject, body);
+        }
+        catch
+        {
+            // No interrumpir el flujo principal por errores de email.
+        }
+    }
+
+    private async Task SendClosedEmailAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
+    {
+        var to = (ticket.RequesterEmail ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(to)) return;
+
+        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
+        var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
+        var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
+        var closedAt = (ticket.ClosedAt ?? DateTime.UtcNow).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+
+        var subject = $"Ticket cerrado: {ticket.TicketNumber}";
+        var body = $@"
+            <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
+                <h2 style='margin:0 0 10px 0'>HN Control · Ticket cerrado</h2>
+                <p>Hola <strong>{System.Net.WebUtility.HtmlEncode(ticket.RequesterName)}</strong>,</p>
+                <p>Te confirmamos que tu ticket <strong>{ticket.TicketNumber}</strong> ha sido cerrado.</p>
+                <p>
+                    <strong>Cliente:</strong> {System.Net.WebUtility.HtmlEncode(clientName ?? "-")}<br/>
+                    <strong>Sucursal:</strong> {System.Net.WebUtility.HtmlEncode(sucursal)}<br/>
+                    <strong>Asunto:</strong> {System.Net.WebUtility.HtmlEncode(ticket.Title)}<br/>
+                    <strong>Fecha de cierre:</strong> {closedAt}
+                </p>
+                <p><strong>Resumen:</strong> {System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(ticket.ResolutionSummary) ? "Cierre de ticket registrado." : ticket.ResolutionSummary)}</p>
+                <p>Para consultar historial, entra a: <a href='{portalUrl}'>{portalUrl}</a></p>
+                <hr style='border:none;border-top:1px solid #e2e8f0'/>
+                <small>Mensaje automático de HN Control.</small>
+            </div>";
+
+        try
+        {
+            await _email.SendAsync(to, subject, body);
+        }
+        catch
+        {
+            // No interrumpir el flujo principal por errores de email.
+        }
+    }
+
+    private static string ToPriorityLabel(TicketPriority p) => p switch
+    {
+        TicketPriority.Low => "Baja",
+        TicketPriority.Medium => "Intermedia",
+        TicketPriority.High => "Alta",
+        TicketPriority.Critical => "Crítica",
+        _ => "Intermedia"
+    };
 
     public async Task<bool> TryStartAsync(Guid ticketId, string userId, string userName, bool isAdmin, CancellationToken ct = default)
     {

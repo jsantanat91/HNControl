@@ -155,9 +155,7 @@ public class TicketsModel : PageModel
                 ContractId = g.Key,
                 Summary = g
                     .OrderBy(s => s.ServiceLabel)
-                    .Select(s => (s.Carrier != null ? s.Carrier.Name : "-")
-                                 + " | Cuenta: " + (string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)
-                                 + " | Circuito: " + (string.IsNullOrWhiteSpace(s.CircuitId) ? "-" : s.CircuitId)
+                    .Select(s => "Cuenta: " + (string.IsNullOrWhiteSpace(s.AccountNumber) ? "-" : s.AccountNumber)
                                  + " | IP: " + (string.IsNullOrWhiteSpace(s.IpInfo) ? "-" : s.IpInfo))
                     .FirstOrDefault() ?? ""
             })
@@ -213,8 +211,7 @@ public class TicketsModel : PageModel
 
     public static string ContractToBranchLabel(ClientServiceContract c)
     {
-        var branch = string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch.Trim();
-        return $"{branch} - {c.ServiceType}: {c.Label}";
+        return string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch.Trim();
     }
 
     private static string ToPriorityEs(TicketPriority p) => p switch

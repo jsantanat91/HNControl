@@ -340,47 +340,14 @@ public class DetailsModel : PageModel
         try
         {
             var periodDate = periodEnd.Date;
-            var currentHalf = periodDate.Day <= 15
-                ? EmployeeDeductionApplyOnHalf.First
-                : EmployeeDeductionApplyOnHalf.Second;
-
             var active = await _db.EmployeeDeductions
                 .AsNoTracking()
                 .Where(d => d.UserId == userId && d.IsActive)
                 .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
-                .Where(d => d.Frequency == EmployeeDeductionFrequency.Biweekly
-                            || (d.Frequency == EmployeeDeductionFrequency.Monthly
-                                && (d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf)))
                 .ToListAsync();
 
-            decimal deductions = 0m;
-            decimal bonuses = 0m;
-
-            foreach (var d in active)
-            {
-                var amount = d.Mode switch
-                {
-                    EmployeeDeductionMode.FixedAmount => d.Amount,
-                    EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
-                    EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
-                    _ => d.Amount
-                };
-
-                amount = Math.Round(Math.Max(0m, amount), 2);
-
-                if (d.RemainingAmount.HasValue)
-                {
-                    if (d.RemainingAmount.Value <= 0m) continue;
-                    if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
-                }
-
-                if (d.Direction == EmployeeDeductionDirection.Bonus)
-                    bonuses += amount;
-                else
-                    deductions += amount;
-            }
-
-            return (Math.Round(deductions, 2), Math.Round(bonuses, 2));
+            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodDate);
+            return (result.deductions, result.bonuses);
         }
         catch
         {

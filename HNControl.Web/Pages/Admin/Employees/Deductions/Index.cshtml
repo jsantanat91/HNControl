@@ -46,8 +46,8 @@ else
         {
             var directionClass = d.Direction == EmployeeDeductionDirection.Bonus ? "hn-badge-green" : "hn-badge-amber";
             var statusClass = d.IsActive ? "hn-badge-blue" : "hn-badge-slate";
-            var hasProgress = d.PaidPeriods.HasValue && d.TotalPeriods.HasValue && d.TotalPeriods.Value > 0;
-            var progressPct = hasProgress ? Math.Round((d.PaidPeriods!.Value * 100m) / d.TotalPeriods!.Value, 0) : 0;
+            var hasProgress = d.PaidPeriodsView.HasValue && d.TotalPeriodsView.HasValue && d.TotalPeriodsView.Value > 0;
+            var progressPct = hasProgress ? Math.Round((d.PaidPeriodsView!.Value * 100m) / d.TotalPeriodsView!.Value, 0) : 0;
 
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100">
@@ -74,7 +74,7 @@ else
 
                         @if (d.TotalAmount.HasValue || d.RemainingAmount.HasValue)
                         {
-                            <div class="small mt-1">Monto total: <b>@(d.TotalAmount?.ToString("C") ?? "-")</b> &middot; Saldo: <b>@(d.RemainingAmount?.ToString("C") ?? "-")</b></div>
+                            <div class="small mt-1">Monto total: <b>@(d.TotalAmount?.ToString("C") ?? "-")</b> &middot; Saldo: <b>@(d.RemainingAmountView?.ToString("C") ?? "-")</b></div>
                         }
 
                         @if (hasProgress)
@@ -82,7 +82,7 @@ else
                             <div class="mt-2">
                                 <div class="d-flex justify-content-between small">
                                     <span>Progreso de pago</span>
-                                    <span>Pago @d.PaidPeriods de @d.TotalPeriods</span>
+                                    <span>Pago @d.PaidPeriodsView de @d.TotalPeriodsView</span>
                                 </div>
                                 <div class="progress" style="height:6px;">
                                     <div class="progress-bar" role="progressbar" style="width:@progressPct%"></div>

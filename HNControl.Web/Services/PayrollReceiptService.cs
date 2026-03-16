@@ -250,53 +250,13 @@ public class PayrollReceiptService : IPayrollReceiptService
     private async Task<(decimal deductions, decimal bonuses, List<PayrollAdjustmentLine> lines)> CalcPayrollAdjustmentsAsync(
         string userId, decimal baseQuincenal, decimal estimatedQuincenal, DateTime periodDate)
     {
-        var currentHalf = periodDate.Day <= 15
-            ? EmployeeDeductionApplyOnHalf.First
-            : EmployeeDeductionApplyOnHalf.Second;
-
         var active = await _db.EmployeeDeductions
             .AsNoTracking()
             .Where(d => d.UserId == userId && d.IsActive)
             .Where(d => d.StartDate <= periodDate && (d.EndDate == null || d.EndDate >= periodDate))
-            .Where(d => d.Frequency == EmployeeDeductionFrequency.Biweekly
-                        || (d.Frequency == EmployeeDeductionFrequency.Monthly
-                            && (d.ApplyOnHalf == null || d.ApplyOnHalf == currentHalf)))
             .ToListAsync();
 
-        decimal deductions = 0m;
-        decimal bonuses = 0m;
-        var lines = new List<PayrollAdjustmentLine>();
-
-        foreach (var d in active)
-        {
-            var amount = d.Mode switch
-            {
-                EmployeeDeductionMode.FixedAmount => d.Amount,
-                EmployeeDeductionMode.PercentOfBase => baseQuincenal * d.Rate,
-                EmployeeDeductionMode.PercentOfEstimatedPay => estimatedQuincenal * d.Rate,
-                _ => d.Amount
-            };
-
-            amount = Math.Round(Math.Max(0m, amount), 2);
-            if (d.RemainingAmount.HasValue)
-            {
-                if (d.RemainingAmount.Value <= 0m) continue;
-                if (amount > d.RemainingAmount.Value) amount = d.RemainingAmount.Value;
-            }
-
-            if (d.Direction == EmployeeDeductionDirection.Bonus)
-            {
-                bonuses += amount;
-                lines.Add(new PayrollAdjustmentLine(d.Concept, "Bono", amount));
-            }
-            else
-            {
-                deductions += amount;
-                lines.Add(new PayrollAdjustmentLine(d.Concept, "Deduccion", amount));
-            }
-        }
-
-        return (Math.Round(deductions, 2), Math.Round(bonuses, 2), lines.OrderBy(x => x.Kind).ThenBy(x => x.Concept).ToList());
+        return PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodDate);
     }
 
     private static List<PayrollImssLine> BuildImssLines(decimal baseQuincenal)

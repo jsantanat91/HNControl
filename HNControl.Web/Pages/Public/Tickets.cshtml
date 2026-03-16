@@ -132,7 +132,7 @@
                                         <option value="@c.Id" data-address="@c.BranchAddress" data-carrier="@carrierData">@HNControl.Web.Pages.Public.TicketsModel.ContractToBranchLabel(c)</option>
                                     }
                                 </select>
-                                <div id="publicCarrierInfo" class="form-text">Selecciona una sucursal para ver datos carrier (IP/cuenta/circuito).</div>
+                                <div id="publicCarrierInfo" class="form-text">Selecciona una sucursal para ver datos carrier (cuenta/IP).</div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Prioridad</label>
@@ -197,7 +197,7 @@
             if (carrier) {
                 carrier.textContent = carrierSummary && carrierSummary.trim().length > 0
                     ? ("Datos carrier: " + carrierSummary)
-                    : "Selecciona una sucursal para ver datos carrier (IP/cuenta/circuito).";
+                    : "Selecciona una sucursal para ver datos carrier (cuenta/IP).";
             }
         }
         document.addEventListener('DOMContentLoaded', function() {
