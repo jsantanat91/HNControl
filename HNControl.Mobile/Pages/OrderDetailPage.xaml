@@ -45,6 +45,14 @@
                     <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />
                     <Label x:Name="EditHintLabel" FontSize="12" Opacity="0.75" Text="Solo quien tomó la orden puede editar." />
 
+                    <VerticalStackLayout x:Name="DescriptionStepSection" Spacing="8" IsVisible="False">
+                        <Label FontAttributes="Bold" Text="Descripción de actividades" />
+                        <Label FontSize="12" Opacity="0.75" Text="Revisa este resumen antes de iniciar Levantamiento." />
+                        <Border Background="#F8FAFE" Padding="10" StrokeShape="RoundRectangle 12" Stroke="{StaticResource AppBorder}">
+                            <Label x:Name="DescriptionStepLabel" LineBreakMode="WordWrap" />
+                        </Border>
+                    </VerticalStackLayout>
+
                     <VerticalStackLayout x:Name="LevantamientoSection" Spacing="8">
                         <Label FontAttributes="Bold" Text="Levantamiento" />
                         <Editor x:Name="LevantamientoEditor" AutoSize="TextChanges" MinimumHeightRequest="90" Placeholder="Notas de levantamiento técnico..." />

@@ -57,6 +57,20 @@
 }
 
 <div class="card shadow-sm border-0 mb-3">
+    <div class="card-header bg-white border-0 fw-semibold">Descripcion (vista previa)</div>
+    <div class="card-body">
+        @if (string.IsNullOrWhiteSpace(Model.Order.Description))
+        {
+            <div class="text-muted">Sin descripcion capturada.</div>
+        }
+        else
+        {
+            <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;">@Model.Order.Description</pre>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
         <div class="d-flex flex-wrap gap-2">
             @foreach (var area in Model.WorkflowAreas)

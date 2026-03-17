@@ -10,6 +10,8 @@ public partial class OrderDetailPage : ContentPage
     private Guid _orderId;
     private ServiceOrderDetailDto? _current;
     private bool _busy;
+    private bool _descriptionStepActive = true;
+    private int _lastArea = -1;
     private string? _techSigDataUrl;
     private string? _clientSigDataUrl;
 
@@ -54,10 +56,28 @@ public partial class OrderDetailPage : ContentPage
         ClientLabel.Text = d.Client;
         TypeLabel.Text = MapType(d.Type);
         StatusLabel.Text = MapStatus(d.Status);
-        AreaLabel.Text = MapArea(d.CurrentArea);
+
+        if (d.CurrentArea == 1)
+        {
+            if (_lastArea != 1)
+            {
+                _descriptionStepActive = true;
+            }
+        }
+        else
+        {
+            _descriptionStepActive = false;
+        }
+        _lastArea = d.CurrentArea;
+
+        AreaLabel.Text = d.CurrentArea == 1 && _descriptionStepActive
+            ? "Descripción"
+            : MapArea(d.CurrentArea);
         TypeChip.BackgroundColor = Color.FromArgb(MapTypeBg(d.Type));
         StatusChip.BackgroundColor = Color.FromArgb(MapStatusBg(d.Status));
-        AreaChip.BackgroundColor = Color.FromArgb(MapAreaBg(d.CurrentArea));
+        AreaChip.BackgroundColor = d.CurrentArea == 1 && _descriptionStepActive
+            ? Color.FromArgb("#E9E3FF")
+            : Color.FromArgb(MapAreaBg(d.CurrentArea));
 
         ClaimedByLabel.Text = "Tomada por: " + (string.IsNullOrWhiteSpace(d.ClaimedBy) ? "Sin tomar" : d.ClaimedBy);
         CreatedLabel.Text = "Creada: " + d.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
@@ -66,6 +86,7 @@ public partial class OrderDetailPage : ContentPage
             : "Entrega estimada: -";
 
         DescriptionLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
+        DescriptionStepLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
         LevantamientoEditor.Text = d.LevantamientoNotes ?? "";
         MaterialesEditor.Text = d.MaterialesNotes ?? "";
         EvidenceCollection.ItemsSource = d.Evidences.Select(e => $"{e.UploadedAtLocal} · {e.OriginalFileName}").ToList();
@@ -84,11 +105,13 @@ public partial class OrderDetailPage : ContentPage
         }
 
         var canEdit = d.CanEdit;
+        var isDescriptionStep = d.CurrentArea == 1 && _descriptionStepActive;
         var isFirstArea = d.CurrentArea <= 1;
         var isLastArea = d.CurrentArea >= 4;
-        var canSubmit = canEdit && isLastArea && d.Status is 1 or 2 or 6;
+        var canSubmit = canEdit && isLastArea && d.Status is 1 or 2 or 6 && !isDescriptionStep;
 
-        LevantamientoSection.IsVisible = d.CurrentArea == 1;
+        DescriptionStepSection.IsVisible = isDescriptionStep;
+        LevantamientoSection.IsVisible = d.CurrentArea == 1 && !isDescriptionStep;
         MaterialesSection.IsVisible = d.CurrentArea == 2;
         ChecklistSection.IsVisible = d.CurrentArea == 3;
         CloseSection.IsVisible = d.CurrentArea == 4;
@@ -96,8 +119,8 @@ public partial class OrderDetailPage : ContentPage
 
         LevantamientoEditor.IsReadOnly = !canEdit;
         MaterialesEditor.IsReadOnly = !canEdit;
-        SaveButton.IsEnabled = canEdit && d.CurrentArea is 1 or 2;
-        SaveButton.IsVisible = d.CurrentArea is 1 or 2;
+        SaveButton.IsEnabled = canEdit && ((d.CurrentArea == 1 && !isDescriptionStep) || d.CurrentArea == 2);
+        SaveButton.IsVisible = (d.CurrentArea == 1 && !isDescriptionStep) || d.CurrentArea == 2;
 
         SaveChecklistButton.IsVisible = d.CurrentArea == 3;
         SaveChecklistButton.IsEnabled = canEdit && d.CurrentArea == 3;
@@ -106,16 +129,16 @@ public partial class OrderDetailPage : ContentPage
         NextAreaButton.IsVisible = canEdit;
         SubmitButton.IsVisible = canSubmit;
 
-        PreviousAreaButton.IsEnabled = canEdit && !isFirstArea;
-        NextAreaButton.IsEnabled = canEdit && !isLastArea;
+        PreviousAreaButton.IsEnabled = canEdit && !(isFirstArea && isDescriptionStep);
+        NextAreaButton.IsEnabled = canEdit && !(isLastArea && !isDescriptionStep);
         SubmitButton.IsEnabled = canSubmit;
 
-        PreviousAreaButton.Text = isFirstArea ? "Primera área" : "Área anterior";
-        NextAreaButton.Text = isLastArea ? "Última área" : "Siguiente área";
+        PreviousAreaButton.Text = isFirstArea && isDescriptionStep ? "Primera área" : (d.CurrentArea == 1 ? "Descripción" : "Área anterior");
+        NextAreaButton.Text = isDescriptionStep ? "Ir a levantamiento" : (isLastArea ? "Última área" : "Siguiente área");
 
-        var canAttachEvidence = canEdit && d.CurrentArea == 1;
+        var canAttachEvidence = canEdit && d.CurrentArea == 1 && !isDescriptionStep;
         AttachEvidenceButton.IsEnabled = canAttachEvidence;
-        AttachEvidenceButton.IsVisible = d.CurrentArea == 1;
+        AttachEvidenceButton.IsVisible = d.CurrentArea == 1 && !isDescriptionStep;
         EvidenceHintLabel.Text = canAttachEvidence
             ? "Puedes subir foto o PDF."
             : "Adjunta evidencias en la etapa de levantamiento.";
@@ -224,6 +247,13 @@ public partial class OrderDetailPage : ContentPage
             return;
         }
 
+        if (_current.CurrentArea == 1 && _descriptionStepActive)
+        {
+            _descriptionStepActive = false;
+            Bind(_current);
+            return;
+        }
+
         _busy = true;
         try
         {
@@ -269,9 +299,16 @@ public partial class OrderDetailPage : ContentPage
             await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
             return;
         }
-        if (_current.CurrentArea <= 1)
+        if (_current.CurrentArea <= 1 && _descriptionStepActive)
         {
             await DisplayAlertAsync("Orden", "Ya estás en la primera área.", "OK");
+            return;
+        }
+
+        if (_current.CurrentArea == 1 && !_descriptionStepActive)
+        {
+            _descriptionStepActive = true;
+            Bind(_current);
             return;
         }
 
