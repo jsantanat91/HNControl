@@ -4,6 +4,8 @@ using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
 
 namespace HNControl.Web.Pages.Projects;
 
@@ -25,6 +27,9 @@ public class DetailsModel : PageModel
     public bool IsDueSoon { get; set; }
     public string SlaLabel { get; set; } = "En tiempo";
     public string SlaCss { get; set; } = "bg-success";
+    public int GanttTotalDays { get; set; }
+    public int GanttElapsedDays { get; set; }
+    public double GanttProgressPercent { get; set; }
 
     public record AccessRow(string Source, string Label, string HostOrUrl, string Username, bool CanViewPassword, string PasswordPlain, string Notes);
     public List<AccessRow> AccessRows { get; set; } = new();
@@ -66,6 +71,10 @@ public class DetailsModel : PageModel
             SlaLabel = "Por vencer";
             SlaCss = "bg-warning text-dark";
         }
+
+        GanttTotalDays = Math.Max(1, (Project.EstimatedEndDate.Date - Project.StartDate.Date).Days + 1);
+        GanttElapsedDays = Math.Min(GanttTotalDays, Math.Max(0, (DateTime.Today - Project.StartDate.Date).Days + 1));
+        GanttProgressPercent = Math.Round((GanttElapsedDays * 100d) / GanttTotalDays, 1);
 
         foreach (var a in Project.Accesses.OrderBy(x => x.Label))
         {
@@ -109,5 +118,55 @@ public class DetailsModel : PageModel
         }
 
         return Page();
+    }
+
+    public async Task<IActionResult> OnGetExportPdfAsync(Guid id)
+    {
+        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        var p = await _db.Projects
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .Include(x => x.AssignedEmployee)
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (p == null) return NotFound();
+        if (!isAdmin && userId != p.AssignedUserId) return Forbid();
+
+        var totalDays = Math.Max(1, (p.EstimatedEndDate.Date - p.StartDate.Date).Days + 1);
+        var elapsed = Math.Min(totalDays, Math.Max(0, (DateTime.Today - p.StartDate.Date).Days + 1));
+        var percent = Math.Round((elapsed * 100d) / totalDays, 1);
+
+        var pdf = Document.Create(doc =>
+        {
+            doc.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(22);
+                page.DefaultTextStyle(x => x.FontSize(10));
+
+                page.Header().Column(col =>
+                {
+                    col.Item().Text("Reporte de proyecto").FontSize(16).SemiBold();
+                    col.Item().Text($"{p.Title} · {p.Client?.Name ?? "-"}").FontColor(Colors.Grey.Darken1);
+                });
+
+                page.Content().Column(col =>
+                {
+                    col.Spacing(8);
+                    col.Item().Text($"Responsable: {p.AssignedEmployee?.FullName ?? p.AssignedUserId}");
+                    col.Item().Text($"Inicio: {p.StartDate:yyyy-MM-dd} · Fin estimado: {p.EstimatedEndDate:yyyy-MM-dd}");
+                    col.Item().Text($"Estatus: {p.Status} · Avance calendario: {percent}% ({elapsed}/{totalDays} días)");
+                    col.Item().Text($"Objetivo: {p.Objective}");
+                    col.Item().Text($"Alcance: {p.Scope}");
+                    col.Item().Text($"Descripción: {p.ActivityDescription}");
+                    col.Item().Text($"Comentarios: {p.AdditionalComments}");
+                });
+            });
+        }).GeneratePdf();
+
+        var fileName = $"Proyecto-{p.Title.Replace(' ', '_')}-{DateTime.Now:yyyyMMdd}.pdf";
+        return File(pdf, "application/pdf", fileName);
     }
 }

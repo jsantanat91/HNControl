@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -222,3 +222,4 @@ public class CreateModel : PageModel
         public string Label { get; set; } = "";
     }
 }
+

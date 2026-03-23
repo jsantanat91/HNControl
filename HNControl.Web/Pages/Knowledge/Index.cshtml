@@ -30,10 +30,10 @@
         <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Borradores</div><div class="h4 m-0 text-warning">@Model.Stats.Borradores</div></div></div>
     </div>
     <div class="col-md-6 col-xl-2">
-        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Revisión vencida</div><div class="h4 m-0 text-danger">@Model.Stats.Vencidos</div></div></div>
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Revisi&oacute;n vencida</div><div class="h4 m-0 text-danger">@Model.Stats.Vencidos</div></div></div>
     </div>
     <div class="col-md-6 col-xl-4">
-        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Actualizados (7 días)</div><div class="h4 m-0">@Model.Stats.ActualizadosSemana</div></div></div>
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Actualizados (7 d&iacute;as)</div><div class="h4 m-0">@Model.Stats.ActualizadosSemana</div></div></div>
     </div>
 </div>
 
@@ -41,11 +41,11 @@
     <div class="card-body">
         <div class="row g-2">
             <div class="col-lg-3">
-                <input class="form-control" name="Q" value="@Model.Q" placeholder="Buscar por título, tag o contenido" />
+                <input class="form-control" name="Q" value="@Model.Q" placeholder="Buscar por t&iacute;tulo, tag o contenido" />
             </div>
             <div class="col-lg-2">
                 <select class="form-select" name="Category">
-                    <option value="">Categoría</option>
+                    <option value="">Categor&iacute;a</option>
                     @foreach (var c in Model.Categories)
                     {
                         <option value="@c" selected="@(Model.Category == c)">@c</option>
@@ -104,7 +104,7 @@ else
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="fw-semibold">@d.Title</div>
-                                <div class="small text-muted">v@d.Version · @d.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                <div class="small text-muted">Actualizado: @d.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                             </div>
                             @if (d.IsPinned)
                             {
@@ -146,3 +146,4 @@ else
         }
     </div>
 }
+

@@ -1,8 +1,12 @@
 ﻿@page "{id:guid}"
+@using System.Text.Json
 @model HNControl.Web.Pages.Clients.DetailsModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Cliente";
+    var latestProject = Model.Projects.FirstOrDefault();
+    var latestQuote = Model.Quotes.FirstOrDefault();
+    var latestTicket = Model.Tickets.FirstOrDefault();
 }
 
 @if (Model.Client == null)
@@ -220,141 +224,136 @@
         </div>
     </div>
 
-    <div class="col-12 col-xl-4">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="fw-semibold">Proyectos</div>
-                <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo</a>
+    <div class="col-12 col-xl-8">
+        <div class="row g-3">
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-soft hn-hover h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">Proyectos</div>
+                        <span class="text-muted small">@Model.Projects.Count registro(s)</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        @if (latestProject == null)
+                        {
+                            <div class="text-muted small">Sin proyectos.</div>
+                        }
+                        else
+                        {
+                            <div class="fw-semibold">@latestProject.Title</div>
+                            <div class="small text-muted">Inicio: @latestProject.StartDate · Est: @latestProject.EstEnd</div>
+                            <div class="small text-muted">Estado: @latestProject.Status</div>
+                        }
+                        <div class="mt-auto pt-3 d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo</a>
+                            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectsModal">Abrir</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="card-body table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Proyecto</th>
-                            <th>Status</th>
-                            <th class="text-end"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @if (!Model.Projects.Any())
-                    {
-                        <tr><td colspan="3" class="text-muted">Sin proyectos todav&iacute;a.</td></tr>
-                    }
-                    else
-                    {
-                        foreach (var p in Model.Projects)
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-soft hn-hover h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">Cotizaciones</div>
+                        <span class="text-muted small">@Model.Quotes.Count registro(s)</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        @if (latestQuote == null)
                         {
-                            <tr>
-                                <td>
-                                    <div class="fw-semibold">@p.Title</div>
-                                    <div class="text-muted small">@p.StartDate &middot; Est: @p.EstEnd</div>
-                                </td>
-                                <td><span class="badge text-bg-light border">@p.Status</span></td>
-                                <td class="text-end">
-                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
-                                </td>
-                            </tr>
+                            <div class="text-muted small">Sin cotizaciones.</div>
                         }
-                    }
-                    </tbody>
-                </table>
+                        else
+                        {
+                            <div class="fw-semibold">@latestQuote.Folio</div>
+                            <div class="small text-muted">@latestQuote.Segment · @latestQuote.CreatedAt</div>
+                            <div class="small text-muted">Total: @latestQuote.Total.ToString("C")</div>
+                        }
+                        <div class="mt-auto pt-3">
+                            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#quotesModal">Abrir</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-soft hn-hover h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="fw-semibold">Tickets</div>
+                        <span class="text-muted small">@Model.Tickets.Count registro(s)</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        @if (latestTicket == null)
+                        {
+                            <div class="text-muted small">Sin tickets.</div>
+                        }
+                        else
+                        {
+                            <div class="fw-semibold">@latestTicket.Number</div>
+                            <div class="small text-muted">@latestTicket.Title</div>
+                            <div class="small text-muted">@latestTicket.Status · @latestTicket.Priority</div>
+                        }
+                        <div class="mt-auto pt-3">
+                            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#ticketsModal">Abrir</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-12 col-xl-4">
-        <div class="card shadow-soft hn-hover mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="fw-semibold">Cotizaciones</div>
-                <div class="text-muted small">@Model.Quotes.Count registro(s)</div>
+<div class="modal fade" id="projectsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Proyectos del cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Folio</th>
-                            <th>Segmento</th>
-                            <th>Total</th>
-                            <th>Manual</th>
-                            <th>Fecha</th>
-                            <th class="text-end"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @if (!Model.Quotes.Any())
-                    {
-                        <tr><td colspan="6" class="text-muted">Sin cotizaciones todavía.</td></tr>
-                    }
-                    else
-                    {
-                        foreach (var q in Model.Quotes)
-                        {
-                            <tr>
-                                <td class="fw-semibold">@q.Folio</td>
-                                <td><span class="badge text-bg-light border">@q.Segment</span></td>
-                                <td>@q.Total.ToString("C")</td>
-                                <td>
-                                    <span class="badge @(q.ManualItems > 0 ? "text-bg-warning" : "text-bg-success")">
-                                        @q.ManualItems
-                                    </span>
-                                </td>
-                                <td class="text-muted small">@q.CreatedAt</td>
-                                <td class="text-end">
-                                    @if (q.HasPdf)
-                                    {
-                                        <a class="btn btn-sm btn-outline-primary"
-                                           asp-page="/Admin/Quotes/Requests"
-                                           asp-page-handler="DownloadPdf"
-                                           asp-route-id="@q.Id">PDF</a>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    }
-                    </tbody>
-                </table>
+            <div class="modal-body">
+                <div id="projectsList"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button id="projectsPrev" class="btn btn-sm btn-outline-secondary" type="button">Anterior</button>
+                    <small id="projectsPage" class="text-muted"></small>
+                    <button id="projectsNext" class="btn btn-sm btn-outline-secondary" type="button">Siguiente</button>
+                </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="card shadow-soft hn-hover mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div class="fw-semibold">Tickets</div>
-                <div class="text-muted small">@Model.Tickets.Count registro(s)</div>
+<div class="modal fade" id="quotesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cotizaciones del cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Ticket</th>
-                            <th>Asunto</th>
-                            <th>Estado</th>
-                            <th>Prioridad</th>
-                            <th>Asignado</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @if (!Model.Tickets.Any())
-                    {
-                        <tr><td colspan="6" class="text-muted">Sin tickets todavia.</td></tr>
-                    }
-                    else
-                    {
-                        foreach (var t in Model.Tickets)
-                        {
-                            <tr>
-                                <td class="fw-semibold">@t.Number</td>
-                                <td>@t.Title</td>
-                                <td><span class="hn-chip hn-chip-neutral">@t.Status</span></td>
-                                <td><span class="hn-chip hn-chip-ref">@t.Priority</span></td>
-                                <td>@t.AssignedTo</td>
-                                <td class="text-muted small">@t.CreatedAt</td>
-                            </tr>
-                        }
-                    }
-                    </tbody>
-                </table>
+            <div class="modal-body">
+                <div id="quotesList"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button id="quotesPrev" class="btn btn-sm btn-outline-secondary" type="button">Anterior</button>
+                    <small id="quotesPage" class="text-muted"></small>
+                    <button id="quotesNext" class="btn btn-sm btn-outline-secondary" type="button">Siguiente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ticketsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tickets del cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="ticketsList"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button id="ticketsPrev" class="btn btn-sm btn-outline-secondary" type="button">Anterior</button>
+                    <small id="ticketsPage" class="text-muted"></small>
+                    <button id="ticketsNext" class="btn btn-sm btn-outline-secondary" type="button">Siguiente</button>
+                </div>
             </div>
         </div>
     </div>
@@ -369,9 +368,110 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .contract-card {
             border-radius: 1rem;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        const projectData = @Html.Raw(JsonSerializer.Serialize(Model.Projects));
+        const quoteData = @Html.Raw(JsonSerializer.Serialize(Model.Quotes));
+        const ticketData = @Html.Raw(JsonSerializer.Serialize(Model.Tickets));
+        const pageSize = 10;
+
+        function renderPaged(data, page, listId, pageId, prevId, nextId, renderItem) {
+            const list = document.getElementById(listId);
+            const pageEl = document.getElementById(pageId);
+            const prev = document.getElementById(prevId);
+            const next = document.getElementById(nextId);
+            if (!list || !pageEl || !prev || !next) return { page: 1, totalPages: 1 };
+
+            const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+            const current = Math.min(Math.max(page, 1), totalPages);
+            const start = (current - 1) * pageSize;
+            const items = data.slice(start, start + pageSize);
+
+            if (items.length === 0) {
+                list.innerHTML = '<div class="text-muted">Sin registros.</div>';
+            } else {
+                list.innerHTML = items.map(renderItem).join('');
+            }
+
+            pageEl.textContent = `Página ${current} de ${totalPages}`;
+            prev.disabled = current <= 1;
+            next.disabled = current >= totalPages;
+
+            return { page: current, totalPages: totalPages };
+        }
+
+        let projectPage = 1;
+        let quotePage = 1;
+        let ticketPage = 1;
+
+        function renderProjects() {
+            const result = renderPaged(
+                projectData,
+                projectPage,
+                'projectsList',
+                'projectsPage',
+                'projectsPrev',
+                'projectsNext',
+                p => `<div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">${p.Title}</div>
+                        <div class="small text-muted">Inicio: ${p.StartDate} · Est: ${p.EstEnd}</div>
+                        <div class="small text-muted">Estado: ${p.Status}</div>
+                        <div class="mt-2"><a class="btn btn-sm btn-outline-primary" href="/Projects/Details/${p.Id}">Abrir</a></div>
+                      </div>`);
+            projectPage = result.page;
+        }
+
+        function renderQuotes() {
+            const result = renderPaged(
+                quoteData,
+                quotePage,
+                'quotesList',
+                'quotesPage',
+                'quotesPrev',
+                'quotesNext',
+                q => `<div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">${q.Folio}</div>
+                        <div class="small text-muted">${q.Segment} · ${q.CreatedAt}</div>
+                        <div class="small text-muted">Total: ${q.Total}</div>
+                      </div>`);
+            quotePage = result.page;
+        }
+
+        function renderTickets() {
+            const result = renderPaged(
+                ticketData,
+                ticketPage,
+                'ticketsList',
+                'ticketsPage',
+                'ticketsPrev',
+                'ticketsNext',
+                t => `<div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">${t.Number}</div>
+                        <div class="small text-muted">${t.Title}</div>
+                        <div class="small text-muted">${t.Status} · ${t.Priority} · ${t.CreatedAt}</div>
+                      </div>`);
+            ticketPage = result.page;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('projectsPrev')?.addEventListener('click', () => { projectPage--; renderProjects(); });
+            document.getElementById('projectsNext')?.addEventListener('click', () => { projectPage++; renderProjects(); });
+            document.getElementById('quotesPrev')?.addEventListener('click', () => { quotePage--; renderQuotes(); });
+            document.getElementById('quotesNext')?.addEventListener('click', () => { quotePage++; renderQuotes(); });
+            document.getElementById('ticketsPrev')?.addEventListener('click', () => { ticketPage--; renderTickets(); });
+            document.getElementById('ticketsNext')?.addEventListener('click', () => { ticketPage++; renderTickets(); });
+
+            document.getElementById('projectsModal')?.addEventListener('show.bs.modal', renderProjects);
+            document.getElementById('quotesModal')?.addEventListener('show.bs.modal', renderQuotes);
+            document.getElementById('ticketsModal')?.addEventListener('show.bs.modal', renderTickets);
+        });
+    </script>
 }
 

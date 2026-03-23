@@ -155,13 +155,13 @@ public class DetailsModel : PageModel
             p.StartDate.ToString("yyyy-MM-dd"),
             p.EstimatedEndDate.ToString("yyyy-MM-dd"),
             p.Status.ToString()
-        )).ToList();
+        )).Take(200).ToList();
 
         Quotes = await _db.QuoteRequests
             .AsNoTracking()
             .Where(x => x.ClientId == id)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(30)
+            .Take(200)
             .Select(x => new QuoteRow(
                 x.Id,
                 x.Folio,
@@ -177,7 +177,7 @@ public class DetailsModel : PageModel
             .AsNoTracking()
             .Where(x => x.ClientId == id)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(20)
+            .Take(200)
             .Select(x => new TicketRow(
                 x.Id,
                 x.TicketNumber,
@@ -218,10 +218,20 @@ public class DetailsModel : PageModel
             return RedirectToPage(new { id });
         }
 
-        var exists = await _db.ClientContacts.AnyAsync(c =>
-            c.ClientId == id
-            && c.Name.ToLower() == name.ToLower()
-            && c.Email.ToLower() == email.ToLower());
+        bool exists;
+        try
+        {
+            exists = await _db.ClientContacts.AnyAsync(c =>
+                c.ClientId == id
+                && c.Name.ToLower() == name.ToLower()
+                && c.Email.ToLower() == email.ToLower());
+        }
+        catch
+        {
+            TempData["ClientDetailsInfo"] = "Falta aplicar migración de base de datos para contactos.";
+            TempData["ClientDetailsInfoType"] = "danger";
+            return RedirectToPage(new { id });
+        }
 
         if (exists)
         {
@@ -257,7 +267,17 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteContactAsync(Guid id, Guid contactId)
     {
-        var contact = await _db.ClientContacts.FirstOrDefaultAsync(c => c.Id == contactId && c.ClientId == id);
+        ClientContact? contact;
+        try
+        {
+            contact = await _db.ClientContacts.FirstOrDefaultAsync(c => c.Id == contactId && c.ClientId == id);
+        }
+        catch
+        {
+            TempData["ClientDetailsInfo"] = "Falta aplicar migración de base de datos para contactos.";
+            TempData["ClientDetailsInfoType"] = "danger";
+            return RedirectToPage(new { id });
+        }
         if (contact == null)
         {
             TempData["ClientDetailsInfo"] = "Contacto no encontrado.";
@@ -274,20 +294,27 @@ public class DetailsModel : PageModel
 
     private async Task LoadContactsAsync(Guid clientId)
     {
-        Contacts = await _db.ClientContacts
-            .AsNoTracking()
-            .Where(x => x.ClientId == clientId)
-            .OrderByDescending(x => x.IsPrimary)
-            .ThenBy(x => x.Name)
-            .Select(x => new ClientContactRow(
-                x.Id,
-                x.Name,
-                x.Email,
-                x.Phone,
-                x.Role,
-                x.IsPrimary,
-                x.UpdatedAt))
-            .ToListAsync();
+        try
+        {
+            Contacts = await _db.ClientContacts
+                .AsNoTracking()
+                .Where(x => x.ClientId == clientId)
+                .OrderByDescending(x => x.IsPrimary)
+                .ThenBy(x => x.Name)
+                .Select(x => new ClientContactRow(
+                    x.Id,
+                    x.Name,
+                    x.Email,
+                    x.Phone,
+                    x.Role,
+                    x.IsPrimary,
+                    x.UpdatedAt))
+                .ToListAsync();
+        }
+        catch
+        {
+            Contacts = new();
+        }
     }
 
     private async Task<string> NextClientCodeAsync()

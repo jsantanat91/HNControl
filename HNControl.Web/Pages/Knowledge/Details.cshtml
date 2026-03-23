@@ -1,4 +1,4 @@
-@page "{id:guid}"
+ï»¿@page "{id:guid}"
 @using HNControl.Web.Helpers
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Knowledge.DetailsModel
@@ -82,10 +82,10 @@
         <div class="card shadow-sm hn-hover mb-3">
             <div class="card-header fw-semibold">Ficha</div>
             <div class="card-body small">
-                <div><b>Categoría:</b> @Model.Doc.Category</div>
+                <div><b>CategorÃ­a:</b> @Model.Doc.Category</div>
                 <div><b>Cliente:</b> @(Model.Doc.Client?.Name ?? "-")</div>
                 <div><b>Contrato:</b> @(Model.Doc.ClientServiceContract?.Label ?? "-")</div>
-                <div><b>Versión:</b> @Model.Doc.Version</div>
+                <div><b>VersiÃ³n:</b> @Model.Doc.Version</div>
                 <div><b>Responsable:</b> @(string.IsNullOrWhiteSpace(Model.Doc.OwnerName) ? "-" : Model.Doc.OwnerName)</div>
                 <div><b>Actualizado:</b> @Model.Doc.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                 <div><b>Publicado:</b> @(Model.Doc.PublishedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
@@ -131,3 +131,4 @@
         }
     </div>
 </div>
+

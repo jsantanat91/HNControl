@@ -1,4 +1,4 @@
-using System.Net;
+ï»¿using System.Net;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -319,7 +319,7 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
-        await NotifyTicketUpdateAsync(t, "Seguimiento de ticket", "El equipo de soporte ya inició la atención del ticket.", ct);
+        await NotifyTicketUpdateAsync(t, "Seguimiento de ticket", "El equipo de soporte ya iniciÃ³ la atenciÃ³n del ticket.", ct);
         return true;
     }
 
@@ -552,7 +552,7 @@ public class TicketFlowService : ITicketFlowService
                 ticket,
                 clientName,
                 branch,
-                extraMessage: $"Se registró un ticket nuevo con estado inicial <strong>Nuevo</strong>."),
+                extraMessage: $"Se registrÃ³ un ticket nuevo con estado inicial <strong>Nuevo</strong>."),
             ct);
 
         if (ticket.Source == TicketSource.PublicPortal)
@@ -632,7 +632,7 @@ public class TicketFlowService : ITicketFlowService
 
         return $@"
             <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
-                <h2 style='margin:0 0 10px 0'>HN Control · {WebUtility.HtmlEncode(title)}</h2>
+                <h2 style='margin:0 0 10px 0'>HN Control Â· {WebUtility.HtmlEncode(title)}</h2>
                 <p>
                     <strong>Ticket:</strong> {WebUtility.HtmlEncode(ticket.TicketNumber)}<br/>
                     <strong>Cliente:</strong> {WebUtility.HtmlEncode(clientName ?? "-")}<br/>
@@ -644,7 +644,7 @@ public class TicketFlowService : ITicketFlowService
                 <p>{extraMessage}</p>
                 <p>Consulta el seguimiento en: <a href='{portalUrl}'>{portalUrl}</a></p>
                 <hr style='border:none;border-top:1px solid #e2e8f0'/>
-                <small>Mensaje automático de HN Control.</small>
+                <small>Mensaje automÃ¡tico de HN Control.</small>
             </div>";
     }
 
@@ -770,3 +770,4 @@ public class TicketFlowService : ITicketFlowService
         return $"TKT-{year}-{(count + 1):D5}";
     }
 }
+
