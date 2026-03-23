@@ -15,6 +15,8 @@ public interface ITicketFlowService
         string title,
         string description,
         TicketPriority? priority = null,
+        Guid? clientContactId = null,
+        bool autoCreateClientContact = true,
         CancellationToken ct = default);
 
     Task<Ticket> CreateInternalAsync(

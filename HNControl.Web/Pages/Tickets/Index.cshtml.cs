@@ -49,6 +49,7 @@ public class IndexModel : PageModel
     public List<ClientGroupVm> Groups { get; set; } = new();
     public List<ClientPickVm> ClientOptions { get; set; } = new();
     public List<ContractPickVm> ContractOptions { get; set; } = new();
+    public List<ContactPickVm> ContactOptions { get; set; } = new();
     public List<EmployeePickVm> EmployeeOptions { get; set; } = new();
 
     [BindProperty]
@@ -108,11 +109,32 @@ public class IndexModel : PageModel
 
         if (CreateInput.ClientId == Guid.Empty
             || string.IsNullOrWhiteSpace(CreateInput.Title)
-            || string.IsNullOrWhiteSpace(CreateInput.RequesterName)
-            || string.IsNullOrWhiteSpace(CreateInput.RequesterEmail)
             || string.IsNullOrWhiteSpace(CreateInput.Description))
         {
             UiMessage = "Faltan campos obligatorios para crear el ticket.";
+            UiMessageType = "danger";
+            return RedirectToPage(new { status = StatusFilter, q = Search });
+        }
+
+        if (CreateInput.ClientContactId.HasValue)
+        {
+            var selectedContact = await _db.ClientContacts
+                .AsNoTracking()
+                .Where(c => c.Id == CreateInput.ClientContactId.Value && c.ClientId == CreateInput.ClientId)
+                .Select(c => new { c.Name, c.Email, c.Phone })
+                .FirstOrDefaultAsync();
+
+            if (selectedContact != null)
+            {
+                CreateInput.RequesterName = selectedContact.Name;
+                CreateInput.RequesterEmail = selectedContact.Email;
+                CreateInput.RequesterPhone = selectedContact.Phone;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(CreateInput.RequesterName) || string.IsNullOrWhiteSpace(CreateInput.RequesterEmail))
+        {
+            UiMessage = "Selecciona un contacto o captura nombre y correo del solicitante.";
             UiMessageType = "danger";
             return RedirectToPage(new { status = StatusFilter, q = Search });
         }
@@ -460,6 +482,23 @@ public class IndexModel : PageModel
                 })
                 .ToListAsync();
 
+            ContactOptions = await _db.ClientContacts
+                .AsNoTracking()
+                .OrderBy(c => c.ClientId)
+                .ThenByDescending(c => c.IsPrimary)
+                .ThenBy(c => c.Name)
+                .Select(c => new ContactPickVm
+                {
+                    Id = c.Id,
+                    ClientId = c.ClientId,
+                    Name = c.Name,
+                    Email = c.Email,
+                    Phone = c.Phone,
+                    Role = c.Role,
+                    IsPrimary = c.IsPrimary
+                })
+                .ToListAsync();
+
             EmployeeOptions = await _db.EmployeeProfiles
                 .AsNoTracking()
                 .OrderBy(e => e.FullName)
@@ -553,10 +592,22 @@ public class IndexModel : PageModel
         public string Name { get; set; } = "";
     }
 
+    public class ContactPickVm
+    {
+        public Guid Id { get; set; }
+        public Guid ClientId { get; set; }
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Role { get; set; } = "";
+        public bool IsPrimary { get; set; }
+    }
+
     public class CreateManualInput
     {
         public Guid ClientId { get; set; }
         public Guid? ContractId { get; set; }
+        public Guid? ClientContactId { get; set; }
         public string? AssignedToUserId { get; set; }
         public string? AssignedToName { get; set; }
         public string RequesterName { get; set; } = "";

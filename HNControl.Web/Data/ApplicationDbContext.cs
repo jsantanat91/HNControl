@@ -18,6 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ViaticEntry> ViaticEntries => Set<ViaticEntry>();
     public DbSet<ViaticAttachment> ViaticAttachments => Set<ViaticAttachment>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientContact> ClientContacts => Set<ClientContact>();
     public DbSet<ClientServiceContract> ClientServiceContracts => Set<ClientServiceContract>();
 
     public DbSet<Project> Projects => Set<Project>();
@@ -230,6 +231,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
              .WithOne(s => s.Client!)
              .HasForeignKey(s => s.ClientId)
              .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Contacts)
+             .WithOne(c => c.Client!)
+             .HasForeignKey(c => c.ClientId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ClientContact>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(180);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Phone).HasMaxLength(60);
+            e.Property(x => x.Role).HasMaxLength(120);
+            e.HasIndex(x => new { x.ClientId, x.Email });
+            e.HasIndex(x => new { x.ClientId, x.Name });
+            e.HasIndex(x => new { x.ClientId, x.IsPrimary });
         });
 
         b.Entity<ClientServiceContract>(e =>
@@ -315,6 +333,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasIndex(x => new { x.Status, x.DocType, x.Category });
             e.HasIndex(x => x.ReviewDueAt);
             e.HasIndex(x => x.IsPinned);
+            e.HasIndex(x => x.ClientId);
+            e.HasIndex(x => x.ClientServiceContractId);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<PerformanceReview>(e =>

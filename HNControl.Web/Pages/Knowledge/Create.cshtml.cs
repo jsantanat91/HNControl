@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -27,14 +27,25 @@ public class CreateModel : PageModel
     [BindProperty] public InputModel Input { get; set; } = new();
     [BindProperty] public IFormFile? Attachment { get; set; }
 
+    public List<ClientPickVm> ClientOptions { get; set; } = new();
+    public List<ContractPickVm> ContractOptions { get; set; } = new();
+
     public IReadOnlyList<string> CategoryOptions => KnowledgeCatalog.Categories;
+    public IReadOnlyList<KnowledgeDocType> TypeOptions => new[]
+    {
+        KnowledgeDocType.AccesoPlataforma,
+        KnowledgeDocType.ManualInterno
+    };
 
     public class InputModel
     {
         [Required, MaxLength(200)] public string Title { get; set; } = "";
-        [Required, MaxLength(100)] public string Category { get; set; } = "General";
-        [Required] public KnowledgeDocType DocType { get; set; } = KnowledgeDocType.ManualInterno;
+        [Required, MaxLength(100)] public string Category { get; set; } = "Accesos Plataformas";
+        [Required] public KnowledgeDocType DocType { get; set; } = KnowledgeDocType.AccesoPlataforma;
         [Required] public KnowledgeStatus Status { get; set; } = KnowledgeStatus.Publicado;
+
+        public Guid? ClientId { get; set; }
+        public Guid? ClientServiceContractId { get; set; }
 
         [MaxLength(600)] public string Url { get; set; } = "";
         [MaxLength(600)] public string Description { get; set; } = "";
@@ -53,19 +64,20 @@ public class CreateModel : PageModel
 
     public async Task OnGetAsync()
     {
+        await LoadCatalogsAsync();
         Input.OwnerName = await ResolveCurrentUserNameAsync();
-
-        if (string.IsNullOrWhiteSpace(Input.Category))
-            Input.Category = "General";
+        Input.Category = "Accesos Plataformas";
+        Input.DocType = KnowledgeDocType.AccesoPlataforma;
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        await LoadCatalogsAsync();
         if (!ModelState.IsValid)
             return Page();
 
         Input.Title = (Input.Title ?? "").Trim();
-        Input.Category = (Input.Category ?? "General").Trim();
+        Input.Category = (Input.Category ?? "Accesos Plataformas").Trim();
         Input.Url = (Input.Url ?? "").Trim();
         Input.Description = (Input.Description ?? "").Trim();
         Input.Body = (Input.Body ?? "").Trim();
@@ -74,6 +86,12 @@ public class CreateModel : PageModel
         Input.ReviewerName = (Input.ReviewerName ?? "").Trim();
         Input.AccessUsername = (Input.AccessUsername ?? "").Trim();
         Input.AccessNotes = (Input.AccessNotes ?? "").Trim();
+
+        if (Input.DocType == KnowledgeDocType.AccesoPlataforma && !Input.ClientId.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, "Selecciona el cliente para el acceso de plataforma.");
+            return Page();
+        }
 
         if (string.IsNullOrWhiteSpace(Input.Url) && string.IsNullOrWhiteSpace(Input.Body) && Attachment == null)
         {
@@ -89,9 +107,11 @@ public class CreateModel : PageModel
             var entity = new KnowledgeLink
             {
                 Title = Input.Title,
-                Category = string.IsNullOrWhiteSpace(Input.Category) ? "General" : Input.Category,
+                Category = string.IsNullOrWhiteSpace(Input.Category) ? "Accesos Plataformas" : Input.Category,
                 DocType = Input.DocType,
                 Status = Input.Status,
+                ClientId = Input.ClientId,
+                ClientServiceContractId = Input.ClientServiceContractId,
                 Url = Input.Url,
                 Description = Input.Description,
                 Body = Input.Body,
@@ -163,5 +183,42 @@ public class CreateModel : PageModel
             return profileName;
 
         return User.Identity?.Name ?? "Administrador";
+    }
+
+    private async Task LoadCatalogsAsync()
+    {
+        ClientOptions = await _db.Clients
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .Select(c => new ClientPickVm { Id = c.Id, Name = c.Name, Code = c.ClientCode })
+            .ToListAsync();
+
+        ContractOptions = await _db.ClientServiceContracts
+            .AsNoTracking()
+            .Include(c => c.Client)
+            .OrderBy(c => c.Client!.Name)
+            .ThenBy(c => c.Branch)
+            .ThenBy(c => c.Label)
+            .Select(c => new ContractPickVm
+            {
+                Id = c.Id,
+                ClientId = c.ClientId,
+                Label = (string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch) + " - " + c.Label
+            })
+            .ToListAsync();
+    }
+
+    public class ClientPickVm
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? Code { get; set; }
+    }
+
+    public class ContractPickVm
+    {
+        public Guid Id { get; set; }
+        public Guid ClientId { get; set; }
+        public string Label { get; set; } = "";
     }
 }

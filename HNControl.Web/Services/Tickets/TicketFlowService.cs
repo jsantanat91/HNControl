@@ -1,3 +1,4 @@
+using System.Net;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -31,10 +32,12 @@ public class TicketFlowService : ITicketFlowService
         string title,
         string description,
         TicketPriority? priority = null,
+        Guid? clientContactId = null,
+        bool autoCreateClientContact = true,
         CancellationToken ct = default)
     {
         var code = (clientCode ?? "").Trim().ToUpperInvariant();
-        var client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.ClientCode == code, ct)
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.ClientCode == code, ct)
             ?? throw new InvalidOperationException("No existe un cliente con ese codigo.");
 
         ClientServiceContract? contract = null;
@@ -46,7 +49,16 @@ public class TicketFlowService : ITicketFlowService
                 ?? throw new InvalidOperationException("Contrato invalido para el cliente.");
         }
 
-        var (autoPriority, autoImpact, autoUrgency) = CalculatePriorityFromText(title, description);
+        var requesterContact = await ResolveRequesterFromContactAsync(
+            client.Id,
+            clientContactId,
+            requesterName,
+            requesterEmail,
+            requesterPhone,
+            autoCreateClientContact,
+            ct);
+
+        var (autoPriority, _, _) = CalculatePriorityFromText(title, description);
         var finalPriority = priority ?? autoPriority;
         var finalImpact = ToImpact(finalPriority);
         var finalUrgency = ToUrgency(finalPriority);
@@ -54,6 +66,7 @@ public class TicketFlowService : ITicketFlowService
         var location = !string.IsNullOrWhiteSpace(contract?.BranchAddress)
             ? contract!.BranchAddress
             : (!string.IsNullOrWhiteSpace(contract?.Branch) ? contract!.Branch : requesterLocation);
+
         var ticket = new Ticket
         {
             TicketNumber = await NextTicketNumberAsync(ct),
@@ -68,9 +81,9 @@ public class TicketFlowService : ITicketFlowService
             Impact = finalImpact,
             Urgency = finalUrgency,
             Status = TicketStatus.New,
-            RequesterName = (requesterName ?? "").Trim(),
-            RequesterEmail = (requesterEmail ?? "").Trim(),
-            RequesterPhone = (requesterPhone ?? "").Trim(),
+            RequesterName = requesterContact.name,
+            RequesterEmail = requesterContact.email,
+            RequesterPhone = requesterContact.phone,
             RequesterLocation = (location ?? "").Trim(),
             CreatedByName = "Portal publico",
             CreatedAt = now,
@@ -88,7 +101,8 @@ public class TicketFlowService : ITicketFlowService
 
         _db.Tickets.Add(ticket);
         await _db.SaveChangesAsync(ct);
-        await SendCreatedEmailAsync(ticket, client.Name, contract?.Branch, ct);
+
+        await NotifyTicketCreatedAsync(ticket, client.Name, contract?.Branch, ct);
         return ticket;
     }
 
@@ -175,6 +189,8 @@ public class TicketFlowService : ITicketFlowService
 
         _db.Tickets.Add(ticket);
         await _db.SaveChangesAsync(ct);
+
+        await NotifyTicketCreatedAsync(ticket, client.Name, contract?.Branch, ct);
         return ticket;
     }
 
@@ -187,7 +203,6 @@ public class TicketFlowService : ITicketFlowService
             .FirstOrDefaultAsync(x => x.Id == targetId, ct)
             ?? throw new InvalidOperationException("Target de monitoreo no encontrado.");
 
-        // Evita duplicados: si ya hay ticket abierto por el mismo target, reusa.
         var existing = await _db.Tickets
             .FirstOrDefaultAsync(t => t.MonitorTargetId == targetId
                 && t.Status != TicketStatus.Closed
@@ -237,6 +252,8 @@ public class TicketFlowService : ITicketFlowService
 
         _db.Tickets.Add(ticket);
         await _db.SaveChangesAsync(ct);
+
+        await NotifyTicketCreatedAsync(ticket, target.Client?.Name, target.ClientServiceContract?.Branch, ct);
         return ticket;
     }
 
@@ -267,107 +284,9 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
-
-        var clientName = await _db.Clients
-            .AsNoTracking()
-            .Where(c => c.Id == t.ClientId)
-            .Select(c => c.Name)
-            .FirstOrDefaultAsync(ct);
-
-        var branch = await _db.ClientServiceContracts
-            .AsNoTracking()
-            .Where(c => c.Id == t.ClientServiceContractId)
-            .Select(c => c.Branch)
-            .FirstOrDefaultAsync(ct);
-
-        await SendClosedEmailAsync(t, clientName, branch, ct);
+        await NotifyTicketUpdateAsync(t, "Ticket tomado", $"Asignado a {userName}.", ct);
         return true;
     }
-
-    private async Task SendCreatedEmailAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
-    {
-        var to = (ticket.RequesterEmail ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(to)) return;
-
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
-        var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
-        var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
-
-        var subject = $"Ticket recibido: {ticket.TicketNumber}";
-        var body = $@"
-            <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
-                <h2 style='margin:0 0 10px 0'>HN Control Â· Ticket recibido</h2>
-                <p>Hola <strong>{System.Net.WebUtility.HtmlEncode(ticket.RequesterName)}</strong>,</p>
-                <p>Hemos recibido tu solicitud y ya fue registrada con el folio <strong>{ticket.TicketNumber}</strong>.</p>
-                <p>
-                    <strong>Cliente:</strong> {System.Net.WebUtility.HtmlEncode(clientName ?? "-")}<br/>
-                    <strong>Sucursal:</strong> {System.Net.WebUtility.HtmlEncode(sucursal)}<br/>
-                    <strong>Asunto:</strong> {System.Net.WebUtility.HtmlEncode(ticket.Title)}<br/>
-                    <strong>Prioridad:</strong> {ToPriorityLabel(ticket.Priority)}<br/>
-                    <strong>Estado inicial:</strong> Nuevo
-                </p>
-                <p>El equipo de soporte darÃ¡ seguimiento y te contactarÃ¡ en cuanto avancemos con el caso.</p>
-                <p>Puedes consultar el portal en: <a href='{portalUrl}'>{portalUrl}</a></p>
-                <hr style='border:none;border-top:1px solid #e2e8f0'/>
-                <small>Mensaje automÃ¡tico de HN Control.</small>
-            </div>";
-
-        try
-        {
-            await _email.SendAsync(to, subject, body);
-        }
-        catch
-        {
-            // No interrumpir el flujo principal por errores de email.
-        }
-    }
-
-    private async Task SendClosedEmailAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
-    {
-        var to = (ticket.RequesterEmail ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(to)) return;
-
-        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
-        var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
-        var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
-        var closedAt = (ticket.ClosedAt ?? DateTime.UtcNow).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-
-        var subject = $"Ticket cerrado: {ticket.TicketNumber}";
-        var body = $@"
-            <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
-                <h2 style='margin:0 0 10px 0'>HN Control Â· Ticket cerrado</h2>
-                <p>Hola <strong>{System.Net.WebUtility.HtmlEncode(ticket.RequesterName)}</strong>,</p>
-                <p>Te confirmamos que tu ticket <strong>{ticket.TicketNumber}</strong> ha sido cerrado.</p>
-                <p>
-                    <strong>Cliente:</strong> {System.Net.WebUtility.HtmlEncode(clientName ?? "-")}<br/>
-                    <strong>Sucursal:</strong> {System.Net.WebUtility.HtmlEncode(sucursal)}<br/>
-                    <strong>Asunto:</strong> {System.Net.WebUtility.HtmlEncode(ticket.Title)}<br/>
-                    <strong>Fecha de cierre:</strong> {closedAt}
-                </p>
-                <p><strong>Resumen:</strong> {System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(ticket.ResolutionSummary) ? "Cierre de ticket registrado." : ticket.ResolutionSummary)}</p>
-                <p>Para consultar historial, entra a: <a href='{portalUrl}'>{portalUrl}</a></p>
-                <hr style='border:none;border-top:1px solid #e2e8f0'/>
-                <small>Mensaje automÃ¡tico de HN Control.</small>
-            </div>";
-
-        try
-        {
-            await _email.SendAsync(to, subject, body);
-        }
-        catch
-        {
-            // No interrumpir el flujo principal por errores de email.
-        }
-    }
-
-    private static string ToPriorityLabel(TicketPriority p) => p switch
-    {
-        TicketPriority.Low => "Baja",
-        TicketPriority.Medium => "Intermedia",
-        TicketPriority.High => "Alta",
-        TicketPriority.Critical => "CrÃ­tica",
-        _ => "Intermedia"
-    };
 
     public async Task<bool> TryStartAsync(Guid ticketId, string userId, string userName, bool isAdmin, CancellationToken ct = default)
     {
@@ -400,6 +319,7 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
+        await NotifyTicketUpdateAsync(t, "Seguimiento de ticket", "El equipo de soporte ya inició la atención del ticket.", ct);
         return true;
     }
 
@@ -427,6 +347,11 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
+        await NotifyTicketUpdateAsync(
+            t,
+            "Ticket resuelto",
+            string.IsNullOrWhiteSpace(summary) ? "El ticket fue marcado como resuelto." : summary.Trim(),
+            ct);
         return true;
     }
 
@@ -457,6 +382,12 @@ public class TicketFlowService : ITicketFlowService
         });
 
         await _db.SaveChangesAsync(ct);
+        await NotifyTicketUpdateAsync(
+            t,
+            "Ticket cerrado",
+            string.IsNullOrWhiteSpace(t.ResolutionSummary) ? "Ticket cerrado por el equipo de soporte." : t.ResolutionSummary,
+            ct,
+            forceCustomer: t.Source == TicketSource.PublicPortal);
         return true;
     }
 
@@ -478,6 +409,7 @@ public class TicketFlowService : ITicketFlowService
             CreatedAt = now
         });
         await _db.SaveChangesAsync(ct);
+        await NotifyTicketUpdateAsync(t, "Seguimiento de ticket", note.Trim(), ct);
         return true;
     }
 
@@ -548,7 +480,203 @@ public class TicketFlowService : ITicketFlowService
         }
 
         await _db.SaveChangesAsync(ct);
+
+        var noteSummary = string.IsNullOrWhiteSpace(note)
+            ? "Se agrego evidencia al ticket."
+            : note.Trim();
+        await NotifyTicketUpdateAsync(t, "Seguimiento de ticket", noteSummary, ct);
         return true;
+    }
+
+    private async Task<(string name, string email, string phone)> ResolveRequesterFromContactAsync(
+        Guid clientId,
+        Guid? clientContactId,
+        string requesterName,
+        string requesterEmail,
+        string requesterPhone,
+        bool autoCreateClientContact,
+        CancellationToken ct)
+    {
+        if (clientContactId.HasValue && clientContactId.Value != Guid.Empty)
+        {
+            var contact = await _db.ClientContacts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == clientContactId.Value && c.ClientId == clientId, ct);
+
+            if (contact != null)
+            {
+                return (
+                    contact.Name,
+                    (contact.Email ?? "").Trim(),
+                    (contact.Phone ?? "").Trim());
+            }
+        }
+
+        var finalName = (requesterName ?? "").Trim();
+        var finalEmail = (requesterEmail ?? "").Trim();
+        var finalPhone = (requesterPhone ?? "").Trim();
+
+        if (autoCreateClientContact && !string.IsNullOrWhiteSpace(finalName))
+        {
+            var exists = await _db.ClientContacts.AnyAsync(c =>
+                c.ClientId == clientId
+                && c.Name.ToLower() == finalName.ToLower()
+                && c.Email.ToLower() == finalEmail.ToLower(), ct);
+
+            if (!exists)
+            {
+                _db.ClientContacts.Add(new ClientContact
+                {
+                    ClientId = clientId,
+                    Name = finalName,
+                    Email = finalEmail,
+                    Phone = finalPhone,
+                    Role = "Soporte",
+                    IsPrimary = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
+        return (finalName, finalEmail, finalPhone);
+    }
+
+    private async Task NotifyTicketCreatedAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
+    {
+        await NotifyInternalAsync(
+            subject: $"[{ticket.TicketNumber}] Ticket creado ({ToSourceLabel(ticket.Source)})",
+            bodyHtml: BuildTicketEmailBody(
+                title: "Ticket creado",
+                ticket,
+                clientName,
+                branch,
+                extraMessage: $"Se registró un ticket nuevo con estado inicial <strong>Nuevo</strong>."),
+            ct);
+
+        if (ticket.Source == TicketSource.PublicPortal)
+        {
+            var to = (ticket.RequesterEmail ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(to))
+            {
+                await TrySendAsync(
+                    to,
+                    $"Ticket recibido: {ticket.TicketNumber}",
+                    BuildTicketEmailBody(
+                        title: "Ticket recibido",
+                        ticket,
+                        clientName,
+                        branch,
+                        extraMessage: "Hemos recibido tu solicitud y te notificaremos cada movimiento hasta el cierre."));
+            }
+        }
+    }
+
+    private async Task NotifyTicketUpdateAsync(
+        Ticket ticket,
+        string title,
+        string detail,
+        CancellationToken ct,
+        bool forceCustomer = false)
+    {
+        var (clientName, branch) = await ResolveClientContextAsync(ticket, ct);
+
+        await NotifyInternalAsync(
+            subject: $"[{ticket.TicketNumber}] {title}",
+            bodyHtml: BuildTicketEmailBody(title, ticket, clientName, branch, WebUtility.HtmlEncode(detail)),
+            ct);
+
+        if (ticket.Source == TicketSource.PublicPortal || forceCustomer)
+        {
+            var to = (ticket.RequesterEmail ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(to))
+            {
+                await TrySendAsync(
+                    to,
+                    $"{title}: {ticket.TicketNumber}",
+                    BuildTicketEmailBody(title, ticket, clientName, branch, WebUtility.HtmlEncode(detail)));
+            }
+        }
+    }
+
+    private async Task NotifyInternalAsync(string subject, string bodyHtml, CancellationToken ct)
+    {
+        var recipients = GetInternalTicketRecipients();
+        foreach (var recipient in recipients)
+            await TrySendAsync(recipient, subject, bodyHtml);
+    }
+
+    private async Task<(string? clientName, string? branch)> ResolveClientContextAsync(Ticket ticket, CancellationToken ct)
+    {
+        var clientName = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.Id == ticket.ClientId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync(ct);
+
+        var branch = await _db.ClientServiceContracts
+            .AsNoTracking()
+            .Where(c => c.Id == ticket.ClientServiceContractId)
+            .Select(c => c.Branch)
+            .FirstOrDefaultAsync(ct);
+
+        return (clientName, branch);
+    }
+
+    private string BuildTicketEmailBody(string title, Ticket ticket, string? clientName, string? branch, string extraMessage)
+    {
+        var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
+        var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
+        var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
+
+        return $@"
+            <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
+                <h2 style='margin:0 0 10px 0'>HN Control · {WebUtility.HtmlEncode(title)}</h2>
+                <p>
+                    <strong>Ticket:</strong> {WebUtility.HtmlEncode(ticket.TicketNumber)}<br/>
+                    <strong>Cliente:</strong> {WebUtility.HtmlEncode(clientName ?? "-")}<br/>
+                    <strong>Sucursal:</strong> {WebUtility.HtmlEncode(sucursal)}<br/>
+                    <strong>Asunto:</strong> {WebUtility.HtmlEncode(ticket.Title)}<br/>
+                    <strong>Estado:</strong> {WebUtility.HtmlEncode(ToStatusLabel(ticket.Status))}<br/>
+                    <strong>Prioridad:</strong> {WebUtility.HtmlEncode(ToPriorityLabel(ticket.Priority))}
+                </p>
+                <p>{extraMessage}</p>
+                <p>Consulta el seguimiento en: <a href='{portalUrl}'>{portalUrl}</a></p>
+                <hr style='border:none;border-top:1px solid #e2e8f0'/>
+                <small>Mensaje automático de HN Control.</small>
+            </div>";
+    }
+
+    private string[] GetInternalTicketRecipients()
+    {
+        var configured = (_cfg["Tickets:InternalNotifyEmails"] ?? "")
+            .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (configured.Length > 0)
+            return configured;
+
+        return new[]
+        {
+            "jsantana@hubnet-.solutions.net",
+            "soporte@innovahome.mx"
+        };
+    }
+
+    private async Task TrySendAsync(string to, string subject, string htmlBody)
+    {
+        try
+        {
+            await _email.SendAsync(to, subject, htmlBody);
+        }
+        catch
+        {
+            // No interrumpir el flujo principal por errores de correo.
+        }
     }
 
     private static bool CanOperate(Ticket t, string userId, bool isAdmin)
@@ -583,6 +711,35 @@ public class TicketFlowService : ITicketFlowService
         TicketPriority.High => TicketUrgency.High,
         TicketPriority.Medium => TicketUrgency.Medium,
         _ => TicketUrgency.Low
+    };
+
+    private static string ToPriorityLabel(TicketPriority p) => p switch
+    {
+        TicketPriority.Low => "Baja",
+        TicketPriority.Medium => "Intermedia",
+        TicketPriority.High => "Alta",
+        TicketPriority.Critical => "Critica",
+        _ => "Intermedia"
+    };
+
+    private static string ToStatusLabel(TicketStatus s) => s switch
+    {
+        TicketStatus.New => "Nuevo",
+        TicketStatus.Assigned => "Asignado",
+        TicketStatus.InProgress => "En proceso",
+        TicketStatus.PendingCustomer => "Pendiente cliente",
+        TicketStatus.Resolved => "Resuelto",
+        TicketStatus.Closed => "Cerrado",
+        TicketStatus.Cancelled => "Cancelado",
+        _ => "-"
+    };
+
+    private static string ToSourceLabel(TicketSource source) => source switch
+    {
+        TicketSource.PublicPortal => "Portal publico",
+        TicketSource.MonitoringAuto => "Monitoreo",
+        TicketSource.InternalManual => "Interno",
+        _ => "Interno"
     };
 
     private static void SetSla(Ticket t, DateTime now)

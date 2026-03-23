@@ -1,4 +1,4 @@
-ï»¿@page
+@page
 @using HNControl.Web.Helpers
 @model HNControl.Web.Pages.ServiceOrders.IndexModel
 @{
@@ -7,8 +7,8 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">&Oacute;rdenes de servicio</h1>
-        <div class="text-muted small">Todas las &oacute;rdenes son visibles. Solo quien la toma puede editar.</div>
+        <h1 class="h4 m-0">Órdenes de servicio</h1>
+        <div class="text-muted small">Top 3 clientes recientes y backlog de atrasados paginado</div>
     </div>
 </div>
 
@@ -43,7 +43,7 @@
                 }
             </select>
         </div>
-        <div class="col-6 col-xl-1"><label class="form-label">Por p&aacute;gina</label><select class="form-select form-select-sm" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
+        <div class="col-6 col-xl-1"><label class="form-label">Por página</label><select class="form-select form-select-sm" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
         <div class="col-12 col-xl-2 d-flex gap-2 justify-content-start flex-wrap">
             <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
             <a class="btn btn-outline-secondary btn-sm" asp-page="/ServiceOrders/Index">Limpiar</a>
@@ -51,71 +51,117 @@
     </div>
 </form>
 
-@if (Model.Rows.Count == 0)
-{
-    <div class="alert alert-secondary">No hay &oacute;rdenes registradas.</div>
-}
-else
-{
-    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
-        @foreach (var r in Model.Rows)
+<div class="card shadow-soft hn-hover mb-3">
+    <div class="card-header fw-semibold">Últimos 3 clientes con órdenes</div>
+    <div class="card-body">
+        @if (!Model.RecentClientGroups.Any())
         {
-            var type = UiBadges.ServiceOrderTypeBadge(r.Type);
-            var status = UiBadges.ServiceOrderStatusBadge(r.Status);
-            var typeKey = (type.text ?? "").ToLowerInvariant();
-            var typeChip = typeKey.Contains("levantamiento")
-                ? "hn-chip-ref"
-                : typeKey.Contains("global")
-                    ? "hn-chip-neutral"
-                    : "hn-chip-type";
-            var statusKey = (status.text ?? "").ToLowerInvariant();
-            var statusChip = statusKey.Contains("final")
-                ? "hn-chip-status-closed"
-                : statusKey.Contains("rechaz")
-                    ? "hn-chip-status-down"
-                    : statusKey.Contains("proceso") || statusKey.Contains("revisi")
-                        ? "hn-chip-status-progress"
-                        : "hn-chip-type";
-            <div class="col d-flex">
-                <div class="card shadow-soft hn-hover w-100">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-bold fs-5 lh-sm">@r.Title</div>
-                                <div class="text-muted small">@r.Client</div>
+            <div class="text-muted">Sin actividad reciente.</div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var group in Model.RecentClientGroups)
+                {
+                    <div class="border rounded p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="fw-semibold">@group.Client</div>
+                            <div class="d-flex gap-2">
+                                <span class="hn-chip hn-chip-neutral">Órdenes: @group.Total</span>
+                                @if (group.Overdue > 0)
+                                {
+                                    <span class="hn-chip hn-chip-priority-critical">Atrasadas: @group.Overdue</span>
+                                }
                             </div>
-                            <div class="text-muted small">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
                         </div>
-                        <div class="mt-2 d-flex flex-wrap gap-1">
-                            <span class="hn-chip @typeChip">@type.text</span>
-                            <span class="hn-chip @statusChip">@status.text</span>
-                        </div>
-                        <div class="small mt-2 text-muted">Tomada por: @r.ClaimedBy</div>
-                        <div class="small text-muted">Entrega: @r.Due</div>
-                        <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
-                            @if (r.HasPdf)
+                        <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-2">
+                            @foreach (var r in group.Orders)
                             {
-                                <a class="btn btn-sm btn-outline-secondary" asp-page="/ServiceOrders/DownloadPdf" asp-route-id="@r.Id" target="_blank">Ver PDF</a>
-                            }
-                            @if (r.CanTake && !r.IsMine)
-                            {
-                                <form method="post" asp-page-handler="Take" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <button class="btn btn-sm btn-success" type="submit">Tomar</button>
-                                </form>
+                                var type = UiBadges.ServiceOrderTypeBadge(r.Type);
+                                var status = UiBadges.ServiceOrderStatusBadge(r.Status);
+                                <div class="col d-flex">
+                                    <div class="card border w-100">
+                                        <div class="card-body d-flex flex-column">
+                                            <div class="fw-semibold">@r.Title</div>
+                                            <div class="small text-muted">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd") · Entrega: @r.Due</div>
+                                            <div class="small text-muted">Tomada por: @r.ClaimedBy</div>
+                                            <div class="mt-2 d-flex gap-1 flex-wrap">
+                                                <span class="hn-chip hn-chip-type">@type.text</span>
+                                                <span class="hn-chip hn-chip-neutral">@status.text</span>
+                                            </div>
+                                            <div class="mt-auto pt-2 d-flex gap-2 flex-wrap">
+                                                <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
+                                                @if (r.HasPdf)
+                                                {
+                                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/ServiceOrders/DownloadPdf" asp-route-id="@r.Id" target="_blank">PDF</a>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             }
                         </div>
                     </div>
-                </div>
+                }
             </div>
         }
     </div>
-}
+</div>
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">Backlog de atrasados (otros clientes)</div>
+        <span class="text-muted small">@Model.TotalCount registro(s)</span>
+    </div>
+    <div class="card-body">
+        @if (Model.Rows.Count == 0)
+        {
+            <div class="alert alert-secondary mb-0">No hay órdenes atrasadas para este filtro.</div>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+                @foreach (var r in Model.Rows)
+                {
+                    var type = UiBadges.ServiceOrderTypeBadge(r.Type);
+                    var status = UiBadges.ServiceOrderStatusBadge(r.Status);
+                    <div class="col d-flex">
+                        <div class="card border w-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="fw-bold fs-6 lh-sm">@r.Title</div>
+                                <div class="text-muted small">@r.Client</div>
+                                <div class="small text-muted">Entrega: @r.Due</div>
+                                <div class="small text-muted">Tomada por: @r.ClaimedBy</div>
+                                <div class="mt-2 d-flex gap-1 flex-wrap">
+                                    <span class="hn-chip hn-chip-type">@type.text</span>
+                                    <span class="hn-chip hn-chip-status-down">@status.text</span>
+                                </div>
+                                <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
+                                    @if (r.HasPdf)
+                                    {
+                                        <a class="btn btn-sm btn-outline-secondary" asp-page="/ServiceOrders/DownloadPdf" asp-route-id="@r.Id" target="_blank">Ver PDF</a>
+                                    }
+                                    @if (r.CanTake && !r.IsMine)
+                                    {
+                                        <form method="post" asp-page-handler="Take" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@r.Id" />
+                                            <button class="btn btn-sm btn-success" type="submit">Tomar</button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
 
 <div class="d-flex justify-content-between align-items-center mt-3">
-    <div class="text-muted small">Total: @Model.TotalCount Â· P&aacute;gina @Model.Page de @Model.TotalPages</div>
+    <div class="text-muted small">Backlog atrasados · Página @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
         <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
         <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>

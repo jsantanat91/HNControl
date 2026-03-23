@@ -121,6 +121,7 @@
                         <form method="post" asp-page-handler="Create" class="row g-3">
                             <input asp-for="Input.ClientCode" type="hidden" />
                             <input asp-for="Input.Mode" type="hidden" />
+                            <input asp-for="Input.CreateContactIfMissing" type="hidden" />
 
                             <div class="col-md-6">
                                 <label class="form-label">Sucursal</label>
@@ -145,6 +146,24 @@
                             <div class="col-md-3">
                                 <label class="form-label">Asunto</label>
                                 <input asp-for="Input.Title" class="form-control" placeholder="Sin internet en sucursal..." />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Quien abre el ticket</label>
+                                <select id="publicContactSelect" asp-for="Input.ClientContactId" class="form-select">
+                                    <option value="">Otro contacto (captura manual)</option>
+                                    @foreach (var c in Model.ContactOptions)
+                                    {
+                                        var roleText = string.IsNullOrWhiteSpace(c.Role) ? "Contacto" : c.Role;
+                                        var label = $"{c.Name} ({roleText})";
+                                        if (c.IsPrimary)
+                                        {
+                                            label += " · Principal";
+                                        }
+                                        <option value="@c.Id" data-name="@c.Name" data-email="@c.Email" data-phone="@c.Phone">@label</option>
+                                    }
+                                </select>
+                                <div class="form-text">Si eliges "Otro contacto", al levantar ticket se agregará automáticamente a la lista del cliente.</div>
                             </div>
 
                             <div class="col-md-4">
@@ -200,11 +219,28 @@
                     : "Selecciona una sucursal para ver datos carrier (cuenta/IP).";
             }
         }
+        function syncPublicTicketContact() {
+            const sel = document.getElementById('publicContactSelect');
+            const nameInput = document.getElementById('Input_RequesterName');
+            const emailInput = document.getElementById('Input_RequesterEmail');
+            const phoneInput = document.getElementById('Input_RequesterPhone');
+            if (!sel || !nameInput || !emailInput || !phoneInput) return;
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt || !opt.value) return;
+            nameInput.value = opt.getAttribute('data-name') || '';
+            emailInput.value = opt.getAttribute('data-email') || '';
+            phoneInput.value = opt.getAttribute('data-phone') || '';
+        }
         document.addEventListener('DOMContentLoaded', function() {
             const sel = document.getElementById('publicContractSelect');
+            const contactSel = document.getElementById('publicContactSelect');
             if (!sel) return;
             sel.addEventListener('change', syncPublicTicketLocation);
+            if (contactSel) {
+                contactSel.addEventListener('change', syncPublicTicketContact);
+            }
             syncPublicTicketLocation();
+            syncPublicTicketContact();
         });
     </script>
 }

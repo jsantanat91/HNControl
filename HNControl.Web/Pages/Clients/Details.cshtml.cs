@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,10 @@ public class DetailsModel : PageModel
     }
 
     public Client? Client { get; set; }
+    public List<ClientContactRow> Contacts { get; set; } = new();
+
+    [BindProperty]
+    public NewContactInput ContactInput { get; set; } = new();
 
     public record ContractRow(
         Guid Id,
@@ -46,6 +51,16 @@ public class DetailsModel : PageModel
     public List<TicketRow> Tickets { get; set; } = new();
     public string PublicQuoteUrl { get; set; } = string.Empty;
     public string PublicTicketUrl { get; set; } = string.Empty;
+    public record ClientContactRow(Guid Id, string Name, string Email, string Phone, string Role, bool IsPrimary, DateTime UpdatedAt);
+
+    public class NewContactInput
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Role { get; set; } = "";
+        public bool IsPrimary { get; set; }
+    }
 
     public async Task OnGetAsync(Guid id)
     {
@@ -181,6 +196,97 @@ public class DetailsModel : PageModel
                 x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                 string.IsNullOrWhiteSpace(x.AssignedToName) ? "Sin asignar" : x.AssignedToName
             ))
+            .ToListAsync();
+
+        await LoadContactsAsync(id);
+    }
+
+    public async Task<IActionResult> OnPostAddContactAsync(Guid id)
+    {
+        var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == id);
+        if (client == null) return NotFound();
+
+        var name = (ContactInput.Name ?? "").Trim();
+        var email = (ContactInput.Email ?? "").Trim();
+        var phone = (ContactInput.Phone ?? "").Trim();
+        var role = (ContactInput.Role ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            TempData["ClientDetailsInfo"] = "El nombre del contacto es obligatorio.";
+            TempData["ClientDetailsInfoType"] = "danger";
+            return RedirectToPage(new { id });
+        }
+
+        var exists = await _db.ClientContacts.AnyAsync(c =>
+            c.ClientId == id
+            && c.Name.ToLower() == name.ToLower()
+            && c.Email.ToLower() == email.ToLower());
+
+        if (exists)
+        {
+            TempData["ClientDetailsInfo"] = "Ese contacto ya existe en el cliente.";
+            TempData["ClientDetailsInfoType"] = "warning";
+            return RedirectToPage(new { id });
+        }
+
+        if (ContactInput.IsPrimary)
+        {
+            var primaries = await _db.ClientContacts.Where(c => c.ClientId == id && c.IsPrimary).ToListAsync();
+            foreach (var p in primaries)
+                p.IsPrimary = false;
+        }
+
+        _db.ClientContacts.Add(new ClientContact
+        {
+            ClientId = id,
+            Name = name,
+            Email = email,
+            Phone = phone,
+            Role = role,
+            IsPrimary = ContactInput.IsPrimary,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+        TempData["ClientDetailsInfo"] = "Contacto agregado.";
+        TempData["ClientDetailsInfoType"] = "success";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDeleteContactAsync(Guid id, Guid contactId)
+    {
+        var contact = await _db.ClientContacts.FirstOrDefaultAsync(c => c.Id == contactId && c.ClientId == id);
+        if (contact == null)
+        {
+            TempData["ClientDetailsInfo"] = "Contacto no encontrado.";
+            TempData["ClientDetailsInfoType"] = "warning";
+            return RedirectToPage(new { id });
+        }
+
+        _db.ClientContacts.Remove(contact);
+        await _db.SaveChangesAsync();
+        TempData["ClientDetailsInfo"] = "Contacto eliminado.";
+        TempData["ClientDetailsInfoType"] = "success";
+        return RedirectToPage(new { id });
+    }
+
+    private async Task LoadContactsAsync(Guid clientId)
+    {
+        Contacts = await _db.ClientContacts
+            .AsNoTracking()
+            .Where(x => x.ClientId == clientId)
+            .OrderByDescending(x => x.IsPrimary)
+            .ThenBy(x => x.Name)
+            .Select(x => new ClientContactRow(
+                x.Id,
+                x.Name,
+                x.Email,
+                x.Phone,
+                x.Role,
+                x.IsPrimary,
+                x.UpdatedAt))
             .ToListAsync();
     }
 

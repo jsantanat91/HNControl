@@ -32,17 +32,8 @@ public static class KnowledgeCatalog
 {
     public static readonly string[] Categories =
     {
-        "Manuales Internos",
         "Accesos Plataformas",
-        "Procesos Operativos",
-        "Politicas y Cumplimiento",
-        "Plantillas",
-        "Redes y NOC",
-        "CCTV y Seguridad",
-        "ERP y CRM",
-        "RH y Administracion",
-        "Ventas y Comercial",
-        "General"
+        "Manuales Internos"
     };
 }
 
@@ -77,6 +68,12 @@ public class KnowledgeLink
     public string AttachmentOriginalFileName { get; set; } = "";
     public string AttachmentContentType { get; set; } = "";
     public long? AttachmentSizeBytes { get; set; }
+
+    public Guid? ClientId { get; set; }
+    public Client? Client { get; set; }
+
+    public Guid? ClientServiceContractId { get; set; }
+    public ClientServiceContract? ClientServiceContract { get; set; }
 
     // Acceso interno (secreto protegido)
     public string AccessUsername { get; set; } = "";

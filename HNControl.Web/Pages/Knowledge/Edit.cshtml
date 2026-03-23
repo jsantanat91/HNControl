@@ -1,4 +1,4 @@
-ï»¿@page "{id:guid}"
+@page "{id:guid}"
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Knowledge.EditModel
 @{
@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Editar documento</h1>
-        <div class="text-muted small">Version actual: @Model.Input.Version</div>
+        <div class="text-muted small">Versión actual: @Model.Input.Version</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Knowledge/Index">Volver</a>
@@ -23,12 +23,12 @@
         <input type="hidden" asp-for="Input.Id" />
 
         <div class="row g-3">
-            <div class="col-lg-6">
-                <label class="form-label">Titulo</label>
+            <div class="col-lg-7">
+                <label class="form-label">Título</label>
                 <input class="form-control" asp-for="Input.Title" />
             </div>
             <div class="col-lg-3">
-                <label class="form-label">Categoria</label>
+                <label class="form-label">Categoría</label>
                 <select class="form-select" asp-for="Input.Category">
                     @foreach (var c in Model.CategoryOptions)
                     {
@@ -36,37 +36,49 @@
                     }
                 </select>
             </div>
-            <div class="col-lg-3">
+            <div class="col-lg-2">
                 <label class="form-label">Tipo</label>
-                <select class="form-select" asp-for="Input.DocType" asp-items="Html.GetEnumSelectList<KnowledgeDocType>()"></select>
+                <select class="form-select" asp-for="Input.DocType">
+                    @foreach (var t in Model.TypeOptions)
+                    {
+                        var text = t == KnowledgeDocType.AccesoPlataforma ? "Acceso Plataforma" : "Manual Interno";
+                        <option value="@t">@text</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-lg-4">
+                <label class="form-label">Cliente (para accesos)</label>
+                <select id="knowledgeClientSelect" class="form-select" asp-for="Input.ClientId">
+                    <option value="">No aplica</option>
+                    @foreach (var c in Model.ClientOptions)
+                    {
+                        <option value="@c.Id">@c.Name (@c.Code)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-8">
+                <label class="form-label">Contrato ligado (opcional)</label>
+                <select id="knowledgeContractSelect" class="form-select" asp-for="Input.ClientServiceContractId">
+                    <option value="">Sin contrato</option>
+                    @foreach (var c in Model.ContractOptions)
+                    {
+                        <option value="@c.Id" data-client-id="@c.ClientId">@c.Label</option>
+                    }
+                </select>
             </div>
 
             <div class="col-lg-3">
                 <label class="form-label">Estado</label>
                 <select class="form-select" asp-for="Input.Status" asp-items="Html.GetEnumSelectList<KnowledgeStatus>()"></select>
             </div>
-            <div class="col-lg-3">
-                <label class="form-label">Responsable</label>
-                <input class="form-control" asp-for="Input.OwnerName" />
-            </div>
-            <div class="col-lg-3">
-                <label class="form-label">Revisor</label>
-                <input class="form-control" asp-for="Input.ReviewerName" />
-                <div class="form-text">Quien valida el documento antes o despues de publicarlo.</div>
-            </div>
-            <div class="col-lg-3">
-                <label class="form-label">Revision programada</label>
-                <input class="form-control" asp-for="Input.ReviewDueAt" type="date" />
-                <div class="form-text">Fecha para revisar si la info sigue vigente.</div>
-            </div>
-
-            <div class="col-12">
+            <div class="col-lg-9">
                 <label class="form-label">Resumen</label>
                 <input class="form-control" asp-for="Input.Description" />
             </div>
 
             <div class="col-12">
-                <label class="form-label">Contenido interno</label>
+                <label class="form-label">Contenido</label>
                 <textarea class="form-control" asp-for="Input.Body" rows="6"></textarea>
             </div>
 
@@ -89,29 +101,25 @@
                 </div>
             }
 
-            <div class="col-12">
-                <label class="form-label">Tags</label>
-                <input class="form-control" asp-for="Input.Tags" />
-            </div>
-
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <label class="form-label">Usuario de acceso</label>
                 <input class="form-control" asp-for="Input.AccessUsername" />
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 <label class="form-label">Secreto</label>
                 <input class="form-control" asp-for="Input.AccessSecret" />
-            </div>
-            <div class="col-lg-4 d-flex align-items-center pt-4">
-                <div class="form-check">
-                    <input class="form-check-input" asp-for="Input.IsPinned" />
-                    <label class="form-check-label" asp-for="Input.IsPinned">Fijar en listado</label>
-                </div>
             </div>
 
             <div class="col-12">
                 <label class="form-label">Notas de acceso</label>
-                <textarea class="form-control" asp-for="Input.AccessNotes" rows="4" placeholder="Multiples accesos (uno por linea):&#10;DVR 1 | usuario | password | nota&#10;DVR 2 | usuario | password | nota"></textarea>
+                <textarea class="form-control" asp-for="Input.AccessNotes" rows="3"></textarea>
+            </div>
+
+            <div class="col-12 d-flex align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.IsPinned" />
+                    <label class="form-check-label" asp-for="Input.IsPinned">Fijar en listado</label>
+                </div>
             </div>
         </div>
     </div>
@@ -124,4 +132,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function filterKnowledgeContracts() {
+            const clientSelect = document.getElementById('knowledgeClientSelect');
+            const contractSelect = document.getElementById('knowledgeContractSelect');
+            if (!clientSelect || !contractSelect) return;
+            const clientId = (clientSelect.value || '').toLowerCase();
+            const options = Array.from(contractSelect.options);
+            options.forEach((opt, idx) => {
+                if (idx === 0) {
+                    opt.hidden = false;
+                    opt.disabled = false;
+                    return;
+                }
+                const owner = (opt.getAttribute('data-client-id') || '').toLowerCase();
+                const visible = !!clientId && owner === clientId;
+                opt.hidden = !visible;
+                opt.disabled = !visible;
+            });
+            if (contractSelect.options[contractSelect.selectedIndex]?.hidden) {
+                contractSelect.value = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const clientSelect = document.getElementById('knowledgeClientSelect');
+            if (clientSelect) {
+                clientSelect.addEventListener('change', filterKnowledgeContracts);
+            }
+            filterKnowledgeContracts();
+        });
+    </script>
 }

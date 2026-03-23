@@ -62,6 +62,7 @@ public class Client
 
     // ✅ Contratos/servicios del cliente (múltiples por categoría)
     public List<ClientServiceContract> Contracts { get; set; } = new();
+    public List<ClientContact> Contacts { get; set; } = new();
 
     // ✅ Alias por compatibilidad (si algún Page viejo aún usa Client.Services)
     [NotMapped]
@@ -70,4 +71,28 @@ public class Client
         get => Contracts;
         set => Contracts = value ?? new();
     }
+}
+
+public class ClientContact
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ClientId { get; set; }
+    public Client? Client { get; set; }
+
+    [Required, MaxLength(180)]
+    public string Name { get; set; } = "";
+
+    [MaxLength(256)]
+    public string Email { get; set; } = "";
+
+    [MaxLength(60)]
+    public string Phone { get; set; } = "";
+
+    [MaxLength(120)]
+    public string Role { get; set; } = "";
+
+    public bool IsPrimary { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

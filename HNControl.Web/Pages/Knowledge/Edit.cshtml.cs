@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -29,15 +29,26 @@ public class EditModel : PageModel
     [BindProperty] public bool RemoveAttachment { get; set; }
 
     public IReadOnlyList<string> CategoryOptions => KnowledgeCatalog.Categories;
+    public IReadOnlyList<KnowledgeDocType> TypeOptions => new[]
+    {
+        KnowledgeDocType.AccesoPlataforma,
+        KnowledgeDocType.ManualInterno
+    };
+
+    public List<CreateModel.ClientPickVm> ClientOptions { get; set; } = new();
+    public List<CreateModel.ContractPickVm> ContractOptions { get; set; } = new();
     public bool HasAttachment { get; set; }
 
     public class InputModel
     {
         [Required] public Guid Id { get; set; }
         [Required, MaxLength(200)] public string Title { get; set; } = "";
-        [Required, MaxLength(100)] public string Category { get; set; } = "General";
-        [Required] public KnowledgeDocType DocType { get; set; } = KnowledgeDocType.ManualInterno;
+        [Required, MaxLength(100)] public string Category { get; set; } = "Accesos Plataformas";
+        [Required] public KnowledgeDocType DocType { get; set; } = KnowledgeDocType.AccesoPlataforma;
         [Required] public KnowledgeStatus Status { get; set; } = KnowledgeStatus.Publicado;
+
+        public Guid? ClientId { get; set; }
+        public Guid? ClientServiceContractId { get; set; }
 
         [MaxLength(600)] public string Url { get; set; } = "";
         [MaxLength(600)] public string Description { get; set; } = "";
@@ -59,6 +70,8 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
+        await LoadCatalogsAsync();
+
         var doc = await _db.KnowledgeLinks.FirstOrDefaultAsync(x => x.Id == id);
         if (doc == null) return NotFound();
 
@@ -69,6 +82,8 @@ public class EditModel : PageModel
             Category = doc.Category,
             DocType = doc.DocType,
             Status = doc.Status,
+            ClientId = doc.ClientId,
+            ClientServiceContractId = doc.ClientServiceContractId,
             Url = doc.Url,
             Description = doc.Description,
             Body = doc.Body,
@@ -90,6 +105,8 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        await LoadCatalogsAsync();
+
         if (!ModelState.IsValid)
             return Page();
 
@@ -97,9 +114,11 @@ public class EditModel : PageModel
         if (doc == null) return NotFound();
 
         doc.Title = (Input.Title ?? "").Trim();
-        doc.Category = (Input.Category ?? "General").Trim();
+        doc.Category = (Input.Category ?? "Accesos Plataformas").Trim();
         doc.DocType = Input.DocType;
         doc.Status = Input.Status;
+        doc.ClientId = Input.ClientId;
+        doc.ClientServiceContractId = Input.ClientServiceContractId;
         doc.Url = (Input.Url ?? "").Trim();
         doc.Description = (Input.Description ?? "").Trim();
         doc.Body = (Input.Body ?? "").Trim();
@@ -176,5 +195,28 @@ public class EditModel : PageModel
             return profileName;
 
         return User.Identity?.Name ?? "admin";
+    }
+
+    private async Task LoadCatalogsAsync()
+    {
+        ClientOptions = await _db.Clients
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .Select(c => new CreateModel.ClientPickVm { Id = c.Id, Name = c.Name, Code = c.ClientCode })
+            .ToListAsync();
+
+        ContractOptions = await _db.ClientServiceContracts
+            .AsNoTracking()
+            .Include(c => c.Client)
+            .OrderBy(c => c.Client!.Name)
+            .ThenBy(c => c.Branch)
+            .ThenBy(c => c.Label)
+            .Select(c => new CreateModel.ContractPickVm
+            {
+                Id = c.Id,
+                ClientId = c.ClientId,
+                Label = (string.IsNullOrWhiteSpace(c.Branch) ? "Sin sucursal" : c.Branch) + " - " + c.Label
+            })
+            .ToListAsync();
     }
 }

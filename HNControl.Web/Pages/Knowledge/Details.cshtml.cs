@@ -23,7 +23,10 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        Doc = await _db.KnowledgeLinks.FirstOrDefaultAsync(x => x.Id == id);
+        Doc = await _db.KnowledgeLinks
+            .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
+            .FirstOrDefaultAsync(x => x.Id == id);
         if (Doc == null) return NotFound();
 
         Doc.ViewCount += 1;

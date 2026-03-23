@@ -1,4 +1,4 @@
-ï»¿@page "{id:guid}"
+@page "{id:guid}"
 @using HNControl.Web.Helpers
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Knowledge.DetailsModel
@@ -16,18 +16,17 @@
 @{
     var status = UiBadges.KnowledgeStatusBadge(Model.Doc.Status);
     var type = UiBadges.KnowledgeTypeBadge(Model.Doc.DocType);
-    var isOverdue = Model.Doc.ReviewDueAt != null && Model.Doc.ReviewDueAt < DateTime.UtcNow && Model.Doc.Status != KnowledgeStatus.Archivado;
 }
 
 <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
     <div>
         <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge @type.css">@type.text</span>
+            <span class="badge @status.css">@status.text</span>
             @if (Model.Doc.IsPinned)
             {
                 <span class="badge rounded-pill text-bg-warning">Fijado</span>
             }
-            <span class="badge @type.css">@type.text</span>
-            <span class="badge @status.css">@status.text</span>
         </div>
         <h1 class="h4 m-0">@Model.Doc.Title</h1>
         <div class="text-muted small">@Model.Doc.Description</div>
@@ -83,41 +82,14 @@
         <div class="card shadow-sm hn-hover mb-3">
             <div class="card-header fw-semibold">Ficha</div>
             <div class="card-body small">
-                <div><b>Categoria:</b> @Model.Doc.Category</div>
-                <div><b>Version:</b> @Model.Doc.Version</div>
+                <div><b>Categoría:</b> @Model.Doc.Category</div>
+                <div><b>Cliente:</b> @(Model.Doc.Client?.Name ?? "-")</div>
+                <div><b>Contrato:</b> @(Model.Doc.ClientServiceContract?.Label ?? "-")</div>
+                <div><b>Versión:</b> @Model.Doc.Version</div>
                 <div><b>Responsable:</b> @(string.IsNullOrWhiteSpace(Model.Doc.OwnerName) ? "-" : Model.Doc.OwnerName)</div>
-                <div><b>Revisor:</b> @(string.IsNullOrWhiteSpace(Model.Doc.ReviewerName) ? "-" : Model.Doc.ReviewerName)</div>
                 <div><b>Actualizado:</b> @Model.Doc.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                 <div><b>Publicado:</b> @(Model.Doc.PublishedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
                 <div><b>Vistas:</b> @Model.Doc.ViewCount</div>
-                <div><b>Revision:</b>
-                    @if (Model.Doc.ReviewDueAt == null)
-                    {
-                        <span>-</span>
-                    }
-                    else if (isOverdue)
-                    {
-                        <span class="badge bg-danger">@Model.Doc.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-success">@Model.Doc.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm hn-hover mb-3">
-            <div class="card-header fw-semibold">Tags</div>
-            <div class="card-body d-flex flex-wrap gap-1">
-                @foreach (var tag in (Model.Doc.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                {
-                    <span class="badge rounded-pill bg-light text-dark border">@tag</span>
-                }
-                @if (string.IsNullOrWhiteSpace(Model.Doc.Tags))
-                {
-                    <span class="text-muted small">Sin tags.</span>
-                }
             </div>
         </div>
 
@@ -131,20 +103,8 @@
                     {
                         <div><b>Secreto:</b> @Model.SecretValue</div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(Model.Doc.AccessNotes))
-                    {
-                        <div class="mt-2"><b>Accesos adicionales:</b></div>
-                        <div class="d-flex flex-column gap-1 mt-1">
-                            @foreach (var line in Model.Doc.AccessNotes.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
-                            {
-                                <span class="badge bg-light text-dark border text-start">@line</span>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="mt-1"><b>Notas:</b> -</div>
-                    }
+                    <div class="mt-2"><b>Notas:</b></div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.Doc.AccessNotes) ? "-" : Model.Doc.AccessNotes)</div>
                 </div>
             </div>
         }
@@ -152,7 +112,7 @@
         @if (User.IsInRole(AppRoles.Admin))
         {
             <div class="card shadow-sm hn-hover">
-                <div class="card-header fw-semibold">Acciones rapidas</div>
+                <div class="card-header fw-semibold">Acciones</div>
                 <div class="card-body d-flex flex-wrap gap-2">
                     <form method="post" asp-page-handler="TogglePin" asp-route-id="@Model.Doc.Id">
                         <button class="btn btn-sm btn-outline-warning" type="submit">@(Model.Doc.IsPinned ? "Quitar fijado" : "Fijar")</button>

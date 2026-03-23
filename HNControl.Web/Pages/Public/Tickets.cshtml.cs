@@ -25,6 +25,7 @@ public class TicketsModel : PageModel
 
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
+    public List<ClientContactPick> ContactOptions { get; set; } = new();
     public Dictionary<Guid, string> ContractCarrierMap { get; set; } = new();
     public List<HistoryTicketRow> History { get; set; } = new();
     public string? Message { get; set; }
@@ -89,8 +90,8 @@ public class TicketsModel : PageModel
             return Page();
         }
 
-        if (string.IsNullOrWhiteSpace(Input.RequesterName)
-            || string.IsNullOrWhiteSpace(Input.RequesterEmail)
+        var hasSelectedContact = Input.ClientContactId.HasValue && Input.ClientContactId.Value != Guid.Empty;
+        if ((!hasSelectedContact && (string.IsNullOrWhiteSpace(Input.RequesterName) || string.IsNullOrWhiteSpace(Input.RequesterEmail)))
             || string.IsNullOrWhiteSpace(Input.Title)
             || string.IsNullOrWhiteSpace(Input.Description))
         {
@@ -113,7 +114,9 @@ public class TicketsModel : PageModel
                 PublicPriority.Medium => TicketPriority.Medium,
                 PublicPriority.Urge => TicketPriority.Critical,
                 _ => TicketPriority.Medium
-            });
+            },
+            Input.ClientContactId,
+            Input.CreateContactIfMissing);
 
         Success = true;
         Message = $"Ticket generado: {ticket.TicketNumber}. Te contactaremos pronto.";
@@ -122,7 +125,8 @@ public class TicketsModel : PageModel
         {
             ClientCode = code,
             Mode = "history",
-            Priority = PublicPriority.Medium
+            Priority = PublicPriority.Medium,
+            CreateContactIfMissing = true
         };
         await LoadClientAsync();
         await LoadHistoryAsync();
@@ -134,6 +138,7 @@ public class TicketsModel : PageModel
         var code = (Input.ClientCode ?? "").Trim().ToUpperInvariant();
         Client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.ClientCode == code);
         Contracts = new();
+        ContactOptions = new();
         ContractCarrierMap = new();
         if (Client == null) return;
 
@@ -160,6 +165,22 @@ public class TicketsModel : PageModel
                     .FirstOrDefault() ?? ""
             })
             .ToDictionaryAsync(x => x.ContractId, x => x.Summary);
+
+        ContactOptions = await _db.ClientContacts
+            .AsNoTracking()
+            .Where(c => c.ClientId == Client.Id)
+            .OrderByDescending(c => c.IsPrimary)
+            .ThenBy(c => c.Name)
+            .Select(c => new ClientContactPick
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Email = c.Email,
+                Phone = c.Phone,
+                Role = c.Role,
+                IsPrimary = c.IsPrimary
+            })
+            .ToListAsync();
     }
 
     private async Task LoadHistoryAsync()
@@ -227,6 +248,7 @@ public class TicketsModel : PageModel
     {
         public string ClientCode { get; set; } = "";
         public Guid? ContractId { get; set; }
+        public Guid? ClientContactId { get; set; }
         public PublicPriority Priority { get; set; } = PublicPriority.Medium;
         public string Mode { get; set; } = "new";
         public string RequesterName { get; set; } = "";
@@ -235,6 +257,7 @@ public class TicketsModel : PageModel
         public string? RequesterLocation { get; set; }
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
+        public bool CreateContactIfMissing { get; set; } = true;
     }
 
     public enum PublicPriority
@@ -252,5 +275,15 @@ public class TicketsModel : PageModel
         public DateTime CreatedAt { get; set; }
         public string Status { get; set; } = "";
         public string Priority { get; set; } = "";
+    }
+
+    public class ClientContactPick
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Role { get; set; } = "";
+        public bool IsPrimary { get; set; }
     }
 }

@@ -252,6 +252,25 @@ else
                                 </select>
                                 <input id="assignedName" asp-for="CreateInput.AssignedToName" type="hidden" />
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contacto cliente (opcional)</label>
+                                <select id="manualContactSelect" asp-for="CreateInput.ClientContactId" class="form-select">
+                                    <option value="">Captura manual</option>
+                                    @foreach (var c in Model.ContactOptions)
+                                    {
+                                        var contactLabel = c.Name + (string.IsNullOrWhiteSpace(c.Role) ? "" : $" ({c.Role})");
+                                        if (c.IsPrimary)
+                                        {
+                                            contactLabel += " · Principal";
+                                        }
+                                        <option value="@c.Id"
+                                                data-client-id="@c.ClientId"
+                                                data-name="@c.Name"
+                                                data-email="@c.Email"
+                                                data-phone="@c.Phone">@contactLabel</option>
+                                    }
+                                </select>
+                            </div>
                             <div class="col-md-3">
                                 <label class="form-label">Prioridad</label>
                                 <select asp-for="CreateInput.Priority" class="form-select">
@@ -267,15 +286,15 @@ else
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Contacto</label>
-                                <input asp-for="CreateInput.RequesterName" class="form-control" required />
+                                <input id="manualRequesterName" asp-for="CreateInput.RequesterName" class="form-control" required />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Correo</label>
-                                <input asp-for="CreateInput.RequesterEmail" class="form-control" required />
+                                <input id="manualRequesterEmail" asp-for="CreateInput.RequesterEmail" class="form-control" required />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Teléfono</label>
-                                <input asp-for="CreateInput.RequesterPhone" class="form-control" />
+                                <input id="manualRequesterPhone" asp-for="CreateInput.RequesterPhone" class="form-control" />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Ubicación</label>
@@ -409,6 +428,7 @@ else
         function filterContractsByClient() {
             const clientSelect = document.getElementById('manualClientSelect');
             const contractSelect = document.getElementById('manualContractSelect');
+            const contactSelect = document.getElementById('manualContactSelect');
             const locationInput = document.getElementById('manualLocationInput');
             if (!clientSelect || !contractSelect) return;
             const clientId = (clientSelect.value || '').toLowerCase();
@@ -427,7 +447,38 @@ else
             if (contractSelect.options[contractSelect.selectedIndex]?.hidden) {
                 contractSelect.value = '';
             }
+            if (contactSelect) {
+                const contactOptions = Array.from(contactSelect.options);
+                contactOptions.forEach((opt, idx) => {
+                    if (idx === 0) {
+                        opt.hidden = false;
+                        opt.disabled = false;
+                        return;
+                    }
+                    const owner = (opt.getAttribute('data-client-id') || '').toLowerCase();
+                    const visible = !!clientId && owner === clientId;
+                    opt.hidden = !visible;
+                    opt.disabled = !visible;
+                });
+                if (contactSelect.options[contactSelect.selectedIndex]?.hidden) {
+                    contactSelect.value = '';
+                }
+            }
+            applyManualContact();
             applyBranchLocation();
+        }
+
+        function applyManualContact() {
+            const contactSelect = document.getElementById('manualContactSelect');
+            const nameInput = document.getElementById('manualRequesterName');
+            const emailInput = document.getElementById('manualRequesterEmail');
+            const phoneInput = document.getElementById('manualRequesterPhone');
+            if (!contactSelect || !nameInput || !emailInput || !phoneInput) return;
+            const opt = contactSelect.options[contactSelect.selectedIndex];
+            if (!opt || !opt.value) return;
+            nameInput.value = opt.getAttribute('data-name') || '';
+            emailInput.value = opt.getAttribute('data-email') || '';
+            phoneInput.value = opt.getAttribute('data-phone') || '';
         }
 
         function applyBranchLocation() {
@@ -451,8 +502,12 @@ else
         document.addEventListener('DOMContentLoaded', function() {
             filterContractsByClient();
             const contractSelect = document.getElementById('manualContractSelect');
+            const contactSelect = document.getElementById('manualContactSelect');
             if (contractSelect) {
                 contractSelect.addEventListener('change', applyBranchLocation);
+            }
+            if (contactSelect) {
+                contactSelect.addEventListener('change', applyManualContact);
             }
 
             const detailModal = document.getElementById('ticketDetailModal');

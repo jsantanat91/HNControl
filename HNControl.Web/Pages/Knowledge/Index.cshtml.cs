@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -28,6 +28,8 @@ public class IndexModel : PageModel
         KnowledgeStatus Status,
         string Description,
         string OwnerName,
+        string ClientName,
+        string ContractLabel,
         string Tags,
         DateTime UpdatedAt,
         DateTime? ReviewDueAt,
@@ -51,10 +53,18 @@ public class IndexModel : PageModel
     public List<string> Categories { get; set; } = new();
     public List<string> Owners { get; set; } = new();
     public List<KnowledgeRow> Rows { get; set; } = new();
+    public IReadOnlyList<KnowledgeDocType> TypeOptions { get; } = new[]
+    {
+        KnowledgeDocType.AccesoPlataforma,
+        KnowledgeDocType.ManualInterno
+    };
 
     public async Task OnGetAsync()
     {
-        var baseQuery = _db.KnowledgeLinks.AsNoTracking();
+        var baseQuery = _db.KnowledgeLinks
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract);
 
         Stats = new StatBox
         {
@@ -65,12 +75,7 @@ public class IndexModel : PageModel
             ActualizadosSemana = await baseQuery.CountAsync(x => x.UpdatedAt >= DateTime.UtcNow.AddDays(-7))
         };
 
-        Categories = await baseQuery
-            .Select(x => x.Category)
-            .Where(x => x != "")
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync();
+        Categories = KnowledgeCatalog.Categories.ToList();
 
         Owners = await baseQuery
             .Select(x => x.OwnerName)
@@ -79,7 +84,7 @@ public class IndexModel : PageModel
             .OrderBy(x => x)
             .ToListAsync();
 
-        var q = baseQuery;
+        var q = baseQuery.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(Q))
         {
@@ -133,6 +138,8 @@ public class IndexModel : PageModel
                 x.Status,
                 x.Description,
                 x.OwnerName,
+                x.Client != null ? x.Client.Name : "-",
+                x.ClientServiceContract != null ? x.ClientServiceContract.Label : "-",
                 x.Tags,
                 x.UpdatedAt,
                 x.ReviewDueAt,

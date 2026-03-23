@@ -21,6 +21,8 @@ public class IndexModel : PageModel
 
     public record Row(Guid Id, string Title, string ClientName, string Responsible, DateTime StartDate, DateTime EstEnd, ProjectStatus Status, bool IsOverdue);
     public List<Row> Rows { get; set; } = new();
+    public record ClientGroup(string ClientName, int Total, int Overdue, List<Row> Projects);
+    public List<ClientGroup> Groups { get; set; } = new();
 
     public async Task OnGetAsync()
     {
@@ -72,5 +74,15 @@ public class IndexModel : PageModel
                 overdue
             );
         }).ToList();
+
+        Groups = Rows
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.ClientName) ? "Sin cliente" : x.ClientName)
+            .OrderBy(g => g.Key)
+            .Select(g => new ClientGroup(
+                g.Key,
+                g.Count(),
+                g.Count(x => x.IsOverdue),
+                g.OrderByDescending(x => x.StartDate).ToList()))
+            .ToList();
     }
 }

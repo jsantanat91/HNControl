@@ -1,4 +1,4 @@
-ï»¿@page
+@page
 @using HNControl.Web.Helpers
 @model HNControl.Web.Pages.Projects.IndexModel
 @{
@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Proyectos</h1>
-        <div class="text-muted small">SLA por fecha estimada + responsable</div>
+        <div class="text-muted small">Agrupados por cliente</div>
     </div>
 
     @if (User.IsInRole(AppRoles.Admin))
@@ -28,7 +28,7 @@
             <input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
         </div>
         <div class="col-md-2">
-            <label class="form-label">Por p&aacute;gina</label>
+            <label class="form-label">Por página</label>
             <select class="form-select" name="PageSize">
                 @foreach (var s in new[] { 10, 20, 50, 100 })
                 {
@@ -43,48 +43,58 @@
     </div>
 </form>
 
-@if (!Model.Rows.Any())
+@if (!Model.Groups.Any())
 {
     <div class="alert alert-light border">No hay proyectos para los filtros seleccionados.</div>
 }
 else
 {
-    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
-        @foreach (var p in Model.Rows)
+    <div class="d-flex flex-column gap-3">
+        @foreach (var group in Model.Groups)
         {
-            var st = UiBadges.ProjectStatusBadge(p.Status);
-            var sla = UiBadges.ProjectSlaBadge(p.Status, p.EstEnd);
-            var stKey = (st.text ?? "").ToLowerInvariant();
-            var stChip = stKey.Contains("cerr")
-                ? "hn-chip-status-closed"
-                : stKey.Contains("abier")
-                    ? "hn-chip-type"
-                    : "hn-chip-neutral";
-            var slaKey = (sla.text ?? "").ToLowerInvariant();
-            var slaChip = slaKey.Contains("venc")
-                ? "hn-chip-status-down"
-                : slaKey.Contains("riesgo")
-                    ? "hn-chip-status-progress"
-                    : "hn-chip-status-up";
-            <div class="col d-flex">
-                <div class="card shadow-soft hn-hover w-100">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div class="fw-bold fs-5 lh-sm">@p.Title</div>
-                            <span class="hn-chip @stChip">@st.text</span>
-                        </div>
-                        <div class="small text-muted mt-1">Cliente: @p.ClientName</div>
-                        <div class="small text-muted">Responsable: @p.Responsible</div>
-                        <div class="small mt-2">Inicio: @p.StartDate.ToString("yyyy-MM-dd")</div>
-                        <div class="small">Estimado: @p.EstEnd.ToString("yyyy-MM-dd")</div>
-                        <div class="mt-2"><span class="hn-chip @slaChip">@sla.text</span></div>
-                        <div class="mt-auto pt-3">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
-                            @if (User.IsInRole(AppRoles.Admin))
-                            {
-                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Edit" asp-route-id="@p.Id">Editar</a>
-                            }
-                        </div>
+            <div class="card shadow-soft hn-hover">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">@group.ClientName</div>
+                    <div class="d-flex gap-2">
+                        <span class="hn-chip hn-chip-neutral">Total: @group.Total</span>
+                        @if (group.Overdue > 0)
+                        {
+                            <span class="hn-chip hn-chip-priority-critical">Atrasados: @group.Overdue</span>
+                        }
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+                        @foreach (var p in group.Projects)
+                        {
+                            var st = UiBadges.ProjectStatusBadge(p.Status);
+                            var sla = UiBadges.ProjectSlaBadge(p.Status, p.EstEnd);
+                            var stKey = (st.text ?? "").ToLowerInvariant();
+                            var stChip = stKey.Contains("cerr") ? "hn-chip-status-closed" : "hn-chip-type";
+                            var slaKey = (sla.text ?? "").ToLowerInvariant();
+                            var slaChip = slaKey.Contains("venc") ? "hn-chip-status-down" : slaKey.Contains("riesgo") ? "hn-chip-status-progress" : "hn-chip-status-up";
+                            <div class="col d-flex">
+                                <div class="card border w-100">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="fw-bold fs-6 lh-sm">@p.Title</div>
+                                        <div class="small text-muted">Responsable: @p.Responsible</div>
+                                        <div class="small text-muted">Inicio: @p.StartDate.ToString("yyyy-MM-dd")</div>
+                                        <div class="small text-muted">Estimado: @p.EstEnd.ToString("yyyy-MM-dd")</div>
+                                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                                            <span class="hn-chip @stChip">@st.text</span>
+                                            <span class="hn-chip @slaChip">@sla.text</span>
+                                        </div>
+                                        <div class="mt-auto pt-3">
+                                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
+                                            @if (User.IsInRole(AppRoles.Admin))
+                                            {
+                                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Edit" asp-route-id="@p.Id">Editar</a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -93,7 +103,7 @@ else
 }
 
 <div class="d-flex justify-content-between align-items-center mt-3">
-    <div class="text-muted small">Total: @Model.TotalCount Â· P&aacute;gina @Model.Page de @Model.TotalPages</div>
+    <div class="text-muted small">Total: @Model.TotalCount · Página @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
         <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")"
            asp-page="/Projects/Index"

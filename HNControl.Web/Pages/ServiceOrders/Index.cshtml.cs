@@ -62,6 +62,8 @@ public class IndexModel : PageModel
         bool HasPdf);
 
     public List<Row> Rows { get; set; } = new();
+    public record ClientOrderGroup(string Client, int Total, int Overdue, List<Row> Orders);
+    public List<ClientOrderGroup> RecentClientGroups { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -97,15 +99,11 @@ public class IndexModel : PageModel
         if (Type.HasValue)
             q = q.Where(o => o.Type == Type.Value);
 
-        TotalCount = await q.CountAsync();
-
-        var orders = await q
+        var allRows = await q
             .OrderByDescending(o => o.CreatedAt)
-            .Skip((Page - 1) * PageSize)
-            .Take(PageSize)
             .ToListAsync();
 
-        Rows = orders.Select(o =>
+        var normalized = allRows.Select(o =>
         {
             var closed = o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
             var isMine = o.ClaimedByUserId == userId;
@@ -126,6 +124,36 @@ public class IndexModel : PageModel
                 !string.IsNullOrWhiteSpace(o.PdfStoragePath)
             );
         }).ToList();
+
+        var orderedClientNames = normalized
+            .GroupBy(x => x.Client)
+            .OrderByDescending(g => g.Max(x => x.CreatedAt))
+            .Select(g => g.Key)
+            .ToList();
+
+        var recentClients = orderedClientNames.Take(3).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        RecentClientGroups = normalized
+            .Where(x => recentClients.Contains(x.Client))
+            .GroupBy(x => x.Client)
+            .OrderByDescending(g => g.Max(x => x.CreatedAt))
+            .Select(g => new ClientOrderGroup(
+                g.Key,
+                g.Count(),
+                g.Count(IsOverdue),
+                g.OrderByDescending(x => x.CreatedAt).Take(10).ToList()))
+            .ToList();
+
+        var overdueBacklog = normalized
+            .Where(x => !recentClients.Contains(x.Client) && IsOverdue(x))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+
+        TotalCount = overdueBacklog.Count;
+        Rows = overdueBacklog
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
 
         Info = TempData["Info"] as string;
         return Page();
@@ -164,5 +192,17 @@ public class IndexModel : PageModel
 
         TempData["Info"] = "Orden tomada. Ya puedes editarla.";
         return RedirectToPage("/ServiceOrders/Work", new { id = order.Id });
+    }
+
+    private static bool IsOverdue(Row row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Due) || row.Due == "-")
+            return false;
+
+        if (!DateTime.TryParse(row.Due, out var due))
+            return false;
+
+        var isClosed = row.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
+        return !isClosed && due.Date < DateTime.Today;
     }
 }

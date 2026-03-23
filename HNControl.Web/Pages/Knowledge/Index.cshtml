@@ -1,4 +1,4 @@
-ï»¿@page
+@page
 @using HNControl.Web.Helpers
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Knowledge.IndexModel
@@ -9,8 +9,8 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Base de conocimiento</h1>
-        <div class="text-muted small">Manuales, accesos, procesos y documentos internos</div>
+        <h1 class="h4 m-0">Documentos</h1>
+        <div class="text-muted small">Accesos de plataforma por cliente/contrato y manuales internos</div>
     </div>
 
     @if (User.IsInRole(AppRoles.Admin))
@@ -30,10 +30,10 @@
         <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Borradores</div><div class="h4 m-0 text-warning">@Model.Stats.Borradores</div></div></div>
     </div>
     <div class="col-md-6 col-xl-2">
-        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Revision vencida</div><div class="h4 m-0 text-danger">@Model.Stats.Vencidos</div></div></div>
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Revisión vencida</div><div class="h4 m-0 text-danger">@Model.Stats.Vencidos</div></div></div>
     </div>
     <div class="col-md-6 col-xl-4">
-        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Actualizados (7 dias)</div><div class="h4 m-0">@Model.Stats.ActualizadosSemana</div></div></div>
+        <div class="card shadow-sm hn-hover h-100"><div class="card-body"><div class="text-muted small">Actualizados (7 días)</div><div class="h4 m-0">@Model.Stats.ActualizadosSemana</div></div></div>
     </div>
 </div>
 
@@ -41,11 +41,11 @@
     <div class="card-body">
         <div class="row g-2">
             <div class="col-lg-3">
-                <input class="form-control" name="Q" value="@Model.Q" placeholder="Buscar por titulo, tag o contenido" />
+                <input class="form-control" name="Q" value="@Model.Q" placeholder="Buscar por título, tag o contenido" />
             </div>
             <div class="col-lg-2">
                 <select class="form-select" name="Category">
-                    <option value="">Categoria</option>
+                    <option value="">Categoría</option>
                     @foreach (var c in Model.Categories)
                     {
                         <option value="@c" selected="@(Model.Category == c)">@c</option>
@@ -55,9 +55,10 @@
             <div class="col-lg-2">
                 <select class="form-select" name="Type">
                     <option value="">Tipo</option>
-                    @foreach (var t in Html.GetEnumSelectList<KnowledgeDocType>())
+                    @foreach (var t in Model.TypeOptions)
                     {
-                        <option value="@t.Value" selected="@(Model.Type == t.Value)">@t.Text</option>
+                        var text = t == KnowledgeDocType.AccesoPlataforma ? "Acceso Plataforma" : "Manual Interno";
+                        <option value="@t" selected="@(Model.Type == t.ToString())">@text</option>
                     }
                 </select>
             </div>
@@ -82,110 +83,66 @@
             <div class="col-lg-1">
                 <button class="btn btn-primary w-100" type="submit">Filtrar</button>
             </div>
-            <div class="col-lg-3">
-                <input class="form-control" name="Tag" value="@Model.Tag" placeholder="Tag (ej: vpn, crm, fortinet)" />
-            </div>
-            <div class="col-lg-2 d-flex align-items-center">
-                <input class="form-check-input me-2" type="checkbox" name="PinnedOnly" value="true" checked="@Model.PinnedOnly" id="pinnedOnly" />
-                <label for="pinnedOnly" class="form-check-label">Solo fijados</label>
-            </div>
-            <div class="col-lg-2 d-flex align-items-center">
-                <input class="form-check-input me-2" type="checkbox" name="DueOnly" value="true" checked="@Model.DueOnly" id="dueOnly" />
-                <label for="dueOnly" class="form-check-label">Solo vencidos</label>
-            </div>
-            <div class="col-lg-2">
-                <a class="btn btn-outline-secondary w-100" asp-page="/Knowledge/Index">Limpiar</a>
-            </div>
         </div>
     </div>
 </form>
 
-<div class="card shadow-soft hn-hover">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Titulo</th>
-                        <th>Categoria</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>Responsable</th>
-                        <th>Revision</th>
-                        <th class="text-nowrap">Vistas</th>
-                        <th class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @if (!Model.Rows.Any())
-                {
-                    <tr><td colspan="8" class="text-muted p-3">No hay documentos con los filtros actuales.</td></tr>
-                }
-                else
-                {
-                    foreach (var d in Model.Rows)
-                    {
-                        var status = UiBadges.KnowledgeStatusBadge(d.Status);
-                        var type = UiBadges.KnowledgeTypeBadge(d.DocType);
-                        var isOverdue = d.ReviewDueAt != null && d.ReviewDueAt < DateTime.UtcNow && d.Status != KnowledgeStatus.Archivado;
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-light border">No hay documentos con los filtros actuales.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var d in Model.Rows)
+        {
+            var status = UiBadges.KnowledgeStatusBadge(d.Status);
+            var type = UiBadges.KnowledgeTypeBadge(d.DocType);
+            <div class="col-12 col-lg-6 col-xxl-4">
+                <div class="card shadow-soft hn-hover h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <div class="fw-semibold">@d.Title</div>
+                                <div class="small text-muted">v@d.Version · @d.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+                            @if (d.IsPinned)
+                            {
+                                <span class="badge rounded-pill text-bg-warning">Fijado</span>
+                            }
+                        </div>
 
-                        <tr>
-                            <td>
-                                <div class="fw-semibold d-flex align-items-center gap-2">
-                                    @if (d.IsPinned)
-                                    {
-                                        <span class="badge rounded-pill text-bg-warning">Fijado</span>
-                                    }
-                                    @d.Title
-                                </div>
-                                <div class="text-muted small">@d.Description</div>
-                                <div class="small mt-1 d-flex flex-wrap gap-1">
-                                    @foreach (var tag in (d.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Take(6))
-                                    {
-                                        <span class="badge rounded-pill bg-light text-dark border">@tag</span>
-                                    }
-                                </div>
-                                <div class="text-muted small mt-1">v@d.Version Â· Act: @d.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                            </td>
-                            <td>@d.Category</td>
-                            <td><span class="badge @type.css">@type.text</span></td>
-                            <td><span class="badge @status.css">@status.text</span></td>
-                            <td>@(string.IsNullOrWhiteSpace(d.OwnerName) ? "-" : d.OwnerName)</td>
-                            <td>
-                                @if (d.ReviewDueAt == null)
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                                else if (isOverdue)
-                                {
-                                    <span class="badge bg-danger">@d.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">@d.ReviewDueAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
-                                }
-                            </td>
-                            <td class="text-nowrap">@d.ViewCount</td>
-                            <td class="text-end text-nowrap">
-                                @if (d.HasAttachment)
-                                {
-                                    <span class="badge rounded-pill bg-info text-dark me-1">Archivo</span>
-                                }
-                                @if (d.HasUrl)
-                                {
-                                    <span class="badge rounded-pill bg-primary me-1">Link</span>
-                                }
-                                @if (d.HasAccessData)
-                                {
-                                    <span class="badge rounded-pill bg-danger">Acceso</span>
-                                }
-                                <a class="btn btn-sm btn-outline-primary ms-2" asp-page="/Knowledge/Details" asp-route-id="@d.Id">Abrir</a>
-                            </td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </div>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <span class="badge @type.css">@type.text</span>
+                            <span class="badge @status.css">@status.text</span>
+                            @if (d.HasAttachment)
+                            {
+                                <span class="badge bg-success">PDF/Archivo</span>
+                            }
+                            @if (d.HasUrl)
+                            {
+                                <span class="badge bg-primary">Link</span>
+                            }
+                        </div>
+
+                        <div class="small text-muted">@d.Description</div>
+                        <div class="small mt-2">Cliente: <b>@d.ClientName</b></div>
+                        <div class="small text-muted">Contrato: @d.ContractLabel</div>
+                        <div class="small text-muted">Responsable: @(string.IsNullOrWhiteSpace(d.OwnerName) ? "-" : d.OwnerName)</div>
+
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            @foreach (var tag in (d.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Take(4))
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border">@tag</span>
+                            }
+                        </div>
+
+                        <div class="mt-auto pt-3 d-flex justify-content-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Knowledge/Details" asp-route-id="@d.Id">Abrir</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
-</div>
+}
