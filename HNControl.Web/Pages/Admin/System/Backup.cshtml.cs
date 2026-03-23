@@ -32,10 +32,10 @@ public class BackupModel : PageModel
 
     public async Task<IActionResult> OnPostDownloadAsync()
     {
-        var conn = _cfg.GetConnectionString("DefaultConnection");
+        var conn = ResolveConnectionString();
         if (string.IsNullOrWhiteSpace(conn))
         {
-            Error = "No se encontró la cadena de conexión DefaultConnection.";
+            Error = "No se encontró una cadena de conexión válida (DefaultConnection / Default / Postgres).";
             return Page();
         }
 
@@ -147,10 +147,10 @@ public class BackupModel : PageModel
             return Page();
         }
 
-        var conn = _cfg.GetConnectionString("DefaultConnection");
+        var conn = ResolveConnectionString();
         if (string.IsNullOrWhiteSpace(conn))
         {
-            Error = "No se encontró la cadena de conexión DefaultConnection.";
+            Error = "No se encontró una cadena de conexión válida (DefaultConnection / Default / Postgres).";
             return Page();
         }
 
@@ -261,6 +261,29 @@ public class BackupModel : PageModel
         AddFromBase(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFilesX86), "PostgreSQL"));
 
         return candidates.OrderByDescending(x => x).FirstOrDefault();
+    }
+
+    private string? ResolveConnectionString()
+    {
+        var c1 = _cfg.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrWhiteSpace(c1)) return c1;
+
+        var c2 = _cfg.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(c2)) return c2;
+
+        var c3 = _cfg.GetConnectionString("Postgres");
+        if (!string.IsNullOrWhiteSpace(c3)) return c3;
+
+        var c4 = _cfg["ConnectionStrings:DefaultConnection"];
+        if (!string.IsNullOrWhiteSpace(c4)) return c4;
+
+        var c5 = _cfg["ConnectionStrings:Default"];
+        if (!string.IsNullOrWhiteSpace(c5)) return c5;
+
+        var c6 = _cfg["ConnectionStrings:Postgres"];
+        if (!string.IsNullOrWhiteSpace(c6)) return c6;
+
+        return null;
     }
 }
 

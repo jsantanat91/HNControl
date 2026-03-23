@@ -87,6 +87,7 @@ public class Project
 
     // Accesos estructurados (opcional)
     public List<ProjectAccess> Accesses { get; set; } = new();
+    public List<ProjectActivity> Activities { get; set; } = new();
 }
 
 public class ProjectAccess
@@ -111,6 +112,25 @@ public class ProjectAccess
 
     [MaxLength(800)]
     public string Notes { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class ProjectActivity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ProjectId { get; set; }
+    public Project? Project { get; set; }
+
+    [MaxLength(200)]
+    public string AssignedToName { get; set; } = "";
+
+    [MaxLength(1000)]
+    public string Description { get; set; } = "";
+
+    public int PlannedDays { get; set; } = 1;
+    public int SortOrder { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

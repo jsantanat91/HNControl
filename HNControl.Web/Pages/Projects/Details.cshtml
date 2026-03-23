@@ -19,7 +19,7 @@
             <span class="badge @Model.SlaCss">@Model.SlaLabel</span>
             <span class="badge @(Model.Project.Status == ProjectStatus.Closed ? "bg-secondary" : "bg-success")">@(Model.Project.Status == ProjectStatus.Closed ? "Cerrado" : "Abierto")</span>
         </div>
-        <div class="text-muted small mt-1">Inicio: @Model.Project.StartDate.ToString("yyyy-MM-dd") · Estimado: @Model.Project.EstimatedEndDate.ToString("yyyy-MM-dd")</div>
+        <div class="text-muted small mt-1">Inicio: @Model.Project.StartDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm") · Estimado: @Model.Project.EstimatedEndDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
     </div>
 
     <div class="d-flex gap-2">
@@ -64,15 +64,72 @@
             <div class="card-header fw-semibold">Gantt (calendario)</div>
             <div class="card-body">
                 <div class="small text-muted mb-2">
-                    Avance por tiempo: @Model.GanttProgressPercent% (@Model.GanttElapsedDays / @Model.GanttTotalDays días)
+                    Avance por tiempo: @Model.GanttProgressPercent% (@Model.GanttElapsedDays / @Model.GanttTotalDays horas)
                 </div>
                 <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Model.GanttProgressPercent">
                     <div class="progress-bar" style="width:@Model.GanttProgressPercent%"></div>
                 </div>
                 <div class="d-flex justify-content-between small text-muted mt-2">
-                    <span>Inicio: @Model.Project.StartDate.ToString("yyyy-MM-dd")</span>
-                    <span>Fin estimado: @Model.Project.EstimatedEndDate.ToString("yyyy-MM-dd")</span>
+                    <span>Inicio: @Model.Project.StartDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                    <span>Fin estimado: @Model.Project.EstimatedEndDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
                 </div>
+
+                <hr />
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Actividades planificadas</div>
+                </div>
+
+                @if (User.IsInRole(AppRoles.Admin))
+                {
+                    <form method="post" asp-page-handler="AddActivity" class="row g-2 mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="InputActivity.ProjectId" value="@Model.Project.Id" />
+                        <div class="col-md-3">
+                            <input class="form-control form-control-sm" name="InputActivity.AssignedTo" placeholder="Asignado a" />
+                        </div>
+                        <div class="col-md-7">
+                            <input class="form-control form-control-sm" name="InputActivity.Description" placeholder="Actividad" />
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <input class="form-control form-control-sm" name="InputActivity.PlannedDays" type="number" min="1" max="365" value="1" />
+                            <button class="btn btn-sm btn-primary" type="submit">Agregar</button>
+                        </div>
+                    </form>
+                }
+
+                @if (!Model.Activities.Any())
+                {
+                    <div class="small text-muted">Sin actividades capturadas.</div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var a in Model.Activities)
+                        {
+                            <div class="border rounded p-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold">@a.AssignedTo</div>
+                                        <div class="small">@a.Description</div>
+                                        <div class="small text-muted">Dias @a.StartDay - @a.EndDay (@a.PlannedDays dias)</div>
+                                    </div>
+                                    @if (User.IsInRole(AppRoles.Admin))
+                                    {
+                                        <form method="post" asp-page-handler="DeleteActivity" class="ms-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@Model.Project.Id" />
+                                            <input type="hidden" name="activityId" value="@a.Id" />
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Quitar</button>
+                                        </form>
+                                    }
+                                </div>
+                                <div class="progress mt-2" style="height:10px;">
+                                    <div class="progress-bar bg-info" style="margin-left:@a.OffsetPercent%; width:@a.WidthPercent%;"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
 

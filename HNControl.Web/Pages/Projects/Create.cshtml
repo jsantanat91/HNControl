@@ -45,13 +45,13 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Fecha inicio</label>
-                <input class="form-control" asp-for="Input.StartDate" type="date" />
+                <label class="form-label">Fecha y hora de inicio</label>
+                <input class="form-control" asp-for="Input.StartDate" asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Termino estimado (SLA)</label>
-                <input class="form-control" asp-for="Input.EstimatedEndDate" type="date" />
+                <label class="form-label">Fecha y hora de termino estimado (SLA)</label>
+                <input class="form-control" asp-for="Input.EstimatedEndDate" asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" />
             </div>
 
             <div class="col-12">
@@ -77,6 +77,24 @@
             <div class="col-12">
                 <label class="form-label">Comentarios adicionales (opcional)</label>
                 <textarea class="form-control" asp-for="Input.Comments" rows="2"></textarea>
+            </div>
+
+            <div class="col-12"><hr class="my-1" /></div>
+            <div class="col-12">
+                <div class="fw-semibold">Actividad inicial para Gantt (opcional)</div>
+                <div class="text-muted small">Puedes cargar una actividad desde aqui y luego agregar mas en la vista del proyecto.</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Asignado a</label>
+                <input class="form-control" asp-for="Input.InitialActivityAssignedTo" placeholder="Tecnico responsable" />
+            </div>
+            <div class="col-md-7">
+                <label class="form-label">Actividad</label>
+                <input class="form-control" asp-for="Input.InitialActivityDescription" placeholder="Descripcion de actividad" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tiempo (dias)</label>
+                <input class="form-control" asp-for="Input.InitialActivityDays" type="number" min="1" max="365" />
             </div>
         </div>
     </div>

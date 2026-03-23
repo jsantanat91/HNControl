@@ -1,4 +1,4 @@
-@page
+ï»¿@page
 @using HNControl.Web.Helpers
 @model HNControl.Web.Pages.Projects.IndexModel
 @{
@@ -28,7 +28,7 @@
             <input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
         </div>
         <div class="col-md-2">
-            <label class="form-label">Por página</label>
+            <label class="form-label">Por p&aacute;gina</label>
             <select class="form-select" name="PageSize">
                 @foreach (var s in new[] { 10, 20, 50, 100 })
                 {
@@ -103,7 +103,7 @@ else
 }
 
 <div class="d-flex justify-content-between align-items-center mt-3">
-    <div class="text-muted small">Total: @Model.TotalCount · Página @Model.Page de @Model.TotalPages</div>
+    <div class="text-muted small">Total: @Model.TotalCount &middot; P&aacute;gina @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
         <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")"
            asp-page="/Projects/Index"
@@ -119,3 +119,4 @@ else
            asp-route-Page="@(Model.Page + 1)">Siguiente</a>
     </div>
 </div>
+

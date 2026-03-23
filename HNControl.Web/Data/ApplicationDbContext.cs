@@ -23,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAccess> ProjectAccesses => Set<ProjectAccess>();
+    public DbSet<ProjectActivity> ProjectActivities => Set<ProjectActivity>();
 
     public DbSet<KnowledgeLink> KnowledgeLinks => Set<KnowledgeLink>();
 
@@ -294,6 +295,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .HasPrincipalKey(p => p.UserId);
 
             e.HasMany(x => x.Accesses).WithOne(a => a.Project!).HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Activities).WithOne(a => a.Project!).HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ProjectAccess>(e =>
@@ -303,6 +305,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.HostOrUrl).HasMaxLength(300);
             e.Property(x => x.Username).HasMaxLength(200);
             e.Property(x => x.PasswordProtected).HasMaxLength(2000);
+        });
+
+        b.Entity<ProjectActivity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.AssignedToName).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.HasIndex(x => new { x.ProjectId, x.SortOrder });
         });
 
         b.Entity<KnowledgeLink>(e =>

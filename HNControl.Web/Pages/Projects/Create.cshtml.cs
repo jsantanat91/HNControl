@@ -40,11 +40,11 @@ public class CreateModel : PageModel
         [MaxLength(200)]
         public string Title { get; set; } = "";
 
-        [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
+        [DataType(DataType.DateTime)]
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
-        [DataType(DataType.Date)]
-        public DateTime? EstimatedEndDate { get; set; } = DateTime.UtcNow.Date.AddDays(7);
+        [DataType(DataType.DateTime)]
+        public DateTime? EstimatedEndDate { get; set; } = DateTime.UtcNow.AddDays(7);
 
         [MaxLength(400)]
         public string Objective { get; set; } = "";
@@ -56,6 +56,13 @@ public class CreateModel : PageModel
         public string AccessNotes { get; set; } = "";
         public string Comments { get; set; } = "";
         public List<Guid> ContractIds { get; set; } = new();
+
+        [MaxLength(200)]
+        public string InitialActivityAssignedTo { get; set; } = "";
+        [MaxLength(1000)]
+        public string InitialActivityDescription { get; set; } = "";
+        [Range(1, 365)]
+        public int? InitialActivityDays { get; set; }
     }
 
     public async Task OnGetAsync(Guid? clientId = null)
@@ -86,8 +93,8 @@ public class CreateModel : PageModel
 
         var end = Input.EstimatedEndDate ?? Input.StartDate.AddDays(7);
 
-        var startUtc = TimeUtil.UtcDate(Input.StartDate);
-        var endUtc = TimeUtil.UtcDate(end);
+        var startUtc = TimeUtil.UtcDateTime(Input.StartDate);
+        var endUtc = TimeUtil.UtcDateTime(end);
 
         if (endUtc < startUtc)
         {
@@ -118,6 +125,21 @@ public class CreateModel : PageModel
 
         _db.Projects.Add(p);
         await _db.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(Input.InitialActivityDescription))
+        {
+            _db.ProjectActivities.Add(new ProjectActivity
+            {
+                ProjectId = p.Id,
+                AssignedToName = string.IsNullOrWhiteSpace(Input.InitialActivityAssignedTo)
+                    ? (await _db.EmployeeProfiles.AsNoTracking().Where(x => x.UserId == Input.ResponsibleUserId).Select(x => x.FullName).FirstOrDefaultAsync() ?? Input.ResponsibleUserId)
+                    : Input.InitialActivityAssignedTo.Trim(),
+                Description = Input.InitialActivityDescription.Trim(),
+                PlannedDays = Math.Max(1, Input.InitialActivityDays ?? 1),
+                SortOrder = 1
+            });
+            await _db.SaveChangesAsync();
+        }
 
         await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
 

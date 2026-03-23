@@ -41,11 +41,11 @@ public class EditModel : PageModel
         [MaxLength(200)]
         public string Title { get; set; } = "";
 
-        [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
+        [DataType(DataType.DateTime)]
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
-        [DataType(DataType.Date)]
-        public DateTime? EstimatedEndDate { get; set; } = DateTime.UtcNow.Date.AddDays(7);
+        [DataType(DataType.DateTime)]
+        public DateTime? EstimatedEndDate { get; set; } = DateTime.UtcNow.AddDays(7);
 
         [Required] public ProjectStatus Status { get; set; } = ProjectStatus.Open;
 
@@ -77,8 +77,8 @@ public class EditModel : PageModel
             ClientId = p.ClientId,
             ResponsibleUserId = p.AssignedUserId,
             Title = p.Title,
-            StartDate = p.StartDate.Date,
-            EstimatedEndDate = p.EstimatedEndDate.Date,
+            StartDate = p.StartDate,
+            EstimatedEndDate = p.EstimatedEndDate,
             Status = p.Status,
             Objective = p.Objective,
             Scope = p.Scope,
@@ -106,8 +106,8 @@ public class EditModel : PageModel
 
         var end = Input.EstimatedEndDate ?? Input.StartDate.AddDays(7);
 
-        var startUtc = TimeUtil.UtcDate(Input.StartDate);
-        var endUtc = TimeUtil.UtcDate(end);
+        var startUtc = TimeUtil.UtcDateTime(Input.StartDate);
+        var endUtc = TimeUtil.UtcDateTime(end);
         if (endUtc < startUtc)
         {
             Error = "La fecha estimada no puede ser menor al inicio.";
