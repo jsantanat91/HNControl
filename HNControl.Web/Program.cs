@@ -78,7 +78,7 @@ builder.Services.AddAuthorization(options =>
     {
         if (AppRoles.IsGlobalAdmin(ctx.User)) return true;
         if (ctx.User?.Identity?.IsAuthenticated != true) return false;
-        if (!ctx.User.IsInRole(AppRoles.InventoryManager)) return false;
+        if (!ctx.User.IsInRole(AppRoles.InventoryManager) && !ctx.User.IsInRole(AppRoles.WarehouseLead)) return false;
 
         var path = (ctx.Resource as HttpContext)?.Request.Path ?? PathString.Empty;
         return path.StartsWithSegments("/Admin/Inventory", StringComparison.OrdinalIgnoreCase);
@@ -88,7 +88,7 @@ builder.Services.AddAuthorization(options =>
     {
         if (AppRoles.IsGlobalAdmin(ctx.User)) return true;
         if (ctx.User?.Identity?.IsAuthenticated != true) return false;
-        if (!ctx.User.IsInRole(AppRoles.InventoryManager)) return false;
+        if (!ctx.User.IsInRole(AppRoles.InventoryManager) && !ctx.User.IsInRole(AppRoles.WarehouseLead)) return false;
 
         var path = (ctx.Resource as HttpContext)?.Request.Path ?? PathString.Empty;
         return path.StartsWithSegments("/Admin/Inventory", StringComparison.OrdinalIgnoreCase);
@@ -292,7 +292,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
     var db = services.GetRequiredService<ApplicationDbContext>();
 
     // Roles
-    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee, AppRoles.InventoryManager })
+    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee, AppRoles.InventoryManager, AppRoles.WarehouseLead })
     {
         if (!await roleMgr.RoleExistsAsync(r))
             await roleMgr.CreateAsync(new IdentityRole(r));

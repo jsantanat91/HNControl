@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Inventory.RequestOutModel
 @{
     Layout = "_Layout";
@@ -8,7 +8,7 @@
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Solicitar salida</h1>
-        <div class="text-muted small">Agrega varios items y envía una sola solicitud (tipo viáticos, pero con tornillos 😄).</div>
+        <div class="text-muted small">Agrega varios items y envia una sola solicitud.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="./Index">← Volver</a>
 </div>
@@ -56,7 +56,7 @@
                         <tr>
                             <td>
                                 <select class="form-select" name="Input.Lines[@i].ItemId" required>
-                                    <option value="">— Selecciona —</option>
+                                    <option value="">- Selecciona -</option>
                                     @foreach (var opt in Model.ItemOptions)
                                     {
                                         <option value="@opt.Value" selected="@(Model.Input.Lines[i].ItemId.ToString() == opt.Value)">@opt.Text</option>
@@ -90,7 +90,7 @@
         </div>
 
         <div class="alert alert-light border mt-2 mb-0">
-            Se crean como <strong>Pendiente</strong>. Un admin las aprueba para impactar existencias.
+            Se crean como <strong>Pendiente</strong>. Un supervisor de almacen las aprueba para impactar existencias.
         </div>
     </div>
     <div class="card-footer d-flex gap-2">
@@ -103,7 +103,7 @@
     <tr>
         <td>
             <select class="form-select" name="Input.Lines[__i__].ItemId" required>
-                <option value="">— Selecciona —</option>
+                <option value="">- Selecciona -</option>
                 @foreach (var opt in Model.ItemOptions)
                 {
                     <option value="@opt.Value">@opt.Text</option>
@@ -145,7 +145,6 @@
                 btn.addEventListener('click', () => {
                     const tr = btn.closest('tr');
                     tr?.remove();
-                    // reindex names
                     [...body.querySelectorAll('tr')].forEach((row, idx) => {
                         row.querySelectorAll('[name]').forEach(el => {
                             el.name = el.name.replace(/Input\.Lines\[\d+\]/g, `Input.Lines[${idx}]`);

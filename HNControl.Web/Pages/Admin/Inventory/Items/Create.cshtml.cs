@@ -25,6 +25,7 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        [Required(ErrorMessage = "ID master es requerido.")]
         [MaxLength(40)]
         public string? ModelCode { get; set; }
 
@@ -90,22 +91,15 @@ public class CreateModel : PageModel
             return Page();
         }
 
-        if (!string.IsNullOrWhiteSpace(Input.ModelCode))
-        {
-            var modelCodeKey = Input.ModelCode.ToLowerInvariant();
-            var existsModelCode = await _db.InventoryItems
-                .AsNoTracking()
-                .AnyAsync(x => x.ModelCode != null && x.ModelCode.ToLower() == modelCodeKey);
+        var modelCodeKey = Input.ModelCode!.ToLowerInvariant();
+        var existsModelCode = await _db.InventoryItems
+            .AsNoTracking()
+            .AnyAsync(x => x.ModelCode != null && x.ModelCode.ToLower() == modelCodeKey);
 
-            if (existsModelCode)
-            {
-                Error = "Ya existe un item con ese ID de modelo.";
-                return Page();
-            }
-        }
-        else
+        if (existsModelCode)
         {
-            Input.ModelCode = await NextModelCodeAsync();
+            Error = "Ya existe un item con ese ID de modelo.";
+            return Page();
         }
 
         // (Opcional) Si SKU viene, evita duplicados por SKU
@@ -151,25 +145,6 @@ public class CreateModel : PageModel
         await _db.SaveChangesAsync();
 
         return RedirectToPage("./Index");
-    }
-
-    private async Task<string> NextModelCodeAsync()
-    {
-        var max = await _db.InventoryItems.AsNoTracking()
-            .Where(x => x.ModelCode != null && x.ModelCode.StartsWith("MDL-"))
-            .Select(x => x.ModelCode!)
-            .ToListAsync();
-
-        var current = 0;
-        foreach (var code in max)
-        {
-            if (code.Length >= 8 && int.TryParse(code.AsSpan(4), out var n) && n > current)
-            {
-                current = n;
-            }
-        }
-
-        return $"MDL-{(current + 1):D6}";
     }
 
     private async Task LoadCatalogsAsync()

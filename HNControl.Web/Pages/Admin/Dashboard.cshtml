@@ -18,7 +18,7 @@
 
 <div class="row g-3">
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-1">
             <div class="card-body">
                 <div class="text-muted small">Empleados</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.Employees</div>
@@ -27,7 +27,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-2">
             <div class="card-body">
                 <div class="text-muted small">Ordenes en revision</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OrdersInReview</div>
@@ -36,7 +36,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-3">
             <div class="card-body">
                 <div class="text-muted small">SLA vencidos (proyectos)</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OverdueProjects</div>
@@ -45,7 +45,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-4">
             <div class="card-body">
                 <div class="text-muted small">Viaticos pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingViaticWeeks</div>
@@ -55,7 +55,7 @@
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-5">
             <div class="card-body">
                 <div class="text-muted small">Vacaciones pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingLeaveRequests</div>
@@ -64,7 +64,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-6">
             <div class="card-body">
                 <div class="text-muted small">Examenes por calificar</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.ExamsToGrade</div>
@@ -73,7 +73,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-7">
             <div class="card-body">
                 <div class="text-muted small">Inventario · ordenes pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingInventoryOrders</div>
@@ -82,7 +82,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-8">
             <div class="card-body">
                 <div class="text-muted small">Inventario · bajo stock</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.LowStockItems</div>
@@ -91,7 +91,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-9">
             <div class="card-body">
                 <div class="text-muted small">Tickets abiertos</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OpenTickets</div>
@@ -100,7 +100,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-10">
             <div class="card-body">
                 <div class="text-muted small">Tickets SLA vencido</div>
                 <div class="fs-3 fw-bold text-danger">@Model.Kpi.TicketSlaBreached</div>
@@ -109,7 +109,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-11">
             <div class="card-body">
                 <div class="text-muted small">Cotizaciones aceptadas (mes)</div>
                 <div class="fs-3 fw-bold text-success">@Model.Kpi.QuotesAcceptedMonth</div>
@@ -118,7 +118,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card">
+        <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-12">
             <div class="card-body">
                 <div class="text-muted small">Ventas cotizadas (mes)</div>
                 <div class="fs-4 fw-bold text-success">@Model.Kpi.QuotesRevenueMonth.ToString("C0")</div>
@@ -278,8 +278,40 @@
             gap: 1rem;
         }
 
+        .hn-kpi-card {
+            border: 1px solid rgba(148, 163, 184, .28);
+            overflow: hidden;
+        }
+
         .hn-kpi-card .card-body {
-            background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(250,252,255,.8));
+            background: linear-gradient(160deg, rgba(255,255,255,.92), rgba(250,252,255,.82));
+            position: relative;
+        }
+
+        .hn-kpi-card .card-body::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: .9;
+        }
+
+        .hn-kpi-card.kpi-tone-1 .card-body::after { background: linear-gradient(135deg, rgba(59,130,246,.10), rgba(14,165,233,.02)); }
+        .hn-kpi-card.kpi-tone-2 .card-body::after { background: linear-gradient(135deg, rgba(37,99,235,.09), rgba(2,132,199,.02)); }
+        .hn-kpi-card.kpi-tone-3 .card-body::after { background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(56,189,248,.02)); }
+        .hn-kpi-card.kpi-tone-4 .card-body::after { background: linear-gradient(135deg, rgba(14,116,144,.10), rgba(6,182,212,.02)); }
+        .hn-kpi-card.kpi-tone-5 .card-body::after { background: linear-gradient(135deg, rgba(20,184,166,.10), rgba(34,197,94,.02)); }
+        .hn-kpi-card.kpi-tone-6 .card-body::after { background: linear-gradient(135deg, rgba(16,185,129,.09), rgba(45,212,191,.02)); }
+        .hn-kpi-card.kpi-tone-7 .card-body::after { background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(16,185,129,.02)); }
+        .hn-kpi-card.kpi-tone-8 .card-body::after { background: linear-gradient(135deg, rgba(139,92,246,.09), rgba(59,130,246,.02)); }
+        .hn-kpi-card.kpi-tone-9 .card-body::after { background: linear-gradient(135deg, rgba(34,197,94,.10), rgba(20,184,166,.02)); }
+        .hn-kpi-card.kpi-tone-10 .card-body::after { background: linear-gradient(135deg, rgba(239,68,68,.08), rgba(251,113,133,.02)); }
+        .hn-kpi-card.kpi-tone-11 .card-body::after { background: linear-gradient(135deg, rgba(16,185,129,.10), rgba(74,222,128,.02)); }
+        .hn-kpi-card.kpi-tone-12 .card-body::after { background: linear-gradient(135deg, rgba(245,158,11,.10), rgba(250,204,21,.02)); }
+
+        .hn-kpi-card .card-body > * {
+            position: relative;
+            z-index: 1;
         }
     </style>
 }

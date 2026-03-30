@@ -42,6 +42,7 @@ public class EditModel : PageModel
     {
         public Guid Id { get; set; }
 
+        [Required(ErrorMessage = "ID master es requerido.")]
         [MaxLength(40)]
         public string? ModelCode { get; set; }
 
@@ -126,22 +127,15 @@ public class EditModel : PageModel
         var item = await _db.InventoryItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (item == null) return NotFound();
 
-        if (!string.IsNullOrWhiteSpace(Input.ModelCode))
+        var key = Input.ModelCode!.ToLowerInvariant();
+        var existsModelCode = await _db.InventoryItems
+            .AsNoTracking()
+            .AnyAsync(x => x.Id != Input.Id && x.ModelCode != null && x.ModelCode.ToLower() == key);
+        if (existsModelCode)
         {
-            var key = Input.ModelCode.ToLowerInvariant();
-            var existsModelCode = await _db.InventoryItems
-                .AsNoTracking()
-                .AnyAsync(x => x.Id != Input.Id && x.ModelCode != null && x.ModelCode.ToLower() == key);
-            if (existsModelCode)
-            {
-                Error = "Ya existe otro item con ese ID de modelo.";
-                await LoadRecentMovementsAsync(Input.Id, Input.Unit);
-                return Page();
-            }
-        }
-        else
-        {
-            Input.ModelCode = await NextModelCodeAsync(Input.Id);
+            Error = "Ya existe otro item con ese ID de modelo.";
+            await LoadRecentMovementsAsync(Input.Id, Input.Unit);
+            return Page();
         }
 
         item.Name = Input.Name;
@@ -164,25 +158,6 @@ public class EditModel : PageModel
 
         await _db.SaveChangesAsync();
         return RedirectToPage("./Index");
-    }
-
-    private async Task<string> NextModelCodeAsync(Guid currentId)
-    {
-        var all = await _db.InventoryItems.AsNoTracking()
-            .Where(x => x.Id != currentId && x.ModelCode != null && x.ModelCode.StartsWith("MDL-"))
-            .Select(x => x.ModelCode!)
-            .ToListAsync();
-
-        var current = 0;
-        foreach (var code in all)
-        {
-            if (code.Length >= 8 && int.TryParse(code.AsSpan(4), out var n) && n > current)
-            {
-                current = n;
-            }
-        }
-
-        return $"MDL-{(current + 1):D6}";
     }
 
     private async Task LoadCatalogsAsync()

@@ -26,9 +26,8 @@
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">ID modelo único (opcional)</label>
-                <input class="form-control" asp-for="Input.ModelCode" placeholder="MDL-000001" />
-                <div class="form-text">Si lo dejas vacío se genera automático.</div>
+                <label class="form-label">ID modelo único</label>
+                <input class="form-control" asp-for="Input.ModelCode" placeholder="MDL-000001" required />
                 <span class="text-danger small" asp-validation-for="Input.ModelCode"></span>
             </div>
 

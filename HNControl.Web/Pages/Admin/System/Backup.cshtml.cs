@@ -98,7 +98,7 @@ public class BackupModel : PageModel
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "where",
+                FileName = OperatingSystem.IsWindows() ? "where" : "which",
                 Arguments = "pg_dump",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -116,6 +116,15 @@ public class BackupModel : PageModel
         catch { }
 
         var candidates = new List<string>();
+        if (!OperatingSystem.IsWindows())
+        {
+            candidates.Add("/usr/bin/pg_dump");
+            candidates.Add("/usr/local/bin/pg_dump");
+            candidates.Add("/usr/lib/postgresql/16/bin/pg_dump");
+            candidates.Add("/usr/lib/postgresql/15/bin/pg_dump");
+            candidates.Add("/usr/lib/postgresql/14/bin/pg_dump");
+        }
+
         void AddFromBase(string? basePath)
         {
             if (string.IsNullOrWhiteSpace(basePath) || !IO.Directory.Exists(basePath)) return;
@@ -229,7 +238,7 @@ public class BackupModel : PageModel
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "where",
+                FileName = OperatingSystem.IsWindows() ? "where" : "which",
                 Arguments = "psql",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -247,6 +256,15 @@ public class BackupModel : PageModel
         catch { }
 
         var candidates = new List<string>();
+        if (!OperatingSystem.IsWindows())
+        {
+            candidates.Add("/usr/bin/psql");
+            candidates.Add("/usr/local/bin/psql");
+            candidates.Add("/usr/lib/postgresql/16/bin/psql");
+            candidates.Add("/usr/lib/postgresql/15/bin/psql");
+            candidates.Add("/usr/lib/postgresql/14/bin/psql");
+        }
+
         void AddFromBase(string? basePath)
         {
             if (string.IsNullOrWhiteSpace(basePath) || !IO.Directory.Exists(basePath)) return;

@@ -629,6 +629,7 @@ public class TicketFlowService : ITicketFlowService
         var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
         var portalUrl = string.IsNullOrWhiteSpace(baseUrl) ? "/ticket-publico" : $"{baseUrl}/ticket-publico";
         var sucursal = string.IsNullOrWhiteSpace(branch) ? "No especificada" : branch.Trim();
+        var tecnico = string.IsNullOrWhiteSpace(ticket.AssignedToName) ? "-" : ticket.AssignedToName.Trim();
 
         return $@"
             <div style='font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#0f172a'>
@@ -639,7 +640,8 @@ public class TicketFlowService : ITicketFlowService
                     <strong>Sucursal:</strong> {WebUtility.HtmlEncode(sucursal)}<br/>
                     <strong>Asunto:</strong> {WebUtility.HtmlEncode(ticket.Title)}<br/>
                     <strong>Estado:</strong> {WebUtility.HtmlEncode(ToStatusLabel(ticket.Status))}<br/>
-                    <strong>Prioridad:</strong> {WebUtility.HtmlEncode(ToPriorityLabel(ticket.Priority))}
+                    <strong>Prioridad:</strong> {WebUtility.HtmlEncode(ToPriorityLabel(ticket.Priority))}<br/>
+                    <strong>Tecnico:</strong> {WebUtility.HtmlEncode(tecnico)}
                 </p>
                 <p>{extraMessage}</p>
                 <p>Consulta el seguimiento en: <a href='{portalUrl}'>{portalUrl}</a></p>

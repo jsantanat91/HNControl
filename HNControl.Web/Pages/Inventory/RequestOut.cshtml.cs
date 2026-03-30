@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -66,7 +66,6 @@ public class RequestOutModel : PageModel
     {
         await LoadListsAsync();
 
-        // Limpia filas vacías
         var lines = (Input.Lines ?? new List<LineInput>())
             .Where(l => l.ItemId != Guid.Empty && l.Quantity > 0)
             .ToList();
@@ -83,7 +82,6 @@ public class RequestOutModel : PageModel
             return Page();
         }
 
-        // Carga items en bloque
         var ids = lines.Select(x => x.ItemId).Distinct().ToList();
         var items = await _db.InventoryItems.AsNoTracking()
             .Where(i => ids.Contains(i.Id) && i.IsActive)
@@ -95,7 +93,7 @@ public class RequestOutModel : PageModel
         {
             if (!itemMap.ContainsKey(l.ItemId))
             {
-                ModelState.AddModelError(string.Empty, "Uno o más items no existen o están inactivos.");
+                ModelState.AddModelError(string.Empty, "Uno o mas items no existen o estan inactivos.");
                 return Page();
             }
         }
@@ -111,7 +109,6 @@ public class RequestOutModel : PageModel
         {
             var item = itemMap[l.ItemId];
 
-            // Si es consumible, ignoramos cliente/serie
             var assignedClientId = item.IsConsumable ? null : l.AssignedClientId;
             var serial = item.IsConsumable ? "" : (l.SerialNumber ?? "").Trim();
 
@@ -145,16 +142,16 @@ public class RequestOutModel : PageModel
         var items = await _db.InventoryItems.AsNoTracking()
             .Where(i => i.IsActive)
             .OrderBy(i => i.Name)
-            .Select(i => new { i.Id, i.Name, i.Sku, i.Category, i.Location, i.QuantityOnHand, i.Unit, i.IsConsumable })
+            .Select(i => new { i.Id, i.Name, i.ModelCode, i.Sku, i.Category, i.Location, i.QuantityOnHand, i.Unit, i.IsConsumable })
             .ToListAsync();
 
         ItemOptions = items.Select(i => new SelectListItem
         {
             Value = i.Id.ToString(),
-            Text = $"{i.Name}{(string.IsNullOrWhiteSpace(i.Sku) ? "" : " [" + i.Sku + "]")}" +
-                   $" • {(string.IsNullOrWhiteSpace(i.Category) ? "Sin categoría" : i.Category)}" +
-                   $" • {(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)}" +
-                   $" • Existencia: {i.QuantityOnHand} {i.Unit}"
+            Text = $"{i.Name} · ID: {(string.IsNullOrWhiteSpace(i.ModelCode) ? "-" : i.ModelCode)}{(string.IsNullOrWhiteSpace(i.Sku) ? "" : " · SKU: " + i.Sku)}" +
+                   $" · {(string.IsNullOrWhiteSpace(i.Category) ? "Sin categoria" : i.Category)}" +
+                   $" · {(string.IsNullOrWhiteSpace(i.Location) ? "-" : i.Location)}" +
+                   $" · Existencia: {i.QuantityOnHand} {i.Unit}"
         }).ToList();
 
         var projects = await _db.Projects.AsNoTracking()

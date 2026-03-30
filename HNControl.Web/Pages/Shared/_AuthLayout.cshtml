@@ -29,10 +29,9 @@
         body{
             min-height:100vh;
             background:
-              radial-gradient(1200px 600px at 20% 10%, rgba(37,99,235,.16), transparent 60%),
-              radial-gradient(900px 500px at 80% 20%, rgba(16,185,129,.14), transparent 55%),
-              radial-gradient(900px 600px at 50% 90%, rgba(124,58,237,.10), transparent 60%),
-              var(--hn-bg);
+              linear-gradient(110deg, rgba(2,8,22,.86) 0%, rgba(2,8,22,.48) 48%, rgba(2,8,22,.65) 100%),
+              url('/img/login-tech.svg') center/cover no-repeat fixed,
+              #07172e;
         }
         .hn-auth-wrap{
             min-height:100vh;
@@ -41,15 +40,19 @@
         }
         .hn-auth-card{
             border-radius: 22px;
-            border: 1px solid rgba(230,234,242,.95);
-            box-shadow: 0 20px 60px rgba(2,6,23,.12);
+            border: 1px solid rgba(255,255,255,.24);
+            background: rgba(10, 20, 36, 0.58);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 26px 60px rgba(2,6,23,.34);
+            color: #e8eefc;
         }
         .hn-auth-brand{
             font-weight: 900;
             letter-spacing: -.03em;
+            color: #f8fafc;
         }
         .hn-auth-sub{
-            color: var(--hn-muted);
+            color: rgba(226,232,240,.86);
         }
         .hn-auth-kicker{
             display:inline-flex;
@@ -57,18 +60,41 @@
             align-items:center;
             padding:.35rem .65rem;
             border-radius:999px;
-            border:1px solid rgba(37,99,235,.18);
-            background: rgba(37,99,235,.08);
-            color: var(--hn-blue);
+            border:1px solid rgba(148,163,184,.40);
+            background: rgba(15,23,42,.32);
+            color: #dbeafe;
             font-weight: 800;
             font-size: .78rem;
         }
         .hn-auth-divider{
             height:1px;
-            background: rgba(230,234,242,.95);
+            background: rgba(226,232,240,.26);
             margin: 1rem 0;
         }
+        .hn-auth-intro{
+            color:#f8fafc;
+            text-shadow: 0 2px 18px rgba(2,6,23,.35);
+        }
+        .hn-auth-intro p,
+        .hn-auth-intro li{
+            color: rgba(226,232,240,.88);
+        }
+        .hn-auth-card .text-muted{
+            color: rgba(226,232,240,.78) !important;
+        }
+        .hn-auth-card .form-control{
+            background: rgba(255,255,255,.94);
+        }
+        .hn-auth-card .form-check-label{
+            color: rgba(226,232,240,.9);
+        }
+        @@media (max-width: 991.98px){
+            .hn-auth-card{
+                background: rgba(10, 20, 36, 0.72);
+            }
+        }
     </style>
+    @RenderSection("Styles", required: false)
 </head>
 <body>
     <div class="hn-auth-wrap">
