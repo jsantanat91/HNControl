@@ -77,6 +77,12 @@ else
         <div class="col-lg-5">
             <div class="card shadow-soft">
                 <div class="card-header fw-semibold">Detalle</div>
+                <div class="px-3 pt-2 pb-1">
+                    <span class="badge text-bg-success me-1">Positivo</span>
+                    <span class="small text-muted me-3">Autoevaluacion arriba del equipo</span>
+                    <span class="badge text-bg-danger me-1">Negativo</span>
+                    <span class="small text-muted">Autoevaluacion abajo del equipo</span>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0 eval360-detail-table">
                         <thead>
@@ -91,9 +97,9 @@ else
                         @foreach (var r in Model.Rows)
                         {
                             var diff = r.DiffPct;
-                            var badge = diff >= 10 ? "text-bg-danger" : (diff <= -10 ? "text-bg-success" : "text-bg-secondary");
                             var hasAuto = r.AutoPct > 0;
                             var hasOthers = r.OthersPct > 0;
+                            var diffBadge = diff < 0 ? "text-bg-danger" : (diff > 0 ? "text-bg-success" : "text-bg-secondary");
                             <tr>
                                 <td class="fw-semibold">@r.Competency</td>
                                 <td class="text-end">
@@ -119,7 +125,7 @@ else
                                 <td class="text-end">
                                     @if (hasAuto && hasOthers)
                                     {
-                                        <span class="badge @badge">@((diff >= 0 ? "+" : ""))@diff%</span>
+                                        <span class="badge @diffBadge">@((diff >= 0 ? "+" : ""))@diff%</span>
                                     }
                                     else
                                     {
@@ -154,7 +160,7 @@ else
 <div class="card shadow-soft mt-3">
     <div class="card-header fw-semibold">Avance de evaluacion por empleado</div>
     <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm align-middle mb-0 eval360-progress-table">
             <thead>
                 <tr>
                     <th>Empleado</th>
@@ -169,9 +175,24 @@ else
             {
                 <tr>
                     <td class="fw-semibold">@p.EmployeeName</td>
-                    <td class="text-end">@p.SelfProgressPct%</td>
-                    <td class="text-end">@p.OthersProgressPct%</td>
-                    <td class="text-end">@p.OverallProgressPct%</td>
+                    <td>
+                        <div class="progress hn-mini-progress">
+                            <div class="progress-bar @(p.SelfProgressPct >= 80 ? "bg-success" : (p.SelfProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.SelfProgressPct%"></div>
+                        </div>
+                        <div class="text-end small text-muted mt-1">@p.SelfProgressPct%</div>
+                    </td>
+                    <td>
+                        <div class="progress hn-mini-progress">
+                            <div class="progress-bar @(p.OthersProgressPct >= 80 ? "bg-success" : (p.OthersProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OthersProgressPct%"></div>
+                        </div>
+                        <div class="text-end small text-muted mt-1">@p.OthersProgressPct%</div>
+                    </td>
+                    <td>
+                        <div class="progress hn-mini-progress">
+                            <div class="progress-bar @(p.OverallProgressPct >= 80 ? "bg-success" : (p.OverallProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OverallProgressPct%"></div>
+                        </div>
+                        <div class="text-end small text-muted mt-1">@p.OverallProgressPct%</div>
+                    </td>
                     <td class="text-end">@p.MissingCount</td>
                 </tr>
             }
@@ -182,30 +203,65 @@ else
 
 <div class="card shadow-soft mt-3">
     <div class="card-header fw-semibold">Por area por empleado (quien evaluo a quien)</div>
-    <div class="table-responsive" style="max-height: 420px; overflow: auto;">
-        <table class="table table-sm align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Evaluador</th>
-                    <th>Evaluado</th>
-                    <th>Area</th>
-                    <th class="text-end">Promedio</th>
-                    <th class="text-end">%</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var r in Model.CrossAreaRows.Where(x => !x.IsSelf))
-            {
-                <tr>
-                    <td>@r.EvaluatorName</td>
-                    <td>@r.SubjectName</td>
-                    <td>@r.Competency</td>
-                    <td class="text-end">@r.AvgScore.ToString("0.00")</td>
-                    <td class="text-end">@r.AvgPct%</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+    <div class="card-body">
+        @{
+            var groupedByEvaluator = Model.CrossAreaRows
+                .Where(x => !x.IsSelf)
+                .GroupBy(x => new { x.EvaluatorUserId, x.EvaluatorName })
+                .OrderBy(g => g.Key.EvaluatorName)
+                .ToList();
+        }
+
+        @if (!groupedByEvaluator.Any())
+        {
+            <div class="text-muted">Sin evaluaciones cruzadas enviadas.</div>
+        }
+        else
+        {
+            <div class="accordion" id="accCrossArea">
+                @for (var i = 0; i < groupedByEvaluator.Count; i++)
+                {
+                    var grp = groupedByEvaluator[i];
+                    var headId = $"crossHead{i}";
+                    var bodyId = $"crossBody{i}";
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="@headId">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@bodyId" aria-expanded="false" aria-controls="@bodyId">
+                                <span class="fw-semibold">@grp.Key.EvaluatorName</span>
+                                <span class="ms-2 text-muted small">@grp.Select(x => x.SubjectUserId).Distinct().Count() evaluados</span>
+                            </button>
+                        </h2>
+                        <div id="@bodyId" class="accordion-collapse collapse" aria-labelledby="@headId" data-bs-parent="#accCrossArea">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Evaluado</th>
+                                                <th>Area</th>
+                                                <th class="text-end">Promedio</th>
+                                                <th class="text-end">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var r in grp.OrderBy(x => x.SubjectName).ThenBy(x => x.Competency))
+                                        {
+                                            <tr>
+                                                <td>@r.SubjectName</td>
+                                                <td>@r.Competency</td>
+                                                <td class="text-end">@r.AvgScore.ToString("0.00")</td>
+                                                <td class="text-end">@r.AvgPct%</td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>
 
@@ -300,6 +356,12 @@ else
         .eval360-detail-table th,
         .eval360-detail-table td {
             vertical-align: middle;
+        }
+
+        .eval360-progress-table .progress {
+            height: .55rem;
+            border-radius: 999px;
+            background: #e9edf3;
         }
     </style>
 }
