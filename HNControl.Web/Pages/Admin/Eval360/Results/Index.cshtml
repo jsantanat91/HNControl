@@ -78,10 +78,10 @@ else
             <div class="card shadow-soft">
                 <div class="card-header fw-semibold">Detalle</div>
                 <div class="px-3 pt-2 pb-1">
-                    <span class="badge text-bg-success me-1">Positivo</span>
-                    <span class="small text-muted me-3">Autoevaluacion arriba del equipo</span>
-                    <span class="badge text-bg-danger me-1">Negativo</span>
-                    <span class="small text-muted">Autoevaluacion abajo del equipo</span>
+                    <span class="badge text-bg-danger me-1">Brecha +</span>
+                    <span class="small text-muted me-3">Autoevaluacion arriba del equipo (riesgo)</span>
+                    <span class="badge text-bg-success me-1">Brecha -</span>
+                    <span class="small text-muted">Equipo arriba de autoevaluacion</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0 eval360-detail-table">
@@ -99,7 +99,7 @@ else
                             var diff = r.DiffPct;
                             var hasAuto = r.AutoPct > 0;
                             var hasOthers = r.OthersPct > 0;
-                            var diffCss = diff < 0 ? "is-negative" : (diff > 0 ? "is-positive" : "is-neutral");
+                            var diffCss = diff > 0 ? "is-negative" : (diff < 0 ? "is-positive" : "is-neutral");
                             <tr>
                                 <td class="fw-semibold">@r.Competency</td>
                                 <td class="text-end">

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace HNControl.Web.Pages.Admin.Eval360.Results;
@@ -146,6 +147,10 @@ public class IndexModel : PageModel
         await BuildCampaignReportAsync(id);
 
         var period = $"{(Campaign.PeriodStart?.ToString("dd/MM/yyyy") ?? "-")} al {(Campaign.PeriodEnd?.ToString("dd/MM/yyyy") ?? "-")}";
+        var signedAt = DateTime.Now;
+        var signatureSeed = $"EVAL360|{Campaign.Id}|{Campaign.Title}|{signedAt:O}|{string.Join("|", ProgressRows.Select(x => $"{x.UserId}:{x.OverallProgressPct}"))}";
+        var signatureHash = Convert.ToHexString(SHA256.HashData(global::System.Text.Encoding.UTF8.GetBytes(signatureSeed)))[..24];
+        var signatureLine = $"Firma digital HN Control  |  Token: {signatureHash}  |  Fecha: {signedAt:yyyy-MM-dd HH:mm}";
 
         var pdf = Document.Create(doc =>
         {
@@ -221,7 +226,11 @@ public class IndexModel : PageModel
                     }
                 });
 
-                page.Footer().AlignRight().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                page.Footer().Column(f =>
+                {
+                    f.Item().AlignRight().Text($"Generado: {signedAt:yyyy-MM-dd HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                    f.Item().AlignRight().Text(signatureLine).FontSize(8).FontColor(Colors.Grey.Darken2);
+                });
             });
 
             foreach (var s in EmployeeSummaries)
@@ -355,6 +364,12 @@ public class IndexModel : PageModel
                             }
                         });
                         c.Item().AlignRight().Text($"Promedio global evaluando a companeros: {s.GivenOverallPct}%").SemiBold();
+                    });
+
+                    page.Footer().Column(f =>
+                    {
+                        f.Item().AlignRight().Text($"Generado: {signedAt:yyyy-MM-dd HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                        f.Item().AlignRight().Text(signatureLine).FontSize(8).FontColor(Colors.Grey.Darken2);
                     });
                 });
             }
