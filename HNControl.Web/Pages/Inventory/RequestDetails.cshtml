@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Inventory.RequestDetailsModel
 @using HNControl.Web.Models
 @{
@@ -9,9 +9,15 @@
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Detalle de solicitud</h1>
-        <div class="text-muted small">Tu orden, con todas sus líneas y estatus.</div>
+        <div class="text-muted small">Tu orden, con todas sus lineas y estatus.</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="./MyRequests">← Volver</a>
+    <div class="d-flex gap-2">
+        @if (Model.Anchor != null)
+        {
+            <a class="btn btn-outline-dark" asp-page-handler="ExportPdf" asp-route-id="@Model.Anchor.Id">PDF</a>
+        }
+        <a class="btn btn-outline-secondary" asp-page="./MyRequests">&larr; Volver</a>
+    </div>
 </div>
 
 @if (Model.Anchor == null)
@@ -21,6 +27,7 @@
 else
 {
     var a = Model.Anchor;
+    var lines = Model.Lines;
 
     <div class="card mb-3">
         <div class="card-body">
@@ -36,16 +43,16 @@ else
 
                 <div class="col-md-6">
                     <div class="text-muted small">Proyecto</div>
-                    <div class="fw-semibold">@(a.Project?.Title ?? "—")</div>
+                    <div class="fw-semibold">@(a.Project?.Title ?? "-")</div>
                 </div>
                 <div class="col-md-6">
                     <div class="text-muted small">Responsable</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.ResponsibleName) ? "—" : a.ResponsibleName)</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.ResponsibleName) ? "-" : a.ResponsibleName)</div>
                 </div>
 
                 <div class="col-md-6">
-                    <div class="text-muted small">Solicitó</div>
-                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.RequestedByName) ? "—" : a.RequestedByName)</div>
+                    <div class="text-muted small">Solicito</div>
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(a.RequestedByName) ? "-" : a.RequestedByName)</div>
                 </div>
                 <div class="col-md-6">
                     <div class="text-muted small">Fecha</div>
@@ -55,58 +62,51 @@ else
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header fw-semibold">Líneas</div>
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Detalle de lineas</div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th class="text-end">Cantidad</th>
-                        <th>Cliente (HW)</th>
-                        <th>Serie</th>
-                        <th>Status</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var m in Model.Lines)
-                    {
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">@m.Item?.Name</div>
-                                <div class="text-muted small">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "—" : m.Item?.Sku)</div>
+            <div class="row g-3">
+                @foreach (var m in lines)
+                {
+                    <div class="col-12 col-lg-6">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div class="fw-semibold">@m.Item?.Name</div>
+                                    <div>
+                                        @if (m.Status == InventoryMovementStatus.Pending)
+                                        {
+                                            <span class="badge text-bg-warning">Pendiente</span>
+                                        }
+                                        else if (m.Status == InventoryMovementStatus.Approved)
+                                        {
+                                            <span class="badge text-bg-success">Aprobado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-danger">Rechazado</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="small text-muted">ID master: @(string.IsNullOrWhiteSpace(m.Item?.ModelCode) ? "-" : m.Item?.ModelCode)</div>
+                                <div class="small text-muted">SKU: @(string.IsNullOrWhiteSpace(m.Item?.Sku) ? "-" : m.Item?.Sku)</div>
+                                <div class="small mt-1"><b>Cantidad:</b> @m.Quantity @m.Item?.Unit</div>
+                                <div class="small"><b>Cliente (HW):</b> @(m.AssignedClient?.Name ?? "-")</div>
+                                <div class="small"><b>Serie / Asset:</b> @(string.IsNullOrWhiteSpace(m.SerialNumber) ? "-" : m.SerialNumber)</div>
                                 @if (!string.IsNullOrWhiteSpace(m.Notes))
                                 {
-                                    <div class="text-muted small">Notas: @m.Notes</div>
+                                    <div class="small mt-1"><b>Notas:</b> @m.Notes</div>
                                 }
-                            </td>
-                            <td class="text-end fw-semibold">@m.Quantity @m.Item?.Unit</td>
-                            <td>@(m.AssignedClient?.Name ?? "—")</td>
-                            <td>@(string.IsNullOrWhiteSpace(m.SerialNumber) ? "—" : m.SerialNumber)</td>
-                            <td>
-                                @if (m.Status == InventoryMovementStatus.Pending)
-                                {
-                                    <span class="badge text-bg-warning">Pendiente</span>
-                                }
-                                else if (m.Status == InventoryMovementStatus.Approved)
-                                {
-                                    <span class="badge text-bg-success">Aprobado</span>
-                                }
-                                else
-                                {
-                                    <span class="badge text-bg-danger">Rechazado</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
 
-            @if (Model.Lines.Count == 0)
+            @if (lines.Count == 0)
             {
-                <div class="text-muted">Sin líneas.</div>
+                <div class="text-muted">Sin lineas.</div>
             }
         </div>
     </div>
