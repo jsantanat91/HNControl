@@ -99,37 +99,37 @@ else
                             var diff = r.DiffPct;
                             var hasAuto = r.AutoPct > 0;
                             var hasOthers = r.OthersPct > 0;
-                            var diffBadge = diff < 0 ? "text-bg-danger" : (diff > 0 ? "text-bg-success" : "text-bg-secondary");
+                            var diffCss = diff < 0 ? "is-negative" : (diff > 0 ? "is-positive" : "is-neutral");
                             <tr>
                                 <td class="fw-semibold">@r.Competency</td>
                                 <td class="text-end">
                                     @if (hasAuto)
                                     {
-                                        <span class="badge text-bg-light border">@r.AutoPct%</span>
+                                        <span class="hn-badge hn-badge-auto">@r.AutoPct%</span>
                                     }
                                     else
                                     {
-                                        <span class="badge text-bg-secondary">N/D</span>
+                                        <span class="hn-badge hn-badge-nd">N/D</span>
                                     }
                                 </td>
                                 <td class="text-end">
                                     @if (hasOthers)
                                     {
-                                        <span class="badge text-bg-light border">@r.OthersPct%</span>
+                                        <span class="hn-badge hn-badge-team">@r.OthersPct%</span>
                                     }
                                     else
                                     {
-                                        <span class="badge text-bg-secondary">N/D</span>
+                                        <span class="hn-badge hn-badge-nd">N/D</span>
                                     }
                                 </td>
                                 <td class="text-end">
                                     @if (hasAuto && hasOthers)
                                     {
-                                        <span class="badge @diffBadge">@((diff >= 0 ? "+" : ""))@diff%</span>
+                                        <span class="hn-badge hn-badge-breach @diffCss">@((diff >= 0 ? "+" : ""))@diff%</span>
                                     }
                                     else
                                     {
-                                        <span class="text-muted">-</span>
+                                        <span class="hn-badge hn-badge-nd">N/D</span>
                                     }
                                 </td>
                             </tr>
@@ -159,45 +159,42 @@ else
 
 <div class="card shadow-soft mt-3">
     <div class="card-header fw-semibold">Avance de evaluacion por empleado</div>
-    <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0 eval360-progress-table">
-            <thead>
-                <tr>
-                    <th>Empleado</th>
-                    <th class="text-end">Auto %</th>
-                    <th class="text-end">Companeros %</th>
-                    <th class="text-end">Global %</th>
-                    <th class="text-end">Faltantes</th>
-                </tr>
-            </thead>
-            <tbody>
+    <div class="card-body">
+        <div class="row g-3">
             @foreach (var p in Model.ProgressRows)
             {
-                <tr>
-                    <td class="fw-semibold">@p.EmployeeName</td>
-                    <td>
-                        <div class="progress hn-mini-progress">
-                            <div class="progress-bar @(p.SelfProgressPct >= 80 ? "bg-success" : (p.SelfProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.SelfProgressPct%"></div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card border h-100 hn-progress-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="fw-semibold">@p.EmployeeName</div>
+                                <span class="badge @(p.MissingCount == 0 ? "text-bg-success" : "text-bg-warning")">
+                                    Faltan: @p.MissingCount
+                                </span>
+                            </div>
+
+                            <div class="small text-muted mb-1">Autoevaluacion</div>
+                            <div class="progress hn-mini-progress mb-1">
+                                <div class="progress-bar @(p.SelfProgressPct >= 80 ? "bg-success" : (p.SelfProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.SelfProgressPct%"></div>
+                            </div>
+                            <div class="text-end small text-muted mb-2">@p.SelfProgressPct%</div>
+
+                            <div class="small text-muted mb-1">Companeros</div>
+                            <div class="progress hn-mini-progress mb-1">
+                                <div class="progress-bar @(p.OthersProgressPct >= 80 ? "bg-success" : (p.OthersProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OthersProgressPct%"></div>
+                            </div>
+                            <div class="text-end small text-muted mb-2">@p.OthersProgressPct%</div>
+
+                            <div class="small text-muted mb-1">Global</div>
+                            <div class="progress hn-mini-progress mb-1">
+                                <div class="progress-bar @(p.OverallProgressPct >= 80 ? "bg-success" : (p.OverallProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OverallProgressPct%"></div>
+                            </div>
+                            <div class="text-end small text-muted">@p.OverallProgressPct%</div>
                         </div>
-                        <div class="text-end small text-muted mt-1">@p.SelfProgressPct%</div>
-                    </td>
-                    <td>
-                        <div class="progress hn-mini-progress">
-                            <div class="progress-bar @(p.OthersProgressPct >= 80 ? "bg-success" : (p.OthersProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OthersProgressPct%"></div>
-                        </div>
-                        <div class="text-end small text-muted mt-1">@p.OthersProgressPct%</div>
-                    </td>
-                    <td>
-                        <div class="progress hn-mini-progress">
-                            <div class="progress-bar @(p.OverallProgressPct >= 80 ? "bg-success" : (p.OverallProgressPct >= 50 ? "bg-warning" : "bg-danger"))" style="width:@p.OverallProgressPct%"></div>
-                        </div>
-                        <div class="text-end small text-muted mt-1">@p.OverallProgressPct%</div>
-                    </td>
-                    <td class="text-end">@p.MissingCount</td>
-                </tr>
+                    </div>
+                </div>
             }
-            </tbody>
-        </table>
+        </div>
     </div>
 </div>
 
@@ -358,10 +355,60 @@ else
             vertical-align: middle;
         }
 
-        .eval360-progress-table .progress {
+        .hn-mini-progress {
             height: .55rem;
             border-radius: 999px;
             background: #e9edf3;
+        }
+
+        .hn-badge {
+            display: inline-block;
+            min-width: 48px;
+            padding: .2rem .45rem;
+            border-radius: .4rem;
+            font-weight: 700;
+            font-size: .75rem;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .hn-badge-auto {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .hn-badge-team {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .hn-badge-nd {
+            background: #e5e7eb;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
+        }
+
+        .hn-badge-breach {
+            min-width: 56px;
+            color: #fff;
+            border: 1px solid transparent;
+        }
+
+        .hn-badge-breach.is-positive {
+            background: #16a34a;
+            border-color: #15803d;
+        }
+
+        .hn-badge-breach.is-negative {
+            background: #dc2626;
+            border-color: #b91c1c;
+        }
+
+        .hn-badge-breach.is-neutral {
+            background: #6b7280;
+            border-color: #4b5563;
         }
     </style>
 }

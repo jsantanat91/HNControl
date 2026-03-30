@@ -70,6 +70,7 @@ public class IndexModel : PageModel
         public decimal AutoOverallPct { get; set; }
         public decimal GivenOverallPct { get; set; }
         public List<CompetencyMetric> AutoCompetencies { get; set; } = new();
+        public List<CompetencyMetric> TeamCompetencies { get; set; } = new();
         public List<PeerGivenMetric> GivenToPeers { get; set; } = new();
     }
 
@@ -167,71 +168,57 @@ public class IndexModel : PageModel
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(cc =>
                     {
-                        cc.Item().Text("Participantes").SemiBold();
-                        cc.Item().Text(string.Join(", ", ProgressRows.Select(x => x.EmployeeName))).FontColor(Colors.Grey.Darken2);
+                        cc.Item().Text("Resumen inicial por empleado").SemiBold();
+                        cc.Item().Text("Avance y faltantes agrupados por persona.").FontColor(Colors.Grey.Darken2);
                     });
 
-                    c.Item().Text("Avance por evaluador").SemiBold();
-                    c.Item().Table(t =>
+                    foreach (var p in ProgressRows.OrderBy(x => x.EmployeeName))
                     {
-                        t.ColumnsDefinition(cols =>
+                        c.Item().Border(1).BorderColor(Colors.Grey.Lighten3).Padding(7).Row(r =>
                         {
-                            cols.RelativeColumn(3);
-                            cols.RelativeColumn(1);
-                            cols.RelativeColumn(1);
-                            cols.RelativeColumn(1);
-                            cols.RelativeColumn(1);
+                            r.RelativeItem().Text(p.EmployeeName).SemiBold();
+                            r.ConstantItem(260).AlignCenter().Text($"Auto {p.SelfProgressPct}%  |  Equipo {p.OthersProgressPct}%  |  Global {p.OverallProgressPct}%");
+                            r.ConstantItem(90).AlignRight().Text($"Faltan: {p.MissingCount}");
                         });
+                    }
 
-                        t.Header(h =>
-                        {
-                            h.Cell().Element(CellHead).Text("Empleado");
-                            h.Cell().Element(CellHead).AlignRight().Text("Auto %");
-                            h.Cell().Element(CellHead).AlignRight().Text("Companeros %");
-                            h.Cell().Element(CellHead).AlignRight().Text("Global %");
-                            h.Cell().Element(CellHead).AlignRight().Text("Faltan");
-                        });
+                    c.Item().Text("Trazabilidad por area (agrupada por evaluador)").SemiBold();
+                    var groupedTrace = CrossAreaRows
+                        .Where(x => !x.IsSelf)
+                        .GroupBy(x => new { x.EvaluatorUserId, x.EvaluatorName })
+                        .OrderBy(g => g.Key.EvaluatorName)
+                        .ToList();
 
-                        foreach (var p in ProgressRows)
-                        {
-                            t.Cell().Element(CellBody).Text(p.EmployeeName);
-                            t.Cell().Element(CellBody).AlignRight().Text($"{p.SelfProgressPct}%");
-                            t.Cell().Element(CellBody).AlignRight().Text($"{p.OthersProgressPct}%");
-                            t.Cell().Element(CellBody).AlignRight().Text($"{p.OverallProgressPct}%");
-                            t.Cell().Element(CellBody).AlignRight().Text(p.MissingCount.ToString());
-                        }
-                    });
-
-                    c.Item().Text("Trazabilidad por area (quien evaluo a quien)").SemiBold();
-                    c.Item().Table(t =>
+                    foreach (var grp in groupedTrace)
                     {
-                        t.ColumnsDefinition(cols =>
+                        c.Item().Text(grp.Key.EvaluatorName).SemiBold();
+                        c.Item().Table(t =>
                         {
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(1);
-                            cols.RelativeColumn(1);
-                        });
+                            t.ColumnsDefinition(cols =>
+                            {
+                                cols.RelativeColumn(2);
+                                cols.RelativeColumn(2);
+                                cols.RelativeColumn(1);
+                                cols.RelativeColumn(1);
+                            });
 
-                        t.Header(h =>
-                        {
-                            h.Cell().Element(CellHead).Text("Evaluador");
-                            h.Cell().Element(CellHead).Text("Evaluado");
-                            h.Cell().Element(CellHead).Text("Area");
-                            h.Cell().Element(CellHead).AlignRight().Text("Prom");
-                            h.Cell().Element(CellHead).AlignRight().Text("% ");
-                        });
+                            t.Header(h =>
+                            {
+                                h.Cell().Element(CellHead).Text("Evaluado");
+                                h.Cell().Element(CellHead).Text("Area");
+                                h.Cell().Element(CellHead).AlignRight().Text("Prom");
+                                h.Cell().Element(CellHead).AlignRight().Text("%");
+                            });
 
-                        foreach (var r in CrossAreaRows.Where(x => !x.IsSelf))
-                        {
-                            t.Cell().Element(CellBody).Text(r.EvaluatorName);
-                            t.Cell().Element(CellBody).Text(r.SubjectName);
-                            t.Cell().Element(CellBody).Text(r.Competency);
-                            t.Cell().Element(CellBody).AlignRight().Text(r.AvgScore.ToString("0.00"));
-                            t.Cell().Element(CellBody).AlignRight().Text($"{r.AvgPct}%");
-                        }
-                    });
+                            foreach (var r in grp.OrderBy(x => x.SubjectName).ThenBy(x => x.Competency))
+                            {
+                                t.Cell().Element(CellBody).Text(r.SubjectName);
+                                t.Cell().Element(CellBody).Text(r.Competency);
+                                t.Cell().Element(CellBody).AlignRight().Text(r.AvgScore.ToString("0.00"));
+                                t.Cell().Element(CellBody).AlignRight().Text($"{r.AvgPct}%");
+                            }
+                        });
+                    }
                 });
 
                 page.Footer().AlignRight().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm}").FontSize(8).FontColor(Colors.Grey.Darken2);
@@ -254,6 +241,46 @@ public class IndexModel : PageModel
                     page.Content().PaddingTop(8).Column(c =>
                     {
                         c.Spacing(10);
+
+                        c.Item().Text("Grafica comparativa por competencia (Auto vs Otros)").SemiBold();
+                        c.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(cols =>
+                            {
+                                cols.RelativeColumn(2);
+                                cols.RelativeColumn(2);
+                                cols.RelativeColumn(2);
+                                cols.RelativeColumn(1);
+                                cols.RelativeColumn(1);
+                            });
+
+                            t.Header(h =>
+                            {
+                                h.Cell().Element(CellHead).Text("Area");
+                                h.Cell().Element(CellHead).Text("Auto");
+                                h.Cell().Element(CellHead).Text("Otros");
+                                h.Cell().Element(CellHead).AlignRight().Text("Auto %");
+                                h.Cell().Element(CellHead).AlignRight().Text("Otros %");
+                            });
+
+                            var areas = s.AutoCompetencies.Select(x => x.Competency)
+                                .Union(s.TeamCompetencies.Select(x => x.Competency))
+                                .Distinct()
+                                .OrderBy(x => x)
+                                .ToList();
+
+                            foreach (var area in areas)
+                            {
+                                var autoPct = s.AutoCompetencies.FirstOrDefault(x => x.Competency == area)?.Pct ?? 0m;
+                                var teamPct = s.TeamCompetencies.FirstOrDefault(x => x.Competency == area)?.Pct ?? 0m;
+
+                                t.Cell().Element(CellBody).Text(area);
+                                t.Cell().Element(CellBody).Element(x => PercentageBar(x, autoPct, "#10B981"));
+                                t.Cell().Element(CellBody).Element(x => PercentageBar(x, teamPct, "#3B82F6"));
+                                t.Cell().Element(CellBody).AlignRight().Text($"{autoPct}%");
+                                t.Cell().Element(CellBody).AlignRight().Text($"{teamPct}%");
+                            }
+                        });
 
                         c.Item().Text("Autoevaluacion del empleado (como se califico en cada rubro)").SemiBold();
                         c.Item().Table(t =>
@@ -346,6 +373,31 @@ public class IndexModel : PageModel
     private static IContainer CellBody(IContainer c) =>
         c.Border(1).BorderColor(Colors.Grey.Lighten3)
             .PaddingVertical(5).PaddingHorizontal(6);
+
+    private static IContainer PercentageBar(IContainer c, decimal pct, string colorHex)
+    {
+        var clamped = Math.Max(0m, Math.Min(100m, pct));
+        var fill = (float)(clamped * 1.15m); // max ~115pt
+
+        return c.PaddingVertical(2).Element(x =>
+        {
+            var bar = x
+                .Width(115)
+                .Height(9)
+                .Border(1)
+                .BorderColor(Colors.Grey.Lighten2)
+                .Background("#E5E7EB");
+
+            bar.Row(r =>
+            {
+                if (fill > 0.1f)
+                    r.ConstantItem(fill).Background(colorHex);
+                r.RelativeItem();
+            });
+
+            return bar;
+        });
+    }
 
     private static string Level(decimal pct)
     {
@@ -554,6 +606,17 @@ public class IndexModel : PageModel
                 .OrderBy(x => x.Competency)
                 .ToList();
 
+            var teamForSubject = answerRows
+                .Where(x => x.SubjectUserId == subjectId && !x.IsSelf && x.Status == Eval360AssignmentStatus.Submitted)
+                .GroupBy(x => x.Competency)
+                .Select(g =>
+                {
+                    var avg = g.Average(x => x.Score);
+                    return new CompetencyMetric(g.Key, Math.Round(avg, 2), Math.Round((avg / 5m) * 100m, 0));
+                })
+                .OrderBy(x => x.Competency)
+                .ToList();
+
             var givenAnswers = answerRows
                 .Where(x => x.EvaluatorUserId == subjectId && !x.IsSelf && x.Status == Eval360AssignmentStatus.Submitted)
                 .ToList();
@@ -583,6 +646,7 @@ public class IndexModel : PageModel
                 AutoOverallPct = autoOverall,
                 GivenOverallPct = givenOverall,
                 AutoCompetencies = autoComp,
+                TeamCompetencies = teamForSubject,
                 GivenToPeers = givenByPeer
             });
         }
