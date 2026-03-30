@@ -1,19 +1,22 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Eval360.Results.IndexModel
 @{
-    ViewData["Title"] = "Resultados · 360";
+    ViewData["Title"] = "Resultados - 360";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Resultados · Evaluación 360</h1>
+        <h1 class="h4 m-0">Resultados - Evaluacion 360</h1>
         <div class="text-muted small">
             <span class="fw-semibold">@Model.Campaign.Title</span>
-            · @(Model.Campaign.PeriodStart?.ToString("dd/MM/yyyy") ?? "—") → @(Model.Campaign.PeriodEnd?.ToString("dd/MM/yyyy") ?? "—")
+            - @(Model.Campaign.PeriodStart?.ToString("dd/MM/yyyy") ?? "-") a @(Model.Campaign.PeriodEnd?.ToString("dd/MM/yyyy") ?? "-")
         </div>
     </div>
 
-    <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-dark" asp-page-handler="ExportPdf" asp-route-id="@Model.Campaign.Id">Exportar PDF</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Eval360/Campaigns/Index">Volver</a>
+    </div>
 </div>
 
 @if (TempData["Msg"] is string msg)
@@ -43,17 +46,11 @@
                         </select>
                         <label for="userSelect">Empleado</label>
                     </div>
-                    <div class="form-text">Tip: abre el combo y escribe para buscar rápido.</div>
-                </div>
-
-                <div class="col-auto">
-                    <button class="btn btn-primary px-4">Ver</button>
+                    <div class="form-text">Al cambiar empleado se actualiza automatico.</div>
                 </div>
 
                 <div class="col-auto ms-lg-auto">
-                    <a class="btn btn-outline-dark"
-                       asp-page="/Admin/Eval360/Campaigns/Assignments"
-                       asp-route-id="@Model.Campaign.Id">Asignaciones</a>
+                    <a class="btn btn-outline-dark" asp-page="/Admin/Eval360/Campaigns/Assignments" asp-route-id="@Model.Campaign.Id">Asignaciones</a>
                 </div>
             </div>
         </form>
@@ -62,19 +59,17 @@
 
 @if (!Model.Rows.Any())
 {
-    <div class="alert alert-info">Aún no hay respuestas para este empleado en este periodo.</div>
+    <div class="alert alert-info">Aun no hay respuestas para este empleado en este periodo.</div>
 }
 else
 {
     <div class="row g-3">
         <div class="col-lg-7">
             <div class="card shadow-soft">
-                <div class="card-header fw-semibold">Comparativo por competencia (Esperado vs Evaluación)</div>
+                <div class="card-header fw-semibold">Comparativo por competencia (Auto vs Otros)</div>
                 <div class="card-body">
                     <canvas id="cmpChart" height="140"></canvas>
-                    <div class="text-muted small mt-2">
-                        Escala 1–5 convertida a porcentaje.
-                    </div>
+                    <div class="text-muted small mt-2">Escala 1-5 convertida a porcentaje.</div>
                 </div>
             </div>
         </div>
@@ -83,13 +78,13 @@ else
             <div class="card shadow-soft">
                 <div class="card-header fw-semibold">Detalle</div>
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table table-sm align-middle mb-0 eval360-detail-table">
                         <thead>
                             <tr>
                                 <th>Competencia</th>
-                                <th class="text-end">Esperado</th>
-                                <th class="text-end">Evaluación</th>
-                                <th class="text-end">Diferencia</th>
+                                <th class="text-end">Autoevaluacion</th>
+                                <th class="text-end">Evaluacion del equipo</th>
+                                <th class="text-end">Brecha</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -97,27 +92,47 @@ else
                         {
                             var diff = r.DiffPct;
                             var badge = diff >= 10 ? "text-bg-danger" : (diff <= -10 ? "text-bg-success" : "text-bg-secondary");
+                            var hasAuto = r.AutoPct > 0;
+                            var hasOthers = r.OthersPct > 0;
                             <tr>
                                 <td class="fw-semibold">@r.Competency</td>
                                 <td class="text-end">
-                                    <span class="badge text-bg-light border">@r.AutoPct%</span>
-                                    <span class="text-muted small ms-1">(@r.LevelAuto)</span>
+                                    @if (hasAuto)
+                                    {
+                                        <span class="badge text-bg-light border">@r.AutoPct%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge text-bg-secondary">N/D</span>
+                                    }
                                 </td>
                                 <td class="text-end">
-                                    <span class="badge text-bg-light border">@r.OthersPct%</span>
-                                    <span class="text-muted small ms-1">(@r.LevelOthers)</span>
+                                    @if (hasOthers)
+                                    {
+                                        <span class="badge text-bg-light border">@r.OthersPct%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge text-bg-secondary">N/D</span>
+                                    }
                                 </td>
                                 <td class="text-end">
-                                    <span class="badge @badge">@((diff >= 0 ? "+" : ""))@diff%</span>
+                                    @if (hasAuto && hasOthers)
+                                    {
+                                        <span class="badge @badge">@((diff >= 0 ? "+" : ""))@diff%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
                                 </td>
                             </tr>
                         }
                         </tbody>
                     </table>
                 </div>
-
                 <div class="card-footer text-muted small">
-                    Diferencia = Esperado - Evaluación. Positiva = se está sobreestimando. Negativa = el equipo lo ve mejor.
+                    N/D = aun no hay respuesta enviada. Brecha = Autoevaluacion - Evaluacion del equipo.
                 </div>
             </div>
         </div>
@@ -130,28 +145,185 @@ else
                 </div>
                 <div class="card-body">
                     <canvas id="teamChart" height="120"></canvas>
-                    <div class="text-muted small mt-2">
-                        Promedio por competencia en todo el equipo (ponderado por empleado, no por número de evaluadores).
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 }
 
+<div class="card shadow-soft mt-3">
+    <div class="card-header fw-semibold">Avance de evaluacion por empleado</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Empleado</th>
+                    <th class="text-end">Auto %</th>
+                    <th class="text-end">Companeros %</th>
+                    <th class="text-end">Global %</th>
+                    <th class="text-end">Faltantes</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.ProgressRows)
+            {
+                <tr>
+                    <td class="fw-semibold">@p.EmployeeName</td>
+                    <td class="text-end">@p.SelfProgressPct%</td>
+                    <td class="text-end">@p.OthersProgressPct%</td>
+                    <td class="text-end">@p.OverallProgressPct%</td>
+                    <td class="text-end">@p.MissingCount</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card shadow-soft mt-3">
+    <div class="card-header fw-semibold">Por area por empleado (quien evaluo a quien)</div>
+    <div class="table-responsive" style="max-height: 420px; overflow: auto;">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Evaluador</th>
+                    <th>Evaluado</th>
+                    <th>Area</th>
+                    <th class="text-end">Promedio</th>
+                    <th class="text-end">%</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.CrossAreaRows.Where(x => !x.IsSelf))
+            {
+                <tr>
+                    <td>@r.EvaluatorName</td>
+                    <td>@r.SubjectName</td>
+                    <td>@r.Competency</td>
+                    <td class="text-end">@r.AvgScore.ToString("0.00")</td>
+                    <td class="text-end">@r.AvgPct%</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card shadow-soft mt-3 mb-3">
+    <div class="card-header fw-semibold">Resumen por empleado</div>
+    <div class="card-body">
+        <div class="accordion" id="accEval360">
+            @for (var i = 0; i < Model.EmployeeSummaries.Count; i++)
+            {
+                var s = Model.EmployeeSummaries[i];
+                var headingId = $"h{i}";
+                var bodyId = $"b{i}";
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="@headingId">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@bodyId" aria-expanded="false" aria-controls="@bodyId">
+                            <span class="fw-semibold">@s.EmployeeName</span>
+                            <span class="ms-3 text-muted small">Auto: @s.AutoOverallPct% - A companeros: @s.GivenOverallPct%</span>
+                        </button>
+                    </h2>
+                    <div id="@bodyId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#accEval360">
+                        <div class="accordion-body">
+                            <div class="row g-3">
+                                <div class="col-lg-6">
+                                    <div class="fw-semibold mb-2">Autoevaluacion (resultados)</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle">
+                                            <thead><tr><th>Area</th><th class="text-end">Prom</th><th class="text-end">%</th></tr></thead>
+                                            <tbody>
+                                            @if (s.AutoCompetencies.Any())
+                                            {
+                                                @foreach (var c in s.AutoCompetencies)
+                                                {
+                                                    <tr>
+                                                        <td>@c.Competency</td>
+                                                        <td class="text-end">@c.AvgScore.ToString("0.00")</td>
+                                                        <td class="text-end">@c.Pct%</td>
+                                                    </tr>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <tr><td colspan="3" class="text-muted">Sin autoevaluacion enviada.</td></tr>
+                                            }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-6">
+                                    <div class="fw-semibold mb-2">Evaluaciones a sus companeros (resumen)</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle">
+                                            <thead><tr><th>Companero</th><th class="text-end">Asig.</th><th class="text-end">Prom</th><th class="text-end">%</th></tr></thead>
+                                            <tbody>
+                                            @if (s.GivenToPeers.Any())
+                                            {
+                                                @foreach (var g in s.GivenToPeers)
+                                                {
+                                                    <tr>
+                                                        <td>@g.SubjectName</td>
+                                                        <td class="text-end">@g.SubmittedAssignments</td>
+                                                        <td class="text-end">@g.AvgScore.ToString("0.00")</td>
+                                                        <td class="text-end">@g.AvgPct%</td>
+                                                    </tr>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <tr><td colspan="4" class="text-muted">Sin evaluaciones enviadas a companeros.</td></tr>
+                                            }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .eval360-detail-table th:first-child,
+        .eval360-detail-table td:first-child {
+            width: 42%;
+            white-space: normal;
+        }
+
+        .eval360-detail-table th,
+        .eval360-detail-table td {
+            vertical-align: middle;
+        }
+    </style>
+}
+
 @section Scripts {
     <script>
-        // Cambio de periodo: navega al mismo folder con nuevo GUID (relativo, respeta PathBase).
         (function () {
             const camp = document.getElementById('campaignSelect');
             const user = document.getElementById('userSelect');
-            if (!camp) return;
+            if (!camp || !user) return;
 
-            camp.addEventListener('change', function () {
+            function reloadSelection() {
                 const cid = camp.value;
-                const uid = user ? user.value : '';
+                const uid = user.value;
                 const qs = uid ? ('?UserId=' + encodeURIComponent(uid)) : '';
                 window.location = cid + qs;
+            }
+
+            camp.addEventListener('change', function () {
+                reloadSelection();
+            });
+
+            user.addEventListener('change', function () {
+                reloadSelection();
             });
         })();
 
@@ -165,16 +337,12 @@ else
                 data: {
                     labels,
                     datasets: [
-                        { label: 'Esperado', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-                        { label: 'Evaluación', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
+                        { label: 'Auto', data: expectedValues, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                        { label: 'Otros', data: evalValues, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
+                options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
             };
-
             window.hnCharts?.decorate(cmpCfg);
             new Chart(document.getElementById('cmpChart'), cmpCfg);
         }
@@ -189,16 +357,12 @@ else
                 data: {
                     labels: tLabels,
                     datasets: [
-                        { label: 'Esperado (promedio)', data: tExpected, backgroundColor: 'rgba(16, 185, 129, 0.35)' },
-                        { label: 'Evaluación (promedio)', data: tEval, backgroundColor: 'rgba(59, 130, 246, 0.35)' }
+                        { label: 'Auto (promedio)', data: tExpected, backgroundColor: 'rgba(16, 185, 129, 0.35)' },
+                        { label: 'Otros (promedio)', data: tEval, backgroundColor: 'rgba(59, 130, 246, 0.35)' }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
+                options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
             };
-
             window.hnCharts?.decorate(teamCfg);
             new Chart(document.getElementById('teamChart'), teamCfg);
         }

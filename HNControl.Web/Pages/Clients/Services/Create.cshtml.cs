@@ -56,13 +56,13 @@ public class CreateModel : PageModel
         public string ContractNumber { get; set; } = "";
 
         [MaxLength(300)]
-        public string PortalUrl { get; set; } = "";
+        public string? PortalUrl { get; set; }
 
         [MaxLength(200)]
-        public string PortalUsername { get; set; } = "";
+        public string? PortalUsername { get; set; }
 
         [MaxLength(300)]
-        public string PortalPassword { get; set; } = "";
+        public string? PortalPassword { get; set; }
 
         [DataType(DataType.Date)]
         public DateTime? ContractStartDate { get; set; }
@@ -73,7 +73,7 @@ public class CreateModel : PageModel
         public Guid? ProjectId { get; set; }
 
         [MaxLength(2000)]
-        public string Notes { get; set; } = "";
+        public string? Notes { get; set; }
 
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
