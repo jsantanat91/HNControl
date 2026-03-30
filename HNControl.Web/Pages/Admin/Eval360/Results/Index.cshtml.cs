@@ -255,13 +255,7 @@ public class IndexModel : PageModel
                     {
                         c.Spacing(10);
 
-                        c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Row(r =>
-                        {
-                            r.RelativeItem().Text($"Autoevaluacion global: {s.AutoOverallPct}%").SemiBold();
-                            r.RelativeItem().AlignRight().Text($"Evaluaciones a companeros (global): {s.GivenOverallPct}%").SemiBold();
-                        });
-
-                        c.Item().Text("Autoevaluacion - Resultados por area").SemiBold();
+                        c.Item().Text("Autoevaluacion del empleado (como se califico en cada rubro)").SemiBold();
                         c.Item().Table(t =>
                         {
                             t.ColumnsDefinition(cols =>
@@ -294,6 +288,7 @@ public class IndexModel : PageModel
                                 t.Cell().Element(CellBody).Text("-");
                             }
                         });
+                        c.Item().AlignRight().Text($"Autoevaluacion global del empleado: {s.AutoOverallPct}%").SemiBold();
 
                         c.Item().Text("Evaluaciones a companeros (resumen)").SemiBold();
                         c.Item().Table(t =>
@@ -332,6 +327,7 @@ public class IndexModel : PageModel
                                 t.Cell().Element(CellBody).Text("-");
                             }
                         });
+                        c.Item().AlignRight().Text($"Promedio global evaluando a companeros: {s.GivenOverallPct}%").SemiBold();
                     });
                 });
             }
