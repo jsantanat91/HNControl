@@ -468,14 +468,7 @@
         scales: { x: { beginAtZero: true, max: 100 } },
         plugins: {
           legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (ctx) {
-                const value = Number(ctx.raw ?? 0);
-                return 'Variable %: ' + value.toFixed(1) + '%';
-              }
-            }
-          }
+          tooltip: { enabled: false }
         }
       }
     };

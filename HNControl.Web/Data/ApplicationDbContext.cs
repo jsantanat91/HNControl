@@ -351,6 +351,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany(x => x.Plans)
                 .HasForeignKey(x => x.InvestorId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.ClientId);
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<InvestmentPayment>(e =>
@@ -395,10 +400,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasIndex(x => new { x.PartnerId, x.IsActive });
             e.HasIndex(x => x.ServiceOrderId);
             e.HasIndex(x => x.QuoteRequestId);
+            e.HasIndex(x => x.ClientId);
             e.HasOne(x => x.Partner)
                 .WithMany(x => x.CommissionPlans)
                 .HasForeignKey(x => x.PartnerId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.ServiceOrder)
                 .WithMany()
                 .HasForeignKey(x => x.ServiceOrderId)

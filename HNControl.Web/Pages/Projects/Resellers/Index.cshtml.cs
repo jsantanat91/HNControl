@@ -15,8 +15,9 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
+    public record EmployeeOption(string UserId, string FullName, string Email, string Phone);
     public record PartnerRow(Guid Id, string Name, string Email, ResellerPartyType Type, int ActivePlans, decimal PendingAmount);
-    public record CommissionRow(Guid Id, string PartnerName, string Description, ResellerSourceType SourceType, decimal CommissionAmount, int TotalPeriods, int PaidPeriods, DateTime StartDate, bool IsActive);
+    public record CommissionRow(Guid Id, string PartnerName, string ClientName, string Description, decimal CommissionAmount, int TotalPeriods, int PaidPeriods, DateTime StartDate, bool IsActive);
     public record PaymentRow(
         Guid PaymentId,
         string PartnerName,
@@ -28,19 +29,21 @@ public class IndexModel : PageModel
         DateTime? PaidAt,
         string DueBadgeText,
         string DueBadgeCss);
+
+    public List<EmployeeOption> EmployeeOptions { get; set; } = new();
     public List<PartnerRow> Partners { get; set; } = new();
     public List<CommissionRow> Commissions { get; set; } = new();
     public List<PaymentRow> Payments { get; set; } = new();
 
     [BindProperty]
     public PartnerInput InputPartner { get; set; } = new();
+
     [BindProperty]
     public CommissionInput InputCommission { get; set; } = new();
 
     public List<SelectListItem> EmployeeItems { get; set; } = new();
     public List<SelectListItem> PartnerItems { get; set; } = new();
-    public List<SelectListItem> ServiceOrderItems { get; set; } = new();
-    public List<SelectListItem> QuoteItems { get; set; } = new();
+    public List<SelectListItem> ClientItems { get; set; } = new();
 
     [TempData]
     public string? Flash { get; set; }
@@ -49,12 +52,16 @@ public class IndexModel : PageModel
     {
         public ResellerPartyType PartyType { get; set; } = ResellerPartyType.External;
         public string? EmployeeUserId { get; set; }
+
         [MaxLength(200)]
         public string FullName { get; set; } = "";
+
         [EmailAddress, MaxLength(256)]
         public string Email { get; set; } = "";
+
         [MaxLength(40)]
         public string Phone { get; set; } = "";
+
         [MaxLength(1200)]
         public string Notes { get; set; } = "";
     }
@@ -63,17 +70,22 @@ public class IndexModel : PageModel
     {
         [Required]
         public Guid PartnerId { get; set; }
-        public ResellerSourceType SourceType { get; set; } = ResellerSourceType.ServiceOrder;
-        public Guid? ServiceOrderId { get; set; }
-        public Guid? QuoteRequestId { get; set; }
+
+        [Required]
+        public Guid ClientId { get; set; }
+
         [Required, MaxLength(220)]
         public string Description { get; set; } = "";
+
         [Range(0, 99999999)]
         public decimal BaseAmount { get; set; }
+
         [Range(0, 100)]
         public decimal CommissionPercentHuman { get; set; } = 10m;
+
         [Range(1, 120)]
         public int PeriodCount { get; set; } = 1;
+
         public ResellerCommissionPeriodicity Periodicity { get; set; } = ResellerCommissionPeriodicity.OneTime;
         public DateTime StartDate { get; set; } = DateTime.Today;
     }
@@ -148,33 +160,21 @@ public class IndexModel : PageModel
         var partner = await _db.ResellerPartners.FirstOrDefaultAsync(x => x.Id == InputCommission.PartnerId && x.IsActive);
         if (partner == null)
         {
-            ModelState.AddModelError("", "Selecciona reseller válido.");
+            ModelState.AddModelError("", "Selecciona reseller valido.");
             return Page();
         }
 
-        if (InputCommission.SourceType == ResellerSourceType.ServiceOrder && !InputCommission.ServiceOrderId.HasValue)
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == InputCommission.ClientId);
+        if (client == null)
         {
-            ModelState.AddModelError("", "Selecciona orden de servicio.");
+            ModelState.AddModelError("", "Selecciona cliente valido.");
             return Page();
         }
 
-        if (InputCommission.SourceType == ResellerSourceType.Quote && !InputCommission.QuoteRequestId.HasValue)
-        {
-            ModelState.AddModelError("", "Selecciona cotización.");
-            return Page();
-        }
-
-        decimal baseAmount = InputCommission.BaseAmount;
-        if (baseAmount <= 0m && InputCommission.SourceType == ResellerSourceType.Quote && InputCommission.QuoteRequestId.HasValue)
-        {
-            baseAmount = await _db.QuoteRequests
-                .Where(x => x.Id == InputCommission.QuoteRequestId.Value)
-                .Select(x => x.EstimatedTotal ?? 0m)
-                .FirstOrDefaultAsync();
-        }
+        var baseAmount = InputCommission.BaseAmount;
         if (baseAmount <= 0m)
         {
-            ModelState.AddModelError("", "Captura monto base para calcular comisión.");
+            ModelState.AddModelError("", "Captura monto base para calcular comision.");
             return Page();
         }
 
@@ -186,9 +186,10 @@ public class IndexModel : PageModel
         var plan = new ResellerCommissionPlan
         {
             PartnerId = partner.Id,
-            SourceType = InputCommission.SourceType,
-            ServiceOrderId = InputCommission.SourceType == ResellerSourceType.ServiceOrder ? InputCommission.ServiceOrderId : null,
-            QuoteRequestId = InputCommission.SourceType == ResellerSourceType.Quote ? InputCommission.QuoteRequestId : null,
+            ClientId = client.Id,
+            SourceType = ResellerSourceType.ServiceOrder,
+            ServiceOrderId = null,
+            QuoteRequestId = null,
             Description = InputCommission.Description.Trim(),
             BaseAmount = Math.Round(baseAmount, 2),
             CommissionPercent = pct,
@@ -215,7 +216,7 @@ public class IndexModel : PageModel
 
         _db.ResellerCommissionPlans.Add(plan);
         await _db.SaveChangesAsync();
-        Flash = "Plan de comisión creado.";
+        Flash = "Plan de comision creado.";
         return RedirectToPage();
     }
 
@@ -237,17 +238,21 @@ public class IndexModel : PageModel
         }
 
         await _db.SaveChangesAsync();
-        Flash = "Pago de comisión marcado correctamente.";
+        Flash = "Pago de comision marcado correctamente.";
         return RedirectToPage();
     }
 
     private async Task LoadAsync()
     {
-        EmployeeItems = await _db.EmployeeProfiles
+        EmployeeOptions = await _db.EmployeeProfiles
             .AsNoTracking()
             .OrderBy(x => x.FullName)
-            .Select(x => new SelectListItem(x.FullName, x.UserId))
+            .Select(x => new EmployeeOption(x.UserId, x.FullName, x.Email ?? "", x.Phone ?? ""))
             .ToListAsync();
+
+        EmployeeItems = EmployeeOptions
+            .Select(x => new SelectListItem(x.FullName, x.UserId))
+            .ToList();
 
         PartnerItems = await _db.ResellerPartners
             .AsNoTracking()
@@ -256,18 +261,10 @@ public class IndexModel : PageModel
             .Select(x => new SelectListItem(x.FullName, x.Id.ToString()))
             .ToListAsync();
 
-        ServiceOrderItems = await _db.ServiceOrders
+        ClientItems = await _db.Clients
             .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(100)
-            .Select(x => new SelectListItem(x.Title, x.Id.ToString()))
-            .ToListAsync();
-
-        QuoteItems = await _db.QuoteRequests
-            .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(100)
-            .Select(x => new SelectListItem(x.Folio + " · " + x.CustomerName, x.Id.ToString()))
+            .OrderBy(x => x.Name)
+            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
             .ToListAsync();
 
         var partners = await _db.ResellerPartners
@@ -287,6 +284,7 @@ public class IndexModel : PageModel
         var plans = await _db.ResellerCommissionPlans
             .AsNoTracking()
             .Include(x => x.Partner)
+            .Include(x => x.Client)
             .Include(x => x.Payments)
             .OrderByDescending(x => x.CreatedAt)
             .Take(200)
@@ -295,8 +293,8 @@ public class IndexModel : PageModel
         Commissions = plans.Select(p => new CommissionRow(
             p.Id,
             p.Partner?.FullName ?? "-",
+            p.Client?.Name ?? "-",
             p.Description,
-            p.SourceType,
             p.CommissionAmount,
             p.PeriodCount,
             p.Payments.Count(x => x.IsPaid),
@@ -309,10 +307,11 @@ public class IndexModel : PageModel
             .SelectMany(p => p.Payments.Select(pay =>
             {
                 var badge = ResolveDueBadge(pay.DueDate, pay.IsPaid, today);
+                var concept = (p.Client?.Name ?? "-") + " - " + p.Description;
                 return new PaymentRow(
                     pay.Id,
                     p.Partner?.FullName ?? "-",
-                    p.Description,
+                    concept,
                     pay.PeriodNumber,
                     pay.DueDate,
                     pay.Amount,
@@ -333,7 +332,7 @@ public class IndexModel : PageModel
         var due = dueDate.Date;
         if (due < today) return ("Atrasado", "bg-danger");
         if (due == today) return ("Hoy", "bg-warning text-dark");
-        if (due <= today.AddDays(3)) return ("Próximo", "bg-info text-dark");
+        if (due <= today.AddDays(3)) return ("Proximo", "bg-info text-dark");
         return ("Programado", "bg-secondary");
     }
 

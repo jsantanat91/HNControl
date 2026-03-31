@@ -17,15 +17,20 @@ public class CreatePlanModel : PageModel
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
+
     [BindProperty(SupportsGet = true)]
     public Guid? InvestorId { get; set; }
 
     public List<SelectListItem> InvestorItems { get; set; } = new();
+    public List<SelectListItem> ClientItems { get; set; } = new();
 
     public class InputModel
     {
         [Required]
         public Guid InvestorId { get; set; }
+
+        [Required]
+        public Guid ClientId { get; set; }
 
         [Required, MaxLength(200)]
         public string Name { get; set; } = "";
@@ -58,10 +63,18 @@ public class CreatePlanModel : PageModel
         await LoadListsAsync();
         if (!ModelState.IsValid) return Page();
 
-        var investor = await _db.InvestmentInvestors.FirstOrDefaultAsync(x => x.Id == Input.InvestorId && x.IsActive);
+        var investor = await _db.InvestmentInvestors
+            .FirstOrDefaultAsync(x => x.Id == Input.InvestorId && x.IsActive);
         if (investor == null)
         {
-            ModelState.AddModelError("", "Selecciona un inversionista válido.");
+            ModelState.AddModelError("", "Selecciona un inversionista valido.");
+            return Page();
+        }
+
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == Input.ClientId);
+        if (client == null)
+        {
+            ModelState.AddModelError("", "Selecciona un cliente valido.");
             return Page();
         }
 
@@ -74,6 +87,7 @@ public class CreatePlanModel : PageModel
         var plan = new InvestmentPlan
         {
             InvestorId = Input.InvestorId,
+            ClientId = Input.ClientId,
             Name = Input.Name.Trim(),
             PrincipalAmount = Math.Round(Input.PrincipalAmount, 2),
             ProfitPercent = profitPct,
@@ -119,7 +133,13 @@ public class CreatePlanModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive)
             .OrderBy(x => x.FullName)
-            .Select(x => new SelectListItem(x.FullName + " · " + x.Email, x.Id.ToString()))
+            .Select(x => new SelectListItem(x.FullName + " - " + x.Email, x.Id.ToString()))
+            .ToListAsync();
+
+        ClientItems = await _db.Clients
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => new SelectListItem(x.Name, x.Id.ToString()))
             .ToListAsync();
     }
 

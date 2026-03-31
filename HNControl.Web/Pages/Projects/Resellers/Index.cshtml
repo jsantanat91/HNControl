@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Reseller</h1>
-        <div class="text-muted small">Comisiones de ventas ligadas a ordenes y cotizaciones.</div>
+        <div class="text-muted small">Comisiones de venta ligadas a cliente.</div>
     </div>
 </div>
 
@@ -37,25 +37,29 @@
         <div class="card-body row g-2">
             <div class="col-md-4">
                 <label class="form-label">Tipo</label>
-                <select class="form-select" asp-for="InputPartner.PartyType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerPartyType>()"></select>
+                <select class="form-select" asp-for="InputPartner.PartyType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerPartyType>()" id="partyType"></select>
             </div>
-            <div class="col-md-8">
+            <div class="col-md-8" id="employeeWrap">
                 <label class="form-label">Empleado (si aplica)</label>
-                <select class="form-select" asp-for="InputPartner.EmployeeUserId" asp-items="Model.EmployeeItems">
+                <select class="form-select" asp-for="InputPartner.EmployeeUserId" id="employeePicker">
                     <option value="">-- No aplica --</option>
+                    @foreach (var emp in Model.EmployeeOptions)
+                    {
+                        <option value="@emp.UserId" data-name="@emp.FullName" data-email="@emp.Email" data-phone="@emp.Phone">@emp.FullName</option>
+                    }
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" id="externalNameWrap">
                 <label class="form-label">Nombre externo</label>
-                <input class="form-control" asp-for="InputPartner.FullName" />
+                <input class="form-control" asp-for="InputPartner.FullName" id="fullNameInput" />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Correo</label>
-                <input class="form-control" asp-for="InputPartner.Email" />
+                <input class="form-control" asp-for="InputPartner.Email" id="emailInput" />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Telefono</label>
-                <input class="form-control" asp-for="InputPartner.Phone" />
+                <input class="form-control" asp-for="InputPartner.Phone" id="phoneInput" />
             </div>
             <div class="col-12">
                 <label class="form-label">Notas</label>
@@ -77,24 +81,14 @@
                 <select class="form-select" asp-for="InputCommission.PartnerId" asp-items="Model.PartnerItems"></select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Origen</label>
-                <select class="form-select" asp-for="InputCommission.SourceType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerSourceType>()"></select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Orden de servicio</label>
-                <select class="form-select" asp-for="InputCommission.ServiceOrderId" asp-items="Model.ServiceOrderItems">
-                    <option value="">-- Selecciona --</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Cotizacion</label>
-                <select class="form-select" asp-for="InputCommission.QuoteRequestId" asp-items="Model.QuoteItems">
-                    <option value="">-- Selecciona --</option>
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="InputCommission.ClientId" asp-items="Model.ClientItems">
+                    <option value="">-- Selecciona cliente --</option>
                 </select>
             </div>
             <div class="col-12">
                 <label class="form-label">Descripcion</label>
-                <input class="form-control" asp-for="InputCommission.Description" />
+                <input class="form-control" asp-for="InputCommission.Description" placeholder="Ej: Comision por cierre de contrato de internet" />
             </div>
             <div class="col-md-3">
                 <label class="form-label">Monto base</label>
@@ -157,6 +151,7 @@
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="fw-semibold">@c.PartnerName</div>
+                                <div class="text-muted small">@c.ClientName</div>
                                 <div class="text-muted small">@c.Description</div>
                             </div>
                             @if (c.IsActive)
@@ -169,7 +164,7 @@
                             }
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <span class="hn-chip hn-chip-type">@c.SourceType</span>
+                            <span class="hn-chip hn-chip-type">Cliente: @c.ClientName</span>
                             <span class="hn-chip hn-chip-neutral">Inicio: @c.StartDate.ToString("yyyy-MM-dd")</span>
                             <span class="hn-chip hn-chip-neutral">Comision: @c.CommissionAmount.ToString("C")</span>
                             <span class="hn-chip hn-chip-neutral">Avance: @c.PaidPeriods / @c.TotalPeriods</span>
@@ -242,8 +237,17 @@
         (function () {
             const nav = document.getElementById('resellerSectionNav');
             if (!nav) return;
+
             const buttons = Array.from(nav.querySelectorAll('.section-btn'));
             const sections = Array.from(document.querySelectorAll('.reseller-section'));
+            const typeSel = document.getElementById('partyType');
+            const employeePicker = document.getElementById('employeePicker');
+            const fullNameInput = document.getElementById('fullNameInput');
+            const emailInput = document.getElementById('emailInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const externalNameWrap = document.getElementById('externalNameWrap');
+            const employeeWrap = document.getElementById('employeeWrap');
+            const employeeType = '@((int)HNControl.Web.Models.ResellerPartyType.Employee)';
 
             function showSection(targetId) {
                 sections.forEach(s => s.classList.toggle('d-none', s.id !== targetId));
@@ -257,8 +261,45 @@
                 });
             }
 
+            function isEmployeeMode() {
+                return typeSel && typeSel.value === employeeType;
+            }
+
+            function applyEmployeeData() {
+                const opt = employeePicker.options[employeePicker.selectedIndex];
+                if (!opt || !opt.value) return;
+                fullNameInput.value = opt.dataset.name || '';
+                emailInput.value = opt.dataset.email || '';
+                phoneInput.value = opt.dataset.phone || '';
+            }
+
+            function syncPartnerUi() {
+                const employeeMode = isEmployeeMode();
+                employeeWrap.classList.toggle('d-none', !employeeMode);
+                externalNameWrap.classList.toggle('d-none', employeeMode);
+                fullNameInput.readOnly = employeeMode;
+                emailInput.readOnly = employeeMode;
+                phoneInput.readOnly = employeeMode;
+
+                if (employeeMode) {
+                    applyEmployeeData();
+                } else {
+                    employeePicker.value = '';
+                    fullNameInput.readOnly = false;
+                    emailInput.readOnly = false;
+                    phoneInput.readOnly = false;
+                    fullNameInput.value = '';
+                    emailInput.value = '';
+                    phoneInput.value = '';
+                }
+            }
+
             buttons.forEach(btn => btn.addEventListener('click', () => showSection(btn.dataset.section)));
+            if (typeSel) typeSel.addEventListener('change', syncPartnerUi);
+            if (employeePicker) employeePicker.addEventListener('change', applyEmployeeData);
+
             showSection('sectionPartner');
+            syncPartnerUi();
         })();
     </script>
 }

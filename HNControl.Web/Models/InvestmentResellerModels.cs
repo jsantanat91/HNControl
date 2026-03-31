@@ -56,6 +56,8 @@ public class InvestmentPlan
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid InvestorId { get; set; }
     public InvestmentInvestor? Investor { get; set; }
+    public Guid? ClientId { get; set; }
+    public Client? Client { get; set; }
 
     [MaxLength(200)]
     public string Name { get; set; } = "";
@@ -162,6 +164,8 @@ public class ResellerCommissionPlan
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid PartnerId { get; set; }
     public ResellerPartner? Partner { get; set; }
+    public Guid? ClientId { get; set; }
+    public Client? Client { get; set; }
 
     public ResellerSourceType SourceType { get; set; }
     public Guid? ServiceOrderId { get; set; }

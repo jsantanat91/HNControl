@@ -156,19 +156,44 @@
         const labels = @Html.Raw(Model.LabelsJson);
         const totalPay = @Html.Raw(Model.TotalPayJson);
         const varPct = @Html.Raw(Model.VarPercentJson);
+        const chartColors = ['#2563eb', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'];
 
         const payCfg = {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Total a pagar', data: totalPay }] },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Total a pagar',
+                    data: totalPay,
+                    backgroundColor: totalPay.map((_, i) => chartColors[i % chartColors.length]),
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
         };
         window.hnCharts?.decorate(payCfg);
         new Chart(document.getElementById('payChart'), payCfg);
 
         const varCfg = {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Variable (%)', data: varPct }] },
-            options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } }
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Variable (%)',
+                    data: varPct,
+                    backgroundColor: varPct.map((_, i) => chartColors[i % chartColors.length]),
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { position: 'bottom' } }
+            }
         };
         window.hnCharts?.decorate(varCfg);
         new Chart(document.getElementById('varChart'), varCfg);

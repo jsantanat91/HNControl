@@ -2,12 +2,12 @@
 @model HNControl.Web.Pages.Projects.Investments.CreatePlanModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Nuevo plan de inversión";
+    ViewData["Title"] = "Nuevo plan de inversion";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Nuevo plan de inversión</h1>
+        <h1 class="h4 m-0">Nuevo plan de inversion</h1>
         <div class="text-muted small">Define monto, ganancia, pagos y periodicidad.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Projects/Investments/Index">Volver</a>
@@ -18,13 +18,21 @@
 <form method="post" class="card shadow-soft hn-hover">
     <div class="card-body row g-3">
         <div asp-validation-summary="All" class="text-danger small"></div>
+
         <div class="col-md-6">
             <label class="form-label">Inversionista</label>
             <select class="form-select" asp-for="Input.InvestorId" asp-items="Model.InvestorItems"></select>
         </div>
         <div class="col-md-6">
+            <label class="form-label">Cliente actual</label>
+            <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems">
+                <option value="">-- Selecciona cliente --</option>
+            </select>
+        </div>
+
+        <div class="col-md-6">
             <label class="form-label">Nombre del plan</label>
-            <input class="form-control" asp-for="Input.Name" placeholder="Ej: Inversión Tramo A" />
+            <input class="form-control" asp-for="Input.Name" placeholder="Ej: Inversion Tramo A" />
         </div>
 
         <div class="col-md-3">
@@ -36,7 +44,7 @@
             <input class="form-control" asp-for="Input.ProfitPercentHuman" />
         </div>
         <div class="col-md-3">
-            <label class="form-label">Número de pagos</label>
+            <label class="form-label">Numero de pagos</label>
             <input class="form-control" asp-for="Input.PaymentCount" />
         </div>
         <div class="col-md-3">
@@ -54,7 +62,7 @@
         </div>
     </div>
     <div class="card-footer">
-        <button class="btn btn-primary" type="submit">Crear plan y amortización</button>
+        <button class="btn btn-primary" type="submit">Crear plan y amortizacion</button>
     </div>
 </form>
 
