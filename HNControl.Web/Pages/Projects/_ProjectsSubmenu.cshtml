@@ -1,0 +1,13 @@
+@{
+    var path = Context?.Request?.Path.Value ?? "";
+    string Active(string p) => path.StartsWith(p, StringComparison.OrdinalIgnoreCase) ? "btn-primary" : "btn-outline-primary";
+}
+
+<div class="card shadow-soft hn-hover mb-3">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-muted small me-1">Submódulos de proyectos:</span>
+        <a class="btn btn-sm @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
+        <a class="btn btn-sm @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
+        <a class="btn btn-sm @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
+    </div>
+</div>

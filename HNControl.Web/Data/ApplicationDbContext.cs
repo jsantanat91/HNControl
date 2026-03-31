@@ -24,6 +24,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAccess> ProjectAccesses => Set<ProjectAccess>();
     public DbSet<ProjectActivity> ProjectActivities => Set<ProjectActivity>();
+    public DbSet<InvestmentInvestor> InvestmentInvestors => Set<InvestmentInvestor>();
+    public DbSet<InvestmentPlan> InvestmentPlans => Set<InvestmentPlan>();
+    public DbSet<InvestmentPayment> InvestmentPayments => Set<InvestmentPayment>();
+    public DbSet<ResellerPartner> ResellerPartners => Set<ResellerPartner>();
+    public DbSet<ResellerCommissionPlan> ResellerCommissionPlans => Set<ResellerCommissionPlan>();
+    public DbSet<ResellerCommissionPayment> ResellerCommissionPayments => Set<ResellerCommissionPayment>();
 
     public DbSet<KnowledgeLink> KnowledgeLinks => Set<KnowledgeLink>();
 
@@ -313,6 +319,100 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.AssignedToName).HasMaxLength(200);
             e.Property(x => x.Description).HasMaxLength(1000);
             e.HasIndex(x => new { x.ProjectId, x.SortOrder });
+        });
+
+        b.Entity<InvestmentInvestor>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(200);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.Notes).HasMaxLength(1200);
+            e.HasIndex(x => x.Email);
+        });
+
+        b.Entity<InvestmentPlan>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.PrincipalAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.ProfitPercent).HasColumnType("numeric(7,5)");
+            e.Property(x => x.StartDate).HasColumnType("date");
+            e.Property(x => x.Notes).HasMaxLength(1200);
+            e.HasIndex(x => new { x.InvestorId, x.IsActive });
+            e.HasOne(x => x.Investor)
+                .WithMany(x => x.Plans)
+                .HasForeignKey(x => x.InvestorId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<InvestmentPayment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DueDate).HasColumnType("date");
+            e.Property(x => x.PrincipalPortion).HasColumnType("numeric(12,2)");
+            e.Property(x => x.ProfitPortion).HasColumnType("numeric(12,2)");
+            e.Property(x => x.TotalAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.PaymentReference).HasMaxLength(200);
+            e.HasIndex(x => new { x.PlanId, x.PeriodNumber }).IsUnique();
+            e.HasOne(x => x.Plan)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ResellerPartner>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EmployeeUserId).HasMaxLength(64);
+            e.Property(x => x.FullName).HasMaxLength(200);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Phone).HasMaxLength(40);
+            e.Property(x => x.Notes).HasMaxLength(1200);
+            e.HasIndex(x => new { x.PartyType, x.EmployeeUserId });
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeUserId)
+                .HasPrincipalKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<ResellerCommissionPlan>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Description).HasMaxLength(220);
+            e.Property(x => x.BaseAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.CommissionPercent).HasColumnType("numeric(7,5)");
+            e.Property(x => x.CommissionAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.StartDate).HasColumnType("date");
+            e.HasIndex(x => new { x.PartnerId, x.IsActive });
+            e.HasIndex(x => x.ServiceOrderId);
+            e.HasIndex(x => x.QuoteRequestId);
+            e.HasOne(x => x.Partner)
+                .WithMany(x => x.CommissionPlans)
+                .HasForeignKey(x => x.PartnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.ServiceOrder)
+                .WithMany()
+                .HasForeignKey(x => x.ServiceOrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.QuoteRequest)
+                .WithMany()
+                .HasForeignKey(x => x.QuoteRequestId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<ResellerCommissionPayment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.DueDate).HasColumnType("date");
+            e.Property(x => x.Amount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.PaymentReference).HasMaxLength(220);
+            e.HasIndex(x => new { x.PlanId, x.PeriodNumber }).IsUnique();
+            e.HasOne(x => x.Plan)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<KnowledgeLink>(e =>

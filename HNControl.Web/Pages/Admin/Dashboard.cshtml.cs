@@ -1,10 +1,10 @@
+using System.Net;
 using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
-using System.Net;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +16,7 @@ public class DashboardModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IPayrollReceiptService _payrollReceipt;
     private readonly IEmailSender _emailSender;
+
     public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender)
     {
         _db = db;
@@ -38,17 +39,26 @@ public class DashboardModel : PageModel
         decimal QuotesRevenueMonth
     );
 
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0m);
-
     public record TopVm(string UserId, string Name, decimal Variable);
+    public record PayrollSummaryVm(
+        string UserId,
+        string Name,
+        decimal SalaryBase,
+        decimal VariablePct,
+        decimal Deductions,
+        decimal Bonuses,
+        decimal NetEstimated,
+        bool IsPaid,
+        DateTime? PaidAt);
+
+    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0m);
     public List<TopVm> Top { get; set; } = new();
+    public List<PayrollSummaryVm> PayrollRows { get; set; } = new();
 
     public string OrdersLabelsJson { get; set; } = "[]";
     public string OrdersValuesJson { get; set; } = "[]";
-
     public string ExamStatusLabelsJson { get; set; } = "[]";
     public string ExamStatusValuesJson { get; set; } = "[]";
-
     public string InvLabelsJson { get; set; } = "[]";
     public string InvInValuesJson { get; set; } = "[]";
     public string InvOutValuesJson { get; set; } = "[]";
@@ -56,24 +66,43 @@ public class DashboardModel : PageModel
     public string QuoteSalesValuesJson { get; set; } = "[]";
     public string TicketsClosedLabelsJson { get; set; } = "[]";
     public string TicketsClosedValuesJson { get; set; } = "[]";
-    public record PayrollSummaryVm(string UserId, string Name, decimal SalaryBase, decimal VariablePct, decimal Deductions, decimal Bonuses, decimal NetEstimated, bool IsPaid, DateTime? PaidAt);
-    public List<PayrollSummaryVm> PayrollRows { get; set; } = new();
+    public string TopVarLabelsJson { get; set; } = "[]";
+    public string TopVarValuesJson { get; set; } = "[]";
+
     public string PayrollPeriodLabel { get; set; } = "";
+    public DateTime PayrollPeriodStart { get; set; }
+    public DateTime PayrollPeriodEnd { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int? PayrollYear { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int? PayrollMonth { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int? PayrollHalf { get; set; }
+
     [TempData]
     public string? FlashSuccess { get; set; }
+
     [TempData]
     public string? FlashError { get; set; }
 
     public async Task OnGetAsync()
     {
-        var employees = await _db.EmployeeProfiles.CountAsync();
+        var (selectedYear, selectedMonth, selectedHalf, selectedStart, selectedEnd) =
+            ResolveSelectedPayrollPeriod(PayrollYear, PayrollMonth, PayrollHalf);
 
-        var ordersInReview = await _db.ServiceOrders
-            .Where(o => o.Status == ServiceOrderStatus.InReview)
-            .CountAsync();
+        PayrollYear = selectedYear;
+        PayrollMonth = selectedMonth;
+        PayrollHalf = selectedHalf;
+        PayrollPeriodStart = selectedStart;
+        PayrollPeriodEnd = selectedEnd;
+
+        var employees = await _db.EmployeeProfiles.CountAsync();
+        var ordersInReview = await _db.ServiceOrders.Where(o => o.Status == ServiceOrderStatus.InReview).CountAsync();
 
         var today = DateTime.UtcNow.Date;
-
         var overdueProjects = await _db.Projects
             .Where(p => p.Status == ProjectStatus.Active && p.EstimatedEndDate < today)
             .CountAsync();
@@ -90,7 +119,6 @@ public class DashboardModel : PageModel
             .Where(x => x.Status == ExamAssignmentStatus.Submitted)
             .CountAsync();
 
-        // Inventario: órdenes pendientes (por lote)
         var pendingInvOrders = await _db.InventoryMovements
             .Where(m => m.Status == InventoryMovementStatus.Pending)
             .Select(m => new { m.RequestedAt, m.RequestedByUserId, m.Type, m.ProjectId, m.ResponsibleUserId })
@@ -115,17 +143,37 @@ public class DashboardModel : PageModel
 
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var monthEnd = monthStart.AddMonths(1);
+
         var quotesAcceptedMonth = await _db.QuoteRequests
-            .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= monthStart && q.AcceptedAt.Value < monthEnd)
+            .Where(q => q.Status == QuoteRequestStatus.Accepted
+                        && q.AcceptedAt.HasValue
+                        && q.AcceptedAt.Value >= monthStart
+                        && q.AcceptedAt.Value < monthEnd)
             .CountAsync();
+
         var quotesRevenueMonth = await _db.QuoteRequests
-            .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= monthStart && q.AcceptedAt.Value < monthEnd)
+            .Where(q => q.Status == QuoteRequestStatus.Accepted
+                        && q.AcceptedAt.HasValue
+                        && q.AcceptedAt.Value >= monthStart
+                        && q.AcceptedAt.Value < monthEnd)
             .SumAsync(q => q.EstimatedTotal ?? 0m);
 
-        Kpi = new KpiVm(employees, ordersInReview, overdueProjects, pendingViaticWeeks, pendingLeaves, examsToGrade, pendingInvOrders, lowStockItems, openTickets, ticketSlaBreached, quotesAcceptedMonth, quotesRevenueMonth);
-        await LoadPayrollSummaryAsync();
+        Kpi = new KpiVm(
+            employees,
+            ordersInReview,
+            overdueProjects,
+            pendingViaticWeeks,
+            pendingLeaves,
+            examsToGrade,
+            pendingInvOrders,
+            lowStockItems,
+            openTickets,
+            ticketSlaBreached,
+            quotesAcceptedMonth,
+            quotesRevenueMonth);
 
-        // Top variable (última evaluación por empleado)
+        await LoadPayrollSummaryAsync(selectedStart, selectedEnd);
+
         var latest = await _db.PerformanceReviews
             .GroupBy(r => r.UserId)
             .Select(g => g.OrderByDescending(x => x.PeriodStart).First())
@@ -139,25 +187,25 @@ public class DashboardModel : PageModel
             .Take(8)
             .ToList();
 
-        // Chart órdenes completadas últimos 30 días
-        var start = today.AddDays(-29);
-        var days = Enumerable.Range(0, 30).Select(i => start.AddDays(i)).ToList();
+        TopVarLabelsJson = JsonSerializer.Serialize(Top.Select(x => x.Name));
+        TopVarValuesJson = JsonSerializer.Serialize(Top.Select(x => Math.Round(x.Variable * 100m, 2)));
+
+        var chartStart = today.AddDays(-29);
+        var days = Enumerable.Range(0, 30).Select(i => chartStart.AddDays(i)).ToList();
 
         var completed = await _db.ServiceOrders
             .Where(o => (o.Status == ServiceOrderStatus.Finalized || o.Status == ServiceOrderStatus.Completed)
                         && o.FinalizedAt.HasValue
-                        && o.FinalizedAt.Value.Date >= start)
+                        && o.FinalizedAt.Value.Date >= chartStart)
             .GroupBy(o => o.FinalizedAt!.Value.Date)
             .Select(g => new { Day = g.Key, Cnt = g.Count() })
             .ToListAsync();
 
         var labels = days.Select(d => d.ToString("MM-dd")).ToList();
         var values = days.Select(d => completed.FirstOrDefault(x => x.Day == d)?.Cnt ?? 0).ToList();
-
         OrdersLabelsJson = JsonSerializer.Serialize(labels);
         OrdersValuesJson = JsonSerializer.Serialize(values);
 
-        // Chart exámenes (estatus)
         var ex = await _db.ExamAssignments
             .AsNoTracking()
             .GroupBy(a => a.Status)
@@ -168,10 +216,9 @@ public class DashboardModel : PageModel
         ExamStatusLabelsJson = JsonSerializer.Serialize(ex.Select(x => x.Status));
         ExamStatusValuesJson = JsonSerializer.Serialize(ex.Select(x => x.Cnt));
 
-        // Chart inventario (aprobados) últimos 30 días
         var inv = await _db.InventoryMovements
             .AsNoTracking()
-            .Where(m => m.Status == InventoryMovementStatus.Approved && m.ApprovedAt.HasValue && m.ApprovedAt.Value.Date >= start)
+            .Where(m => m.Status == InventoryMovementStatus.Approved && m.ApprovedAt.HasValue && m.ApprovedAt.Value.Date >= chartStart)
             .GroupBy(m => new { Day = m.ApprovedAt!.Value.Date, m.Type })
             .Select(g => new { g.Key.Day, g.Key.Type, Cnt = g.Count() })
             .ToListAsync();
@@ -190,7 +237,10 @@ public class DashboardModel : PageModel
             var mStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-i);
             var mEnd = mStart.AddMonths(1);
             var sum = await _db.QuoteRequests
-                .Where(q => q.Status == QuoteRequestStatus.Accepted && q.AcceptedAt.HasValue && q.AcceptedAt.Value >= mStart && q.AcceptedAt.Value < mEnd)
+                .Where(q => q.Status == QuoteRequestStatus.Accepted
+                            && q.AcceptedAt.HasValue
+                            && q.AcceptedAt.Value >= mStart
+                            && q.AcceptedAt.Value < mEnd)
                 .SumAsync(q => q.EstimatedTotal ?? 0m);
             salesLabels.Add(mStart.ToLocalTime().ToString("MMM yy"));
             salesValues.Add(sum);
@@ -201,39 +251,42 @@ public class DashboardModel : PageModel
 
         var ticketsClosed = await _db.Tickets
             .AsNoTracking()
-            .Where(t => t.ClosedAt.HasValue && t.ClosedAt.Value.Date >= start)
+            .Where(t => t.ClosedAt.HasValue && t.ClosedAt.Value.Date >= chartStart)
             .GroupBy(t => t.ClosedAt!.Value.Date)
             .Select(g => new { Day = g.Key, Cnt = g.Count() })
             .ToListAsync();
+
         var closedValues = days.Select(d => ticketsClosed.FirstOrDefault(x => x.Day == d)?.Cnt ?? 0).ToList();
         TicketsClosedLabelsJson = JsonSerializer.Serialize(labels);
         TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
     }
 
-    public async Task<IActionResult> OnPostMarkPaidAsync(string userId)
+    public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payrollYear, int? payrollMonth, int? payrollHalf)
     {
+        var (selectedYear, selectedMonth, selectedHalf, selectedStart, selectedEnd) =
+            ResolveSelectedPayrollPeriod(payrollYear, payrollMonth, payrollHalf);
+
         if (string.IsNullOrWhiteSpace(userId))
         {
             FlashError = "Falta empleado para marcar pago.";
-            return RedirectToPage();
+            return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
         }
 
-        var employee = await _db.EmployeeProfiles
-            .FirstOrDefaultAsync(x => x.UserId == userId);
-
+        var employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == userId);
         if (employee == null)
         {
-            FlashError = "No se encontró el empleado.";
-            return RedirectToPage();
+            FlashError = "No se encontro el empleado.";
+            return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
         }
 
         if (string.IsNullOrWhiteSpace(employee.Email))
         {
             FlashError = $"El empleado {employee.FullName} no tiene correo configurado.";
-            return RedirectToPage();
+            return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
         }
 
-        var (periodStart, periodEnd) = ResolveCurrentPeriodUtc();
+        var periodStart = selectedStart;
+        var periodEnd = selectedEnd;
         var payrollDate = DateTime.Now.Date;
 
         var dispatch = await _db.PayrollReceiptDispatches
@@ -241,8 +294,8 @@ public class DashboardModel : PageModel
 
         if (dispatch?.IsSent == true)
         {
-            FlashSuccess = $"El pago de {employee.FullName} ya estaba confirmado para esta quincena.";
-            return RedirectToPage();
+            FlashSuccess = $"El pago de {employee.FullName} ya estaba confirmado para este periodo.";
+            return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
         }
 
         if (dispatch == null)
@@ -266,17 +319,17 @@ public class DashboardModel : PageModel
             var data = await _payrollReceipt.BuildAsync(userId, periodStart, periodEnd, payrollDate);
             if (data == null)
             {
-                dispatch.LastError = "No se pudo construir el recibo de nómina.";
+                dispatch.LastError = "No se pudo construir el recibo de nomina.";
                 await _db.SaveChangesAsync();
                 FlashError = $"No se pudo generar recibo para {employee.FullName}.";
-                return RedirectToPage();
+                return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
             }
 
             var pdf = _payrollReceipt.RenderPdf(data);
-            var subject = $"Pago aplicado de nómina · {periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+            var subject = $"Pago aplicado de nomina � {periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
             var body = $@"
                 <p>Hola {WebUtility.HtmlEncode(data.FullName)},</p>
-                <p>Te confirmamos que tu pago de nómina fue aplicado.</p>
+                <p>Te confirmamos que tu pago de nomina fue aplicado.</p>
                 <p><b>Periodo:</b> {periodStart:yyyy-MM-dd} al {periodEnd:yyyy-MM-dd}<br/>
                 <b>Importe pagado:</b> {data.NetEstimated:C2}<br/>
                 <b>Fecha de pago:</b> {payrollDate:yyyy-MM-dd}</p>
@@ -305,13 +358,14 @@ public class DashboardModel : PageModel
             FlashError = $"No se pudo enviar el correo de pago para {employee.FullName}. {dispatch.LastError}";
         }
 
-        return RedirectToPage();
+        return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
     }
 
-    private async Task LoadPayrollSummaryAsync()
+    private async Task LoadPayrollSummaryAsync(DateTime periodStart, DateTime periodEnd)
     {
-        var (periodStart, periodEnd) = ResolveCurrentPeriodUtc();
         PayrollPeriodLabel = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+        PayrollPeriodStart = periodStart;
+        PayrollPeriodEnd = periodEnd;
 
         var emps = await _db.EmployeeProfiles
             .AsNoTracking()
@@ -342,24 +396,38 @@ public class DashboardModel : PageModel
             var total = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * vp), 2);
             var (deductions, bonuses) = await CalcPayrollAdjustmentsAsync(e.UserId, baseQ, total, periodStart, periodEnd);
             var net = Math.Max(0m, Math.Round(total - deductions + bonuses, 2));
-            var paid = dispatches.TryGetValue(e.UserId, out var d) && d.IsSent;
-            var paidAt = paid ? d.SentAt : null;
+            var paid = dispatches.TryGetValue(e.UserId, out var dispatch) && dispatch.IsSent;
+            var paidAt = paid ? dispatch.SentAt : null;
 
-            rows.Add(new PayrollSummaryVm(e.UserId, e.FullName, e.SalaryBase, vp, deductions, bonuses, net, paid, paidAt));
+            rows.Add(new PayrollSummaryVm(
+                e.UserId,
+                e.FullName,
+                e.SalaryBase,
+                vp,
+                deductions,
+                bonuses,
+                net,
+                paid,
+                paidAt));
         }
 
-        PayrollRows = rows.OrderByDescending(x => x.NetEstimated).Take(40).ToList();
+        PayrollRows = rows.OrderByDescending(x => x.NetEstimated).Take(60).ToList();
     }
 
-    private static (DateTime start, DateTime end) ResolveCurrentPeriodUtc()
+    private static (int year, int month, int half, DateTime start, DateTime end) ResolveSelectedPayrollPeriod(int? year, int? month, int? half)
     {
         var now = DateTime.Now.Date;
-        if (now.Day <= 15)
-            return (new DateTime(now.Year, now.Month, 1),
-                    new DateTime(now.Year, now.Month, 15));
+        var y = year.GetValueOrDefault(now.Year);
+        var m = month.GetValueOrDefault(now.Month);
+        var h = half.GetValueOrDefault(now.Day <= 15 ? 1 : 2);
 
-        return (new DateTime(now.Year, now.Month, 16),
-                new DateTime(now.Year, now.Month, DateTime.DaysInMonth(now.Year, now.Month)));
+        if (y < 2020 || y > 2100) y = now.Year;
+        if (m < 1 || m > 12) m = now.Month;
+        if (h is not (1 or 2)) h = (now.Day <= 15 ? 1 : 2);
+
+        var start = h == 1 ? new DateTime(y, m, 1) : new DateTime(y, m, 16);
+        var end = h == 1 ? new DateTime(y, m, 15) : new DateTime(y, m, DateTime.DaysInMonth(y, m));
+        return (y, m, h, start, end);
     }
 
     private async Task<(decimal deductions, decimal bonuses)> CalcPayrollAdjustmentsAsync(

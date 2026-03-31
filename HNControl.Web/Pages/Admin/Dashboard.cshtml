@@ -140,63 +140,83 @@
 <div class="row g-3 mt-1">
     <div class="col-12">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-                <span>Resumen n&oacute;mina (quincena actual)</span>
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>Resumen n&oacute;mina</span>
                 <span class="text-muted small">@Model.PayrollPeriodLabel</span>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Empleado</th>
-                                <th class="text-end">Sueldo mensual</th>
-                                <th class="text-end">Variable 80/20</th>
-                                <th class="text-end">Deducciones</th>
-                                <th class="text-end">Bonos</th>
-                                <th class="text-end">Neto estimado</th>
-                                <th class="text-center">Pago</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var r in Model.PayrollRows)
-                            {
-                                <tr>
-                                    <td>@r.Name</td>
-                                    <td class="text-end">@r.SalaryBase.ToString("C")</td>
-                                    <td class="text-end">@((r.VariablePct * 100m).ToString("0.#"))%</td>
-                                    <td class="text-end text-danger">@r.Deductions.ToString("C")</td>
-                                    <td class="text-end text-success">@r.Bonuses.ToString("C")</td>
-                                    <td class="text-end fw-semibold">@r.NetEstimated.ToString("C")</td>
-                                    <td class="text-center">
-                                        @if (r.IsPaid)
-                                        {
-                                            <span class="badge bg-success">Pagado</span>
-                                            @if (r.PaidAt.HasValue)
-                                            {
-                                                <div class="small text-muted">@r.PaidAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-warning text-dark">Pendiente</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        @if (!r.IsPaid)
-                                        {
-                                            <form method="post" asp-page-handler="MarkPaid" asp-route-userId="@r.UserId" class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-success">Pagado</button>
-                                            </form>
-                                        }
-                                        <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
-                                        <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Employees/PayrollReceipt" asp-route-userId="@r.UserId">Recibo PDF</a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                <form method="get" class="row g-2 align-items-end mb-3">
+                    <div class="col-12 col-md-2">
+                        <label class="form-label small text-muted mb-1">A&ntilde;o</label>
+                        <input class="form-control form-control-sm" type="number" name="payrollYear" min="2020" max="2100" value="@Model.PayrollYear" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label small text-muted mb-1">Mes</label>
+                        <input class="form-control form-control-sm" type="number" name="payrollMonth" min="1" max="12" value="@Model.PayrollMonth" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small text-muted mb-1">Quincena</label>
+                        <select class="form-select form-select-sm" name="payrollHalf">
+                            <option value="1" selected="@(Model.PayrollHalf == 1)">1&ordf; quincena (1-15)</option>
+                            <option value="2" selected="@(Model.PayrollHalf == 2)">2&ordf; quincena (16-fin)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <button class="btn btn-sm btn-primary w-100">Consultar</button>
+                    </div>
+                </form>
+
+                <div class="row g-3">
+                    @foreach (var r in Model.PayrollRows)
+                    {
+                        <div class="col-12 col-lg-6">
+                            <div class="payroll-card">
+                                <div class="payroll-card-head">
+                                    <div class="fw-semibold">@r.Name</div>
+                                    @if (r.IsPaid)
+                                    {
+                                        <span class="badge bg-success">Pagado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                    }
+                                </div>
+                                <div class="small text-muted mb-2">Periodo: @Model.PayrollPeriodLabel</div>
+
+                                <div class="payroll-metrics">
+                                    <div><span class="text-muted">Sueldo mensual</span><strong>@r.SalaryBase.ToString("C")</strong></div>
+                                    <div><span class="text-muted">Variable 80/20</span><strong>@((r.VariablePct * 100m).ToString("0.#"))%</strong></div>
+                                    <div><span class="text-muted">Deducciones</span><strong class="text-danger">@r.Deductions.ToString("C")</strong></div>
+                                    <div><span class="text-muted">Bonos</span><strong class="text-success">@r.Bonuses.ToString("C")</strong></div>
+                                    <div><span class="text-muted">Neto estimado</span><strong>@r.NetEstimated.ToString("C")</strong></div>
+                                </div>
+
+                                @if (r.PaidAt.HasValue)
+                                {
+                                    <div class="small text-muted mt-2">Confirmado: @r.PaidAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                }
+
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    @if (!r.IsPaid)
+                                    {
+                                        <form method="post" asp-page-handler="MarkPaid" asp-route-userId="@r.UserId" class="d-inline">
+                                            <input type="hidden" name="payrollYear" value="@Model.PayrollYear" />
+                                            <input type="hidden" name="payrollMonth" value="@Model.PayrollMonth" />
+                                            <input type="hidden" name="payrollHalf" value="@Model.PayrollHalf" />
+                                            <button type="submit" class="btn btn-sm btn-success">Pagado</button>
+                                        </form>
+                                    }
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       asp-page="/Admin/Employees/PayrollReceipt"
+                                       asp-route-userId="@r.UserId"
+                                       asp-route-start="@Model.PayrollPeriodStart.ToString("yyyy-MM-dd")"
+                                       asp-route-end="@Model.PayrollPeriodEnd.ToString("yyyy-MM-dd")">Recibo PDF</a>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -217,23 +237,7 @@
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Top variable % (ultima evaluacion)</div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Empleado</th><th class="text-end">Variable %</th><th></th></tr></thead>
-                        <tbody>
-                            @foreach (var r in Model.Top)
-                            {
-                                <tr>
-                                    <td>@r.Name</td>
-                                    <td class="text-end">@((r.Variable * 100m).ToString("0.#"))%</td>
-                                    <td class="text-end">
-                                        <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <canvas id="topVarChart" height="185"></canvas>
                 <div class="text-muted small mt-2">Si aqui sale "0%" es porque aun no hay evaluaciones publicadas.</div>
             </div>
         </div>
@@ -343,6 +347,35 @@
             position: relative;
             z-index: 1;
         }
+
+        .payroll-card {
+            border: 1px solid rgba(148, 163, 184, .34);
+            border-radius: 14px;
+            padding: .9rem;
+            background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(243,247,255,.88));
+            height: 100%;
+        }
+
+        .payroll-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .payroll-metrics {
+            display: grid;
+            gap: .45rem;
+        }
+
+        .payroll-metrics > div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .75rem;
+            border-bottom: 1px dashed rgba(148, 163, 184, .32);
+            padding-bottom: .2rem;
+        }
     </style>
 }
 
@@ -415,4 +448,27 @@
     };
     window.hnCharts?.decorate(tkCfg);
     new Chart(document.getElementById('ticketsClosedChart'), tkCfg);
+
+    const topLabels = @Html.Raw(Model.TopVarLabelsJson);
+    const topValues = @Html.Raw(Model.TopVarValuesJson);
+    const topColors = ['#2563eb', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'];
+    const topCfg = {
+      type: 'bar',
+      data: {
+        labels: topLabels,
+        datasets: [{
+          label: 'Variable %',
+          data: topValues,
+          backgroundColor: topValues.map((_, i) => topColors[i % topColors.length]),
+          borderRadius: 8
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        scales: { x: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { display: false } }
+      }
+    };
+    window.hnCharts?.decorate(topCfg);
+    new Chart(document.getElementById('topVarChart'), topCfg);
 </script>

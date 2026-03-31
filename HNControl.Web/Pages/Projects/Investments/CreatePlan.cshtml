@@ -1,0 +1,63 @@
+@page
+@model HNControl.Web.Pages.Projects.Investments.CreatePlanModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Nuevo plan de inversión";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Nuevo plan de inversión</h1>
+        <div class="text-muted small">Define monto, ganancia, pagos y periodicidad.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Projects/Investments/Index">Volver</a>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+<form method="post" class="card shadow-soft hn-hover">
+    <div class="card-body row g-3">
+        <div asp-validation-summary="All" class="text-danger small"></div>
+        <div class="col-md-6">
+            <label class="form-label">Inversionista</label>
+            <select class="form-select" asp-for="Input.InvestorId" asp-items="Model.InvestorItems"></select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Nombre del plan</label>
+            <input class="form-control" asp-for="Input.Name" placeholder="Ej: Inversión Tramo A" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Capital invertido</label>
+            <input class="form-control" asp-for="Input.PrincipalAmount" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">% Ganancia total</label>
+            <input class="form-control" asp-for="Input.ProfitPercentHuman" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Número de pagos</label>
+            <input class="form-control" asp-for="Input.PaymentCount" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Periodicidad</label>
+            <select class="form-select" asp-for="Input.Periodicity" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.InvestmentPeriodicity>()"></select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Fecha de inicio</label>
+            <input class="form-control" asp-for="Input.StartDate" type="date" />
+        </div>
+        <div class="col-md-8">
+            <label class="form-label">Notas</label>
+            <input class="form-control" asp-for="Input.Notes" />
+        </div>
+    </div>
+    <div class="card-footer">
+        <button class="btn btn-primary" type="submit">Crear plan y amortización</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

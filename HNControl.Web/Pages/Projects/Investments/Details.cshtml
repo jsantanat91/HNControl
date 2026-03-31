@@ -1,0 +1,154 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.Projects.Investments.DetailsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Detalle inversión";
+}
+
+@if (Model.Investor == null)
+{
+    <div class="alert alert-warning">Inversionista no encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">@Model.Investor.FullName</h1>
+        <div class="text-muted small">@Model.Investor.Email · @Model.Investor.Phone</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Projects/Investments/Index">Volver</a>
+        <a class="btn btn-primary" asp-page="/Projects/Investments/CreatePlan" asp-route-investorId="@Model.Investor.Id">+ Nuevo plan</a>
+    </div>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+<form method="post" class="d-none">@Html.AntiForgeryToken()</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-info py-2">@Model.Flash</div>
+}
+
+@if (!Model.Plans.Any())
+{
+    <div class="alert alert-light border">Este inversionista no tiene planes capturados.</div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var plan in Model.Plans)
+        {
+            <div class="card shadow-soft hn-hover">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <div class="fw-semibold">@plan.Name</div>
+                        <div class="small text-muted">
+                            Capital @plan.PrincipalAmount.ToString("C") · Ganancia @((plan.ProfitPercent * 100m).ToString("0.##"))% · @plan.PaymentCount pagos (@plan.Periodicity)
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="hn-chip hn-chip-status-up">Pagado @plan.PaidAmount.ToString("C")</span>
+                        <span class="hn-chip hn-chip-status-down">Saldo @plan.PendingAmount.ToString("C")</span>
+                        <a class="btn btn-sm btn-outline-primary" asp-page-handler="StatementPdf" asp-route-id="@Model.Investor.Id" asp-route-planId="@plan.Id">PDF</a>
+                    </div>
+                </div>
+                <div class="card-body table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Vence</th>
+                                <th class="text-end">Capital</th>
+                                <th class="text-end">Ganancia</th>
+                                <th class="text-end">Total</th>
+                                <th>Referencia</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in plan.Payments)
+                            {
+                                <tr id="pay-row-@p.Id">
+                                    <td>@p.Number</td>
+                                    <td>@p.DueDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-end">@p.Principal.ToString("C")</td>
+                                    <td class="text-end text-success">@p.Profit.ToString("C")</td>
+                                    <td class="text-end fw-semibold">@p.Total.ToString("C")</td>
+                                    <td>
+                                        @if (p.IsPaid)
+                                        {
+                                            <span>@(string.IsNullOrWhiteSpace(p.PaymentReference) ? "-" : p.PaymentReference)</span>
+                                        }
+                                        else
+                                        {
+                                            <input class="form-control form-control-sm ref-input" data-payment-id="@p.Id" placeholder="Ref transferencia" />
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (p.IsPaid)
+                                        {
+                                            <span class="badge bg-success">Pagado</span>
+                                            <div class="small text-muted">@(p.PaidAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">Pendiente</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (!p.IsPaid)
+                                        {
+                                            <button class="btn btn-sm btn-success js-mark-paid" data-payment-id="@p.Id">Marcar pagado</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            async function markPaid(paymentId) {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+                const refInput = document.querySelector(`.ref-input[data-payment-id="${paymentId}"]`);
+                const reference = refInput ? refInput.value : '';
+                const form = new URLSearchParams();
+                form.append('paymentId', paymentId);
+                form.append('paymentReference', reference || '');
+                const response = await fetch('?handler=MarkPaid', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: form.toString()
+                });
+                if (!response.ok) throw new Error('No se pudo registrar pago');
+                const data = await response.json();
+                if (!data.ok) throw new Error(data.message || 'Error');
+                window.location.reload();
+            }
+
+            document.querySelectorAll('.js-mark-paid').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    btn.disabled = true;
+                    try {
+                        await markPaid(btn.dataset.paymentId);
+                    } catch (e) {
+                        alert(e.message || 'Error al marcar pago');
+                        btn.disabled = false;
+                    }
+                });
+            });
+        })();
+    </script>
+}

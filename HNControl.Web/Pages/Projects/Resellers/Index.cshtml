@@ -1,0 +1,247 @@
+@page
+@model HNControl.Web.Pages.Projects.Resellers.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Reseller";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 m-0">Reseller</h1>
+        <div class="text-muted small">Comisiones de ventas ligadas a órdenes y cotizaciones.</div>
+    </div>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-info py-2">@Model.Flash</div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-xl-5">
+        <form method="post" asp-page-handler="CreatePartner" class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Nuevo reseller</div>
+            <div class="card-body row g-2">
+                <div class="col-12">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" asp-for="InputPartner.PartyType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerPartyType>()"></select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Empleado (si aplica)</label>
+                    <select class="form-select" asp-for="InputPartner.EmployeeUserId" asp-items="Model.EmployeeItems">
+                        <option value="">-- No aplica --</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Nombre externo</label>
+                    <input class="form-control" asp-for="InputPartner.FullName" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Correo</label>
+                    <input class="form-control" asp-for="InputPartner.Email" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Teléfono</label>
+                    <input class="form-control" asp-for="InputPartner.Phone" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notas</label>
+                    <input class="form-control" asp-for="InputPartner.Notes" />
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" type="submit">Guardar reseller</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-12 col-xl-7">
+        <form method="post" asp-page-handler="CreateCommission" class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Nuevo plan de comisión</div>
+            <div class="card-body row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Reseller</label>
+                    <select class="form-select" asp-for="InputCommission.PartnerId" asp-items="Model.PartnerItems"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Origen</label>
+                    <select class="form-select" asp-for="InputCommission.SourceType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerSourceType>()"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Orden de servicio</label>
+                    <select class="form-select" asp-for="InputCommission.ServiceOrderId" asp-items="Model.ServiceOrderItems">
+                        <option value="">-- Selecciona --</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Cotización</label>
+                    <select class="form-select" asp-for="InputCommission.QuoteRequestId" asp-items="Model.QuoteItems">
+                        <option value="">-- Selecciona --</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripción</label>
+                    <input class="form-control" asp-for="InputCommission.Description" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Monto base</label>
+                    <input class="form-control" asp-for="InputCommission.BaseAmount" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">% comisión</label>
+                    <input class="form-control" asp-for="InputCommission.CommissionPercentHuman" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Periodicidad</label>
+                    <select class="form-select" asp-for="InputCommission.Periodicity" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.ResellerCommissionPeriodicity>()"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">N° periodos</label>
+                    <input class="form-control" asp-for="InputCommission.PeriodCount" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Inicio</label>
+                    <input class="form-control" asp-for="InputCommission.StartDate" type="date" />
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" type="submit">Crear comisión</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-5">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Resellers</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Planes</th>
+                            <th class="text-end">Pendiente</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in Model.Partners)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@p.Name</div>
+                                <div class="small text-muted">@p.Email</div>
+                            </td>
+                            <td><span class="hn-chip hn-chip-type">@p.Type</span></td>
+                            <td class="text-end">@p.ActivePlans</td>
+                            <td class="text-end fw-semibold">@p.PendingAmount.ToString("C")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-7">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Comisiones</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Reseller</th>
+                            <th>Concepto</th>
+                            <th>Origen</th>
+                            <th class="text-end">Comisión</th>
+                            <th class="text-end">Avance</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var c in Model.Commissions)
+                    {
+                        <tr>
+                            <td>@c.PartnerName</td>
+                            <td>
+                                <div class="fw-semibold">@c.Description</div>
+                                <div class="small text-muted">Inicio @c.StartDate.ToString("yyyy-MM-dd")</div>
+                            </td>
+                            <td><span class="hn-chip hn-chip-neutral">@c.SourceType</span></td>
+                            <td class="text-end">@c.CommissionAmount.ToString("C")</td>
+                            <td class="text-end">@c.PaidPeriods / @c.TotalPeriods</td>
+                            <td class="text-end">
+                                @if (c.IsActive)
+                                {
+                                    <span class="badge bg-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Cerrado</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover mt-3">
+    <div class="card-header fw-semibold">Pagos de comisión (periodicidad)</div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Reseller</th>
+                    <th>Comisión</th>
+                    <th>Periodo</th>
+                    <th>Vence</th>
+                    <th class="text-end">Monto</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Payments)
+            {
+                <tr>
+                    <td>@p.PartnerName</td>
+                    <td>@p.Description</td>
+                    <td>#@p.PeriodNumber</td>
+                    <td>@p.DueDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end fw-semibold">@p.Amount.ToString("C")</td>
+                    <td>
+                        @if (p.IsPaid)
+                        {
+                            <span class="badge bg-success">Pagado</span>
+                            <div class="small text-muted">@p.PaidAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (!p.IsPaid)
+                        {
+                            <form method="post" asp-page-handler="MarkPaid" class="d-inline">
+                                <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                                <button class="btn btn-sm btn-success" type="submit">Pagado</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
