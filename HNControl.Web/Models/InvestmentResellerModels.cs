@@ -14,9 +14,23 @@ public enum InvestmentPeriodicity
     Weekly = 3
 }
 
+public enum InvestmentInvestorType
+{
+    [Display(Name = "Empleado")]
+    Employee = 1,
+
+    [Display(Name = "Externo")]
+    External = 2
+}
+
 public class InvestmentInvestor
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public InvestmentInvestorType InvestorType { get; set; } = InvestmentInvestorType.External;
+
+    [MaxLength(64)]
+    public string? EmployeeUserId { get; set; }
+    public EmployeeProfile? Employee { get; set; }
 
     [MaxLength(200)]
     public string FullName { get; set; } = "";

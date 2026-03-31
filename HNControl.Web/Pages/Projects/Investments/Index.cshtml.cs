@@ -12,7 +12,7 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    public record InvestorCard(Guid Id, string FullName, string Email, int ActivePlans, decimal PendingBalance, DateTime CreatedAt);
+    public record InvestorCard(Guid Id, string FullName, string Email, InvestmentInvestorType InvestorType, int ActivePlans, decimal PendingBalance, DateTime CreatedAt);
     public List<InvestorCard> Investors { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -31,7 +31,7 @@ public class IndexModel : PageModel
                 .SelectMany(p => p.Payments)
                 .Where(x => !x.IsPaid)
                 .Sum(x => x.TotalAmount);
-            return new InvestorCard(i.Id, i.FullName, i.Email, active.Count, pending, i.CreatedAt);
+            return new InvestorCard(i.Id, i.FullName, i.Email, i.InvestorType, active.Count, pending, i.CreatedAt);
         }).ToList();
     }
 }

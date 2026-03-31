@@ -17,7 +17,17 @@ public class IndexModel : PageModel
 
     public record PartnerRow(Guid Id, string Name, string Email, ResellerPartyType Type, int ActivePlans, decimal PendingAmount);
     public record CommissionRow(Guid Id, string PartnerName, string Description, ResellerSourceType SourceType, decimal CommissionAmount, int TotalPeriods, int PaidPeriods, DateTime StartDate, bool IsActive);
-    public record PaymentRow(Guid PaymentId, string PartnerName, string Description, int PeriodNumber, DateTime DueDate, decimal Amount, bool IsPaid, DateTime? PaidAt);
+    public record PaymentRow(
+        Guid PaymentId,
+        string PartnerName,
+        string Description,
+        int PeriodNumber,
+        DateTime DueDate,
+        decimal Amount,
+        bool IsPaid,
+        DateTime? PaidAt,
+        string DueBadgeText,
+        string DueBadgeCss);
     public List<PartnerRow> Partners { get; set; } = new();
     public List<CommissionRow> Commissions { get; set; } = new();
     public List<PaymentRow> Payments { get; set; } = new();
@@ -294,20 +304,37 @@ public class IndexModel : PageModel
             p.IsActive
         )).ToList();
 
+        var today = DateTime.Today;
         Payments = plans
-            .SelectMany(p => p.Payments.Select(pay => new PaymentRow(
-                pay.Id,
-                p.Partner?.FullName ?? "-",
-                p.Description,
-                pay.PeriodNumber,
-                pay.DueDate,
-                pay.Amount,
-                pay.IsPaid,
-                pay.PaidAt)))
+            .SelectMany(p => p.Payments.Select(pay =>
+            {
+                var badge = ResolveDueBadge(pay.DueDate, pay.IsPaid, today);
+                return new PaymentRow(
+                    pay.Id,
+                    p.Partner?.FullName ?? "-",
+                    p.Description,
+                    pay.PeriodNumber,
+                    pay.DueDate,
+                    pay.Amount,
+                    pay.IsPaid,
+                    pay.PaidAt,
+                    badge.text,
+                    badge.css);
+            }))
             .OrderBy(x => x.IsPaid)
             .ThenBy(x => x.DueDate)
             .Take(300)
             .ToList();
+    }
+
+    private static (string text, string css) ResolveDueBadge(DateTime dueDate, bool isPaid, DateTime today)
+    {
+        if (isPaid) return ("Pagado", "bg-success");
+        var due = dueDate.Date;
+        if (due < today) return ("Atrasado", "bg-danger");
+        if (due == today) return ("Hoy", "bg-warning text-dark");
+        if (due <= today.AddDays(3)) return ("Próximo", "bg-info text-dark");
+        return ("Programado", "bg-secondary");
     }
 
     private static DateTime AddPeriod(DateTime date, ResellerCommissionPeriodicity periodicity)

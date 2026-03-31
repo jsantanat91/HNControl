@@ -324,11 +324,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         b.Entity<InvestmentInvestor>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.EmployeeUserId).HasMaxLength(64);
             e.Property(x => x.FullName).HasMaxLength(200);
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.Notes).HasMaxLength(1200);
             e.HasIndex(x => x.Email);
+            e.HasIndex(x => new { x.InvestorType, x.EmployeeUserId });
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeUserId)
+                .HasPrincipalKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<InvestmentPlan>(e =>

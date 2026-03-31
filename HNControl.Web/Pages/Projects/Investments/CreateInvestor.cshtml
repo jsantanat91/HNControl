@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Nuevo inversionista</h1>
-        <div class="text-muted small">Registro de persona para inversiones.</div>
+        <div class="text-muted small">Persona ligada a inversiones y estado de cuenta.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Projects/Investments/Index">Volver</a>
 </div>
@@ -18,17 +18,34 @@
 <form method="post" class="card shadow-soft hn-hover">
     <div class="card-body row g-3">
         <div asp-validation-summary="All" class="text-danger small"></div>
+
+        <div class="col-md-4">
+            <label class="form-label">Tipo de persona</label>
+            <select class="form-select" asp-for="Input.InvestorType" asp-items="Html.GetEnumSelectList<HNControl.Web.Models.InvestmentInvestorType>()" id="investorType"></select>
+        </div>
+
+        <div class="col-md-8" id="employeeWrap">
+            <label class="form-label">Empleado (si aplica)</label>
+            <select class="form-select" asp-for="Input.EmployeeUserId" id="employeePicker">
+                <option value="">-- Selecciona empleado --</option>
+                @foreach (var emp in Model.EmployeeOptions)
+                {
+                    <option value="@emp.UserId" data-name="@emp.FullName" data-email="@emp.Email" data-phone="@emp.Phone">@emp.FullName</option>
+                }
+            </select>
+        </div>
+
         <div class="col-md-6">
             <label class="form-label">Nombre completo</label>
-            <input class="form-control" asp-for="Input.FullName" />
+            <input class="form-control" asp-for="Input.FullName" id="fullNameInput" />
         </div>
         <div class="col-md-6">
             <label class="form-label">Correo</label>
-            <input class="form-control" asp-for="Input.Email" />
+            <input class="form-control" asp-for="Input.Email" id="emailInput" />
         </div>
         <div class="col-md-4">
-            <label class="form-label">Teléfono</label>
-            <input class="form-control" asp-for="Input.Phone" />
+            <label class="form-label">Telefono</label>
+            <input class="form-control" asp-for="Input.Phone" id="phoneInput" />
         </div>
         <div class="col-md-8">
             <label class="form-label">Notas</label>
@@ -42,4 +59,47 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const typeSel = document.getElementById('investorType');
+            const employeeWrap = document.getElementById('employeeWrap');
+            const employeePicker = document.getElementById('employeePicker');
+            const fullNameInput = document.getElementById('fullNameInput');
+            const emailInput = document.getElementById('emailInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const employeeType = '@((int)HNControl.Web.Models.InvestmentInvestorType.Employee)';
+
+            function isEmployeeType() {
+                return typeSel && typeSel.value === employeeType;
+            }
+
+            function applyEmployeeData() {
+                const opt = employeePicker.options[employeePicker.selectedIndex];
+                if (!opt || !opt.value) return;
+                fullNameInput.value = opt.dataset.name || '';
+                emailInput.value = opt.dataset.email || '';
+                phoneInput.value = opt.dataset.phone || '';
+            }
+
+            function syncUi() {
+                const employeeMode = isEmployeeType();
+                employeeWrap.classList.toggle('d-none', !employeeMode);
+                fullNameInput.readOnly = employeeMode;
+                emailInput.readOnly = employeeMode;
+                phoneInput.readOnly = employeeMode;
+                if (!employeeMode) {
+                    employeePicker.value = '';
+                    fullNameInput.readOnly = false;
+                    emailInput.readOnly = false;
+                    phoneInput.readOnly = false;
+                } else {
+                    applyEmployeeData();
+                }
+            }
+
+            typeSel.addEventListener('change', syncUi);
+            employeePicker.addEventListener('change', applyEmployeeData);
+            syncUi();
+        })();
+    </script>
 }

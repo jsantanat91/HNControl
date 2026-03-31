@@ -32,7 +32,12 @@ else
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="fw-semibold">@i.FullName</div>
-                            <span class="hn-chip hn-chip-type">@i.ActivePlans plan(es)</span>
+                            <div class="d-flex gap-1">
+                                <span class="hn-chip @(i.InvestorType == HNControl.Web.Models.InvestmentInvestorType.Employee ? "hn-chip-neutral" : "hn-chip-type")">
+                                    @(i.InvestorType == HNControl.Web.Models.InvestmentInvestorType.Employee ? "Empleado" : "Externo")
+                                </span>
+                                <span class="hn-chip hn-chip-type">@i.ActivePlans plan(es)</span>
+                            </div>
                         </div>
                         <div class="small text-muted mb-1">@i.Email</div>
                         <div class="small text-muted mb-2">Alta: @i.CreatedAt.ToString("yyyy-MM-dd")</div>
