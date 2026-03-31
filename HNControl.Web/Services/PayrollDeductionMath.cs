@@ -123,7 +123,6 @@ public static class PayrollDeductionMath
 
         var totalPeriods = ResolveTotalPeriods(d, amount);
         var paidPeriods = ResolvePaidPeriods(d, amount, localDate);
-        var remainingToDate = ResolveRemaining(d, amount, localDate);
 
         if (d.Type == EmployeeDeductionType.Prestamo)
         {
@@ -133,9 +132,6 @@ public static class PayrollDeductionMath
                 if (occurrenceIndex > totalPeriods.Value)
                     amount = 0m;
             }
-
-            if (remainingToDate.HasValue && remainingToDate.Value <= 0m)
-                amount = 0m;
 
             if (d.TotalAmount.HasValue && d.TotalAmount.Value > 0m)
             {
@@ -147,6 +143,12 @@ public static class PayrollDeductionMath
                 var remainingBeforeCurrent = Math.Max(0m, d.TotalAmount.Value - (periodsBeforeCurrent * amount));
                 amount = Math.Min(amount, remainingBeforeCurrent);
             }
+
+            if (d.RemainingAmount.HasValue)
+            {
+                var remainingManual = Math.Max(0m, d.RemainingAmount.Value);
+                amount = Math.Min(amount, remainingManual);
+            }
         }
         else if (d.RemainingAmount.HasValue)
         {
@@ -155,6 +157,7 @@ public static class PayrollDeductionMath
         }
 
         amount = Math.Round(Math.Max(0m, amount), 2);
+        var remainingToDate = ResolveRemaining(d, amount, localDate);
         return new PayrollDeductionEval(amount, remainingToDate, paidPeriods, totalPeriods);
     }
 
