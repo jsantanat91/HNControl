@@ -8,11 +8,13 @@ public class PayrollReceiptDispatchWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PayrollReceiptDispatchWorker> _logger;
+    private readonly IConfiguration _cfg;
 
-    public PayrollReceiptDispatchWorker(IServiceScopeFactory scopeFactory, ILogger<PayrollReceiptDispatchWorker> logger)
+    public PayrollReceiptDispatchWorker(IServiceScopeFactory scopeFactory, ILogger<PayrollReceiptDispatchWorker> logger, IConfiguration cfg)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _cfg = cfg;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,6 +44,10 @@ public class PayrollReceiptDispatchWorker : BackgroundService
 
     private async Task ProcessAsync(CancellationToken ct)
     {
+        var autoSendEnabled = _cfg.GetValue<bool>("Payroll:AutoSendReceipts");
+        if (!autoSendEnabled)
+            return;
+
         var tz = ResolveTimezone();
         var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
         var today = nowLocal.Date;
@@ -158,4 +164,3 @@ public class PayrollReceiptDispatchWorker : BackgroundService
         return TimeZoneInfo.Local;
     }
 }
-

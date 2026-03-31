@@ -2,6 +2,8 @@ using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using System.Net;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,14 @@ namespace HNControl.Web.Pages.Admin;
 public class DashboardModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public DashboardModel(ApplicationDbContext db) => _db = db;
+    private readonly IPayrollReceiptService _payrollReceipt;
+    private readonly IEmailSender _emailSender;
+    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender)
+    {
+        _db = db;
+        _payrollReceipt = payrollReceipt;
+        _emailSender = emailSender;
+    }
 
     public record KpiVm(
         int Employees,
@@ -47,9 +56,13 @@ public class DashboardModel : PageModel
     public string QuoteSalesValuesJson { get; set; } = "[]";
     public string TicketsClosedLabelsJson { get; set; } = "[]";
     public string TicketsClosedValuesJson { get; set; } = "[]";
-    public record PayrollSummaryVm(string UserId, string Name, decimal SalaryBase, decimal VariablePct, decimal Deductions, decimal Bonuses, decimal NetEstimated);
+    public record PayrollSummaryVm(string UserId, string Name, decimal SalaryBase, decimal VariablePct, decimal Deductions, decimal Bonuses, decimal NetEstimated, bool IsPaid, DateTime? PaidAt);
     public List<PayrollSummaryVm> PayrollRows { get; set; } = new();
     public string PayrollPeriodLabel { get; set; } = "";
+    [TempData]
+    public string? FlashSuccess { get; set; }
+    [TempData]
+    public string? FlashError { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -197,6 +210,104 @@ public class DashboardModel : PageModel
         TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
     }
 
+    public async Task<IActionResult> OnPostMarkPaidAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            FlashError = "Falta empleado para marcar pago.";
+            return RedirectToPage();
+        }
+
+        var employee = await _db.EmployeeProfiles
+            .FirstOrDefaultAsync(x => x.UserId == userId);
+
+        if (employee == null)
+        {
+            FlashError = "No se encontró el empleado.";
+            return RedirectToPage();
+        }
+
+        if (string.IsNullOrWhiteSpace(employee.Email))
+        {
+            FlashError = $"El empleado {employee.FullName} no tiene correo configurado.";
+            return RedirectToPage();
+        }
+
+        var (periodStart, periodEnd) = ResolveCurrentPeriodUtc();
+        var payrollDate = DateTime.Now.Date;
+
+        var dispatch = await _db.PayrollReceiptDispatches
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.PeriodStart == periodStart && x.PeriodEnd == periodEnd);
+
+        if (dispatch?.IsSent == true)
+        {
+            FlashSuccess = $"El pago de {employee.FullName} ya estaba confirmado para esta quincena.";
+            return RedirectToPage();
+        }
+
+        if (dispatch == null)
+        {
+            dispatch = new PayrollReceiptDispatch
+            {
+                UserId = userId,
+                PeriodStart = periodStart,
+                PeriodEnd = periodEnd
+            };
+            _db.PayrollReceiptDispatches.Add(dispatch);
+        }
+
+        dispatch.RecipientEmail = employee.Email.Trim();
+        dispatch.PayrollDate = payrollDate;
+        dispatch.AttemptCount += 1;
+        dispatch.LastAttemptAt = DateTime.UtcNow;
+
+        try
+        {
+            var data = await _payrollReceipt.BuildAsync(userId, periodStart, periodEnd, payrollDate);
+            if (data == null)
+            {
+                dispatch.LastError = "No se pudo construir el recibo de nómina.";
+                await _db.SaveChangesAsync();
+                FlashError = $"No se pudo generar recibo para {employee.FullName}.";
+                return RedirectToPage();
+            }
+
+            var pdf = _payrollReceipt.RenderPdf(data);
+            var subject = $"Pago aplicado de nómina · {periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+            var body = $@"
+                <p>Hola {WebUtility.HtmlEncode(data.FullName)},</p>
+                <p>Te confirmamos que tu pago de nómina fue aplicado.</p>
+                <p><b>Periodo:</b> {periodStart:yyyy-MM-dd} al {periodEnd:yyyy-MM-dd}<br/>
+                <b>Importe pagado:</b> {data.NetEstimated:C2}<br/>
+                <b>Fecha de pago:</b> {payrollDate:yyyy-MM-dd}</p>
+                <p>Adjuntamos tu recibo en PDF para referencia.</p>
+                <p>Equipo HN Control</p>";
+
+            await _emailSender.SendAsync(
+                data.Email.Trim(),
+                subject,
+                body,
+                pdf,
+                $"recibo_nomina_{periodStart:yyyyMMdd}_{periodEnd:yyyyMMdd}.pdf",
+                "application/pdf");
+
+            dispatch.IsSent = true;
+            dispatch.SentAt = DateTime.UtcNow;
+            dispatch.LastError = null;
+            await _db.SaveChangesAsync();
+
+            FlashSuccess = $"Pago confirmado y correo enviado a {employee.FullName} ({data.Email}).";
+        }
+        catch (Exception ex)
+        {
+            dispatch.LastError = ex.Message.Length > 1100 ? ex.Message[..1100] : ex.Message;
+            await _db.SaveChangesAsync();
+            FlashError = $"No se pudo enviar el correo de pago para {employee.FullName}. {dispatch.LastError}";
+        }
+
+        return RedirectToPage();
+    }
+
     private async Task LoadPayrollSummaryAsync()
     {
         var (periodStart, periodEnd) = ResolveCurrentPeriodUtc();
@@ -213,6 +324,11 @@ public class DashboardModel : PageModel
             .Select(g => g.OrderByDescending(x => x.PeriodStart).ThenByDescending(x => x.UpdatedAt).First())
             .ToListAsync();
 
+        var dispatches = await _db.PayrollReceiptDispatches
+            .AsNoTracking()
+            .Where(x => x.PeriodStart == periodStart && x.PeriodEnd == periodEnd)
+            .ToDictionaryAsync(x => x.UserId, x => x);
+
         var latestMap = latest.ToDictionary(x => x.UserId, x => x.VariablePercent);
         var rows = new List<PayrollSummaryVm>();
 
@@ -226,8 +342,10 @@ public class DashboardModel : PageModel
             var total = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * vp), 2);
             var (deductions, bonuses) = await CalcPayrollAdjustmentsAsync(e.UserId, baseQ, total, periodStart, periodEnd);
             var net = Math.Max(0m, Math.Round(total - deductions + bonuses, 2));
+            var paid = dispatches.TryGetValue(e.UserId, out var d) && d.IsSent;
+            var paidAt = paid ? d.SentAt : null;
 
-            rows.Add(new PayrollSummaryVm(e.UserId, e.FullName, e.SalaryBase, vp, deductions, bonuses, net));
+            rows.Add(new PayrollSummaryVm(e.UserId, e.FullName, e.SalaryBase, vp, deductions, bonuses, net, paid, paidAt));
         }
 
         PayrollRows = rows.OrderByDescending(x => x.NetEstimated).Take(40).ToList();

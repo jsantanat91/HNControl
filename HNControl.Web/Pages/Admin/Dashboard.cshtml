@@ -16,6 +16,15 @@
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.FlashSuccess))
+{
+    <div class="alert alert-success py-2">@Model.FlashSuccess</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.FlashError))
+{
+    <div class="alert alert-warning py-2">@Model.FlashError</div>
+}
+
 <div class="row g-3">
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card kpi-tone-1">
@@ -146,6 +155,7 @@
                                 <th class="text-end">Deducciones</th>
                                 <th class="text-end">Bonos</th>
                                 <th class="text-end">Neto estimado</th>
+                                <th class="text-center">Pago</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -159,7 +169,27 @@
                                     <td class="text-end text-danger">@r.Deductions.ToString("C")</td>
                                     <td class="text-end text-success">@r.Bonuses.ToString("C")</td>
                                     <td class="text-end fw-semibold">@r.NetEstimated.ToString("C")</td>
+                                    <td class="text-center">
+                                        @if (r.IsPaid)
+                                        {
+                                            <span class="badge bg-success">Pagado</span>
+                                            @if (r.PaidAt.HasValue)
+                                            {
+                                                <div class="small text-muted">@r.PaidAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">Pendiente</span>
+                                        }
+                                    </td>
                                     <td class="text-end">
+                                        @if (!r.IsPaid)
+                                        {
+                                            <form method="post" asp-page-handler="MarkPaid" asp-route-userId="@r.UserId" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-success">Pagado</button>
+                                            </form>
+                                        }
                                         <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
                                         <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Employees/PayrollReceipt" asp-route-userId="@r.UserId">Recibo PDF</a>
                                     </td>
