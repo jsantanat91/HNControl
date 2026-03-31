@@ -41,7 +41,7 @@ public class BackupModel : PageModel
 
         var cs = new NpgsqlConnectionStringBuilder(conn);
         var pgDump = await ResolvePgDumpPathAsync();
-        if (string.IsNullOrWhiteSpace(pgDump) || !IO.File.Exists(pgDump))
+        if (string.IsNullOrWhiteSpace(pgDump) || (!IsCommandName(pgDump) && !IO.File.Exists(pgDump)))
         {
             Error = "No se encontró pg_dump en el servidor. Instala PostgreSQL client tools o configura Database:PgDumpPath.";
             return Page();
@@ -91,7 +91,7 @@ public class BackupModel : PageModel
     private async Task<string?> ResolvePgDumpPathAsync()
     {
         var configured = (_cfg["Database:PgDumpPath"] ?? SystemAlias.Environment.GetEnvironmentVariable("PG_DUMP_PATH") ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(configured) && IO.File.Exists(configured))
+        if (!string.IsNullOrWhiteSpace(configured) && (IO.File.Exists(configured) || IsCommandName(configured)))
             return configured;
 
         try
@@ -115,6 +115,9 @@ public class BackupModel : PageModel
         }
         catch { }
 
+        var fromPath = FindInPath(OperatingSystem.IsWindows() ? "pg_dump.exe" : "pg_dump");
+        if (!string.IsNullOrWhiteSpace(fromPath)) return fromPath;
+
         var candidates = new List<string>();
         if (!OperatingSystem.IsWindows())
         {
@@ -137,6 +140,9 @@ public class BackupModel : PageModel
 
         AddFromBase(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFiles), "PostgreSQL"));
         AddFromBase(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFilesX86), "PostgreSQL"));
+        AddFromBase(IO.Path.Combine("C:\\", "PostgreSQL"));
+        candidates.Add(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFiles), "pgAdmin 4", "runtime", "pg_dump.exe"));
+        candidates.Add(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFilesX86), "pgAdmin 4", "runtime", "pg_dump.exe"));
 
         return candidates.OrderByDescending(x => x).FirstOrDefault();
     }
@@ -164,7 +170,7 @@ public class BackupModel : PageModel
         }
 
         var psql = await ResolvePsqlPathAsync();
-        if (string.IsNullOrWhiteSpace(psql) || !IO.File.Exists(psql))
+        if (string.IsNullOrWhiteSpace(psql) || (!IsCommandName(psql) && !IO.File.Exists(psql)))
         {
             Error = "No se encontró psql en el servidor. Instala PostgreSQL client tools o configura Database:PsqlPath.";
             return Page();
@@ -231,7 +237,7 @@ public class BackupModel : PageModel
     private async Task<string?> ResolvePsqlPathAsync()
     {
         var configured = (_cfg["Database:PsqlPath"] ?? SystemAlias.Environment.GetEnvironmentVariable("PSQL_PATH") ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(configured) && IO.File.Exists(configured))
+        if (!string.IsNullOrWhiteSpace(configured) && (IO.File.Exists(configured) || IsCommandName(configured)))
             return configured;
 
         try
@@ -255,6 +261,9 @@ public class BackupModel : PageModel
         }
         catch { }
 
+        var fromPath = FindInPath(OperatingSystem.IsWindows() ? "psql.exe" : "psql");
+        if (!string.IsNullOrWhiteSpace(fromPath)) return fromPath;
+
         var candidates = new List<string>();
         if (!OperatingSystem.IsWindows())
         {
@@ -277,8 +286,33 @@ public class BackupModel : PageModel
 
         AddFromBase(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFiles), "PostgreSQL"));
         AddFromBase(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFilesX86), "PostgreSQL"));
+        AddFromBase(IO.Path.Combine("C:\\", "PostgreSQL"));
+        candidates.Add(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFiles), "pgAdmin 4", "runtime", "psql.exe"));
+        candidates.Add(IO.Path.Combine(SystemAlias.Environment.GetFolderPath(SystemAlias.Environment.SpecialFolder.ProgramFilesX86), "pgAdmin 4", "runtime", "psql.exe"));
 
         return candidates.OrderByDescending(x => x).FirstOrDefault();
+    }
+
+    private static bool IsCommandName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        return !value.Contains(IO.Path.DirectorySeparatorChar) && !value.Contains(IO.Path.AltDirectorySeparatorChar);
+    }
+
+    private static string? FindInPath(string fileName)
+    {
+        var path = SystemAlias.Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        foreach (var chunk in path.Split(IO.Path.PathSeparator, SystemAlias.StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var candidate = IO.Path.Combine(chunk.Trim(), fileName);
+                if (IO.File.Exists(candidate)) return candidate;
+            }
+            catch { }
+        }
+        return null;
     }
 
     private string? ResolveConnectionString()

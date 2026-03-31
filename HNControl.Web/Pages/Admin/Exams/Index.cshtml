@@ -169,8 +169,15 @@
                 bodyEl.innerHTML = '<div class="text-muted">Cargando...</div>';
                 modal.show();
                 try {
-                    const res = await fetch(`@Url.Page("/Admin/Exams/Index", "Assignments")?id=${id}`);
+                    const url = new URL('@Url.Page("/Admin/Exams/Index", "Assignments")', window.location.origin);
+                    url.searchParams.set('id', id);
+                    const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
                     if (!res.ok) throw new Error('No se pudo cargar el detalle.');
+                    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                    if (!contentType.includes('application/json')) {
+                        const raw = await res.text();
+                        throw new Error(raw?.includes('<!DOCTYPE') ? 'La respuesta no es JSON (revisa sesión/permisos).' : 'Respuesta inválida del servidor.');
+                    }
                     const data = await res.json();
                     titleEl.textContent = `Asignaciones · ${data.exam}`;
                     if (!data.rows || data.rows.length === 0) {

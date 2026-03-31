@@ -253,6 +253,7 @@ public class TakeModel : PageModel
                     .ToHashSet();
 
                 map[q.Id] = selectedIds;
+                ans.TextAnswer = string.Join(",", selectedIds.Select(x => x.ToString("N")));
 
                 // 🔥 FIX: borrar en BD por filtro (sin EF RemoveRange) para evitar DbUpdateConcurrencyException
                 // Nota: NO cargamos SelectedChoices en POST, entonces EF no trackea filas viejas.
