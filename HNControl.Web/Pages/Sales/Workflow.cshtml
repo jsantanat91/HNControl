@@ -1,4 +1,4 @@
-﻿@page
+@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Sales.WorkflowModel
 @{
@@ -16,9 +16,6 @@
         <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
     </div>
 </div>
-
-<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
-
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
@@ -91,6 +88,13 @@
                                     </div>
                                 </form>
                             }
+
+                            @if ((User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)) && d.ClientId.HasValue)
+                            {
+                                <div class="mt-2">
+                                    <a class="btn btn-sm btn-outline-success" asp-page="/Projects/Create" asp-route-clientId="@d.ClientId">Nuevo proyecto</a>
+                                </div>
+                            }
                         </article>
                     }
                 }
@@ -120,3 +124,4 @@
         background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     }
 </style>
+

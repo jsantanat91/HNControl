@@ -42,6 +42,7 @@ public class WorkflowModel : PageModel
 
     public record DealVm(
         Guid Id,
+        Guid? ClientId,
         string Folio,
         string Customer,
         string Seller,
@@ -197,6 +198,7 @@ public class WorkflowModel : PageModel
             var isSoon = due.HasValue && due.Value > today && due.Value <= today.AddDays(2);
             return new DealVm(
                 x.Id,
+                x.ClientId,
                 x.QuoteRequest?.Folio ?? "-",
                 x.QuoteRequest?.CustomerName ?? "-",
                 x.SellerProfile?.Employee?.FullName ?? "Sin vendedor",

@@ -131,18 +131,32 @@
                                             </div>
                                         </div>
                                         <hr />
-                                        <div class="fw-semibold mb-2">Agregar desde inventario</div>
+                                        <div class="fw-semibold mb-2">Agregar hardware (inventario)</div>
                                         <div class="row g-2">
                                             <div class="col-md-8">
-                                                <select id="inventoryItemSelect" class="form-select">
-                                                    <option value="">-- Selecciona item de inventario --</option>
+                                                <select id="inventoryHardwareSelect" class="form-select">
+                                                    <option value="">-- Selecciona hardware de inventario --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-2">
-                                                <input id="inventoryQty" class="form-control" type="number" min="1" value="1" />
+                                                <input id="inventoryHardwareQty" class="form-control" type="number" min="1" value="1" />
                                             </div>
                                             <div class="col-md-2 d-grid">
-                                                <button class="btn btn-outline-dark" type="button" id="addInventoryBtn">Agregar item</button>
+                                                <button class="btn btn-outline-dark" type="button" id="addHardwareBtn">Agregar hardware</button>
+                                            </div>
+                                        </div>
+                                        <div class="fw-semibold mb-2 mt-3">Agregar servicio (catálogo de servicios)</div>
+                                        <div class="row g-2">
+                                            <div class="col-md-8">
+                                                <select id="inventoryServiceSelect" class="form-select">
+                                                    <option value="">-- Selecciona servicio --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input id="inventoryServiceQty" class="form-control" type="number" min="1" value="1" />
+                                            </div>
+                                            <div class="col-md-2 d-grid">
+                                                <button class="btn btn-outline-primary" type="button" id="addServiceBtn">Agregar servicio</button>
                                             </div>
                                         </div>
                                     </div>
@@ -239,7 +253,8 @@
     const payload = @Html.Raw(catalogJson);
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
-    const inventoryItems = payload.inventoryItems || [];
+    const inventoryHardwareItems = payload.inventoryHardwareItems || [];
+    const inventoryServiceItems = payload.inventoryServiceItems || [];
     const lines = [];
     const manualLines = [];
 
@@ -258,9 +273,12 @@
     const manualDescription = document.getElementById('manualDescription');
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
-    const inventoryItemSelect = document.getElementById('inventoryItemSelect');
-    const inventoryQty = document.getElementById('inventoryQty');
-    const addInventoryBtn = document.getElementById('addInventoryBtn');
+    const inventoryHardwareSelect = document.getElementById('inventoryHardwareSelect');
+    const inventoryHardwareQty = document.getElementById('inventoryHardwareQty');
+    const addHardwareBtn = document.getElementById('addHardwareBtn');
+    const inventoryServiceSelect = document.getElementById('inventoryServiceSelect');
+    const inventoryServiceQty = document.getElementById('inventoryServiceQty');
+    const addServiceBtn = document.getElementById('addServiceBtn');
     const categoryCards = document.getElementById('categoryCards');
     const serviceCards = document.getElementById('serviceCards');
     const subproductCards = document.getElementById('subproductCards');
@@ -293,15 +311,26 @@
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
     }
 
-    function fillInventorySelect(){
-        if(!inventoryItemSelect) return;
-        inventoryItemSelect.innerHTML = '<option value="">-- Selecciona item de inventario --</option>';
-        inventoryItems.forEach(x => {
+    function fillInventorySelects(){
+        if(inventoryHardwareSelect){
+            inventoryHardwareSelect.innerHTML = '<option value="">-- Selecciona hardware de inventario --</option>';
+        }
+        inventoryHardwareItems.forEach(x => {
             const opt = document.createElement('option');
             opt.value = String(x.id);
             const stock = Number(x.quantityOnHand || 0);
             opt.textContent = `${x.name} · ${x.category || 'Sin categoría'} · Stock: ${stock} ${x.unit || 'pza'}`;
-            inventoryItemSelect.appendChild(opt);
+            inventoryHardwareSelect?.appendChild(opt);
+        });
+        if(inventoryServiceSelect){
+            inventoryServiceSelect.innerHTML = '<option value="">-- Selecciona servicio --</option>';
+        }
+        inventoryServiceItems.forEach(x => {
+            const opt = document.createElement('option');
+            opt.value = String(x.id);
+            const price = x.isManualPrice || x.unitPrice == null ? 'Precio manual' : toMoney(Number(x.unitPrice || 0));
+            opt.textContent = `${x.name} · ${x.category || 'Servicios'} · ${price}`;
+            inventoryServiceSelect?.appendChild(opt);
         });
     }
 
@@ -622,18 +651,18 @@
         renderCart();
     });
 
-    addInventoryBtn?.addEventListener('click', () => {
-        const id = String(inventoryItemSelect?.value || '');
+    addHardwareBtn?.addEventListener('click', () => {
+        const id = String(inventoryHardwareSelect?.value || '');
         if(!id){
             alert('Selecciona un item de inventario.');
             return;
         }
-        const item = inventoryItems.find(x => String(x.id) === id);
+        const item = inventoryHardwareItems.find(x => String(x.id) === id);
         if(!item){
             alert('No se encontró el item seleccionado.');
             return;
         }
-        const qtyVal = Math.max(1, Number(inventoryQty?.value || 1));
+        const qtyVal = Math.max(1, Number(inventoryHardwareQty?.value || 1));
         manualLines.push({
             categoryName: item.category || 'Inventario',
             serviceName: item.name || 'Item inventario',
@@ -641,8 +670,32 @@
             quantity: qtyVal,
             unitPrice: 0
         });
-        if(inventoryQty) inventoryQty.value = '1';
-        if(inventoryItemSelect) inventoryItemSelect.value = '';
+        if(inventoryHardwareQty) inventoryHardwareQty.value = '1';
+        if(inventoryHardwareSelect) inventoryHardwareSelect.value = '';
+        renderCart();
+    });
+
+    addServiceBtn?.addEventListener('click', () => {
+        const id = String(inventoryServiceSelect?.value || '');
+        if(!id){
+            alert('Selecciona un servicio.');
+            return;
+        }
+        const item = inventoryServiceItems.find(x => String(x.id) === id);
+        if(!item){
+            alert('No se encontró el servicio seleccionado.');
+            return;
+        }
+        const qtyVal = Math.max(1, Number(inventoryServiceQty?.value || 1));
+        manualLines.push({
+            categoryName: item.category || 'Servicios',
+            serviceName: item.name || 'Servicio',
+            description: `Servicio (${labelOffer(item.offerType || 'MonthlyRent')})`,
+            quantity: qtyVal,
+            unitPrice: Number(item.unitPrice || 0)
+        });
+        if(inventoryServiceQty) inventoryServiceQty.value = '1';
+        if(inventoryServiceSelect) inventoryServiceSelect.value = '';
         renderCart();
     });
 
@@ -661,7 +714,7 @@
     });
 
     renderCategories();
-    fillInventorySelect();
+    fillInventorySelects();
     renderServices();
     renderSubproducts();
     renderCart();

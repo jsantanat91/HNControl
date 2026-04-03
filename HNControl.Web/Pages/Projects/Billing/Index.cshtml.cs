@@ -291,7 +291,7 @@ public class IndexModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive && !x.IsTemporaryLead)
             .OrderBy(x => x.Name)
-            .Select(x => new { x.Id, Label = x.ClientCode + " Â· " + x.Name })
+            .Select(x => new { x.Id, Label = (x.ClientCode + " · " + x.Name).Replace("", "") })
             .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Label");
 
@@ -301,7 +301,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == SalesOpportunityStatus.ClosedWon || x.Status == SalesOpportunityStatus.ContractSigned || x.Status == SalesOpportunityStatus.CommissionApplied)
             .OrderByDescending(x => x.CreatedAt)
             .Take(200)
-            .Select(x => new { x.Id, Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " Â· " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-") })
+            .Select(x => new { x.Id, Label = ((x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " · " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-")).Replace("", "") })
             .ToListAsync();
         OpportunityItems = new SelectList(opportunities, "Id", "Label");
 
@@ -310,7 +310,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == QuoteRequestStatus.Accepted)
             .OrderByDescending(x => x.CreatedAt)
             .Take(300)
-            .Select(x => new { x.Id, Label = x.Folio + " Â· " + x.CustomerName })
+            .Select(x => new { x.Id, Label = (x.Folio + " · " + x.CustomerName).Replace("", "") })
             .ToListAsync();
         QuoteItems = new SelectList(quotes, "Id", "Label");
 
@@ -328,7 +328,7 @@ public class IndexModel : PageModel
                 x.Status.ToString(),
                 x.NextRunDate,
                 x.SendToEmail,
-                $"Tipo {MapInvoiceType(x.InvoiceType)} Â· Uso {x.CfdiUseCode} Â· Regimen {x.FiscalRegimeCode}"))
+                $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}"))
             .ToListAsync();
 
         Runs = await _db.BillingInvoiceRuns
@@ -505,4 +505,7 @@ public class IndexModel : PageModel
         await _db.SaveChangesAsync();
     }
 }
+
+
+
 

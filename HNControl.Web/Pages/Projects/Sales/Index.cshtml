@@ -12,9 +12,6 @@
         <div class="text-muted small">Flujo comercial: vendedor -> cotizacion -> cierre -> contrato -> comision y facturacion.</div>
     </div>
 </div>
-
-<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
-
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
@@ -174,3 +171,4 @@
         </div>
     </div>
 </div>
+

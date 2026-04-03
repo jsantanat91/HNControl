@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients.Services;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class DownloadModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -37,3 +37,5 @@ public class DownloadModel : PageModel
         return File(stream, contentType, name);
     }
 }
+
+

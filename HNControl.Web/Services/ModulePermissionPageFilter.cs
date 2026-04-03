@@ -12,10 +12,12 @@ namespace HNControl.Web.Services;
 public class ModulePermissionPageFilter : IAsyncPageFilter
 {
     private readonly IModuleAccessService _access;
+    private readonly IActionAccessService _actions;
 
-    public ModulePermissionPageFilter(IModuleAccessService access)
+    public ModulePermissionPageFilter(IModuleAccessService access, IActionAccessService actions)
     {
         _access = access;
+        _actions = actions;
     }
 
     public Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext context)
@@ -53,6 +55,42 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
             return;
         }
 
+        var actionKey = ResolveActionKey(moduleKey, viewPath, context.HttpContext.Request.Method);
+        if (!string.IsNullOrWhiteSpace(actionKey))
+        {
+            var hasAction = await _actions.HasActionAsync(user, actionKey);
+            if (!hasAction)
+            {
+                context.Result = new ForbidResult();
+                return;
+            }
+        }
+
         await next();
+    }
+
+    private static string? ResolveActionKey(string moduleKey, string? viewPath, string? method)
+    {
+        var isWrite = !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase);
+        var path = viewPath ?? "";
+
+        if (string.Equals(moduleKey, AppModules.Clients, StringComparison.OrdinalIgnoreCase))
+        {
+            if (path.Contains("/Create", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/Edit", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/Services", StringComparison.OrdinalIgnoreCase))
+                return AppActions.ClientsEdit;
+            return isWrite ? AppActions.ClientsEdit : AppActions.ClientsView;
+        }
+
+        if (string.Equals(moduleKey, AppModules.Projects, StringComparison.OrdinalIgnoreCase))
+        {
+            if (path.Contains("/Create", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/Edit", StringComparison.OrdinalIgnoreCase))
+                return AppActions.ProjectsEdit;
+            return isWrite ? AppActions.ProjectsEdit : AppActions.ProjectsView;
+        }
+
+        return null;
     }
 }

@@ -14,7 +14,6 @@
         <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
         <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
         <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
-        <a href="/Facturacion" class="@Btn("/facturacion","Facturacion","warning")">Facturacion</a>
         @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
         {
             <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>

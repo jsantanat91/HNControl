@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients.Services;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class CreateModel : PageModel
 {
     private const string ServicePackageMarker = "INV_SERVICE_PACKAGE";
@@ -259,10 +259,12 @@ public class CreateModel : PageModel
             .Select(x => new
             {
                 x.Id,
-                Label = x.Name + (x.UnitPrice.HasValue ? $" · {x.UnitPrice.Value.ToString("C2")}" : " · Precio manual")
+                Label = x.Name + (x.UnitPrice.HasValue ? $" Â· {x.UnitPrice.Value.ToString("C2")}" : " Â· Precio manual")
             })
             .ToListAsync();
 
         ServicePackageItems = new SelectList(rows, "Id", "Label");
     }
 }
+
+

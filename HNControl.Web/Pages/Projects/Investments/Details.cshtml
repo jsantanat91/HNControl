@@ -20,10 +20,7 @@
         <a class="btn btn-outline-secondary" asp-page="/Projects/Investments/Index">Volver</a>
         <a class="btn btn-primary" asp-page="/Projects/Investments/CreatePlan" asp-route-investorId="@Model.Investor.Id">+ Nuevo plan</a>
     </div>
-</div>
-
-<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
-<form method="post" class="d-none">@Html.AntiForgeryToken()</form>
+</div><form method="post" class="d-none">@Html.AntiForgeryToken()</form>
 
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
@@ -152,3 +149,4 @@ else
         })();
     </script>
 }
+

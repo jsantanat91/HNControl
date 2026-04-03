@@ -29,9 +29,12 @@
 
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
-        <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
-        <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
-        <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
+        @if (Model.CanEdit)
+        {
+            <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
+            <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
+            <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
+        }
     </div>
 </div>
 
@@ -167,15 +170,20 @@
                                         <div class="small">@(!string.IsNullOrWhiteSpace(c.Email) ? c.Email : "-")</div>
                                         <div class="small">@(!string.IsNullOrWhiteSpace(c.Phone) ? c.Phone : "-")</div>
                                     </div>
-                                    <form method="post" asp-page-handler="DeleteContact" asp-route-id="@Model.Client.Id" asp-route-contactId="@c.Id">
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Quitar</button>
-                                    </form>
+                                    @if (Model.CanEdit)
+                                    {
+                                        <form method="post" asp-page-handler="DeleteContact" asp-route-id="@Model.Client.Id" asp-route-contactId="@c.Id">
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Quitar</button>
+                                        </form>
+                                    }
                                 </div>
                             </div>
                         }
                     </div>
                 }
 
+                @if (Model.CanEdit)
+                {
                 <form method="post" asp-page-handler="AddContact" asp-route-id="@Model.Client.Id" class="row g-2">
                     <div class="col-12">
                         <label class="form-label small mb-1">Nombre</label>
@@ -203,6 +211,7 @@
                         <button class="btn btn-sm btn-primary" type="submit">Agregar contacto</button>
                     </div>
                 </form>
+                }
             </div>
         </div>
 
@@ -251,7 +260,10 @@
                             <div class="small text-muted">Estado: @latestProject.Status</div>
                         }
                         <div class="mt-auto pt-3 d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo</a>
+                            @if (Model.CanEdit)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo</a>
+                            }
                             <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#projectsModal">Abrir</button>
                         </div>
                     </div>

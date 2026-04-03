@@ -1,4 +1,4 @@
-﻿@page
+@page
 @using HNControl.Web.Helpers
 @model HNControl.Web.Pages.Projects.IndexModel
 @{
@@ -11,14 +11,11 @@
         <div class="text-muted small">Agrupados por cliente</div>
     </div>
 
-    @if (User.IsInRole(AppRoles.Admin))
+    @if (Model.CanEdit)
     {
         <a class="btn btn-primary" asp-page="/Projects/Create">+ Nuevo proyecto</a>
     }
 </div>
-
-<partial name="_ProjectsSubmenu" />
-
 <form method="get" class="card shadow-soft hn-hover mb-3">
     <div class="card-body row g-2 align-items-end">
         <div class="col-md-3">
@@ -88,7 +85,7 @@ else
                                         </div>
                                         <div class="mt-auto pt-3">
                                             <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Details" asp-route-id="@p.Id">Abrir</a>
-                                            @if (User.IsInRole(AppRoles.Admin))
+                                            @if (Model.CanEdit)
                                             {
                                                 <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Edit" asp-route-id="@p.Id">Editar</a>
                                             }
@@ -121,4 +118,5 @@ else
            asp-route-Page="@(Model.Page + 1)">Siguiente</a>
     </div>
 </div>
+
 

@@ -288,6 +288,8 @@ public class QuoteModel : PageModel
 
     private async Task LoadCatalogPayloadAsync()
     {
+        const string markerPackage = "INV_SERVICE_PACKAGE";
+
         var items = await _db.QuoteCatalogItems
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -304,11 +306,29 @@ public class QuoteModel : PageModel
             .OrderBy(x => x.Name)
             .Select(x => new
             {
-                x.Id,
-                x.Name,
-                x.Category,
-                x.Unit,
-                x.QuantityOnHand
+                id = x.Id,
+                name = x.Name,
+                category = x.Category,
+                unit = x.Unit,
+                quantityOnHand = x.QuantityOnHand
+            })
+            .ToListAsync();
+        var serviceItems = await _db.QuoteCatalogItems
+            .AsNoTracking()
+            .Where(x => x.IsActive
+                        && x.NodeType == QuoteNodeType.Service
+                        && x.VariantGroup == markerPackage)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new
+            {
+                id = x.Id,
+                name = x.Name,
+                category = "Servicios",
+                unit = "servicio",
+                unitPrice = x.UnitPrice,
+                isManualPrice = x.IsManualPrice,
+                offerType = x.OfferType.ToString()
             })
             .ToListAsync();
 
@@ -329,7 +349,8 @@ public class QuoteModel : PageModel
         {
             [QuoteSegment.Residential.ToString()] = Pack(QuoteSegment.Residential),
             [QuoteSegment.Business.ToString()] = Pack(QuoteSegment.Business),
-            ["inventoryItems"] = inventoryItems
+            ["inventoryHardwareItems"] = inventoryItems,
+            ["inventoryServiceItems"] = serviceItems
         };
     }
 

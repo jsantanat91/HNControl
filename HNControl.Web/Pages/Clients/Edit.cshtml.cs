@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -133,3 +133,5 @@ public class EditModel : PageModel
         return RedirectToPage("/Clients/Details", new { id = client.Id });
     }
 }
+
+

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Sales.DashboardModel
 @{
     Layout = "_Layout";
@@ -19,9 +19,6 @@
         }
     </div>
 </div>
-
-<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
-
 <div class="alert alert-info py-2 mb-3">
     <b>Alcance:</b>
     @(Model.IsOwnScope ? "solo tus oportunidades" : "vista global")
@@ -192,3 +189,4 @@
 })();
 </script>
 }
+

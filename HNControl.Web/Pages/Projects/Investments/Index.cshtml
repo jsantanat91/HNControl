@@ -15,9 +15,6 @@
         <a class="btn btn-primary" asp-page="/Projects/Investments/CreatePlan">+ Plan de inversión</a>
     </div>
 </div>
-
-<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
-
 @if (!Model.Investors.Any())
 {
     <div class="alert alert-light border">Todavía no hay inversionistas registrados.</div>
@@ -51,3 +48,4 @@ else
         }
     </div>
 }
+

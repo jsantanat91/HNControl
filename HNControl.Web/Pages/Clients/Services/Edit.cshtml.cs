@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients.Services;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -229,3 +229,5 @@ public class EditModel : PageModel
         ProjectItems = new SelectList(projs, "Id", "Title");
     }
 }
+
+

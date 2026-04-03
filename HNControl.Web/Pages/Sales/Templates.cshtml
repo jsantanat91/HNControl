@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Sales.TemplatesModel
 @{
     Layout = "_Layout";
@@ -15,9 +15,6 @@
         <a class="btn btn-outline-secondary" href="/Ventas/Workflow">Workflow</a>
     </div>
 </div>
-
-<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
-
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
@@ -90,3 +87,4 @@
         </div>
     </div>
 </div>
+

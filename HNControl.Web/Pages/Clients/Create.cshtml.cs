@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -123,3 +123,5 @@ public class CreateModel : PageModel
         return $"HN-{max + 1:0000}";
     }
 }
+
+

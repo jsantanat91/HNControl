@@ -88,6 +88,10 @@ public class PermissionRoleAction
 
 public static class AppActions
 {
+    public const string ClientsView = "Clients.View";
+    public const string ClientsEdit = "Clients.Edit";
+    public const string ProjectsView = "Projects.View";
+    public const string ProjectsEdit = "Projects.Edit";
     public const string SalesViewOwn = "Sales.ViewOwn";
     public const string SalesViewAll = "Sales.ViewAll";
     public const string SalesManage = "Sales.Manage";
@@ -101,6 +105,10 @@ public static class AppActions
 
     public static readonly string[] AllKnown =
     [
+        ClientsView,
+        ClientsEdit,
+        ProjectsView,
+        ProjectsEdit,
         SalesViewOwn,
         SalesViewAll,
         SalesManage,
@@ -115,6 +123,7 @@ public static class AppActions
 
     public static readonly string[] EmployeeDefaults =
     [
+        ProjectsView,
         SalesViewOwn,
         SalesWorkflowMove,
         BillingViewOwn
@@ -122,6 +131,10 @@ public static class AppActions
 
     public static string Label(string key) => key switch
     {
+        ClientsView => "Clientes: ver",
+        ClientsEdit => "Clientes: editar",
+        ProjectsView => "Proyectos: ver",
+        ProjectsEdit => "Proyectos: editar",
         SalesViewOwn => "Ventas: ver solo lo mio",
         SalesViewAll => "Ventas: ver todo",
         SalesManage => "Ventas: gestion comercial",

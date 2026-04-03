@@ -1,24 +1,28 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using HNControl.Web.Services;
 
 namespace HNControl.Web.Pages.Clients;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _cfg;
-    public DetailsModel(ApplicationDbContext db, IConfiguration cfg)
+    private readonly IActionAccessService _actions;
+    public DetailsModel(ApplicationDbContext db, IConfiguration cfg, IActionAccessService actions)
     {
         _db = db;
         _cfg = cfg;
+        _actions = actions;
     }
 
     public Client? Client { get; set; }
+    public bool CanEdit { get; set; }
     public List<ClientContactRow> Contacts { get; set; } = new();
 
     [BindProperty]
@@ -64,6 +68,7 @@ public class DetailsModel : PageModel
 
     public async Task OnGetAsync(Guid id)
     {
+        CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
         Client = await _db.Clients
             .Include(c => c.Contracts)
             .FirstOrDefaultAsync(c => c.Id == id);
@@ -118,11 +123,11 @@ public class DetailsModel : PageModel
                     badge = "text-bg-warning";
                 }
 
-                var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "—";
+                var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "â€”";
 
                 var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
                     ? t
-                    : "—";
+                    : "â€”";
 
                 return new ContractRow(
                     x.Id,
@@ -203,6 +208,9 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostAddContactAsync(Guid id)
     {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        if (!canEdit) return Forbid();
+
         var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == id);
         if (client == null) return NotFound();
 
@@ -228,7 +236,7 @@ public class DetailsModel : PageModel
         }
         catch
         {
-            TempData["ClientDetailsInfo"] = "Falta aplicar migración de base de datos para contactos.";
+            TempData["ClientDetailsInfo"] = "Falta aplicar migraciÃ³n de base de datos para contactos.";
             TempData["ClientDetailsInfoType"] = "danger";
             return RedirectToPage(new { id });
         }
@@ -267,6 +275,9 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteContactAsync(Guid id, Guid contactId)
     {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        if (!canEdit) return Forbid();
+
         ClientContact? contact;
         try
         {
@@ -274,7 +285,7 @@ public class DetailsModel : PageModel
         }
         catch
         {
-            TempData["ClientDetailsInfo"] = "Falta aplicar migración de base de datos para contactos.";
+            TempData["ClientDetailsInfo"] = "Falta aplicar migraciÃ³n de base de datos para contactos.";
             TempData["ClientDetailsInfoType"] = "danger";
             return RedirectToPage(new { id });
         }
@@ -335,3 +346,5 @@ public class DetailsModel : PageModel
         return $"HN-{max + 1:0000}";
     }
 }
+
+

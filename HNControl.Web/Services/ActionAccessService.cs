@@ -75,8 +75,7 @@ public class ActionAccessService : IActionAccessService
                     result.Add(a.Trim());
         }
 
-        if (result.Count == 0)
-            ApplyDefaultsByModule(result, await _modules.GetAllowedModulesAsync(user));
+        ApplyDefaultsByModule(result, await _modules.GetAllowedModulesAsync(user));
 
         Store(httpCtx, result);
         return result;
@@ -107,6 +106,11 @@ public class ActionAccessService : IActionAccessService
 
         if (modules.Contains(AppModules.Billing))
             result.Add(AppActions.BillingViewOwn);
+
+        if (modules.Contains(AppModules.Clients))
+            result.Add(AppActions.ClientsView);
+
+        if (modules.Contains(AppModules.Projects))
+            result.Add(AppActions.ProjectsView);
     }
 }
-

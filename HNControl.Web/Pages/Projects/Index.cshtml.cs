@@ -1,5 +1,6 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,12 @@ namespace HNControl.Web.Pages.Projects;
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public IndexModel(ApplicationDbContext db) => _db = db;
+    private readonly IActionAccessService _actions;
+    public IndexModel(ApplicationDbContext db, IActionAccessService actions)
+    {
+        _db = db;
+        _actions = actions;
+    }
 
     [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
     [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
@@ -18,6 +24,7 @@ public class IndexModel : PageModel
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+    public bool CanEdit { get; set; }
 
     public record Row(Guid Id, string Title, string ClientName, string Responsible, DateTime StartDate, DateTime EstEnd, ProjectStatus Status, bool IsOverdue);
     public List<Row> Rows { get; set; } = new();
@@ -26,6 +33,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ProjectsEdit);
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 

@@ -1,5 +1,6 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -7,11 +8,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public IndexModel(ApplicationDbContext db) => _db = db;
+    private readonly IActionAccessService _actions;
+    public IndexModel(ApplicationDbContext db, IActionAccessService actions)
+    {
+        _db = db;
+        _actions = actions;
+    }
 
     [BindProperty(SupportsGet = true)] public string? Name { get; set; }
     [BindProperty(SupportsGet = true)] public string View { get; set; } = "normal";
@@ -20,12 +26,14 @@ public class IndexModel : PageModel
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+    public bool CanEdit { get; set; }
 
     public record Row(Guid Id, string ClientCode, string Name, string Rfc, string Kind, string Email, string ContractsSummary, DateTime CreatedAt, bool IsActive, bool IsTemporaryLead);
     public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
     {
+        CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
         await EnsureClientCodesAsync();
 
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
@@ -86,6 +94,9 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostToggleActiveAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
     {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        if (!canEdit) return Forbid();
+
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
         if (client == null) return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
         client.IsActive = !client.IsActive;
@@ -124,3 +135,5 @@ public class IndexModel : PageModel
             await _db.SaveChangesAsync();
     }
 }
+
+

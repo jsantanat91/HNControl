@@ -12,9 +12,6 @@
         <div class="text-muted small">Programacion de facturas internas (sin timbrado) con recurrencia, PDF y envio.</div>
     </div>
 </div>
-
-<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
-
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
@@ -283,3 +280,4 @@
         }
     </div>
 </div>
+

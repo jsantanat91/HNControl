@@ -19,9 +19,6 @@
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
 </div>
-
-<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
-
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
@@ -74,3 +71,4 @@
         </div>
     </div>
 </div>
+

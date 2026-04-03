@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Clients;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize]
 public class DocumentsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -146,7 +146,7 @@ public class DocumentsModel : PageModel
             <p>Hola {System.Net.WebUtility.HtmlEncode(doc.Client?.LegalRepresentative ?? doc.Client?.Name ?? "cliente")},</p>
             <p>Ya puedes revisar y firmar digitalmente el siguiente documento:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al firmarlo, recibirás el PDF actualizado con la firma digital.</p>
+            <p>Al firmarlo, recibirÃ¡s el PDF actualizado con la firma digital.</p>
             <p>Saludos,<br/>HN Control</p>
             """,
             attachment,
@@ -238,3 +238,5 @@ public class DocumentsModel : PageModel
             "Los pagos, vigencia y condiciones de renovacion se regiran por los datos comerciales capturados en este documento.";
     }
 }
+
+
