@@ -1,10 +1,14 @@
 using System;
+using HNControl.Web.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace HNControl.Web.Migrations
 {
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260403010000_AddBillingModuleAndClientSatFields")]
     public partial class AddBillingModuleAndClientSatFields : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
