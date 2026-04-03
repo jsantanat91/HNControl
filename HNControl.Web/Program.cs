@@ -146,6 +146,7 @@ builder.Services.AddRazorPages(options =>
 
     // Proyectos: admin + empleado
     options.Conventions.AuthorizeFolder("/Projects", "EmployeeOnly");
+    options.Conventions.AuthorizeFolder("/Sales", "EmployeeOnly");
 
     // Documentos: admin + empleado
     options.Conventions.AuthorizeFolder("/Knowledge", "EmployeeOnly");
@@ -199,6 +200,9 @@ builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Se
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
 builder.Services.AddScoped<IQuoteRequestPdfRenderer, QuoteRequestPdfRenderer>();
+builder.Services.AddScoped<IClientLegalPdfRenderer, ClientLegalPdfRenderer>();
+builder.Services.AddScoped<IProjectDeliveryPdfRenderer, ProjectDeliveryPdfRenderer>();
+builder.Services.AddScoped<IBillingInvoicePdfRenderer, BillingInvoicePdfRenderer>();
 builder.Services.AddScoped<IPayrollReceiptService, PayrollReceiptService>();
 builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
 builder.Services.AddHostedService<PayrollReceiptDispatchWorker>();
@@ -292,7 +296,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
     var db = services.GetRequiredService<ApplicationDbContext>();
 
     // Roles
-    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee, AppRoles.InventoryManager, AppRoles.WarehouseLead })
+    foreach (var r in new[] { AppRoles.Admin, AppRoles.SuperAdmin, AppRoles.Employee, AppRoles.Seller, AppRoles.InventoryManager, AppRoles.WarehouseLead })
     {
         if (!await roleMgr.RoleExistsAsync(r))
             await roleMgr.CreateAsync(new IdentityRole(r));

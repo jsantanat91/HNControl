@@ -16,6 +16,9 @@ public enum EmployeeDeductionType
     [Display(Name = "Diferencia viaticos")]
     DiferenciaViaticos = 4,
 
+    [Display(Name = "Comision de venta")]
+    ComisionVenta = 5,
+
     [Display(Name = "Otro")]
     Otro = 99
 }

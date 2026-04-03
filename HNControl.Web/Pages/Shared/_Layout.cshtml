@@ -149,6 +149,13 @@
                         <span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span>
                         <span class="hn-side-text">Mi ficha</span>
                     </a>
+                    @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
+                    {
+                        <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My">
+                            <span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span>
+                            <span class="hn-side-text">Mis cotizaciones</span>
+                        </a>
+                    }
 
                     @if (Has(AppModules.ServiceOrders))
                     {
@@ -320,6 +327,8 @@
                 else
                 {
                     <a class="hn-side-link @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile"><span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span><span class="hn-side-text">Mi ficha</span></a>
+                    @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
+                    { <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My"><span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span><span class="hn-side-text">Mis cotizaciones</span></a> }
                     @if (Has(AppModules.ServiceOrders))
                     { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span></a> }
                     @if (Has(AppModules.Viaticos))

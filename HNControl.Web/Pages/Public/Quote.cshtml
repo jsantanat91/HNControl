@@ -50,6 +50,7 @@
                 <form method="post" id="quoteForm" class="row g-3">
                     <input type="hidden" asp-for="Input.ClientToken" />
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
+                    <input type="hidden" asp-for="Input.ManualLinesJson" id="manualLinesJson" />
                     <input type="hidden" id="skipClientDataStep" value="@(Model.SkipClientDataStep ? "1" : "0")" />
 
                     <section class="quote-step-panel" data-step="1">
@@ -101,6 +102,32 @@
                                             </div>
                                             <div class="col-sm-8 col-md-5 d-flex align-items-end">
                                                 <button class="btn btn-primary w-100" type="button" id="addLineBtn">Agregar al carrito</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card border-0 bg-light-subtle mt-3">
+                                    <div class="card-body">
+                                        <div class="fw-semibold mb-2">Concepto libre (manual)</div>
+                                        <div class="row g-2">
+                                            <div class="col-md-3">
+                                                <input id="manualCategory" class="form-control" placeholder="Categoria" />
+                                            </div>
+                                            <div class="col-md-3">
+                                                <input id="manualService" class="form-control" placeholder="Servicio" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <input id="manualDescription" class="form-control" placeholder="Descripcion del concepto" />
+                                            </div>
+                                            <div class="col-md-1">
+                                                <input id="manualQty" class="form-control" type="number" min="1" value="1" />
+                                            </div>
+                                            <div class="col-md-1">
+                                                <input id="manualPrice" class="form-control" type="number" min="0" step="0.01" placeholder="$" />
+                                            </div>
+                                            <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                                                <button class="btn btn-outline-primary" type="button" id="addManualBtn">Agregar libre</button>
                                             </div>
                                         </div>
                                     </div>
@@ -198,6 +225,7 @@
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
     const lines = [];
+    const manualLines = [];
 
     const allSteps = [1,2,3,4];
     const navSteps = skipClientDataStep ? [1,2,4] : allSteps;
@@ -207,6 +235,13 @@
     const qty = document.getElementById('qtyInput');
     const addBtn = document.getElementById('addLineBtn');
     const linesJson = document.getElementById('linesJson');
+    const manualLinesJson = document.getElementById('manualLinesJson');
+    const addManualBtn = document.getElementById('addManualBtn');
+    const manualCategory = document.getElementById('manualCategory');
+    const manualService = document.getElementById('manualService');
+    const manualDescription = document.getElementById('manualDescription');
+    const manualQty = document.getElementById('manualQty');
+    const manualPrice = document.getElementById('manualPrice');
     const categoryCards = document.getElementById('categoryCards');
     const serviceCards = document.getElementById('serviceCards');
     const subproductCards = document.getElementById('subproductCards');
@@ -340,11 +375,12 @@
     function find(arr, id){ return arr.find(x => String(x.id) === String(id)); }
 
     function totals(){
-        const base = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
-        const vat = lines.filter(x => !x.isManual).reduce((a,b) => a + b.vat, 0);
-        const total = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
-        const manual = lines.filter(x => x.isManual).length;
-        return { base, vat, total, manual };
+        const catalogBase = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
+        const catalogVat = lines.filter(x => !x.isManual).reduce((a,b) => a + b.vat, 0);
+        const catalogTotal = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
+        const manualTotal = manualLines.reduce((a, b) => a + (Number(b.unitPrice || 0) * Number(b.quantity || 0)), 0);
+        const manual = lines.filter(x => x.isManual).length + manualLines.length;
+        return { base: catalogBase + manualTotal, vat: catalogVat, total: catalogTotal + manualTotal, manual };
     }
 
     function recalc(){
@@ -359,12 +395,19 @@
             subproductId: x.subproductId || null,
             quantity: x.quantity
         })));
+        manualLinesJson.value = JSON.stringify(manualLines.map(x => ({
+            categoryName: x.categoryName,
+            serviceName: x.serviceName,
+            description: x.description,
+            quantity: x.quantity,
+            unitPrice: x.unitPrice
+        })));
 
         const cLines = document.getElementById('confirmLinesCount');
         const cBase = document.getElementById('confirmBase');
         const cVat = document.getElementById('confirmVat');
         const cTotal = document.getElementById('confirmTotal');
-        if(cLines) cLines.textContent = String(lines.length);
+        if(cLines) cLines.textContent = String(lines.length + manualLines.length);
         if(cBase) cBase.textContent = toMoney(t.base);
         if(cVat) cVat.textContent = toMoney(t.vat);
         if(cTotal) cTotal.textContent = toMoney(t.total);
@@ -372,7 +415,7 @@
 
     function renderCart(){
         cartLines.innerHTML = '';
-        if(!lines.length){ emptyCart.classList.remove('d-none'); recalc(); return; }
+        if(!lines.length && !manualLines.length){ emptyCart.classList.remove('d-none'); recalc(); return; }
         emptyCart.classList.add('d-none');
         lines.forEach((l, idx) => {
             const div = document.createElement('div');
@@ -399,6 +442,30 @@
                 renderSubproducts();
             });
         });
+
+        manualLines.forEach((l, idx) => {
+            const div = document.createElement('div');
+            div.className = 'hn-cart-line';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between gap-2">
+                    <div>
+                        <div class="fw-semibold">${l.serviceName || 'Concepto libre'}</div>
+                        <div class="small text-muted">${l.categoryName || 'Libre'} · ${l.description || ''}</div>
+                        <div class="small"><span class="badge text-bg-warning">Manual</span></div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-del-manual="${idx}">Quitar</button>
+                </div>
+                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity}</span><span>${toMoney((l.unitPrice || 0) * l.quantity)}</span></div>
+            `;
+            cartLines.appendChild(div);
+        });
+        cartLines.querySelectorAll('button[data-del-manual]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = Number(btn.getAttribute('data-del-manual'));
+                manualLines.splice(idx, 1);
+                renderCart();
+            });
+        });
         recalc();
     }
 
@@ -419,7 +486,7 @@
     }
 
     function validateStep(step){
-        if(step === 2 && lines.length === 0){
+        if(step === 2 && lines.length === 0 && manualLines.length === 0){
             alert('Agrega al menos un concepto al carrito antes de continuar.');
             return false;
         }
@@ -499,6 +566,27 @@
         renderCart();
         renderServices();
         renderSubproducts();
+    });
+
+    addManualBtn.addEventListener('click', () => {
+        const description = String(manualDescription.value || '').trim();
+        if(!description){
+            alert('Describe el concepto libre.');
+            return;
+        }
+        const qtyVal = Math.max(1, Number(manualQty.value || 1));
+        const priceVal = Math.max(0, Number(manualPrice.value || 0));
+        manualLines.push({
+            categoryName: String(manualCategory.value || '').trim(),
+            serviceName: String(manualService.value || '').trim(),
+            description,
+            quantity: qtyVal,
+            unitPrice: priceVal
+        });
+        manualDescription.value = '';
+        manualPrice.value = '';
+        manualQty.value = '1';
+        renderCart();
     });
 
     prevStepBtn.addEventListener('click', goPrev);

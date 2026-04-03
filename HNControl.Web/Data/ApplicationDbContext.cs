@@ -20,10 +20,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<ClientContact> ClientContacts => Set<ClientContact>();
     public DbSet<ClientServiceContract> ClientServiceContracts => Set<ClientServiceContract>();
+    public DbSet<ClientLegalDocument> ClientLegalDocuments => Set<ClientLegalDocument>();
 
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAccess> ProjectAccesses => Set<ProjectAccess>();
     public DbSet<ProjectActivity> ProjectActivities => Set<ProjectActivity>();
+    public DbSet<ProjectDeliveryFormat> ProjectDeliveryFormats => Set<ProjectDeliveryFormat>();
+    public DbSet<SalesSellerProfile> SalesSellerProfiles => Set<SalesSellerProfile>();
+    public DbSet<SalesOpportunity> SalesOpportunities => Set<SalesOpportunity>();
+    public DbSet<BillingInvoicePlan> BillingInvoicePlans => Set<BillingInvoicePlan>();
+    public DbSet<BillingInvoiceRun> BillingInvoiceRuns => Set<BillingInvoiceRun>();
     public DbSet<InvestmentInvestor> InvestmentInvestors => Set<InvestmentInvestor>();
     public DbSet<InvestmentPlan> InvestmentPlans => Set<InvestmentPlan>();
     public DbSet<InvestmentPayment> InvestmentPayments => Set<InvestmentPayment>();
@@ -231,9 +237,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.ContactName).HasMaxLength(120);
             e.Property(x => x.Address).HasMaxLength(400);
+            e.Property(x => x.LegalRepresentative).HasMaxLength(160);
+            e.Property(x => x.LegalEmail).HasMaxLength(256);
+            e.Property(x => x.LegalPosition).HasMaxLength(120);
+            e.Property(x => x.BusinessLine).HasMaxLength(180);
+            e.Property(x => x.BillingEmail).HasMaxLength(256);
+            e.Property(x => x.FiscalAddress).HasMaxLength(400);
+            e.Property(x => x.FiscalZipCode).HasMaxLength(10);
+            e.Property(x => x.FiscalRegimeCode).HasMaxLength(4);
+            e.Property(x => x.CfdiUseCodeDefault).HasMaxLength(4);
             e.Property(x => x.PublicQuoteToken).HasMaxLength(80);
             e.HasIndex(x => x.ClientCode).IsUnique();
             e.HasIndex(x => x.PublicQuoteToken).IsUnique();
+            e.HasIndex(x => new { x.IsTemporaryLead, x.IsActive, x.CreatedAt });
             e.HasMany(x => x.Contracts)
              .WithOne(s => s.Client!)
              .HasForeignKey(s => s.ClientId)
@@ -242,6 +258,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasMany(x => x.Contacts)
              .WithOne(c => c.Client!)
              .HasForeignKey(c => c.ClientId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.LegalDocuments)
+             .WithOne(d => d.Client!)
+             .HasForeignKey(d => d.ClientId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -286,6 +307,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        b.Entity<ClientLegalDocument>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(220);
+            e.Property(x => x.TermsBody).HasMaxLength(8000);
+            e.Property(x => x.PublicToken).HasMaxLength(80);
+            e.Property(x => x.SignedByName).HasMaxLength(200);
+            e.Property(x => x.SignedByEmail).HasMaxLength(256);
+            e.Property(x => x.SignatureStoragePath).HasMaxLength(500);
+            e.Property(x => x.PdfStoragePath).HasMaxLength(500);
+            e.Property(x => x.MonthlyAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.ContractStartDate).HasColumnType("date");
+            e.Property(x => x.ContractEndDate).HasColumnType("date");
+            e.HasIndex(x => x.PublicToken).IsUnique();
+            e.HasIndex(x => new { x.ClientId, x.DocumentType, x.Status });
+
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         b.Entity<Project>(e =>
         {
             e.HasKey(x => x.Id);
@@ -319,6 +362,137 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.AssignedToName).HasMaxLength(200);
             e.Property(x => x.Description).HasMaxLength(1000);
             e.HasIndex(x => new { x.ProjectId, x.SortOrder });
+        });
+
+        b.Entity<ProjectDeliveryFormat>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(220);
+            e.Property(x => x.ServiceSummary).HasMaxLength(4000);
+            e.Property(x => x.EquipmentSummary).HasMaxLength(4000);
+            e.Property(x => x.DeliveryLocation).HasMaxLength(320);
+            e.Property(x => x.ReceiverName).HasMaxLength(200);
+            e.Property(x => x.ReceiverEmail).HasMaxLength(256);
+            e.Property(x => x.ReceiverPhone).HasMaxLength(40);
+            e.Property(x => x.DeliveryDate).HasColumnType("date");
+            e.Property(x => x.PublicToken).HasMaxLength(80);
+            e.Property(x => x.SignedByName).HasMaxLength(200);
+            e.Property(x => x.SignedByEmail).HasMaxLength(256);
+            e.Property(x => x.SignatureStoragePath).HasMaxLength(500);
+            e.Property(x => x.PdfStoragePath).HasMaxLength(500);
+
+            e.HasIndex(x => x.PublicToken).IsUnique();
+            e.HasIndex(x => new { x.ClientId, x.Status, x.CreatedAt });
+            e.HasIndex(x => x.ProjectId);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Project)
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<SalesSellerProfile>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EmployeeUserId).HasMaxLength(64);
+            e.Property(x => x.DefaultCommissionPercent).HasColumnType("numeric(7,5)");
+            e.HasIndex(x => x.EmployeeUserId).IsUnique();
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.EmployeeUserId)
+                .HasPrincipalKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SalesOpportunity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CommissionPercent).HasColumnType("numeric(7,5)");
+            e.Property(x => x.CommissionAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.Notes).HasMaxLength(1200);
+            e.HasIndex(x => x.QuoteRequestId).IsUnique();
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasIndex(x => x.SellerProfileId);
+            e.HasIndex(x => x.ClientId);
+
+            e.HasOne(x => x.QuoteRequest)
+                .WithMany()
+                .HasForeignKey(x => x.QuoteRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.SellerProfile)
+                .WithMany()
+                .HasForeignKey(x => x.SellerProfileId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<BillingInvoicePlan>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Concept).HasMaxLength(220);
+            e.Property(x => x.Currency).HasMaxLength(10);
+            e.Property(x => x.Subtotal).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VatRate).HasColumnType("numeric(7,5)");
+            e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.Total).HasColumnType("numeric(12,2)");
+            e.Property(x => x.CfdiUseCode).HasMaxLength(4);
+            e.Property(x => x.FiscalRegimeCode).HasMaxLength(4);
+            e.Property(x => x.PaymentMethodCode).HasMaxLength(4);
+            e.Property(x => x.PaymentFormCode).HasMaxLength(4);
+            e.Property(x => x.StartDate).HasColumnType("date");
+            e.Property(x => x.NextRunDate).HasColumnType("date");
+            e.Property(x => x.EndDate).HasColumnType("date");
+            e.Property(x => x.SendToEmail).HasMaxLength(256);
+            e.Property(x => x.CcEmails).HasMaxLength(600);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+
+            e.HasIndex(x => new { x.Status, x.NextRunDate });
+            e.HasIndex(x => x.ClientId);
+            e.HasIndex(x => x.QuoteRequestId);
+            e.HasIndex(x => x.SalesOpportunityId);
+
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.QuoteRequest)
+                .WithMany()
+                .HasForeignKey(x => x.QuoteRequestId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.SalesOpportunity)
+                .WithMany()
+                .HasForeignKey(x => x.SalesOpportunityId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasMany(x => x.Runs)
+                .WithOne(x => x.Plan!)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<BillingInvoiceRun>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PeriodLabel).HasMaxLength(60);
+            e.Property(x => x.ScheduledFor).HasColumnType("date");
+            e.Property(x => x.SentToEmail).HasMaxLength(256);
+            e.Property(x => x.PdfStoragePath).HasMaxLength(500);
+            e.Property(x => x.ErrorMessage).HasMaxLength(1200);
+            e.HasIndex(x => new { x.PlanId, x.ScheduledFor }).IsUnique();
+            e.HasIndex(x => new { x.Status, x.ScheduledFor });
         });
 
         b.Entity<InvestmentInvestor>(e =>

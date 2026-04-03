@@ -73,6 +73,16 @@
     </div>
 
     <div class="col-12 col-lg-3">
+        <div class="card shadow-soft emp-kpi-card kpi-tone-8">
+            <div class="card-body">
+                <div class="text-muted small">Comisiones de venta</div>
+                <div class="fs-3 fw-bold">@Model.CurrentSalesCommissionsTotal.ToString("C")</div>
+                <div class="text-muted small">Rubro separado en deducciones</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-3">
         <div class="card shadow-soft emp-kpi-card kpi-tone-4">
             <div class="card-body">
                 <div class="text-muted small">Ex&aacute;menes pendientes</div>
@@ -266,6 +276,7 @@
         .emp-kpi-card.kpi-tone-5 .card-body::after { background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(129,140,248,.02)); }
         .emp-kpi-card.kpi-tone-6 .card-body::after { background: linear-gradient(135deg, rgba(168,85,247,.12), rgba(196,181,253,.02)); }
         .emp-kpi-card.kpi-tone-7 .card-body::after { background: linear-gradient(135deg, rgba(20,184,166,.12), rgba(45,212,191,.02)); }
+        .emp-kpi-card.kpi-tone-8 .card-body::after { background: linear-gradient(135deg, rgba(14,116,144,.14), rgba(59,130,246,.05)); }
 
         .emp-chart-card {
             border: 1px solid rgba(148, 163, 184, .30);

@@ -1,0 +1,76 @@
+@page "{id:guid}"
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Projects.Delivery.DetailsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Detalle de formato de entrega";
+}
+
+@if (Model.Item == null)
+{
+    <div class="alert alert-warning">Formato no encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">@Model.Item.Title</h1>
+        <div class="text-muted small">@Model.Item.Client?.Name · @Model.Item.Project?.Title</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<div class="row g-3">
+    <div class="col-12 col-xl-8">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Resumen del acta</div>
+            <div class="card-body">
+                <div class="small text-muted mb-2">Entrega: @Model.Item.DeliveryDate.ToString("yyyy-MM-dd") · Ubicación: @Model.Item.DeliveryLocation</div>
+                <h6>Servicios entregados</h6>
+                <pre class="mb-3" style="white-space:pre-wrap;font-family:inherit;">@Model.Item.ServiceSummary</pre>
+                <h6>Equipamiento entregado</h6>
+                <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;">@Model.Item.EquipmentSummary</pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-4">
+        @{
+            var status = Model.Item.Status == ProjectDeliveryFormatStatus.Signed ? "Firmado" :
+                         Model.Item.Status == ProjectDeliveryFormatStatus.SentForSignature ? "En firma" : "Borrador";
+            var badge = Model.Item.Status == ProjectDeliveryFormatStatus.Signed ? "text-bg-success" :
+                        Model.Item.Status == ProjectDeliveryFormatStatus.SentForSignature ? "text-bg-warning" : "text-bg-secondary";
+        }
+        <div class="card shadow-soft hn-hover mb-3">
+            <div class="card-body">
+                <div class="mb-2"><span class="badge @badge">@status</span></div>
+                <div class="small"><b>Recibe:</b> @Model.Item.ReceiverName</div>
+                <div class="small"><b>Correo:</b> @Model.Item.ReceiverEmail</div>
+                <div class="small"><b>Tel:</b> @Model.Item.ReceiverPhone</div>
+                <hr />
+                <div class="small text-muted">Liga pública de firma</div>
+                <div class="input-group input-group-sm mb-2">
+                    <input id="publicSignUrl" class="form-control" value="@Model.PublicSignUrl" readonly />
+                    <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('publicSignUrl').value)">Copiar</button>
+                </div>
+                <div class="d-grid gap-2">
+                    <form method="post" asp-page-handler="GeneratePdf">
+                        <button class="btn btn-outline-primary w-100" type="submit">Generar PDF</button>
+                    </form>
+                    <form method="post" asp-page-handler="SendForSignature">
+                        <button class="btn btn-primary w-100" type="submit">Enviar firma digital</button>
+                    </form>
+                    <form method="post" asp-page-handler="DownloadPdf">
+                        <button class="btn btn-outline-dark w-100" type="submit" @(string.IsNullOrWhiteSpace(Model.Item.PdfStoragePath) ? "disabled" : "")>Descargar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

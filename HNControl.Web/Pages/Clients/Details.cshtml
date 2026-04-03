@@ -30,6 +30,7 @@
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
         <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
+        <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
         <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
     </div>
 </div>
@@ -126,7 +127,13 @@
                 <div class="text-muted small">
                     Contacto: <b>@(string.IsNullOrWhiteSpace(Model.Client.ContactName) ? "-" : Model.Client.ContactName)</b><br />
                     Tel: <b>@(Model.Client.Phone ?? "-")</b><br />
-                    Direcci&oacute;n: @(Model.Client.Address ?? "-")
+                    Direcci&oacute;n: @(Model.Client.Address ?? "-")<br />
+                    Rep. legal: <b>@(Model.Client.LegalRepresentative ?? "-")</b><br />
+                    Correo legal: @(Model.Client.LegalEmail ?? "-")<br />
+                    Giro: @(Model.Client.BusinessLine ?? "-")<br />
+                    Facturaci&oacute;n: @(Model.Client.BillingEmail ?? "-")<br />
+                    Regimen SAT: @(Model.Client.FiscalRegimeCode ?? "-") &middot; Uso CFDI: @(Model.Client.CfdiUseCodeDefault ?? "-")<br />
+                    CP fiscal: @(Model.Client.FiscalZipCode ?? "-")
                 </div>
             </div>
         </div>

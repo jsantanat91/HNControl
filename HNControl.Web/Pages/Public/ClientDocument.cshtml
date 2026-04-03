@@ -1,0 +1,133 @@
+@page "{token}"
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Public.ClientDocumentModel
+@{
+    Layout = "_LayoutPublic";
+    ViewData["Title"] = "Firma de documento";
+}
+
+@if (Model.DocumentRef == null)
+{
+    <div class="container py-4">
+        <div class="alert alert-danger">Documento no encontrado o link inválido.</div>
+    </div>
+    return;
+}
+
+<div class="container py-4">
+    <div class="card shadow-soft hn-hover mb-3">
+        <div class="card-body">
+            <h2 class="h4 mb-1">@Model.DocumentRef.Title</h2>
+            <div class="text-muted small mb-3">
+                Cliente: <b>@(Model.DocumentRef.Client?.Name ?? "-")</b>
+                · Tipo: <b>@(Model.DocumentRef.DocumentType == ClientLegalDocumentType.NDA ? "NDA" : "Contrato")</b>
+                · Estatus: <b>@(Model.DocumentRef.Status == ClientLegalDocumentStatus.Signed ? "Firmado" : "Pendiente")</b>
+            </div>
+
+            <a class="btn btn-outline-primary btn-sm" href="?handler=DownloadPdf&token=@RouteData.Values["token"]">Descargar PDF actual</a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="alert alert-danger">@Model.Error</div>
+    }
+
+    @if (Model.DocumentRef.Status == ClientLegalDocumentStatus.Signed)
+    {
+        <div class="alert alert-success">
+            Documento firmado por <b>@Model.DocumentRef.SignedByName</b> · @Model.DocumentRef.SignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+        </div>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover">
+            <div class="card-header fw-semibold">Firma digital</div>
+            <div class="card-body">
+                <input type="hidden" name="token" value="@RouteData.Values["token"]" />
+                <input type="hidden" id="sigDataUrl" name="sigDataUrl" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre de quien firma</label>
+                        <input class="form-control" name="signerName" value="@Model.DocumentRef.Client?.LegalRepresentative" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Correo de quien firma</label>
+                        <input class="form-control" name="signerEmail" value="@Model.DocumentRef.Client?.LegalEmail" required />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Dibuja tu firma</label>
+                        <div class="border rounded-4 bg-light p-2">
+                            <canvas id="sigCanvas" class="w-100" style="height:220px; touch-action:none;"></canvas>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="clearSig()">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" type="submit" onclick="captureSig()">Firmar documento</button>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts
+{
+    <script>
+        const canvas = document.getElementById('sigCanvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const resize = () => {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = Math.floor(rect.width * dpr);
+                canvas.height = Math.floor(rect.height * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#111827';
+            };
+            resize();
+            window.addEventListener('resize', resize);
+
+            let drawing = false;
+            let lx = 0, ly = 0;
+            const pos = ev => {
+                const r = canvas.getBoundingClientRect();
+                if (ev.touches && ev.touches.length)
+                    return { x: ev.touches[0].clientX - r.left, y: ev.touches[0].clientY - r.top };
+                return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+            };
+            const start = ev => { drawing = true; const p = pos(ev); lx = p.x; ly = p.y; ev.preventDefault(); };
+            const move = ev => {
+                if (!drawing) return;
+                const p = pos(ev);
+                ctx.beginPath();
+                ctx.moveTo(lx, ly);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+                lx = p.x; ly = p.y;
+                ev.preventDefault();
+            };
+            const end = ev => { drawing = false; if (ev) ev.preventDefault(); };
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', end);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('touchend', end, { passive: false });
+        }
+
+        function clearSig() {
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function captureSig() {
+            if (!canvas) return;
+            document.getElementById('sigDataUrl').value = canvas.toDataURL('image/png');
+        }
+    </script>
+}

@@ -138,6 +138,14 @@ else
         <div class="col-12 col-md-6 col-xl-3">
             <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
+                    <div class="text-muted small">Comisiones de venta</div>
+                    <div class="h3 mb-0">@Model.SalesCommissionsTotal.ToString("C")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card shadow-soft hn-hover h-100 stat-card">
+                <div class="card-body">
                     <div class="text-muted small">Vacaciones disponibles</div>
                     <div class="h3 mb-0">@Model.VacationRemaining</div>
                 </div>
@@ -385,6 +393,7 @@ else
                             </div>
                             <span class="hn-badge @(payrollImpact >= 0 ? "hn-badge-green" : "hn-badge-amber")">Impacto: @payrollImpact.ToString("C")</span>
                         </div>
+                        <div class="small text-muted mt-2">Comisiones de venta del periodo: <b>@Model.SalesCommissionsTotal.ToString("C")</b></div>
 
                         @if (!Model.ActiveDeductions.Any())
                         {
@@ -653,4 +662,3 @@ else
         })();
     </script>
 }
-

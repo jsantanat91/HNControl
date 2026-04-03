@@ -60,6 +60,7 @@ public class MyProfileModel : PageModel
     public List<DeductionMini> ActiveDeductions { get; set; } = new();
     public decimal DeductionsTotal { get; set; } = 0m;
     public decimal BonusesTotal { get; set; } = 0m;
+    public decimal SalesCommissionsTotal { get; set; } = 0m;
 
     public decimal NetQuincenal => CurrentPay?.NetQuincenal ?? 0m;
 
@@ -258,6 +259,7 @@ public class MyProfileModel : PageModel
         ActiveDeductions = new();
         DeductionsTotal = 0m;
         BonusesTotal = 0m;
+        SalesCommissionsTotal = 0m;
 
         try
         {
@@ -320,13 +322,18 @@ public class MyProfileModel : PageModel
                 ));
 
                 if (d.Direction == EmployeeDeductionDirection.Bonus)
+                {
                     BonusesTotal += amount;
+                    if (d.Type == EmployeeDeductionType.ComisionVenta)
+                        SalesCommissionsTotal += amount;
+                }
                 else
                     DeductionsTotal += amount;
             }
 
             DeductionsTotal = Math.Round(DeductionsTotal, 2);
             BonusesTotal = Math.Round(BonusesTotal, 2);
+            SalesCommissionsTotal = Math.Round(SalesCommissionsTotal, 2);
         }
         catch
         {

@@ -45,6 +45,33 @@ public class EditModel : PageModel
 
         [MaxLength(400)]
         public string Address { get; set; } = "";
+
+        [Required, MaxLength(160)]
+        public string LegalRepresentative { get; set; } = "";
+
+        [Required, EmailAddress, MaxLength(256)]
+        public string LegalEmail { get; set; } = "";
+
+        [MaxLength(120)]
+        public string LegalPosition { get; set; } = "";
+
+        [Required, MaxLength(180)]
+        public string BusinessLine { get; set; } = "";
+
+        [Required, EmailAddress, MaxLength(256)]
+        public string BillingEmail { get; set; } = "";
+
+        [Required, MaxLength(400)]
+        public string FiscalAddress { get; set; } = "";
+
+        [MaxLength(10)]
+        public string FiscalZipCode { get; set; } = "";
+
+        [MaxLength(4)]
+        public string FiscalRegimeCode { get; set; } = "601";
+
+        [MaxLength(4)]
+        public string CfdiUseCodeDefault { get; set; } = "G03";
     }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
@@ -62,7 +89,16 @@ public class EditModel : PageModel
             Email = client.Email ?? "",
             Phone = client.Phone ?? "",
             ContactName = client.ContactName ?? "",
-            Address = client.Address ?? ""
+            Address = client.Address ?? "",
+            LegalRepresentative = client.LegalRepresentative ?? "",
+            LegalEmail = client.LegalEmail ?? "",
+            LegalPosition = client.LegalPosition ?? "",
+            BusinessLine = client.BusinessLine ?? "",
+            BillingEmail = client.BillingEmail ?? "",
+            FiscalAddress = client.FiscalAddress ?? "",
+            FiscalZipCode = client.FiscalZipCode ?? "",
+            FiscalRegimeCode = client.FiscalRegimeCode ?? "601",
+            CfdiUseCodeDefault = client.CfdiUseCodeDefault ?? "G03"
         };
 
         return Page();
@@ -83,6 +119,15 @@ public class EditModel : PageModel
         client.Phone = (Input.Phone ?? "").Trim();
         client.ContactName = (Input.ContactName ?? "").Trim();
         client.Address = (Input.Address ?? "").Trim();
+        client.LegalRepresentative = (Input.LegalRepresentative ?? "").Trim();
+        client.LegalEmail = (Input.LegalEmail ?? "").Trim();
+        client.LegalPosition = (Input.LegalPosition ?? "").Trim();
+        client.BusinessLine = (Input.BusinessLine ?? "").Trim();
+        client.BillingEmail = (Input.BillingEmail ?? "").Trim();
+        client.FiscalAddress = (Input.FiscalAddress ?? "").Trim();
+        client.FiscalZipCode = (Input.FiscalZipCode ?? "").Trim();
+        client.FiscalRegimeCode = (Input.FiscalRegimeCode ?? "").Trim().ToUpperInvariant();
+        client.CfdiUseCodeDefault = (Input.CfdiUseCodeDefault ?? "").Trim().ToUpperInvariant();
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Clients/Details", new { id = client.Id });

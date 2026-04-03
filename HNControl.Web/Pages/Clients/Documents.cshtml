@@ -1,0 +1,149 @@
+@page "{clientId:guid}"
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Clients.DocumentsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Documentos legales";
+}
+
+@if (Model.Client == null)
+{
+    <div class="alert alert-warning">Cliente no encontrado.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">Documentos legales</h1>
+        <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.Client.Id">Volver cliente</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <form method="post" asp-page-handler="Generate" class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Generar contrato</div>
+            <div class="card-body">
+                <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                <input type="hidden" name="type" value="@ClientLegalDocumentType.Contract" />
+                <label class="form-label">Contrato base (opcional)</label>
+                <select class="form-select" name="contractId">
+                    <option value="">-- Sin contrato ligado --</option>
+                    @foreach (var c in Model.Contracts)
+                    {
+                        <option value="@c.Id">@c.Label · @c.Provider · @c.MonthlyAmount?.ToString("C")</option>
+                    }
+                </select>
+                <div class="text-muted small mt-2">Se precargan costo mensual y periodo si eliges contrato.</div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" type="submit">Generar contrato</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <form method="post" asp-page-handler="Generate" class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Generar NDA</div>
+            <div class="card-body">
+                <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                <input type="hidden" name="type" value="@ClientLegalDocumentType.NDA" />
+                <label class="form-label">Contrato base (opcional)</label>
+                <select class="form-select" name="contractId">
+                    <option value="">-- Sin contrato ligado --</option>
+                    @foreach (var c in Model.Contracts)
+                    {
+                        <option value="@c.Id">@c.Label · @c.Provider</option>
+                    }
+                </select>
+                <div class="text-muted small mt-2">Incluye clausulas de confidencialidad y firma digital.</div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-outline-primary" type="submit">Generar NDA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-header fw-semibold">Documentos del cliente</div>
+    <div class="card-body">
+        @if (!Model.Docs.Any())
+        {
+            <div class="text-muted">Aún no hay documentos generados.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Título</th>
+                            <th>Estatus</th>
+                            <th>Firmado</th>
+                            <th>Creado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model.Docs)
+                        {
+                            var badge = d.Status == "Firmado" ? "text-bg-success" : d.Status == "En firma" ? "text-bg-warning" : "text-bg-secondary";
+                            <tr>
+                                <td><span class="badge text-bg-light border">@d.Type</span></td>
+                                <td>
+                                    <div class="fw-semibold">@d.Title</div>
+                                    @if (d.ContractId.HasValue)
+                                    {
+                                        <div class="small text-muted">Ligado a contrato</div>
+                                    }
+                                </td>
+                                <td><span class="badge @badge">@d.Status</span></td>
+                                <td>
+                                    @if (d.IsSigned)
+                                    {
+                                        <div class="small">@d.SignedBy</div>
+                                        <div class="small text-muted">@d.SignedAt</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Pendiente</span>
+                                    }
+                                </td>
+                                <td class="small text-muted">@d.CreatedAt</td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <form method="post" asp-page-handler="RegeneratePdf">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerar PDF</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="SendForSignature">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Enviar firma</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="Download">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

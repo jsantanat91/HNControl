@@ -65,6 +65,7 @@ public class DetailsModel : PageModel
     public decimal CurrentMonthViaticTotal => WeeklyViaticTotal;
     public decimal CurrentDeductionsTotal { get; set; }
     public decimal CurrentBonusesTotal { get; set; }
+    public decimal CurrentSalesCommissionsTotal { get; set; }
     public decimal CurrentNetQuincenal { get; set; }
     public decimal CurrentVariablePercent { get; set; }
     public string CurrentPayrollPeriod { get; set; } = "";
@@ -299,9 +300,11 @@ public class DetailsModel : PageModel
         var baseQ = Employee.SalaryBase / 2m;
         var total = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * vp), 2);
         var (ded, bon) = await CalcPayrollAdjustmentsAsync(userId, baseQ, total, periodStart, periodEnd);
+        var commissions = await CalcSalesCommissionsAsync(userId, baseQ, total, periodStart, periodEnd);
 
         CurrentDeductionsTotal = ded;
         CurrentBonusesTotal = bon;
+        CurrentSalesCommissionsTotal = commissions;
         CurrentNetQuincenal = Math.Max(0m, Math.Round(total - ded + bon, 2));
         CurrentPayrollPeriod = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
     }
@@ -351,6 +354,31 @@ public class DetailsModel : PageModel
         catch
         {
             return (0m, 0m);
+        }
+    }
+
+    private async Task<decimal> CalcSalesCommissionsAsync(
+        string userId,
+        decimal baseQuincenal,
+        decimal estimatedQuincenal,
+        DateTime periodStart,
+        DateTime periodEnd)
+    {
+        try
+        {
+            var active = await _db.EmployeeDeductions
+                .AsNoTracking()
+                .Where(d => d.UserId == userId && d.IsActive)
+                .Where(d => d.Type == EmployeeDeductionType.ComisionVenta && d.Direction == EmployeeDeductionDirection.Bonus)
+                .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
+                .ToListAsync();
+
+            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
+            return result.bonuses;
+        }
+        catch
+        {
+            return 0m;
         }
     }
 }

@@ -1,0 +1,258 @@
+@page
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Projects.Billing.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Facturacion";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">Facturacion</h1>
+        <div class="text-muted small">Programacion de facturas internas (sin timbrado) con recurrencia, PDF y envio.</div>
+    </div>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<div class="row g-3 mb-2">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Planes activos</div>
+                <div class="fs-4 fw-bold">@Model.ActivePlans</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Facturas pendientes</div>
+                <div class="fs-4 fw-bold">@Model.PendingRuns</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Proyeccion mensual</div>
+                <div class="fs-4 fw-bold">@Model.MonthlyProjection.ToString("C")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover mb-3">
+    <div class="card-header fw-semibold">Nuevo plan de facturacion</div>
+    <form method="post" asp-page-handler="CreatePlan">
+        <div class="card-body row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Origen venta (opcional)</label>
+                <select class="form-select" asp-for="Input.SalesOpportunityId" asp-items="Model.OpportunityItems">
+                    <option value="">-- Sin oportunidad --</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Cotizacion (opcional)</label>
+                <select class="form-select" asp-for="Input.QuoteRequestId" asp-items="Model.QuoteItems">
+                    <option value="">-- Sin cotizacion --</option>
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Concepto</label>
+                <input class="form-control" asp-for="Input.Concept" />
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label">Subtotal</label>
+                <input class="form-control" asp-for="Input.Subtotal" type="number" step="0.01" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">IVA</label>
+                <input class="form-control" asp-for="Input.VatRate" type="number" step="0.01" min="0" max="1" />
+                <div class="text-muted small">0.16 = 16%</div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Periodicidad</label>
+                <select class="form-select" asp-for="Input.Periodicity" asp-items="Html.GetEnumSelectList<BillingPeriodicity>()"></select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Inicio</label>
+                <input class="form-control" asp-for="Input.StartDate" type="date" />
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label">No. corridas (opcional)</label>
+                <input class="form-control" asp-for="Input.NumberOfRuns" type="number" min="1" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Tipo CFDI (SAT)</label>
+                <select class="form-select" asp-for="Input.InvoiceType" asp-items="Html.GetEnumSelectList<BillingInvoiceType>()"></select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Uso CFDI</label>
+                <select class="form-select" asp-for="Input.CfdiUseCode">
+                    @foreach (var it in SatCatalogs.UsoCfdi)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Regimen fiscal</label>
+                <select class="form-select" asp-for="Input.FiscalRegimeCode">
+                    @foreach (var it in SatCatalogs.RegimenFiscal)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label">Metodo pago</label>
+                <select class="form-select" asp-for="Input.PaymentMethodCode">
+                    @foreach (var it in SatCatalogs.MetodoPago)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Forma pago</label>
+                <select class="form-select" asp-for="Input.PaymentFormCode">
+                    @foreach (var it in SatCatalogs.FormaPago)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label">Correo destino</label>
+                <input class="form-control" asp-for="Input.SendToEmail" />
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label">CC (separados por coma)</label>
+                <input class="form-control" asp-for="Input.CcEmails" />
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Notas</label>
+                <textarea class="form-control" asp-for="Input.Notes" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-primary" type="submit">Crear plan</button>
+        </div>
+    </form>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Planes</div>
+            <div class="card-body">
+                @if (!Model.Plans.Any())
+                {
+                    <div class="text-muted small">Sin planes.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var p in Model.Plans)
+                        {
+                            var statusBadge = p.Status == nameof(BillingPlanStatus.Active) ? "text-bg-success"
+                                : p.Status == nameof(BillingPlanStatus.Paused) ? "text-bg-warning"
+                                : "text-bg-secondary";
+                            <div class="border rounded-4 p-3">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <div>
+                                        <div class="fw-semibold">@p.Client</div>
+                                        <div class="small text-muted">@p.Concept</div>
+                                        <div class="small">@p.SatSummary</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-semibold">@p.Total.ToString("C")</div>
+                                        <span class="badge @statusBadge">@p.Status</span>
+                                    </div>
+                                </div>
+                                <div class="small text-muted mt-2">
+                                    @p.Periodicity · Próxima: @p.NextRunDate.ToString("yyyy-MM-dd") · @p.SendToEmail
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <form method="post" asp-page-handler="MarkSent">
+                                        <input type="hidden" name="planId" value="@p.Id" />
+                                        <button class="btn btn-sm btn-outline-primary" type="submit">Marcar enviado</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="ToggleStatus">
+                                        <input type="hidden" name="planId" value="@p.Id" />
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit">
+                                            @(p.Status == nameof(BillingPlanStatus.Active) ? "Pausar" : "Reactivar")
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Ejecuciones (historial)</div>
+            <div class="card-body">
+                @if (!Model.Runs.Any())
+                {
+                    <div class="text-muted small">Sin movimientos.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Periodo</th>
+                                    <th>Fecha</th>
+                                    <th>Status</th>
+                                    <th>Correo</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in Model.Runs)
+                                {
+                                    var b = r.Status == nameof(BillingRunStatus.Sent) ? "text-bg-success" : "text-bg-warning";
+                                    <tr>
+                                        <td>@r.Client<div class="small text-muted">@r.Concept</div></td>
+                                        <td>@r.PeriodLabel</td>
+                                        <td>@r.ScheduledFor.ToString("yyyy-MM-dd")</td>
+                                        <td><span class="badge @b">@r.Status</span></td>
+                                        <td>@r.Email</td>
+                                        <td class="text-end">
+                                            @if (r.HasPdf)
+                                            {
+                                                <a class="btn btn-sm btn-outline-primary" asp-page="./Index" asp-page-handler="DownloadPdf" asp-route-runId="@r.Id">PDF</a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

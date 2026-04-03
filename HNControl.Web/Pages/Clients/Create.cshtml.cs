@@ -42,6 +42,33 @@ public class CreateModel : PageModel
 
         [MaxLength(400)]
         public string Address { get; set; } = "";
+
+        [Required, MaxLength(160)]
+        public string LegalRepresentative { get; set; } = "";
+
+        [Required, EmailAddress, MaxLength(256)]
+        public string LegalEmail { get; set; } = "";
+
+        [MaxLength(120)]
+        public string LegalPosition { get; set; } = "";
+
+        [Required, MaxLength(180)]
+        public string BusinessLine { get; set; } = "";
+
+        [Required, EmailAddress, MaxLength(256)]
+        public string BillingEmail { get; set; } = "";
+
+        [Required, MaxLength(400)]
+        public string FiscalAddress { get; set; } = "";
+
+        [MaxLength(10)]
+        public string FiscalZipCode { get; set; } = "";
+
+        [MaxLength(4)]
+        public string FiscalRegimeCode { get; set; } = "601";
+
+        [MaxLength(4)]
+        public string CfdiUseCodeDefault { get; set; } = "G03";
     }
 
     public void OnGet() { }
@@ -60,6 +87,15 @@ public class CreateModel : PageModel
             Phone = (Input.Phone ?? "").Trim(),
             ContactName = (Input.ContactName ?? "").Trim(),
             Address = (Input.Address ?? "").Trim(),
+            LegalRepresentative = (Input.LegalRepresentative ?? "").Trim(),
+            LegalEmail = (Input.LegalEmail ?? "").Trim(),
+            LegalPosition = (Input.LegalPosition ?? "").Trim(),
+            BusinessLine = (Input.BusinessLine ?? "").Trim(),
+            BillingEmail = (Input.BillingEmail ?? "").Trim(),
+            FiscalAddress = (Input.FiscalAddress ?? "").Trim(),
+            FiscalZipCode = (Input.FiscalZipCode ?? "").Trim(),
+            FiscalRegimeCode = (Input.FiscalRegimeCode ?? "").Trim().ToUpperInvariant(),
+            CfdiUseCodeDefault = (Input.CfdiUseCodeDefault ?? "").Trim().ToUpperInvariant(),
             CreatedAt = DateTime.UtcNow
         };
 

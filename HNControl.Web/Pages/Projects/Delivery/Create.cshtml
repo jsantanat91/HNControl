@@ -1,0 +1,72 @@
+@page
+@model HNControl.Web.Pages.Projects.Delivery.CreateModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Nuevo formato de entrega";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">Nuevo formato de entrega</h1>
+        <div class="text-muted small">Selecciona cliente/proyecto y captura servicios o equipo entregado.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+<form method="post" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Proyecto (opcional)</label>
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
+                    <option value="">-- Sin proyecto --</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Título</label>
+                <input class="form-control" asp-for="Input.Title" placeholder="Ej: Acta entrega de servicios - Sucursal Norte" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Servicios entregados</label>
+                <textarea class="form-control" asp-for="Input.ServiceSummary" rows="4" placeholder="Describe actividades, alcance y entregables..."></textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Equipamiento entregado</label>
+                <textarea class="form-control" asp-for="Input.EquipmentSummary" rows="4" placeholder="Modelo, serie, cantidad, observaciones..."></textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ubicación de entrega</label>
+                <input class="form-control" asp-for="Input.DeliveryLocation" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Fecha de entrega</label>
+                <input class="form-control" asp-for="Input.DeliveryDate" type="date" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Recibe (nombre)</label>
+                <input class="form-control" asp-for="Input.ReceiverName" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Recibe (correo)</label>
+                <input class="form-control" asp-for="Input.ReceiverEmail" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Recibe (teléfono)</label>
+                <input class="form-control" asp-for="Input.ReceiverPhone" />
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button class="btn btn-primary" type="submit">Crear formato</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

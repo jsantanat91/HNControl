@@ -1,0 +1,83 @@
+@page
+@model HNControl.Web.Pages.Sales.MyModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Mi panel de ventas";
+}
+
+@if (Model.Seller == null || Model.Employee == null)
+{
+    <div class="alert alert-warning">No tienes perfil de vendedor activo.</div>
+    return;
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Mi panel de ventas</h1>
+        <div class="text-muted small">@Model.Employee.FullName · @Model.Employee.Email</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Employees/MyProfile">Mi ficha</a>
+</div>
+
+<div class="row g-3 mb-2">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Comision base</div>
+                <div class="fs-4 fw-bold">@((Model.Seller.DefaultCommissionPercent * 100m).ToString("0.##"))%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Cotizaciones ligadas</div>
+                <div class="fs-4 fw-bold">@Model.Quotes.Count</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="text-muted small">Estimado total</div>
+                <div class="fs-4 fw-bold">@Model.Quotes.Sum(x => x.Total).ToString("C")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-header fw-semibold">Mis cotizaciones</div>
+    <div class="card-body">
+        @if (!Model.Quotes.Any())
+        {
+            <div class="text-muted small">Sin cotizaciones ligadas.</div>
+        }
+        else
+        {
+            <div class="vstack gap-2">
+                @foreach (var q in Model.Quotes)
+                {
+                    var badge = q.Status == "CommissionApplied" ? "text-bg-success"
+                        : q.Status == "ContractSigned" ? "text-bg-primary"
+                        : q.Status == "ClosedWon" ? "text-bg-warning"
+                        : "text-bg-secondary";
+                    <div class="border rounded-4 p-3 d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">@q.Folio · @q.Customer</div>
+                            <div class="small text-muted">Creada: @q.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            <div class="small">Total: <b>@q.Total.ToString("C")</b></div>
+                            <span class="badge @badge">@q.Status</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            @if (q.HasPdf)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" asp-page="./My" asp-page-handler="DownloadQuotePdf" asp-route-quoteId="@q.QuoteId">PDF</a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

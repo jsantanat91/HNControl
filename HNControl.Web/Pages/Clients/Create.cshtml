@@ -54,6 +54,61 @@
                 <label class="form-label">Direccion</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Representante legal</label>
+                <input class="form-control" asp-for="Input.LegalRepresentative" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Correo legal</label>
+                <input class="form-control" asp-for="Input.LegalEmail" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Puesto representante</label>
+                <input class="form-control" asp-for="Input.LegalPosition" placeholder="Ej: Director General" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Giro / actividad</label>
+                <input class="form-control" asp-for="Input.BusinessLine" placeholder="Ej: Manufactura / Retail" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Correo facturacion</label>
+                <input class="form-control" asp-for="Input.BillingEmail" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Domicilio fiscal</label>
+                <input class="form-control" asp-for="Input.FiscalAddress" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">CP fiscal</label>
+                <input class="form-control" asp-for="Input.FiscalZipCode" />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Regimen fiscal SAT</label>
+                <select class="form-select" asp-for="Input.FiscalRegimeCode">
+                    @foreach (var it in HNControl.Web.Models.SatCatalogs.RegimenFiscal)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Uso CFDI por defecto</label>
+                <select class="form-select" asp-for="Input.CfdiUseCodeDefault">
+                    @foreach (var it in HNControl.Web.Models.SatCatalogs.UsoCfdi)
+                    {
+                        <option value="@it.Code">@it.Code - @it.Label</option>
+                    }
+                </select>
+            </div>
         </div>
     </div>
 

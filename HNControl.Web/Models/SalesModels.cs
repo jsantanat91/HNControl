@@ -1,0 +1,54 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace HNControl.Web.Models;
+
+public enum SalesOpportunityStatus
+{
+    Prospect = 1,
+    ClosedWon = 2,
+    ClosedLost = 3,
+    ContractSigned = 4,
+    CommissionApplied = 5
+}
+
+public class SalesSellerProfile
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [MaxLength(64)]
+    public string EmployeeUserId { get; set; } = "";
+    public EmployeeProfile? Employee { get; set; }
+
+    public decimal DefaultCommissionPercent { get; set; } = 0.05m;
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class SalesOpportunity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid QuoteRequestId { get; set; }
+    public QuoteRequest? QuoteRequest { get; set; }
+
+    public Guid? SellerProfileId { get; set; }
+    public SalesSellerProfile? SellerProfile { get; set; }
+
+    public Guid? ClientId { get; set; }
+    public Client? Client { get; set; }
+
+    public SalesOpportunityStatus Status { get; set; } = SalesOpportunityStatus.Prospect;
+    public decimal CommissionPercent { get; set; } = 0.05m;
+    public decimal CommissionAmount { get; set; }
+
+    [MaxLength(1200)]
+    public string Notes { get; set; } = "";
+
+    public DateTime? ClosedAt { get; set; }
+    public DateTime? ContractSignedAt { get; set; }
+
+    public Guid? BonusDeductionId { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}

@@ -1,0 +1,50 @@
+@page
+@model HNControl.Web.Pages.Projects.Delivery.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Formato de entrega";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">Formato de entrega</h1>
+        <div class="text-muted small">Acta de entrega de servicios y equipamiento con firma digital.</div>
+    </div>
+    <a class="btn btn-primary" asp-page="/Projects/Delivery/Create">+ Nuevo formato</a>
+</div>
+
+<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+
+<div class="card shadow-soft hn-hover">
+    <div class="card-body">
+        @if (!Model.Rows.Any())
+        {
+            <div class="text-muted">Sin formatos registrados.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var r in Model.Rows)
+                {
+                    var badge = r.Status == "Firmado" ? "text-bg-success" : r.Status == "En firma" ? "text-bg-warning" : "text-bg-secondary";
+                    <div class="col-12 col-lg-6">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="fw-semibold">@r.Title</div>
+                                    <span class="badge @badge">@r.Status</span>
+                                </div>
+                                <div class="small text-muted">@r.Client · @r.Project</div>
+                                <div class="small">Entrega: @r.DeliveryDate</div>
+                                <div class="small">Recibe: @r.Receiver</div>
+                            </div>
+                            <div class="card-footer bg-transparent border-0 pt-0 d-flex justify-content-end">
+                                <a class="btn btn-sm btn-primary" asp-page="/Projects/Delivery/Details" asp-route-id="@r.Id">Abrir</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

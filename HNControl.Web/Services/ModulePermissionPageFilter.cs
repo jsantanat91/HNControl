@@ -31,7 +31,7 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
         }
 
         // Admin bypass
-        if (user.IsInRole(AppRoles.Admin))
+        if (AppRoles.IsGlobalAdmin(user))
         {
             await next();
             return;

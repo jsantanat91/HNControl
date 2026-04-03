@@ -14,13 +14,14 @@ public class IndexModel : PageModel
     public IndexModel(ApplicationDbContext db) => _db = db;
 
     [BindProperty(SupportsGet = true)] public string? Name { get; set; }
+    [BindProperty(SupportsGet = true)] public string View { get; set; } = "normal";
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
 
-    public record Row(Guid Id, string ClientCode, string Name, string Rfc, string Kind, string Email, string ContractsSummary, DateTime CreatedAt);
+    public record Row(Guid Id, string ClientCode, string Name, string Rfc, string Kind, string Email, string ContractsSummary, DateTime CreatedAt, bool IsActive, bool IsTemporaryLead);
     public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -36,6 +37,9 @@ public class IndexModel : PageModel
         var q = _db.Clients
             .Include(c => c.Contracts)
             .AsQueryable();
+
+        var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
+        q = q.Where(c => c.IsTemporaryLead == showLeads);
 
         var name = (Name ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
@@ -73,9 +77,20 @@ public class IndexModel : PageModel
                 c.Kind.ToString(),
                 c.Email ?? "",
                 summary,
-                c.CreatedAt
+                c.CreatedAt,
+                c.IsActive,
+                c.IsTemporaryLead
             );
         }).ToList();
+    }
+
+    public async Task<IActionResult> OnPostToggleActiveAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
+    {
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
+        if (client == null) return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+        client.IsActive = !client.IsActive;
+        await _db.SaveChangesAsync();
+        return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
     }
 
     private async Task EnsureClientCodesAsync()
@@ -88,6 +103,7 @@ public class IndexModel : PageModel
         {
             if (!string.IsNullOrWhiteSpace(c.ClientCode) &&
                 c.ClientCode.StartsWith("HN-") &&
+                !c.ClientCode.StartsWith("HN-VENTA-") &&
                 int.TryParse(c.ClientCode.AsSpan(3), out var n))
             {
                 used.Add(n);
@@ -96,7 +112,7 @@ public class IndexModel : PageModel
         }
 
         var changed = false;
-        foreach (var c in clients.Where(c => string.IsNullOrWhiteSpace(c.ClientCode)))
+        foreach (var c in clients.Where(c => string.IsNullOrWhiteSpace(c.ClientCode) && !c.IsTemporaryLead))
         {
             do { max++; } while (used.Contains(max));
             c.ClientCode = $"HN-{max:0000}";

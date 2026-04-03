@@ -69,6 +69,12 @@ public class QuoteModel : PageModel
 
         var request = build.request;
 
+        if (!request.ClientId.HasValue)
+        {
+            var lead = await GetOrCreateTemporaryLeadAsync(request.CustomerName, request.CustomerEmail, request.CustomerPhone, request.CustomerLocation, request.CompanyName);
+            request.ClientId = lead.Id;
+        }
+
         _db.QuoteRequests.Add(request);
         await _db.SaveChangesAsync();
 
@@ -141,7 +147,7 @@ public class QuoteModel : PageModel
         }
 
         if (picks == null || picks.Count == 0)
-            return (null, "Agrega al menos un concepto para cotizar.");
+            picks = [];
 
         var activeItems = await _db.QuoteCatalogItems
             .AsNoTracking()
@@ -224,8 +230,46 @@ public class QuoteModel : PageModel
             });
         }
 
+        List<ManualLineVm>? manualPicks;
+        try
+        {
+            manualPicks = JsonSerializer.Deserialize<List<ManualLineVm>>(Input.ManualLinesJson ?? "[]", new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch
+        {
+            manualPicks = [];
+        }
+
+        if (manualPicks != null)
+        {
+            foreach (var m in manualPicks.Where(x => !string.IsNullOrWhiteSpace(x.Description)))
+            {
+                var qty = m.Quantity <= 0 ? 1 : m.Quantity;
+                request.Lines.Add(new QuoteRequestLine
+                {
+                    CategoryName = string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim(),
+                    ServiceName = string.IsNullOrWhiteSpace(m.ServiceName) ? "Concepto libre" : m.ServiceName.Trim(),
+                    SubproductName = null,
+                    Description = m.Description.Trim(),
+                    Quantity = qty,
+                    UnitPrice = m.UnitPrice,
+                    PriceIncludesVat = false,
+                    VatRate = 0.16m,
+                    IsManualPrice = true,
+                    OfferType = QuoteOfferType.Sale,
+                    ItemImageUrl = null,
+                    BaseAmount = null,
+                    VatAmount = null,
+                    LineTotal = null
+                });
+            }
+        }
+
         if (request.Lines.Count == 0)
-            return (null, "No hay conceptos validos en la seleccion.");
+            return (null, "Agrega al menos un concepto para cotizar.");
 
         request.SubtotalBeforeVat = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.BaseAmount ?? 0m);
         request.VatAmount = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.VatAmount ?? 0m);
@@ -317,6 +361,7 @@ public class QuoteModel : PageModel
         public string? ClientToken { get; set; }
         public QuoteSegment Segment { get; set; } = QuoteSegment.Residential;
         public string LinesJson { get; set; } = "[]";
+        public string ManualLinesJson { get; set; } = "[]";
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerEmail { get; set; } = string.Empty;
         public string CustomerPhone { get; set; } = string.Empty;
@@ -331,6 +376,15 @@ public class QuoteModel : PageModel
         public Guid ServiceId { get; set; }
         public Guid? SubproductId { get; set; }
         public int Quantity { get; set; }
+    }
+
+    public class ManualLineVm
+    {
+        public string CategoryName { get; set; } = "Libre";
+        public string ServiceName { get; set; } = "Concepto libre";
+        public string Description { get; set; } = "";
+        public int Quantity { get; set; } = 1;
+        public decimal? UnitPrice { get; set; }
     }
 
     private async Task<Client?> TryLoadClientContextAsync(string? token)
@@ -359,5 +413,58 @@ public class QuoteModel : PageModel
             !string.IsNullOrWhiteSpace(Input.CustomerPhone) &&
             !string.IsNullOrWhiteSpace(Input.CustomerLocation);
         return client;
+    }
+
+    private async Task<Client> GetOrCreateTemporaryLeadAsync(string customerName, string email, string phone, string location, string? companyName)
+    {
+        email = (email ?? "").Trim().ToLowerInvariant();
+        var lead = await _db.Clients
+            .FirstOrDefaultAsync(x => x.IsTemporaryLead && x.Email != null && x.Email.ToLower() == email);
+        if (lead != null)
+        {
+            lead.Name = string.IsNullOrWhiteSpace(companyName) ? customerName.Trim() : companyName.Trim();
+            lead.ContactName = customerName.Trim();
+            lead.Phone = phone.Trim();
+            lead.Address = location.Trim();
+            lead.IsActive = true;
+            await _db.SaveChangesAsync();
+            return lead;
+        }
+
+        var nextCode = await NextLeadCodeAsync();
+        var client = new Client
+        {
+            ClientCode = nextCode,
+            Name = string.IsNullOrWhiteSpace(companyName) ? customerName.Trim() : companyName.Trim(),
+            Type = ClientType.Moral,
+            Email = email,
+            Phone = phone.Trim(),
+            ContactName = customerName.Trim(),
+            Address = location.Trim(),
+            IsTemporaryLead = true,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.Clients.Add(client);
+        await _db.SaveChangesAsync();
+        return client;
+    }
+
+    private async Task<string> NextLeadCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.IsTemporaryLead && !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-VENTA-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            var suffix = code["HN-VENTA-".Length..];
+            if (int.TryParse(suffix, out var n) && n > max)
+                max = n;
+        }
+        return $"HN-VENTA-{max + 1:00}";
     }
 }
