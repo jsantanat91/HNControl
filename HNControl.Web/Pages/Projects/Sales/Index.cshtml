@@ -1,4 +1,4 @@
-@page
+﻿@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Sales.IndexModel
 @{
@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">Ventas</h1>
-        <div class="text-muted small">Flujo comercial: vendedor -> cotizacion -> cierre -> contrato -> comision y facturacion.</div>
+        <div class="text-muted small">Flujo comercial: vendedor -> cotización -> cierre -> contrato -> comision y facturación.</div>
     </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
@@ -42,11 +42,11 @@
 
     <div class="col-12 col-xl-7">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Crear oportunidad (desde cotizacion)</div>
+            <div class="card-header fw-semibold">Crear oportunidad (desde cotización)</div>
             <form method="post" asp-page-handler="CreateOpportunity">
                 <div class="card-body row g-2">
                     <div class="col-md-6">
-                        <label class="form-label">Cotizacion</label>
+                        <label class="form-label">Cotización</label>
                         <select class="form-select" asp-for="QuoteId" asp-items="Model.QuoteItems"></select>
                     </div>
                     <div class="col-md-6">
@@ -87,7 +87,7 @@
                             <div class="border rounded p-2">
                                 <div class="fw-semibold">@s.EmployeeName</div>
                                 <div class="small text-muted">@s.Email</div>
-                                <span class="badge text-bg-info">Comision base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
+                                <span class="badge text-bg-info">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
                             </div>
                         }
                     </div>
@@ -115,7 +115,7 @@
                                     <th>Vendedor</th>
                                     <th>Estatus</th>
                                     <th>Total</th>
-                                    <th>Comision</th>
+                                    <th>Comisión</th>
                                     <th class="text-end">Accion</th>
                                 </tr>
                             </thead>
@@ -152,12 +152,12 @@
                                                 {
                                                     <form method="post" asp-page-handler="MarkContractSigned">
                                                         <input type="hidden" name="id" value="@o.Id" />
-                                                        <button class="btn btn-sm btn-outline-success" type="submit">Contrato firmado + Comision</button>
+                                                        <button class="btn btn-sm btn-outline-success" type="submit">Contrato firmado + Comisión</button>
                                                     </form>
                                                 }
                                                 @if (o.Status == nameof(SalesOpportunityStatus.ContractSigned) || o.Status == nameof(SalesOpportunityStatus.CommissionApplied))
                                                 {
-                                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Billing/Index" asp-route-opportunityId="@o.Id">Facturacion</a>
+                                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Billing/Index" asp-route-opportunityId="@o.Id">Facturación</a>
                                                 }
                                             </div>
                                         </td>
@@ -171,4 +171,5 @@
         </div>
     </div>
 </div>
+
 

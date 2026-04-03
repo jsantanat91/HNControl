@@ -11,11 +11,13 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
 {
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _cfg;
+    private readonly IFileStorage _storage;
 
-    public QuoteRequestPdfRenderer(ApplicationDbContext db, IConfiguration cfg)
+    public QuoteRequestPdfRenderer(ApplicationDbContext db, IConfiguration cfg, IFileStorage storage)
     {
         _db = db;
         _cfg = cfg;
+        _storage = storage;
     }
 
     public async Task<byte[]> RenderAsync(QuoteRequest request)
@@ -33,11 +35,13 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                 .FirstAsync(x => x.Id == request.Id);
         }
 
-        var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
-        var logoPath = (_cfg["Branding:LogoPath"] ?? string.Empty).Trim();
-        byte[]? logo = null;
-        if (!string.IsNullOrWhiteSpace(logoPath) && File.Exists(logoPath))
-            logo = await File.ReadAllBytesAsync(logoPath);
+        var sys = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var logo = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
 
         var created = q.CreatedAt == default ? DateTime.UtcNow : q.CreatedAt;
 
@@ -190,4 +194,23 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
     };
 
     private static string Money(decimal? v) => (v ?? 0m).ToString("C2");
+
+    private async Task<byte[]?> TryReadStorageBytesAsync(string? storagePath)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath)) return null;
+        try
+        {
+            var (stream, _, _) = await _storage.OpenAsync(storagePath, "logo");
+            await using (stream)
+            await using (var ms = new MemoryStream())
+            {
+                await stream.CopyToAsync(ms);
+                return ms.ToArray();
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

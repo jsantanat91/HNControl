@@ -3,6 +3,7 @@
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 @inject IModuleAccessService ModuleAccess
+@inject IActionAccessService ActionAccess
 
 @{
     var path = Context?.Request?.Path.Value ?? "";
@@ -11,11 +12,14 @@
 
     // Permisos por m&oacute;dulo (solo aplica a Employees). Admin bypass.
     var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    var allowedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     if (SignInManager.IsSignedIn(User) && !AppRoles.IsGlobalAdmin(User))
     {
         allowedModules = await ModuleAccess.GetAllowedModulesAsync(User);
+        allowedActions = await ActionAccess.GetAllowedActionsAsync(User);
     }
     bool Has(string key) => AppRoles.IsGlobalAdmin(User) || allowedModules.Contains(key);
+    bool CanAction(string key) => AppRoles.IsGlobalAdmin(User) || allowedActions.Contains(key);
 
     var pageTitle = (ViewData["Title"] as string) ?? "HN Control";
 }
@@ -113,10 +117,16 @@
                         <span class="hn-side-icon"><i class="bi bi-journal-text"></i></span>
                         <span class="hn-side-text">Documentos</span>
                     </a>
-                    <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index">
-                        <span class="hn-side-icon"><i class="bi bi-broadcast"></i></span>
-                        <span class="hn-side-text">Carriers</span>
-                    </a>
+                    <details class="hn-side-group" @((path.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                        <summary class="hn-side-link @((Active("/Carriers")))">
+                            <span class="hn-side-icon"><i class="bi bi-broadcast"></i></span>
+                            <span class="hn-side-text">Carriers</span>
+                        </summary>
+                        <div class="hn-side-sub">
+                            <a class="hn-side-sublink @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a>
+                            <a class="hn-side-sublink @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a>
+                        </div>
+                    </details>
                     <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Inventory")">
                             <span class="hn-side-icon"><i class="bi bi-box-seam"></i></span>
@@ -129,17 +139,9 @@
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index">
-                        <span class="hn-side-icon"><i class="bi bi-activity"></i></span>
-                        <span class="hn-side-text">Monitoreo</span>
-                    </a>
                     <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index">
                         <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                         <span class="hn-side-text">Tickets</span>
-                    </a>
-                    <a class="hn-side-link @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog">
-                        <span class="hn-side-icon"><i class="bi bi-calculator"></i></span>
-                        <span class="hn-side-text">Cotizaciones</span>
                     </a>
                     <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")">
@@ -151,6 +153,7 @@
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog">Cotizaciones</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion">
@@ -165,14 +168,17 @@
                         <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
                         <span class="hn-side-text">Ex&aacute;menes</span>
                     </a>
-                    <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">
-                        <span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span>
-                        <span class="hn-side-text">Seguridad</span>
-                    </a>
-                    <a class="hn-side-link @Active("/Admin/System")" asp-page="/Admin/System/Backup">
-                        <span class="hn-side-icon"><i class="bi bi-database"></i></span>
-                        <span class="hn-side-text">Sistema</span>
-                    </a>
+                    <details class="hn-side-group" @((path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                        <summary class="hn-side-link @Active("/Admin/System")">
+                            <span class="hn-side-icon"><i class="bi bi-database"></i></span>
+                            <span class="hn-side-text">Sistema</span>
+                        </summary>
+                        <div class="hn-side-sub">
+                            <a class="hn-side-sublink @Active("/Admin/System/Configuration")" asp-page="/Admin/System/Configuration">Configuración</a>
+                            <a class="hn-side-sublink @Active("/Admin/System")" asp-page="/Admin/System/Backup">Respaldo DB</a>
+                            <a class="hn-side-sublink @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
+                        </div>
+                    </details>
                 }
                 else
                 {
@@ -196,9 +202,22 @@
                                 <span class="hn-side-text">Ventas</span>
                             </summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
-                                <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                                <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesWorkflowMove) || CanAction(HNControl.Web.Models.AppActions.SalesWorkflowAssign))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesManage) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || User.IsInRole(HNControl.Web.Models.AppRoles.Seller))
+                                {
+                                    <a class="hn-side-sublink @Active("/Sales/My")" asp-page="/Sales/My">Cotizaciones</a>
+                                }
                             </div>
                         </details>
                     }
@@ -239,10 +258,22 @@
                                 <span class="hn-side-text">Proyectos</span>
                             </summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
-                                <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
-                                <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
-                                <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsInvestmentsView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsResellersView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsDeliveryView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
+                                }
                             </div>
                         </details>
                     }
@@ -253,12 +284,24 @@
                             <span class="hn-side-text">Documentos</span>
                         </a>
                     }
-                    @if (Has(AppModules.Carriers))
+                    @if (Has(AppModules.Carriers) || Has(AppModules.Monitoring))
                     {
-                        <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index">
-                            <span class="hn-side-icon"><i class="bi bi-broadcast"></i></span>
-                            <span class="hn-side-text">Carriers</span>
-                        </a>
+                        <details class="hn-side-group" @((path.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                            <summary class="hn-side-link @Active("/Carriers")">
+                                <span class="hn-side-icon"><i class="bi bi-broadcast"></i></span>
+                                <span class="hn-side-text">Carriers</span>
+                            </summary>
+                            <div class="hn-side-sub">
+                                @if (Has(AppModules.Carriers) && CanAction(HNControl.Web.Models.AppActions.CarriersView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a>
+                                }
+                                @if (Has(AppModules.Monitoring) && CanAction(HNControl.Web.Models.AppActions.MonitoringView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a>
+                                }
+                            </div>
+                        </details>
                     }
                     @if (Has(AppModules.Inventory))
                     {
@@ -275,13 +318,6 @@
                                 }
                             </div>
                         </details>
-                    }
-                    @if (Has(AppModules.Monitoring))
-                    {
-                        <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index">
-                            <span class="hn-side-icon"><i class="bi bi-activity"></i></span>
-                            <span class="hn-side-text">Monitoreo</span>
-                        </a>
                     }
                     @if (Has(AppModules.Tickets))
                     {
@@ -392,7 +428,13 @@
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">KPI (80/20)</span></a>
                     <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a>
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a>
-                    <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></a>
+                    <details class="hn-side-group" @((path.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                        <summary class="hn-side-link @Active("/Carriers")"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></summary>
+                        <div class="hn-side-sub">
+                            <a class="hn-side-sublink @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a>
+                            <a class="hn-side-sublink @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a>
+                        </div>
+                    </details>
                     <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Inventory")"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></summary>
                         <div class="hn-side-sub">
@@ -402,9 +444,7 @@
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a>
                     <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a>
-                    <a class="hn-side-link @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog"><span class="hn-side-icon"><i class="bi bi-calculator"></i></span><span class="hn-side-text">Cotizaciones</span></a>
                     <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
@@ -412,13 +452,20 @@
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog">Cotizaciones</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a>
-                    <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index"><span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span><span class="hn-side-text">Seguridad</span></a>
-                    <a class="hn-side-link @Active("/Admin/System")" asp-page="/Admin/System/Backup"><span class="hn-side-icon"><i class="bi bi-database"></i></span><span class="hn-side-text">Sistema</span></a>
+                    <details class="hn-side-group" @((path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                        <summary class="hn-side-link @Active("/Admin/System")"><span class="hn-side-icon"><i class="bi bi-database"></i></span><span class="hn-side-text">Sistema</span></summary>
+                        <div class="hn-side-sub">
+                            <a class="hn-side-sublink @Active("/Admin/System/Configuration")" asp-page="/Admin/System/Configuration">Configuración</a>
+                            <a class="hn-side-sublink @Active("/Admin/System")" asp-page="/Admin/System/Backup">Respaldo DB</a>
+                            <a class="hn-side-sublink @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
+                        </div>
+                    </details>
                 }
                 else
                 {
@@ -430,9 +477,22 @@
                         <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
-                                <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                                <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesWorkflowMove) || CanAction(HNControl.Web.Models.AppActions.SalesWorkflowAssign))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesManage) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || User.IsInRole(HNControl.Web.Models.AppRoles.Seller))
+                                {
+                                    <a class="hn-side-sublink @Active("/Sales/My")" asp-page="/Sales/My">Cotizaciones</a>
+                                }
                             </div>
                         </details>
                     }
@@ -449,17 +509,43 @@
                         <details class="hn-side-group" @(path.StartsWith("/Projects", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                             <summary class="hn-side-link @Active("/Projects")"><span class="hn-side-icon"><i class="bi bi-kanban"></i></span><span class="hn-side-text">Proyectos</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
-                                <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
-                                <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
-                                <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsInvestmentsView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsResellersView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
+                                }
+                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsDeliveryView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
+                                }
                             </div>
                         </details>
                     }
                     @if (Has(AppModules.Knowledge))
                     { <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a> }
-                    @if (Has(AppModules.Carriers))
-                    { <a class="hn-side-link @Active("/Carriers")" asp-page="/Carriers/Index"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></a> }
+                    @if (Has(AppModules.Carriers) || Has(AppModules.Monitoring))
+                    {
+                        <details class="hn-side-group" @((path.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Monitoring", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                            <summary class="hn-side-link @Active("/Carriers")"><span class="hn-side-icon"><i class="bi bi-broadcast"></i></span><span class="hn-side-text">Carriers</span></summary>
+                            <div class="hn-side-sub">
+                                @if (Has(AppModules.Carriers) && CanAction(HNControl.Web.Models.AppActions.CarriersView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Carriers")" asp-page="/Carriers/Index">Carriers</a>
+                                }
+                                @if (Has(AppModules.Monitoring) && CanAction(HNControl.Web.Models.AppActions.MonitoringView))
+                                {
+                                    <a class="hn-side-sublink @Active("/Monitoring")" asp-page="/Monitoring/Index">Monitoreo</a>
+                                }
+                            </div>
+                        </details>
+                    }
                     @if (Has(AppModules.Inventory))
                     {
                         <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
@@ -473,8 +559,6 @@
                             </div>
                         </details>
                     }
-                    @if (Has(AppModules.Monitoring))
-                    { <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a> }
                     @if (Has(AppModules.Tickets))
                     { <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a> }
                     @if (Has(AppModules.Leaves))

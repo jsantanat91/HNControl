@@ -31,6 +31,8 @@ public class WorkflowModel : PageModel
     [BindProperty] public SalesWorkflowStage NewStage { get; set; }
     [BindProperty] public Guid? AssignSellerProfileId { get; set; }
     [BindProperty] public string AssignOwnerUserId { get; set; } = "";
+    [BindProperty(SupportsGet = true)] public string StageFilter { get; set; } = "all";
+    [BindProperty(SupportsGet = true)] public string OwnerFilterUserId { get; set; } = "all";
 
     public bool CanViewAll { get; set; }
     public bool CanMove { get; set; }
@@ -39,6 +41,13 @@ public class WorkflowModel : PageModel
     public SelectList StageItems { get; set; } = default!;
     public SelectList SellerItems { get; set; } = default!;
     public SelectList OwnerItems { get; set; } = default!;
+    public SelectList StageFilterItems { get; set; } = default!;
+    public SelectList OwnerFilterItems { get; set; } = default!;
+
+    public int TotalDeals { get; set; }
+    public int OverdueDeals { get; set; }
+    public int DueSoonDeals { get; set; }
+    public int WonDeals { get; set; }
 
     public record DealVm(
         Guid Id,
@@ -46,6 +55,7 @@ public class WorkflowModel : PageModel
         string Folio,
         string Customer,
         string Seller,
+        string? OwnerUserId,
         string Owner,
         decimal Total,
         SalesWorkflowStage Stage,
@@ -172,6 +182,13 @@ public class WorkflowModel : PageModel
 
         StageItems = new SelectList(Enum.GetValues<SalesWorkflowStage>()
             .Select(x => new { Value = x, Label = StageLabel(x) }), "Value", "Label");
+        StageFilterItems = new SelectList(
+            new[] { new { Value = "all", Label = "Todas las etapas" } }
+                .Concat(Enum.GetValues<SalesWorkflowStage>()
+                    .Select(x => new { Value = x.ToString(), Label = StageLabel(x) })),
+            "Value",
+            "Label",
+            StageFilter);
 
         var sellers = await _db.SalesSellerProfiles.AsNoTracking()
             .Include(x => x.Employee)
@@ -186,6 +203,11 @@ public class WorkflowModel : PageModel
             .Select(x => new { x.UserId, Label = x.FullName + " - " + x.Email })
             .ToListAsync();
         OwnerItems = new SelectList(owners, "UserId", "Label");
+        OwnerFilterItems = new SelectList(
+            new[] { new { UserId = "all", Label = "Todos los owners" } }.Concat(owners),
+            "UserId",
+            "Label",
+            OwnerFilterUserId);
 
         var byUser = owners.ToDictionary(x => x.UserId, x => x.Label, StringComparer.OrdinalIgnoreCase);
 
@@ -202,6 +224,7 @@ public class WorkflowModel : PageModel
                 x.QuoteRequest?.Folio ?? "-",
                 x.QuoteRequest?.CustomerName ?? "-",
                 x.SellerProfile?.Employee?.FullName ?? "Sin vendedor",
+                x.OwnerUserId,
                 !string.IsNullOrWhiteSpace(x.OwnerUserId) && byUser.TryGetValue(x.OwnerUserId, out var ownerName) ? ownerName : "Sin owner",
                 x.QuoteRequest?.EstimatedTotal ?? x.QuoteRequest?.SubtotalAuto ?? 0m,
                 x.WorkflowStage,
@@ -211,6 +234,25 @@ public class WorkflowModel : PageModel
                 isToday,
                 isSoon);
         }).ToList();
+
+        if (!string.IsNullOrWhiteSpace(StageFilter)
+            && !string.Equals(StageFilter, "all", StringComparison.OrdinalIgnoreCase)
+            && Enum.TryParse<SalesWorkflowStage>(StageFilter, true, out var sf))
+        {
+            data = data.Where(d => d.Stage == sf).ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(OwnerFilterUserId)
+            && !string.Equals(OwnerFilterUserId, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            data = data.Where(d => string.Equals(d.OwnerUserId, OwnerFilterUserId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        TotalDeals = data.Count;
+        OverdueDeals = data.Count(d => d.IsOverdue);
+        DueSoonDeals = data.Count(d => d.IsSoon || d.IsToday);
+        WonDeals = data.Count(d => d.Stage == SalesWorkflowStage.ClosedWon);
 
         var stages = Enum.GetValues<SalesWorkflowStage>();
         Board = stages.ToDictionary(s => s, s => data.Where(d => d.Stage == s).ToList());

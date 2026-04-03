@@ -92,6 +92,22 @@ public static class AppActions
     public const string ClientsEdit = "Clients.Edit";
     public const string ProjectsView = "Projects.View";
     public const string ProjectsEdit = "Projects.Edit";
+    public const string ProjectsInvestmentsView = "Projects.Investments.View";
+    public const string ProjectsInvestmentsEdit = "Projects.Investments.Edit";
+    public const string ProjectsResellersView = "Projects.Resellers.View";
+    public const string ProjectsResellersEdit = "Projects.Resellers.Edit";
+    public const string ProjectsDeliveryView = "Projects.Delivery.View";
+    public const string ProjectsDeliveryEdit = "Projects.Delivery.Edit";
+    public const string InventoryView = "Inventory.View";
+    public const string InventoryManage = "Inventory.Manage";
+    public const string InventoryApprove = "Inventory.Approve";
+    public const string CarriersView = "Carriers.View";
+    public const string CarriersManage = "Carriers.Manage";
+    public const string MonitoringView = "Monitoring.View";
+    public const string MonitoringManage = "Monitoring.Manage";
+    public const string TicketsView = "Tickets.View";
+    public const string TicketsManage = "Tickets.Manage";
+    public const string TicketsClose = "Tickets.Close";
     public const string SalesViewOwn = "Sales.ViewOwn";
     public const string SalesViewAll = "Sales.ViewAll";
     public const string SalesManage = "Sales.Manage";
@@ -101,6 +117,8 @@ public static class AppActions
     public const string BillingViewAll = "Billing.ViewAll";
     public const string BillingManage = "Billing.Manage";
     public const string BillingSend = "Billing.Send";
+    public const string SalesQuotesView = "Sales.Quotes.View";
+    public const string SalesQuotesManage = "Sales.Quotes.Manage";
     public const string TemplatesManage = "Templates.Manage";
 
     public static readonly string[] AllKnown =
@@ -109,6 +127,22 @@ public static class AppActions
         ClientsEdit,
         ProjectsView,
         ProjectsEdit,
+        ProjectsInvestmentsView,
+        ProjectsInvestmentsEdit,
+        ProjectsResellersView,
+        ProjectsResellersEdit,
+        ProjectsDeliveryView,
+        ProjectsDeliveryEdit,
+        InventoryView,
+        InventoryManage,
+        InventoryApprove,
+        CarriersView,
+        CarriersManage,
+        MonitoringView,
+        MonitoringManage,
+        TicketsView,
+        TicketsManage,
+        TicketsClose,
         SalesViewOwn,
         SalesViewAll,
         SalesManage,
@@ -118,16 +152,72 @@ public static class AppActions
         BillingViewAll,
         BillingManage,
         BillingSend,
+        SalesQuotesView,
+        SalesQuotesManage,
         TemplatesManage
     ];
 
     public static readonly string[] EmployeeDefaults =
     [
         ProjectsView,
+        ProjectsInvestmentsView,
+        ProjectsResellersView,
+        ProjectsDeliveryView,
+        CarriersView,
+        MonitoringView,
+        InventoryView,
+        TicketsView,
         SalesViewOwn,
         SalesWorkflowMove,
         BillingViewOwn
     ];
+
+    private static readonly Dictionary<string, string[]> DependencyMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [ClientsEdit] = [ClientsView],
+        [ProjectsEdit] = [ProjectsView],
+        [ProjectsInvestmentsEdit] = [ProjectsInvestmentsView],
+        [ProjectsResellersEdit] = [ProjectsResellersView],
+        [ProjectsDeliveryEdit] = [ProjectsDeliveryView],
+        [SalesManage] = [SalesViewAll],
+        [SalesWorkflowMove] = [SalesViewOwn],
+        [SalesWorkflowAssign] = [SalesWorkflowMove, SalesViewOwn],
+        [SalesQuotesManage] = [SalesQuotesView],
+        [BillingManage] = [BillingViewOwn],
+        [BillingSend] = [BillingManage, BillingViewOwn],
+        [InventoryManage] = [InventoryView],
+        [InventoryApprove] = [InventoryManage, InventoryView],
+        [CarriersManage] = [CarriersView],
+        [MonitoringManage] = [MonitoringView],
+        [TicketsManage] = [TicketsView],
+        [TicketsClose] = [TicketsManage, TicketsView]
+    };
+
+    public static List<string> ApplyDependencies(IEnumerable<string> selected)
+    {
+        var set = new HashSet<string>(
+            selected.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var key in set.ToList())
+            {
+                if (!DependencyMap.TryGetValue(key, out var requires))
+                    continue;
+
+                foreach (var req in requires)
+                {
+                    if (set.Add(req))
+                        changed = true;
+                }
+            }
+        }
+
+        return set.ToList();
+    }
 
     public static string Label(string key) => key switch
     {
@@ -135,6 +225,22 @@ public static class AppActions
         ClientsEdit => "Clientes: editar",
         ProjectsView => "Proyectos: ver",
         ProjectsEdit => "Proyectos: editar",
+        ProjectsInvestmentsView => "Proyectos/Inversiones: ver",
+        ProjectsInvestmentsEdit => "Proyectos/Inversiones: editar",
+        ProjectsResellersView => "Proyectos/Reseller: ver",
+        ProjectsResellersEdit => "Proyectos/Reseller: editar",
+        ProjectsDeliveryView => "Proyectos/Formato de entrega: ver",
+        ProjectsDeliveryEdit => "Proyectos/Formato de entrega: editar",
+        InventoryView => "Inventario: ver",
+        InventoryManage => "Inventario: gestionar",
+        InventoryApprove => "Inventario: aprobar",
+        CarriersView => "Carriers: ver",
+        CarriersManage => "Carriers: gestionar",
+        MonitoringView => "Monitoreo: ver",
+        MonitoringManage => "Monitoreo: gestionar",
+        TicketsView => "Tickets: ver",
+        TicketsManage => "Tickets: gestionar",
+        TicketsClose => "Tickets: cerrar",
         SalesViewOwn => "Ventas: ver solo lo mio",
         SalesViewAll => "Ventas: ver todo",
         SalesManage => "Ventas: gestion comercial",
@@ -144,6 +250,8 @@ public static class AppActions
         BillingViewAll => "Facturacion: ver todo",
         BillingManage => "Facturacion: crear/editar planes",
         BillingSend => "Facturacion: enviar comprobantes",
+        SalesQuotesView => "Ventas/Cotizaciones: ver",
+        SalesQuotesManage => "Ventas/Cotizaciones: gestionar",
         TemplatesManage => "Plantillas: administrar",
         _ => key
     };

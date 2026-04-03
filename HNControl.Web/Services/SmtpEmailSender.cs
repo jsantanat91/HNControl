@@ -1,7 +1,9 @@
 using System.Net;
+using HNControl.Web.Data;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 
@@ -30,11 +32,19 @@ namespace HNControl.Web.Services;
 public class SmtpEmailSender : IEmailSender
 {
     private readonly IConfiguration _cfg;
+    private readonly ApplicationDbContext _db;
+    private readonly ISecretProtector _protector;
     private readonly ILogger<SmtpEmailSender> _log;
 
-    public SmtpEmailSender(IConfiguration cfg, ILogger<SmtpEmailSender> log)
+    public SmtpEmailSender(
+        IConfiguration cfg,
+        ApplicationDbContext db,
+        ISecretProtector protector,
+        ILogger<SmtpEmailSender> log)
     {
         _cfg = cfg;
+        _db = db;
+        _protector = protector;
         _log = log;
     }
 
@@ -46,33 +56,44 @@ public class SmtpEmailSender : IEmailSender
         string? attachmentName = null,
         string? attachmentContentType = null)
     {
-        var host = (_cfg["Smtp:Host"] ?? "").Trim();
+        var dbCfg = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var host = (dbCfg?.SmtpHost ?? _cfg["Smtp:Host"] ?? "").Trim();
         if (string.IsNullOrWhiteSpace(host))
             throw new InvalidOperationException("SMTP no configurado: falta Smtp:Host");
 
-        var port = int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587;
+        var port = dbCfg?.SmtpPort > 0
+            ? dbCfg.SmtpPort
+            : (int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587);
 
         // Compatibilidad: User vs Username
-        var user = (_cfg["Smtp:User"] ?? _cfg["Smtp:Username"] ?? "").Trim();
-        var pass = _cfg["Smtp:Password"] ?? "";
+        var user = (dbCfg?.SmtpUser ?? _cfg["Smtp:User"] ?? _cfg["Smtp:Username"] ?? "").Trim();
+        var pass = !string.IsNullOrWhiteSpace(dbCfg?.SmtpPasswordProtected)
+            ? _protector.Unprotect(dbCfg!.SmtpPasswordProtected)
+            : (_cfg["Smtp:Password"] ?? "");
 
-        var fromEmail = (_cfg["Smtp:FromEmail"] ?? "").Trim();
+        var fromEmail = (dbCfg?.SmtpFromEmail ?? _cfg["Smtp:FromEmail"] ?? "").Trim();
         if (string.IsNullOrWhiteSpace(fromEmail))
             throw new InvalidOperationException("SMTP no configurado: falta Smtp:FromEmail");
 
-        var fromName = (_cfg["Smtp:FromName"] ?? "HN Control").Trim();
+        var fromName = (dbCfg?.SmtpFromName ?? _cfg["Smtp:FromName"] ?? "HN Control").Trim();
 
-        var timeoutMs = int.TryParse(_cfg["Smtp:TimeoutMs"], out var t) ? t : 15000;
+        var timeoutMs = dbCfg?.SmtpTimeoutMs > 0
+            ? dbCfg.SmtpTimeoutMs
+            : (int.TryParse(_cfg["Smtp:TimeoutMs"], out var t) ? t : 15000);
 
         // Nuevos vs legacy
-        var security = (_cfg["Smtp:Security"] ?? "").Trim();
+        var security = (dbCfg?.SmtpSecurity ?? _cfg["Smtp:Security"] ?? "").Trim();
         var legacyUseSsl = bool.TryParse(_cfg["Smtp:UseSsl"], out var ussl) && ussl;
         var legacyStartTls = bool.TryParse(_cfg["Smtp:UseStartTls"], out var st) ? st : true;
 
         var options = ParseSecurity(security, port, legacyUseSsl, legacyStartTls);
 
         // HELO/EHLO: Exim puede rechazar hostnames sin FQDN
-        var heloDomain = BuildHeloDomain(fromEmail);
+        var heloDomain = BuildHeloDomain(fromEmail, dbCfg?.SmtpHeloDomain);
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromEmail));
@@ -118,9 +139,9 @@ public class SmtpEmailSender : IEmailSender
         }
     }
 
-    private string BuildHeloDomain(string fromEmail)
+    private string BuildHeloDomain(string fromEmail, string? configuredHeloDomain)
     {
-        var explicitHelo = (_cfg["Smtp:HeloDomain"] ?? _cfg["Smtp:LocalDomain"] ?? "").Trim();
+        var explicitHelo = (configuredHeloDomain ?? _cfg["Smtp:HeloDomain"] ?? _cfg["Smtp:LocalDomain"] ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(explicitHelo))
             return SanitizeFqdn(explicitHelo);
 

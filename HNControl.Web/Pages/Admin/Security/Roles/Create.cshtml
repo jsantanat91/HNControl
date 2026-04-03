@@ -46,40 +46,127 @@
         <h2 class="h6 mb-2">Modulos permitidos</h2>
         <div class="text-muted small mb-3">Selecciona los modulos que el empleado podra usar con este rol.</div>
 
-        <div class="row g-2">
-            @foreach (var m in Model.Modules)
-            {
-                var id = $"m_{m.Key}";
-                <div class="col-12 col-md-6 col-lg-4">
-                    <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-module-item" for="@id" style="cursor:pointer;">
-                        <input class="form-check-input m-0" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
-                               @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
-                        <span class="fw-semibold">@m.Label</span>
-                    </label>
+        @foreach (var group in Model.ModuleGroups)
+        {
+            <div class="border rounded-3 p-2 mb-2">
+                <div class="fw-semibold mb-2">@group.Name</div>
+                <div class="row g-2">
+                    @foreach (var m in group.Items)
+                    {
+                        var id = $"m_{m.Key}";
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-module-item" for="@id" style="cursor:pointer;">
+                                <input class="form-check-input m-0" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
+                                       @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                                <div class="d-flex flex-column">
+                                    <span class="fw-semibold">@m.Label</span>
+                                    <span class="text-muted small">@m.Key</span>
+                                </div>
+                            </label>
+                        </div>
+                    }
                 </div>
-            }
-        </div>
+            </div>
+        }
 
         <hr class="my-4" />
 
-        <h2 class="h6 mb-2">Permisos por accion</h2>
-        <div class="text-muted small mb-3">Define permisos finos: ver, gestionar, mover workflow y enviar.</div>
+        <h2 class="h6 mb-2">Matriz CRUD por submodulo</h2>
+        <div class="text-muted small mb-3">Tabla compacta para definir Ver, Crear, Editar y Aprobar por cada submodulo. Si marcas Editar/Crear/Aprobar, se marca Ver en automático.</div>
 
-        <div class="row g-2">
-            @foreach (var a in Model.Actions)
+        <div class="table-responsive mb-3">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Submodulo</th>
+                        <th class="text-center">Ver</th>
+                        <th class="text-center">Crear</th>
+                        <th class="text-center">Editar</th>
+                        <th class="text-center">Aprobar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.CrudMatrix)
+                {
+                    <tr>
+                        <td class="text-muted small">@row.Area</td>
+                        <td>@row.Label</td>
+                        <td class="text-center">
+                            @if (!string.IsNullOrWhiteSpace(row.ViewKey))
+                            {
+                                var id = $"mx_{row.ViewKey}_v";
+                                <input class="form-check-input perm-action-check" type="checkbox" id="@id" name="Input.SelectedActions" value="@row.ViewKey"
+                                       @(Model.Input.SelectedActions.Contains(row.ViewKey!, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                            }
+                            else { <span class="text-muted">-</span> }
+                        </td>
+                        <td class="text-center">
+                            @if (!string.IsNullOrWhiteSpace(row.CreateKey))
+                            {
+                                var id = $"mx_{row.CreateKey}_c";
+                                <input class="form-check-input perm-action-check" type="checkbox" id="@id" name="Input.SelectedActions" value="@row.CreateKey"
+                                       @(Model.Input.SelectedActions.Contains(row.CreateKey!, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                            }
+                            else { <span class="text-muted">-</span> }
+                        </td>
+                        <td class="text-center">
+                            @if (!string.IsNullOrWhiteSpace(row.EditKey))
+                            {
+                                var id = $"mx_{row.EditKey}_e";
+                                <input class="form-check-input perm-action-check" type="checkbox" id="@id" name="Input.SelectedActions" value="@row.EditKey"
+                                       @(Model.Input.SelectedActions.Contains(row.EditKey!, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                            }
+                            else { <span class="text-muted">-</span> }
+                        </td>
+                        <td class="text-center">
+                            @if (!string.IsNullOrWhiteSpace(row.ApproveKey))
+                            {
+                                var id = $"mx_{row.ApproveKey}_a";
+                                <input class="form-check-input perm-action-check" type="checkbox" id="@id" name="Input.SelectedActions" value="@row.ApproveKey"
+                                       @(Model.Input.SelectedActions.Contains(row.ApproveKey!, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                            }
+                            else { <span class="text-muted">-</span> }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <details class="mb-3">
+            <summary class="fw-semibold">Permisos avanzados por accion</summary>
+            <div class="text-muted small mb-2">Opcional: usa este bloque para ajustes especiales fuera de la matriz.</div>
+
+            @foreach (var group in Model.ActionGroups)
             {
-                var id = $"a_{a.Key}";
-                <div class="col-12 col-md-6">
-                    <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-action-item" for="@id" style="cursor:pointer;">
-                        <input class="form-check-input m-0" type="checkbox" name="Input.SelectedActions" id="@id" value="@a.Key"
-                               @(Model.Input.SelectedActions.Contains(a.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
-                        <div class="d-flex flex-column">
-                            <span class="fw-semibold">@a.Label</span>
-                            <span class="text-muted small">@a.Key</span>
-                        </div>
-                    </label>
+                <div class="border rounded-3 p-2 mb-2">
+                    <div class="fw-semibold mb-2">@group.Name</div>
+                    <div class="row g-2">
+                        @foreach (var a in group.Items)
+                        {
+                            var id = $"a_{a.Key}";
+                            <div class="col-12 col-md-6">
+                                <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-action-item" for="@id" style="cursor:pointer;">
+                                    <input class="form-check-input m-0 perm-action-check" type="checkbox" name="Input.SelectedActions" id="@id" value="@a.Key"
+                                           @(Model.Input.SelectedActions.Contains(a.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-semibold">@a.Label</span>
+                                        <span class="text-muted small">@a.Key</span>
+                                    </div>
+                                </label>
+                            </div>
+                        }
+                    </div>
                 </div>
             }
+        </details>
+
+        <hr class="my-4" />
+        <h2 class="h6 mb-2">Simular menu (antes de guardar)</h2>
+        <div class="text-muted small mb-2">Vista rapida de lo que veria el empleado con los checks actuales.</div>
+        <div class="border rounded-3 p-3 bg-light-subtle">
+            <ul id="menuPreview" class="mb-0 small"></ul>
         </div>
     </div>
 
@@ -91,6 +178,70 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const preview = document.getElementById('menuPreview');
+            const allActionChecks = () => Array.from(document.querySelectorAll('.perm-action-check'));
+            const checks = () => allActionChecks().filter(x => x.checked).map(x => x.value);
+            const has = (arr, key) => arr.includes(key);
+            const deps = {
+                'Clients.Edit': ['Clients.View'],
+                'Projects.Edit': ['Projects.View'],
+                'Projects.Investments.Edit': ['Projects.Investments.View'],
+                'Projects.Resellers.Edit': ['Projects.Resellers.View'],
+                'Projects.Delivery.Edit': ['Projects.Delivery.View'],
+                'Sales.Manage': ['Sales.ViewAll'],
+                'Sales.Workflow.Move': ['Sales.ViewOwn'],
+                'Sales.Workflow.Assign': ['Sales.Workflow.Move', 'Sales.ViewOwn'],
+                'Sales.Quotes.Manage': ['Sales.Quotes.View'],
+                'Billing.Manage': ['Billing.ViewOwn'],
+                'Billing.Send': ['Billing.Manage', 'Billing.ViewOwn'],
+                'Inventory.Manage': ['Inventory.View'],
+                'Inventory.Approve': ['Inventory.Manage', 'Inventory.View'],
+                'Carriers.Manage': ['Carriers.View'],
+                'Monitoring.Manage': ['Monitoring.View'],
+                'Tickets.Manage': ['Tickets.View'],
+                'Tickets.Close': ['Tickets.Manage', 'Tickets.View']
+            };
+            function enforceDependencies(source) {
+                if (!source.checked) return;
+                const queue = [source.value];
+                while (queue.length) {
+                    const key = queue.shift();
+                    const req = deps[key] || [];
+                    req.forEach(need => {
+                        const checkbox = allActionChecks().find(x => x.value === need);
+                        if (checkbox && !checkbox.checked) {
+                            checkbox.checked = true;
+                            queue.push(need);
+                        }
+                    });
+                }
+            }
+            function render() {
+                const a = checks();
+                const out = [];
+                if (has(a, 'Clients.View')) out.push('Clientes');
+                if (has(a, 'Projects.View')) out.push('Proyectos > Base');
+                if (has(a, 'Projects.Investments.View')) out.push('Proyectos > Inversiones');
+                if (has(a, 'Projects.Resellers.View')) out.push('Proyectos > Reseller');
+                if (has(a, 'Projects.Delivery.View')) out.push('Proyectos > Formato de entrega');
+                if (has(a, 'Sales.ViewOwn') || has(a, 'Sales.ViewAll')) out.push('Ventas > Dashboard');
+                if (has(a, 'Sales.Workflow.Move') || has(a, 'Sales.Workflow.Assign')) out.push('Ventas > Workflow');
+                if (has(a, 'Sales.Manage') || has(a, 'Sales.ViewAll')) out.push('Ventas > Gestion');
+                if (has(a, 'Sales.Quotes.View')) out.push('Ventas > Cotizaciones');
+                if (has(a, 'Billing.ViewOwn') || has(a, 'Billing.ViewAll')) out.push('Facturacion');
+                if (has(a, 'Inventory.View')) out.push('Inventario');
+                if (has(a, 'Tickets.View')) out.push('Tickets');
+                if (has(a, 'Carriers.View')) out.push('Carriers');
+                if (has(a, 'Monitoring.View')) out.push('Carriers > Monitoreo');
+                preview.innerHTML = out.length ? out.map(x => `<li>${x}</li>`).join('') : '<li class="text-muted">Sin accesos visibles con la configuracion actual.</li>';
+            }
+            allActionChecks().forEach(c => c.addEventListener('change', () => { enforceDependencies(c); render(); }));
+            allActionChecks().forEach(c => { if (c.checked) enforceDependencies(c); });
+            render();
+        })();
+    </script>
 }
 
 <style>

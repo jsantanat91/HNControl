@@ -1,0 +1,265 @@
+using System.ComponentModel.DataAnnotations;
+using HNControl.Web.Data;
+using HNControl.Web.Models;
+using HNControl.Web.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+
+namespace HNControl.Web.Pages.Admin.SystemPages;
+
+[Authorize(Roles = AppRoles.Admin)]
+public class ConfigurationModel : PageModel
+{
+    private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
+    private readonly ISecretProtector _protector;
+
+    public ConfigurationModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector)
+    {
+        _db = db;
+        _storage = storage;
+        _protector = protector;
+    }
+
+    [TempData] public string? Flash { get; set; }
+    [TempData] public string? FlashType { get; set; }
+
+    [BindProperty] public InputModel Input { get; set; } = new();
+
+    public SelectList PacProviders => new(Enum.GetValues<PacProvider>().Select(x => new { Value = x, Text = PacLabel(x) }), "Value", "Text");
+    public bool HasLogo { get; set; }
+    public bool HasSmtpPassword { get; set; }
+    public bool HasPacSecret { get; set; }
+    public bool HasPacPassword { get; set; }
+    public bool HasCsdPassword { get; set; }
+    public string LogoName { get; set; } = "";
+
+    public class InputModel
+    {
+        public Guid? Id { get; set; }
+
+        [MaxLength(180)] public string CompanyName { get; set; } = "";
+        [MaxLength(180)] public string CompanyLegalName { get; set; } = "";
+        [MaxLength(13)] public string CompanyRfc { get; set; } = "";
+        [MaxLength(4)] public string CompanyFiscalRegimeCode { get; set; } = "601";
+        [MaxLength(10)] public string CompanyFiscalZipCode { get; set; } = "";
+        [MaxLength(400)] public string CompanyFiscalAddress { get; set; } = "";
+        [MaxLength(256)] public string BillingEmail { get; set; } = "";
+
+        [MaxLength(120)] public string SmtpHost { get; set; } = "";
+        [Range(1, 65535)] public int SmtpPort { get; set; } = 587;
+        [MaxLength(180)] public string SmtpUser { get; set; } = "";
+        [MaxLength(200)] public string SmtpPassword { get; set; } = "";
+        [MaxLength(256)] public string SmtpFromEmail { get; set; } = "";
+        [MaxLength(180)] public string SmtpFromName { get; set; } = "HN Control";
+        [MaxLength(30)] public string SmtpSecurity { get; set; } = "StartTls";
+        [MaxLength(120)] public string SmtpHeloDomain { get; set; } = "";
+        [Range(1000, 120000)] public int SmtpTimeoutMs { get; set; } = 15000;
+
+        public PacProvider BillingPacProvider { get; set; } = PacProvider.None;
+        [MaxLength(220)] public string BillingPacApiBaseUrl { get; set; } = "";
+        [MaxLength(220)] public string BillingPacApiKey { get; set; } = "";
+        [MaxLength(200)] public string BillingPacApiSecret { get; set; } = "";
+        [MaxLength(180)] public string BillingPacUsername { get; set; } = "";
+        [MaxLength(200)] public string BillingPacPassword { get; set; } = "";
+        [MaxLength(10)] public string CfdiVersion { get; set; } = "4.0";
+        [MaxLength(20)] public string CfdiSerieDefault { get; set; } = "A";
+        [MaxLength(200)] public string CsdPassword { get; set; } = "";
+
+        [MaxLength(400)] public string Notes { get; set; } = "";
+        public IFormFile? CompanyLogo { get; set; }
+        public IFormFile? CsdCerFile { get; set; }
+        public IFormFile? CsdKeyFile { get; set; }
+    }
+
+    public async Task OnGetAsync()
+    {
+        await LoadAsync();
+    }
+
+    public async Task<IActionResult> OnPostSaveAsync()
+    {
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync();
+            return Page();
+        }
+
+        var entity = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        if (entity == null)
+        {
+            entity = new SystemConfiguration();
+            _db.SystemConfigurations.Add(entity);
+        }
+
+        entity.CompanyName = (Input.CompanyName ?? "").Trim();
+        entity.CompanyLegalName = (Input.CompanyLegalName ?? "").Trim();
+        entity.CompanyRfc = (Input.CompanyRfc ?? "").Trim().ToUpperInvariant();
+        entity.CompanyFiscalRegimeCode = (Input.CompanyFiscalRegimeCode ?? "").Trim().ToUpperInvariant();
+        entity.CompanyFiscalZipCode = (Input.CompanyFiscalZipCode ?? "").Trim();
+        entity.CompanyFiscalAddress = (Input.CompanyFiscalAddress ?? "").Trim();
+        entity.BillingEmail = (Input.BillingEmail ?? "").Trim();
+        entity.SmtpHost = (Input.SmtpHost ?? "").Trim();
+        entity.SmtpPort = Input.SmtpPort;
+        entity.SmtpUser = (Input.SmtpUser ?? "").Trim();
+        entity.SmtpFromEmail = (Input.SmtpFromEmail ?? "").Trim();
+        entity.SmtpFromName = (Input.SmtpFromName ?? "").Trim();
+        entity.SmtpSecurity = (Input.SmtpSecurity ?? "").Trim();
+        entity.SmtpHeloDomain = (Input.SmtpHeloDomain ?? "").Trim();
+        entity.SmtpTimeoutMs = Input.SmtpTimeoutMs;
+
+        entity.BillingPacProvider = Input.BillingPacProvider;
+        entity.BillingPacApiBaseUrl = (Input.BillingPacApiBaseUrl ?? "").Trim();
+        entity.BillingPacApiKey = (Input.BillingPacApiKey ?? "").Trim();
+        entity.BillingPacUsername = (Input.BillingPacUsername ?? "").Trim();
+        entity.CfdiVersion = string.IsNullOrWhiteSpace(Input.CfdiVersion) ? "4.0" : Input.CfdiVersion.Trim();
+        entity.CfdiSerieDefault = string.IsNullOrWhiteSpace(Input.CfdiSerieDefault) ? "A" : Input.CfdiSerieDefault.Trim().ToUpperInvariant();
+        entity.Notes = (Input.Notes ?? "").Trim();
+
+        if (!string.IsNullOrWhiteSpace(Input.SmtpPassword))
+            entity.SmtpPasswordProtected = _protector.Protect(Input.SmtpPassword.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.BillingPacApiSecret))
+            entity.BillingPacApiSecretProtected = _protector.Protect(Input.BillingPacApiSecret.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.BillingPacPassword))
+            entity.BillingPacPasswordProtected = _protector.Protect(Input.BillingPacPassword.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.CsdPassword))
+            entity.CsdPasswordProtected = _protector.Protect(Input.CsdPassword.Trim());
+
+        if (Input.CompanyLogo is { Length: > 0 })
+        {
+            if (!string.IsNullOrWhiteSpace(entity.CompanyLogoStoragePath))
+                await _storage.DeleteIfExistsAsync(entity.CompanyLogoStoragePath);
+
+            var saved = await _storage.SaveFileAsync(
+                Input.CompanyLogo,
+                "branding",
+                $"company_logo_{DateTime.UtcNow:yyyyMMddHHmmss}",
+                new[] { ".png", ".jpg", ".jpeg", ".webp" },
+                8 * 1024 * 1024);
+
+            entity.CompanyLogoStoragePath = saved.storagePath;
+            entity.CompanyLogoOriginalFileName = saved.originalName;
+        }
+
+        if (Input.CsdCerFile is { Length: > 0 })
+        {
+            if (!string.IsNullOrWhiteSpace(entity.CsdCerStoragePath))
+                await _storage.DeleteIfExistsAsync(entity.CsdCerStoragePath);
+
+            var savedCer = await _storage.SaveFileAsync(
+                Input.CsdCerFile,
+                "fiscal",
+                $"csd_{DateTime.UtcNow:yyyyMMddHHmmss}",
+                new[] { ".cer" },
+                8 * 1024 * 1024);
+
+            entity.CsdCerStoragePath = savedCer.storagePath;
+        }
+
+        if (Input.CsdKeyFile is { Length: > 0 })
+        {
+            if (!string.IsNullOrWhiteSpace(entity.CsdKeyStoragePath))
+                await _storage.DeleteIfExistsAsync(entity.CsdKeyStoragePath);
+
+            var savedKey = await _storage.SaveFileAsync(
+                Input.CsdKeyFile,
+                "fiscal",
+                $"csd_{DateTime.UtcNow:yyyyMMddHHmmss}",
+                new[] { ".key" },
+                8 * 1024 * 1024);
+
+            entity.CsdKeyStoragePath = savedKey.storagePath;
+        }
+
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Flash = "Configuración guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnGetDownloadLogoAsync()
+    {
+        var cfg = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        if (cfg == null || string.IsNullOrWhiteSpace(cfg.CompanyLogoStoragePath))
+            return NotFound();
+
+        var (stream, contentType, downloadName) = await _storage.OpenAsync(
+            cfg.CompanyLogoStoragePath,
+            string.IsNullOrWhiteSpace(cfg.CompanyLogoOriginalFileName) ? "logo.png" : cfg.CompanyLogoOriginalFileName);
+        return File(stream, contentType, downloadName);
+    }
+
+    private async Task LoadAsync()
+    {
+        var cfg = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        if (cfg == null)
+        {
+            Input = new InputModel
+            {
+                CompanyName = "HN Solutions",
+                CompanyFiscalRegimeCode = "601",
+                CfdiVersion = "4.0",
+                CfdiSerieDefault = "A",
+                SmtpPort = 587,
+                SmtpSecurity = "StartTls",
+                SmtpTimeoutMs = 15000
+            };
+            HasLogo = false;
+            return;
+        }
+
+        Input = new InputModel
+        {
+            Id = cfg.Id,
+            CompanyName = cfg.CompanyName,
+            CompanyLegalName = cfg.CompanyLegalName,
+            CompanyRfc = cfg.CompanyRfc,
+            CompanyFiscalRegimeCode = cfg.CompanyFiscalRegimeCode,
+            CompanyFiscalZipCode = cfg.CompanyFiscalZipCode,
+            CompanyFiscalAddress = cfg.CompanyFiscalAddress,
+            BillingEmail = cfg.BillingEmail,
+            SmtpHost = cfg.SmtpHost,
+            SmtpPort = cfg.SmtpPort,
+            SmtpUser = cfg.SmtpUser,
+            SmtpFromEmail = cfg.SmtpFromEmail,
+            SmtpFromName = cfg.SmtpFromName,
+            SmtpSecurity = cfg.SmtpSecurity,
+            SmtpHeloDomain = cfg.SmtpHeloDomain,
+            SmtpTimeoutMs = cfg.SmtpTimeoutMs,
+            BillingPacProvider = cfg.BillingPacProvider,
+            BillingPacApiBaseUrl = cfg.BillingPacApiBaseUrl,
+            BillingPacApiKey = cfg.BillingPacApiKey,
+            BillingPacUsername = cfg.BillingPacUsername,
+            CfdiVersion = cfg.CfdiVersion,
+            CfdiSerieDefault = cfg.CfdiSerieDefault,
+            Notes = cfg.Notes
+        };
+
+        HasLogo = !string.IsNullOrWhiteSpace(cfg.CompanyLogoStoragePath);
+        LogoName = cfg.CompanyLogoOriginalFileName;
+        HasSmtpPassword = !string.IsNullOrWhiteSpace(cfg.SmtpPasswordProtected);
+        HasPacSecret = !string.IsNullOrWhiteSpace(cfg.BillingPacApiSecretProtected);
+        HasPacPassword = !string.IsNullOrWhiteSpace(cfg.BillingPacPasswordProtected);
+        HasCsdPassword = !string.IsNullOrWhiteSpace(cfg.CsdPasswordProtected);
+    }
+
+    private static string PacLabel(PacProvider provider) => provider switch
+    {
+        PacProvider.Facturama => "Facturama",
+        PacProvider.Finkok => "Finkok",
+        PacProvider.SwSapien => "SW Sapien",
+        _ => "Sin timbrado"
+    };
+}

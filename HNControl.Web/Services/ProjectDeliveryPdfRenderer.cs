@@ -28,6 +28,12 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
             .Include(x => x.Client)
             .Include(x => x.Project)
             .FirstAsync(x => x.Id == delivery.Id);
+        var sys = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var logoBytes = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
 
         byte[]? sigBytes = null;
         if (!string.IsNullOrWhiteSpace(d.SignatureStoragePath))
@@ -48,7 +54,7 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
             }
         }
 
-        var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
 
         return Document.Create(container =>
         {
@@ -58,11 +64,19 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
                 page.Margin(22);
                 page.DefaultTextStyle(x => x.FontSize(10));
 
-                page.Header().Column(h =>
+                page.Header().Row(h =>
                 {
-                    h.Item().Text(company).FontSize(16).SemiBold();
-                    h.Item().Text("Acta de entrega de servicios / material").FontSize(12).FontColor(Colors.Grey.Darken2);
-                    h.Item().Text(d.Title).SemiBold();
+                    h.RelativeItem().Column(col =>
+                    {
+                        col.Item().Text(company).FontSize(16).SemiBold();
+                        col.Item().Text("Acta de entrega de servicios / material").FontSize(12).FontColor(Colors.Grey.Darken2);
+                        col.Item().Text(d.Title).SemiBold();
+                    });
+                    h.ConstantItem(120).AlignMiddle().AlignRight().Element(el =>
+                    {
+                        if (logoBytes != null && logoBytes.Length > 0)
+                            el.Height(52).Width(120).Image(logoBytes).FitArea();
+                    });
                 });
 
                 page.Content().PaddingTop(10).Column(c =>
@@ -122,5 +136,24 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         var payload = $"{d.Id}|{d.ClientId}|{d.ProjectId}|{d.Title}|{d.SignedByName}|{d.SignedByEmail}|{d.SignedAt:O}";
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         return Convert.ToHexString(bytes)[..18];
+    }
+
+    private async Task<byte[]?> TryReadStorageBytesAsync(string? storagePath)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath)) return null;
+        try
+        {
+            var (stream, _, _) = await _storage.OpenAsync(storagePath, "logo");
+            await using (stream)
+            await using (var ms = new MemoryStream())
+            {
+                await stream.CopyToAsync(ms);
+                return ms.ToArray();
+            }
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

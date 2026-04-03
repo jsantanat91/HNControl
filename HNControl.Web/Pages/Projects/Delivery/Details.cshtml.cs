@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects.Delivery;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -97,12 +97,12 @@ public class DetailsModel : PageModel
 
         await _email.SendAsync(
             item.ReceiverEmail,
-            $"Firma requerida · {item.Title}",
+            $"Firma requerida Â· {item.Title}",
             $"""
             <p>Hola {System.Net.WebUtility.HtmlEncode(item.ReceiverName)},</p>
-            <p>Se generó un formato de entrega para tu firma digital:</p>
+            <p>Se generÃ³ un formato de entrega para tu firma digital:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al finalizar, recibirás el acta firmada en PDF.</p>
+            <p>Al finalizar, recibirÃ¡s el acta firmada en PDF.</p>
             """,
             attachment,
             $"acta_entrega_{item.Id:N}.pdf",
@@ -148,3 +148,4 @@ public class DetailsModel : PageModel
         await _db.SaveChangesAsync();
     }
 }
+

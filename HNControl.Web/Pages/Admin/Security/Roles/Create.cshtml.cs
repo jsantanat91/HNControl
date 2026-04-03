@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,6 +17,9 @@ public class CreateModel : PageModel
 
     public List<ModuleOption> Modules { get; set; } = new();
     public List<ModuleOption> Actions { get; set; } = new();
+    public List<PermissionGroup> ModuleGroups { get; set; } = new();
+    public List<PermissionGroup> ActionGroups { get; set; } = new();
+    public List<CrudMatrixRow> CrudMatrix { get; set; } = new();
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -24,6 +28,22 @@ public class CreateModel : PageModel
     {
         public string Key { get; set; } = "";
         public string Label { get; set; } = "";
+    }
+
+    public class PermissionGroup
+    {
+        public string Name { get; set; } = "";
+        public List<ModuleOption> Items { get; set; } = new();
+    }
+
+    public class CrudMatrixRow
+    {
+        public string Area { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string? ViewKey { get; set; }
+        public string? CreateKey { get; set; }
+        public string? EditKey { get; set; }
+        public string? ApproveKey { get; set; }
     }
 
     public class InputModel
@@ -95,6 +115,7 @@ public class CreateModel : PageModel
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        selectedActions = AppActions.ApplyDependencies(selectedActions);
 
         foreach (var key in selectedActions)
         {
@@ -106,6 +127,17 @@ public class CreateModel : PageModel
         }
 
         _db.PermissionRoles.Add(role);
+        await _db.SaveChangesAsync();
+
+        _db.PermissionAuditLogs.Add(new PermissionAuditLog
+        {
+            EventType = "role.create",
+            PermissionRoleId = role.Id,
+            RoleName = role.Name,
+            ActorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            ActorName = User.Identity?.Name ?? "-",
+            Details = $"Rol creado. Modulos: {selected.Count}, acciones: {selectedActions.Count}"
+        });
         await _db.SaveChangesAsync();
 
         return RedirectToPage("./Index");
@@ -120,5 +152,76 @@ public class CreateModel : PageModel
         Actions = AppActions.AllKnown
             .Select(k => new ModuleOption { Key = k, Label = AppActions.Label(k) })
             .ToList();
+
+        var moduleArea = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [AppModules.Clients] = "Comercial",
+            [AppModules.Projects] = "Comercial",
+            [AppModules.Sales] = "Comercial",
+            [AppModules.Billing] = "Comercial",
+            [AppModules.Carriers] = "Operación",
+            [AppModules.Monitoring] = "Operación",
+            [AppModules.Inventory] = "Operación",
+            [AppModules.Tickets] = "Operación",
+            [AppModules.ServiceOrders] = "Operación",
+            [AppModules.Viaticos] = "Operación",
+            [AppModules.Knowledge] = "Operación",
+            [AppModules.Eval360] = "Capital Humano",
+            [AppModules.Exams] = "Capital Humano",
+            [AppModules.Leaves] = "Capital Humano",
+            [AppModules.Performance] = "Capital Humano",
+            [AppModules.Security] = "Sistema"
+        };
+
+        ModuleGroups = Modules
+            .GroupBy(m => moduleArea.TryGetValue(m.Key, out var g) ? g : "Otros")
+            .OrderBy(g => g.Key)
+            .Select(g => new PermissionGroup
+            {
+                Name = g.Key,
+                Items = g.OrderBy(x => x.Label).ToList()
+            })
+            .ToList();
+
+        string ActionGroupOf(string key)
+        {
+            if (key.StartsWith("Projects.", StringComparison.OrdinalIgnoreCase)) return "Proyectos";
+            if (key.StartsWith("Sales.", StringComparison.OrdinalIgnoreCase)) return "Ventas";
+            if (key.StartsWith("Billing.", StringComparison.OrdinalIgnoreCase)) return "Facturación";
+            if (key.StartsWith("Inventory.", StringComparison.OrdinalIgnoreCase)) return "Inventario";
+            if (key.StartsWith("Tickets.", StringComparison.OrdinalIgnoreCase)) return "Tickets";
+            if (key.StartsWith("Clients.", StringComparison.OrdinalIgnoreCase)) return "Clientes";
+            if (key.StartsWith("Carriers.", StringComparison.OrdinalIgnoreCase)) return "Carriers";
+            if (key.StartsWith("Monitoring.", StringComparison.OrdinalIgnoreCase)) return "Monitoreo";
+            if (key.StartsWith("Templates.", StringComparison.OrdinalIgnoreCase)) return "Plantillas";
+            return "Otros";
+        }
+
+        ActionGroups = Actions
+            .GroupBy(a => ActionGroupOf(a.Key))
+            .OrderBy(g => g.Key)
+            .Select(g => new PermissionGroup
+            {
+                Name = g.Key,
+                Items = g.OrderBy(x => x.Label).ToList()
+            })
+            .ToList();
+
+        CrudMatrix = new List<CrudMatrixRow>
+        {
+            new() { Area = "Clientes", Label = "Clientes", ViewKey = AppActions.ClientsView, CreateKey = AppActions.ClientsEdit, EditKey = AppActions.ClientsEdit },
+            new() { Area = "Proyectos", Label = "Proyectos base", ViewKey = AppActions.ProjectsView, CreateKey = AppActions.ProjectsEdit, EditKey = AppActions.ProjectsEdit },
+            new() { Area = "Proyectos", Label = "Inversiones", ViewKey = AppActions.ProjectsInvestmentsView, CreateKey = AppActions.ProjectsInvestmentsEdit, EditKey = AppActions.ProjectsInvestmentsEdit },
+            new() { Area = "Proyectos", Label = "Reseller", ViewKey = AppActions.ProjectsResellersView, CreateKey = AppActions.ProjectsResellersEdit, EditKey = AppActions.ProjectsResellersEdit },
+            new() { Area = "Proyectos", Label = "Formato de entrega", ViewKey = AppActions.ProjectsDeliveryView, CreateKey = AppActions.ProjectsDeliveryEdit, EditKey = AppActions.ProjectsDeliveryEdit },
+            new() { Area = "Ventas", Label = "Dashboard/Workflow", ViewKey = AppActions.SalesViewOwn, EditKey = AppActions.SalesWorkflowMove, ApproveKey = AppActions.SalesWorkflowAssign },
+            new() { Area = "Ventas", Label = "Gestion comercial", ViewKey = AppActions.SalesViewAll, CreateKey = AppActions.SalesManage, EditKey = AppActions.SalesManage },
+            new() { Area = "Ventas", Label = "Cotizaciones", ViewKey = AppActions.SalesQuotesView, CreateKey = AppActions.SalesQuotesManage, EditKey = AppActions.SalesQuotesManage },
+            new() { Area = "Facturacion", Label = "Facturacion", ViewKey = AppActions.BillingViewOwn, CreateKey = AppActions.BillingManage, EditKey = AppActions.BillingManage, ApproveKey = AppActions.BillingSend },
+            new() { Area = "Inventario", Label = "Stock y movimientos", ViewKey = AppActions.InventoryView, CreateKey = AppActions.InventoryManage, EditKey = AppActions.InventoryManage, ApproveKey = AppActions.InventoryApprove },
+            new() { Area = "Tickets", Label = "Tickets", ViewKey = AppActions.TicketsView, CreateKey = AppActions.TicketsManage, EditKey = AppActions.TicketsManage, ApproveKey = AppActions.TicketsClose },
+            new() { Area = "Carriers", Label = "Carriers", ViewKey = AppActions.CarriersView, CreateKey = AppActions.CarriersManage, EditKey = AppActions.CarriersManage },
+            new() { Area = "Carriers", Label = "Monitoreo", ViewKey = AppActions.MonitoringView, CreateKey = AppActions.MonitoringManage, EditKey = AppActions.MonitoringManage }
+        };
     }
 }

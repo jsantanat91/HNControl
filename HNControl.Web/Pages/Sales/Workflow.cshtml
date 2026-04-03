@@ -14,6 +14,7 @@
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
         <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
+        <a class="btn btn-success" href="/Ventas/Gestion">Nuevo trato</a>
     </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
@@ -26,6 +27,58 @@
     <span class="ms-2 badge text-bg-success">Hoy</span>
     <span class="ms-1 badge text-bg-warning">Proximo</span>
     <span class="ms-1 badge text-bg-danger">Atrasado</span>
+</div>
+
+<form method="get" class="card shadow-soft border-0 mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Filtrar etapa</label>
+            <select class="form-select" asp-for="StageFilter" asp-items="Model.StageFilterItems"></select>
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Filtrar owner</label>
+            <select class="form-select" asp-for="OwnerFilterUserId" asp-items="Model.OwnerFilterItems"></select>
+        </div>
+        <div class="col-12 col-md-4 d-grid d-md-flex justify-content-md-end gap-2">
+            <button class="btn btn-primary" type="submit">Aplicar</button>
+            <a class="btn btn-outline-secondary" href="/Ventas/Workflow">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft border-0 bg-primary-subtle h-100">
+            <div class="card-body">
+                <div class="text-muted small">Tratos visibles</div>
+                <div class="fs-3 fw-bold">@Model.TotalDeals</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft border-0 bg-danger-subtle h-100">
+            <div class="card-body">
+                <div class="text-muted small">SLA atrasados</div>
+                <div class="fs-3 fw-bold">@Model.OverdueDeals</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft border-0 bg-warning-subtle h-100">
+            <div class="card-body">
+                <div class="text-muted small">SLA hoy/proximo</div>
+                <div class="fs-3 fw-bold">@Model.DueSoonDeals</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft border-0 bg-success-subtle h-100">
+            <div class="card-body">
+                <div class="text-muted small">Ganados</div>
+                <div class="fs-3 fw-bold">@Model.WonDeals</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="workflow-board pb-2">

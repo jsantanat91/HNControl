@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects.Investments;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -35,3 +35,4 @@ public class IndexModel : PageModel
         }).ToList();
     }
 }
+

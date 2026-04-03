@@ -101,6 +101,7 @@ public static class AppModules
         if (viewEnginePath.StartsWith("/Eval360", StringComparison.OrdinalIgnoreCase)) return Eval360;
         if (viewEnginePath.StartsWith("/Projects/Billing", StringComparison.OrdinalIgnoreCase)) return Billing;
         if (viewEnginePath.StartsWith("/Projects/Sales", StringComparison.OrdinalIgnoreCase)) return Sales;
+        if (viewEnginePath.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase)) return Sales;
         if (viewEnginePath.StartsWith("/Projects", StringComparison.OrdinalIgnoreCase)) return Projects;
         if (viewEnginePath.StartsWith("/Sales", StringComparison.OrdinalIgnoreCase)) return Sales;
         if (viewEnginePath.StartsWith("/Facturacion", StringComparison.OrdinalIgnoreCase)) return Billing;

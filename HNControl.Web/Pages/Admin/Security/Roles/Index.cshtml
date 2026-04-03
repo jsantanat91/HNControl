@@ -2,15 +2,37 @@
 @model HNControl.Web.Pages.Admin.Security.Roles.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Seguridad · Roles de permisos";
+    ViewData["Title"] = "Seguridad - Roles de permisos";
 }
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-        <h1 class="h4 mb-1">Roles de permisos por módulo</h1>
-        <div class="text-muted">Controla el acceso de empleados por módulo con diseño de roles reutilizables.</div>
+        <h1 class="h4 mb-1">Roles y permisos</h1>
+        <div class="text-muted">Control de accesos por modulo, submodulo y accion.</div>
     </div>
     <a class="btn btn-primary" asp-page="./Create">Nuevo rol</a>
+</div>
+
+@if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+<div class="card shadow-soft mb-3">
+    <div class="card-header fw-semibold">Plantillas predefinidas (clonar)</div>
+    <div class="card-body">
+        <div class="row g-2">
+            @foreach (var t in new[] { ("tecnico","Tecnico"), ("supervisor","Supervisor"), ("vendedor","Vendedor"), ("almacen","Almacen") })
+            {
+                <div class="col-12 col-md-6 col-xl-3">
+                    <form method="post" asp-page-handler="CloneTemplate" class="d-grid">
+                        <input type="hidden" name="templateKey" value="@t.Item1" />
+                        <button class="btn btn-outline-primary" type="submit">Clonar @t.Item2</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -24,7 +46,7 @@
                             <div class="fw-semibold fs-5">@r.Name</div>
                             <div class="text-muted small">@r.Description</div>
                         </div>
-                        <span class="hn-chip hn-chip-info">@r.ModulesCount módulo(s)</span>
+                        <span class="hn-chip hn-chip-info">@r.ModulesCount modulo(s)</span>
                     </div>
 
                     <div class="d-flex flex-wrap gap-2 mb-3">
@@ -46,8 +68,45 @@
 </div>
 
 <div class="card shadow-soft mt-3">
-    <div class="card-body small text-muted">
-        Tip rápido: el rol global Admin/SuperAdmin ignora estos permisos. Aplican para usuarios en rol <strong>Employee</strong>.
+    <div class="card-header fw-semibold">Auditoria de permisos</div>
+    <div class="card-body">
+        @if (!Model.Audit.Any())
+        {
+            <div class="text-muted small">Sin eventos todavia.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Evento</th>
+                            <th>Rol</th>
+                            <th>Usuario</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var a in Model.Audit)
+                    {
+                        <tr>
+                            <td>@a.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@a.EventType</td>
+                            <td>@a.RoleName</td>
+                            <td>@a.ActorName</td>
+                            <td>@a.Details</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 
+<div class="card shadow-soft mt-3">
+    <div class="card-body small text-muted">
+        Nota: Admin/SuperAdmin ignoran estos permisos. Aplican para usuarios en rol <strong>Employee</strong>.
+    </div>
+</div>

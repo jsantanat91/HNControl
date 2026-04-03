@@ -98,19 +98,37 @@ public class ActionAccessService : IActionAccessService
 
     private static void ApplyDefaultsByModule(HashSet<string> result, HashSet<string> modules)
     {
+        if (modules.Contains(AppModules.Inventory))
+            result.Add(AppActions.InventoryView);
+
+        if (modules.Contains(AppModules.Tickets))
+            result.Add(AppActions.TicketsView);
+
         if (modules.Contains(AppModules.Sales))
         {
             result.Add(AppActions.SalesViewOwn);
             result.Add(AppActions.SalesWorkflowMove);
+            result.Add(AppActions.SalesQuotesView);
         }
 
         if (modules.Contains(AppModules.Billing))
             result.Add(AppActions.BillingViewOwn);
 
+        if (modules.Contains(AppModules.Carriers))
+            result.Add(AppActions.CarriersView);
+
+        if (modules.Contains(AppModules.Monitoring))
+            result.Add(AppActions.MonitoringView);
+
         if (modules.Contains(AppModules.Clients))
             result.Add(AppActions.ClientsView);
 
         if (modules.Contains(AppModules.Projects))
+        {
             result.Add(AppActions.ProjectsView);
+            result.Add(AppActions.ProjectsInvestmentsView);
+            result.Add(AppActions.ProjectsResellersView);
+            result.Add(AppActions.ProjectsDeliveryView);
+        }
     }
 }

@@ -1,15 +1,15 @@
-@page
+﻿@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Billing.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Facturacion";
+    ViewData["Title"] = "Facturación";
 }
 
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-        <h1 class="h4 m-0">Facturacion</h1>
-        <div class="text-muted small">Programacion de facturas internas (sin timbrado) con recurrencia, PDF y envio.</div>
+        <h1 class="h4 m-0">Facturación</h1>
+        <div class="text-muted small">Programación de facturas internas (sin timbrado) con recurrencia, PDF y envio.</div>
     </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
@@ -37,7 +37,7 @@
     <div class="col-12 col-md-4">
         <div class="card shadow-soft hn-hover h-100">
             <div class="card-body">
-                <div class="text-muted small">Proyeccion mensual</div>
+                <div class="text-muted small">Proyección mensual</div>
                 <div class="fs-4 fw-bold">@Model.MonthlyProjection.ToString("C")</div>
             </div>
         </div>
@@ -45,7 +45,7 @@
 </div>
 
 <div class="card shadow-soft hn-hover mb-3">
-    <div class="card-header fw-semibold">Nuevo plan de facturacion</div>
+    <div class="card-header fw-semibold">Nuevo plan de facturación</div>
     <form method="post" asp-page-handler="CreatePlan">
         <div class="card-body row g-3">
             <div class="col-12 col-md-4">
@@ -255,7 +255,7 @@
 </div>
 
 <div class="card shadow-soft hn-hover mt-3">
-    <div class="card-header fw-semibold">Bitacora de facturacion</div>
+    <div class="card-header fw-semibold">Bitácora de facturación</div>
     <div class="card-body">
         @if (!Model.Audits.Any())
         {
@@ -280,4 +280,5 @@
         }
     </div>
 </div>
+
 

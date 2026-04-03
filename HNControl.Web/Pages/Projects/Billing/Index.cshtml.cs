@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects.Billing;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -178,7 +178,7 @@ public class IndexModel : PageModel
         await _db.SaveChangesAsync();
         await AddBillingAuditAsync(plan.Id, "billing.plan.create", $"Plan creado por {plan.Total:C2}, periodicidad {plan.Periodicity}.");
 
-        Flash = "Plan de facturacion creado.";
+        Flash = "Plan de facturación creado.";
         FlashType = "success";
         return RedirectToPage();
     }
@@ -192,7 +192,7 @@ public class IndexModel : PageModel
         if (plan == null) return RedirectToPage();
         if (plan.Status != BillingPlanStatus.Active)
         {
-            Flash = "El plan no esta activo.";
+            Flash = "El plan no está activo.";
             FlashType = "warning";
             return RedirectToPage();
         }
@@ -223,11 +223,11 @@ public class IndexModel : PageModel
 
         var (subject, body) = await _templates.RenderAsync(
             "billing.invoice.scheduled",
-            $"Estado de facturacion {plan.Client?.Name} - {run.PeriodLabel}",
+            $"Estado de facturación {plan.Client?.Name} - {run.PeriodLabel}",
             $@"<p>Hola,</p>
 <p>Compartimos el estado de cuenta programado del periodo <b>{run.PeriodLabel}</b>.</p>
 <p>Concepto: <b>{plan.Concept}</b><br/>Total: <b>{plan.Total:C2}</b></p>
-<p>Este documento es simulacion de facturacion interna (sin timbrado SAT).</p>",
+<p>Este documento es simulacion de facturación interna (sin timbrado SAT).</p>",
             new Dictionary<string, string>
             {
                 ["Cliente"] = plan.Client?.Name ?? "-",
@@ -291,7 +291,7 @@ public class IndexModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive && !x.IsTemporaryLead)
             .OrderBy(x => x.Name)
-            .Select(x => new { x.Id, Label = (x.ClientCode + " · " + x.Name).Replace("", "") })
+            .Select(x => new { x.Id, Label = x.ClientCode + " · " + x.Name })
             .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Label");
 
@@ -301,7 +301,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == SalesOpportunityStatus.ClosedWon || x.Status == SalesOpportunityStatus.ContractSigned || x.Status == SalesOpportunityStatus.CommissionApplied)
             .OrderByDescending(x => x.CreatedAt)
             .Take(200)
-            .Select(x => new { x.Id, Label = ((x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " · " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-")).Replace("", "") })
+            .Select(x => new { x.Id, Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " · " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-") })
             .ToListAsync();
         OpportunityItems = new SelectList(opportunities, "Id", "Label");
 
@@ -310,7 +310,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == QuoteRequestStatus.Accepted)
             .OrderByDescending(x => x.CreatedAt)
             .Take(300)
-            .Select(x => new { x.Id, Label = (x.Folio + " · " + x.CustomerName).Replace("", "") })
+            .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })
             .ToListAsync();
         QuoteItems = new SelectList(quotes, "Id", "Label");
 
@@ -368,6 +368,19 @@ public class IndexModel : PageModel
 
     private async Task PrefillFromOriginAsync()
     {
+        var sys = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        if (sys != null)
+        {
+            if (string.IsNullOrWhiteSpace(Input.FiscalRegimeCode) || Input.FiscalRegimeCode == "601")
+                Input.FiscalRegimeCode = string.IsNullOrWhiteSpace(sys.CompanyFiscalRegimeCode) ? Input.FiscalRegimeCode : sys.CompanyFiscalRegimeCode;
+            if (string.IsNullOrWhiteSpace(Input.SendToEmail))
+                Input.SendToEmail = sys.BillingEmail ?? "";
+        }
+
         if (Input.SalesOpportunityId.HasValue)
         {
             var opp = await _db.SalesOpportunities
@@ -505,6 +518,7 @@ public class IndexModel : PageModel
         await _db.SaveChangesAsync();
     }
 }
+
 
 
 

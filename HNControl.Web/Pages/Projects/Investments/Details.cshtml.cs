@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -13,7 +13,7 @@ using QuestPDF.Infrastructure;
 
 namespace HNControl.Web.Pages.Projects.Investments;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -99,7 +99,7 @@ public class DetailsModel : PageModel
             var pdf = await BuildStatementPdfAsync(payment.PlanId);
             await _emailSender.SendAsync(
                 investor.Email,
-                $"Estado de cuenta actualizado · {payment.Plan!.Name}",
+                $"Estado de cuenta actualizado Â· {payment.Plan!.Name}",
                 BuildStatementEmailBody(investor.FullName, payment.Plan.Name, payment.TotalAmount),
                 pdf,
                 $"estado_cuenta_inversion_{payment.Plan.Name.Replace(' ', '_')}_{DateTime.Now:yyyyMMdd}.pdf",
@@ -126,7 +126,7 @@ public class DetailsModel : PageModel
 
         Flash = emailError == null
             ? "Pago registrado y estado de cuenta enviado por correo."
-            : $"Pago registrado, pero el correo falló: {emailError}";
+            : $"Pago registrado, pero el correo fallÃ³: {emailError}";
         return RedirectToPage(new { id = investor.Id });
     }
 
@@ -169,8 +169,8 @@ public class DetailsModel : PageModel
                 page.Header().Column(h =>
                 {
                     h.Item().Text(company).FontSize(15).SemiBold();
-                    h.Item().Text("Estado de cuenta de inversión").FontSize(12).FontColor(Colors.Grey.Darken2);
-                    h.Item().Text($"{plan.Investor.FullName} · {plan.Investor.Email}");
+                    h.Item().Text("Estado de cuenta de inversiÃ³n").FontSize(12).FontColor(Colors.Grey.Darken2);
+                    h.Item().Text($"{plan.Investor.FullName} Â· {plan.Investor.Email}");
                 });
 
                 page.Content().PaddingTop(10).Column(c =>
@@ -251,3 +251,4 @@ public class DetailsModel : PageModel
         return Convert.ToHexString(bytes)[..16];
     }
 }
+

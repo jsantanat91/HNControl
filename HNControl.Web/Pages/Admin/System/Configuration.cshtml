@@ -1,0 +1,196 @@
+@page
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Admin.SystemPages.ConfigurationModel
+@{
+    ViewData["Title"] = "Configuración del sistema";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h4 m-0">Configuración</h1>
+        <div class="text-muted small">General y Fiscal (SAT/PAC/SMTP) para operación central y timbrado.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/System/Backup">Respaldo DB</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<form method="post" asp-page-handler="Save" enctype="multipart/form-data" class="card shadow-soft hn-hover">
+    <div class="card-body">
+        <ul class="nav nav-pills mb-3" id="cfgTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#tabGeneral">General</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabFiscal">Fiscal</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabGeneral">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Nombre comercial</label>
+                        <input class="form-control" asp-for="Input.CompanyName" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Razón social</label>
+                        <input class="form-control" asp-for="Input.CompanyLegalName" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Correo facturación</label>
+                        <input class="form-control" asp-for="Input.BillingEmail" />
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Logo global</label>
+                        <input class="form-control" asp-for="Input.CompanyLogo" type="file" accept=".png,.jpg,.jpeg,.webp" />
+                        @if (Model.HasLogo)
+                        {
+                            <div class="small text-success mt-1">Logo cargado: @(string.IsNullOrWhiteSpace(Model.LogoName) ? "archivo actual" : Model.LogoName)</div>
+                            <a class="small" asp-page="./Configuration" asp-page-handler="DownloadLogo">Descargar logo actual</a>
+                        }
+                    </div>
+
+                    <div class="col-12"><hr /></div>
+
+                    <div class="col-12"><div class="fw-semibold">SMTP editable</div><div class="text-muted small">Esta configuración pisa appsettings cuando esté completa.</div></div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Host SMTP</label>
+                        <input class="form-control" asp-for="Input.SmtpHost" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Puerto</label>
+                        <input class="form-control" asp-for="Input.SmtpPort" type="number" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Usuario</label>
+                        <input class="form-control" asp-for="Input.SmtpUser" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Password SMTP</label>
+                        <input class="form-control" asp-for="Input.SmtpPassword" type="password" placeholder="Dejar vacío para conservar" />
+                        @if (Model.HasSmtpPassword) { <div class="small text-success">Password guardado.</div> }
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">From email</label>
+                        <input class="form-control" asp-for="Input.SmtpFromEmail" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">From name</label>
+                        <input class="form-control" asp-for="Input.SmtpFromName" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Security</label>
+                        <select class="form-select" asp-for="Input.SmtpSecurity">
+                            <option>StartTls</option>
+                            <option>SslOnConnect</option>
+                            <option>StartTlsWhenAvailable</option>
+                            <option>None</option>
+                            <option>Auto</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Timeout (ms)</label>
+                        <input class="form-control" asp-for="Input.SmtpTimeoutMs" type="number" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">HELO domain (opcional)</label>
+                        <input class="form-control" asp-for="Input.SmtpHeloDomain" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tabFiscal">
+                <div class="row g-3">
+                    <div class="col-12"><div class="fw-semibold">Datos fiscales de la empresa</div></div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">RFC emisor</label>
+                        <input class="form-control" asp-for="Input.CompanyRfc" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Régimen fiscal</label>
+                        <select class="form-select" asp-for="Input.CompanyFiscalRegimeCode">
+                            @foreach (var it in SatCatalogs.RegimenFiscal)
+                            {
+                                <option value="@it.Code">@it.Code - @it.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">CP fiscal</label>
+                        <input class="form-control" asp-for="Input.CompanyFiscalZipCode" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">CFDI versión</label>
+                        <input class="form-control" asp-for="Input.CfdiVersion" placeholder="4.0" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Serie default</label>
+                        <input class="form-control" asp-for="Input.CfdiSerieDefault" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Domicilio fiscal</label>
+                        <input class="form-control" asp-for="Input.CompanyFiscalAddress" />
+                    </div>
+
+                    <div class="col-12"><hr /></div>
+                    <div class="col-12"><div class="fw-semibold">Timbrado oficial (PAC)</div><div class="text-muted small">Conecta proveedor API y credenciales del CSD SAT.</div></div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Proveedor PAC</label>
+                        <select class="form-select" asp-for="Input.BillingPacProvider" asp-items="Model.PacProviders"></select>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">API base URL</label>
+                        <input class="form-control" asp-for="Input.BillingPacApiBaseUrl" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">API key</label>
+                        <input class="form-control" asp-for="Input.BillingPacApiKey" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">API secret</label>
+                        <input class="form-control" asp-for="Input.BillingPacApiSecret" type="password" placeholder="Dejar vacío para conservar" />
+                        @if (Model.HasPacSecret) { <div class="small text-success">Secret guardado.</div> }
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Usuario PAC</label>
+                        <input class="form-control" asp-for="Input.BillingPacUsername" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Password PAC</label>
+                        <input class="form-control" asp-for="Input.BillingPacPassword" type="password" placeholder="Dejar vacío para conservar" />
+                        @if (Model.HasPacPassword) { <div class="small text-success">Password guardado.</div> }
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Archivo CSD .cer</label>
+                        <input class="form-control" asp-for="Input.CsdCerFile" type="file" accept=".cer" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Archivo CSD .key</label>
+                        <input class="form-control" asp-for="Input.CsdKeyFile" type="file" accept=".key" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Password CSD</label>
+                        <input class="form-control" asp-for="Input.CsdPassword" type="password" placeholder="Dejar vacío para conservar" />
+                        @if (Model.HasCsdPassword) { <div class="small text-success">Password guardado.</div> }
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Notas técnicas</label>
+                        <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button class="btn btn-primary" type="submit">Guardar configuración</button>
+    </div>
+</form>

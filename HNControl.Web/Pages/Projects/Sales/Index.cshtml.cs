@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects.Sales;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -82,7 +82,7 @@ public class IndexModel : PageModel
         var exists = await _db.SalesSellerProfiles.AnyAsync(x => x.EmployeeUserId == EmployeeUserId);
         if (exists)
         {
-            Flash = "Ese empleado ya esta dado de alta como vendedor.";
+            Flash = "Ese empleado ya está dado de alta como vendedor.";
             FlashType = "warning";
             return RedirectToPage();
         }
@@ -113,7 +113,7 @@ public class IndexModel : PageModel
         var existing = await _db.SalesOpportunities.FirstOrDefaultAsync(x => x.QuoteRequestId == QuoteId);
         if (existing != null)
         {
-            Flash = "Esa cotizacion ya tiene oportunidad de venta.";
+            Flash = "Esa cotización ya tiene oportunidad de venta.";
             FlashType = "warning";
             return RedirectToPage();
         }
@@ -142,7 +142,7 @@ public class IndexModel : PageModel
         };
         _db.SalesOpportunities.Add(opp);
         await _db.SaveChangesAsync();
-        await AddSalesAuditAsync(opp.Id, "opportunity.create", "Se creo oportunidad comercial desde cotizacion.");
+        await AddSalesAuditAsync(opp.Id, "opportunity.create", "Se creo oportunidad comercial desde cotización.");
 
         Flash = "Oportunidad creada.";
         FlashType = "success";
@@ -210,7 +210,7 @@ public class IndexModel : PageModel
                 UserId = opp.SellerProfile.EmployeeUserId,
                 Type = EmployeeDeductionType.ComisionVenta,
                 Direction = EmployeeDeductionDirection.Bonus,
-                Concept = $"Comision de venta {opp.QuoteRequestId:N}",
+                Concept = $"Comisión de venta {opp.QuoteRequestId:N}",
                 Mode = EmployeeDeductionMode.FixedAmount,
                 Frequency = EmployeeDeductionFrequency.Biweekly,
                 Amount = opp.CommissionAmount,
@@ -230,7 +230,7 @@ public class IndexModel : PageModel
 
         opp.Status = SalesOpportunityStatus.CommissionApplied;
         await _db.SaveChangesAsync();
-        await AddSalesAuditAsync(opp.Id, "commission.applied", $"Comision aplicada por {opp.CommissionAmount:C2}.");
+        await AddSalesAuditAsync(opp.Id, "commission.applied", $"Comisión aplicada por {opp.CommissionAmount:C2}.");
         Flash = "Contrato firmado y comision aplicada a proxima nomina.";
         FlashType = "success";
         return RedirectToPage();
@@ -347,15 +347,17 @@ public class IndexModel : PageModel
 
         var (subject, body) = await _templates.RenderAsync(
             "sales.commission.paid",
-            $"Comision registrada {folio}",
+            $"Comisión registrada {folio}",
             $"<p>Hola {sellerName},</p><p>Tu comision por la venta {folio} fue registrada por <b>{amount}</b>.</p>",
             new Dictionary<string, string>
             {
                 ["Folio"] = folio,
                 ["Vendedor"] = sellerName,
-                ["MontoComision"] = amount
+                ["MontoComisión"] = amount
             });
 
         await _email.SendAsync(email!, subject, body);
     }
 }
+
+

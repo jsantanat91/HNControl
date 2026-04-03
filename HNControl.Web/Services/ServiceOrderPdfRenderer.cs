@@ -42,11 +42,15 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.AssignedEmployee)
             .Include(x => x.ClaimedByEmployee)
             .FirstAsync(x => x.Id == order.Id);
+        var sys = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
 
         // --------------------
         // Branding / logo
         // --------------------
-        byte[]? logoBytes = LoadLogoBytes();
+        byte[]? logoBytes = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath) ?? LoadLogoBytes();
 
         // --------------------
         // Firmas (leer desde storage)
@@ -79,7 +83,7 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             }
         }
 
-        var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
         var digitalHash = BuildOrderHash(o);
 

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Projects.Investments;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class CreateInvestorModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -124,3 +124,4 @@ public class CreateInvestorModel : PageModel
             .ToList();
     }
 }
+

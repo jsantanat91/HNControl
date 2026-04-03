@@ -49,3 +49,28 @@ public class UserPermissionRole
     [MaxLength(64)]
     public string? AssignedByUserId { get; set; }
 }
+
+public class PermissionAuditLog
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [MaxLength(80)]
+    public string EventType { get; set; } = "";
+
+    public Guid? PermissionRoleId { get; set; }
+    public PermissionRole? PermissionRole { get; set; }
+
+    [MaxLength(80)]
+    public string RoleName { get; set; } = "";
+
+    [MaxLength(64)]
+    public string? ActorUserId { get; set; }
+
+    [MaxLength(180)]
+    public string ActorName { get; set; } = "";
+
+    [MaxLength(1600)]
+    public string Details { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

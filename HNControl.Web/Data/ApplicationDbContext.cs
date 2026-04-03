@@ -52,6 +52,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<PermissionRoleModule> PermissionRoleModules => Set<PermissionRoleModule>();
     public DbSet<PermissionRoleAction> PermissionRoleActions => Set<PermissionRoleAction>();
     public DbSet<UserPermissionRole> UserPermissionRoles => Set<UserPermissionRole>();
+    public DbSet<PermissionAuditLog> PermissionAuditLogs => Set<PermissionAuditLog>();
+    public DbSet<SystemConfiguration> SystemConfigurations => Set<SystemConfiguration>();
 
     // --------------------
     // Carrier (Internet)
@@ -729,6 +731,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<SystemConfiguration>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CompanyName).HasMaxLength(180);
+            e.Property(x => x.CompanyLegalName).HasMaxLength(180);
+            e.Property(x => x.CompanyRfc).HasMaxLength(13);
+            e.Property(x => x.CompanyFiscalRegimeCode).HasMaxLength(4);
+            e.Property(x => x.CompanyFiscalZipCode).HasMaxLength(10);
+            e.Property(x => x.CompanyFiscalAddress).HasMaxLength(400);
+            e.Property(x => x.BillingEmail).HasMaxLength(256);
+            e.Property(x => x.CompanyLogoStoragePath).HasMaxLength(500);
+            e.Property(x => x.CompanyLogoOriginalFileName).HasMaxLength(255);
+            e.Property(x => x.SmtpHost).HasMaxLength(120);
+            e.Property(x => x.SmtpUser).HasMaxLength(180);
+            e.Property(x => x.SmtpPasswordProtected).HasMaxLength(2200);
+            e.Property(x => x.SmtpFromEmail).HasMaxLength(256);
+            e.Property(x => x.SmtpFromName).HasMaxLength(180);
+            e.Property(x => x.SmtpSecurity).HasMaxLength(30);
+            e.Property(x => x.SmtpHeloDomain).HasMaxLength(120);
+            e.Property(x => x.BillingPacApiBaseUrl).HasMaxLength(220);
+            e.Property(x => x.BillingPacApiKey).HasMaxLength(220);
+            e.Property(x => x.BillingPacApiSecretProtected).HasMaxLength(2200);
+            e.Property(x => x.BillingPacUsername).HasMaxLength(180);
+            e.Property(x => x.BillingPacPasswordProtected).HasMaxLength(2200);
+            e.Property(x => x.CfdiVersion).HasMaxLength(10);
+            e.Property(x => x.CfdiSerieDefault).HasMaxLength(20);
+            e.Property(x => x.CsdCerStoragePath).HasMaxLength(500);
+            e.Property(x => x.CsdKeyStoragePath).HasMaxLength(500);
+            e.Property(x => x.CsdPasswordProtected).HasMaxLength(2200);
+            e.Property(x => x.Notes).HasMaxLength(400);
+            e.HasIndex(x => x.UpdatedAt);
+        });
+
         b.Entity<PermissionRoleModule>(e =>
         {
             e.HasKey(x => x.Id);
@@ -758,6 +793,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany()
                 .HasForeignKey(x => x.PermissionRoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<PermissionAuditLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(80);
+            e.Property(x => x.RoleName).HasMaxLength(80);
+            e.Property(x => x.ActorUserId).HasMaxLength(64);
+            e.Property(x => x.ActorName).HasMaxLength(180);
+            e.Property(x => x.Details).HasMaxLength(1600);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.PermissionRoleId);
+
+            e.HasOne(x => x.PermissionRole)
+                .WithMany()
+                .HasForeignKey(x => x.PermissionRoleId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // --------------------

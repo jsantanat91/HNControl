@@ -142,8 +142,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/Eval360", "EmployeeOnly");
 
 
-    // Clientes: solo admin
-    options.Conventions.AuthorizeFolder("/Clients", "AdminOnly");
+    // Clientes: admin + empleado (el control fino se hace por accion)
+    options.Conventions.AuthorizeFolder("/Clients", "EmployeeOnly");
 
     // Proyectos: admin + empleado
     options.Conventions.AuthorizeFolder("/Projects", "EmployeeOnly");
