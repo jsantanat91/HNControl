@@ -25,6 +25,7 @@
         @if (User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.InventoryManager))
         {
             <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Admin Stock</a>
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
             <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones pendientes</a>
         }
     </div>

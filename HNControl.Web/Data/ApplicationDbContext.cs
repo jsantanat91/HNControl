@@ -28,8 +28,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ProjectDeliveryFormat> ProjectDeliveryFormats => Set<ProjectDeliveryFormat>();
     public DbSet<SalesSellerProfile> SalesSellerProfiles => Set<SalesSellerProfile>();
     public DbSet<SalesOpportunity> SalesOpportunities => Set<SalesOpportunity>();
+    public DbSet<SalesAuditLog> SalesAuditLogs => Set<SalesAuditLog>();
     public DbSet<BillingInvoicePlan> BillingInvoicePlans => Set<BillingInvoicePlan>();
     public DbSet<BillingInvoiceRun> BillingInvoiceRuns => Set<BillingInvoiceRun>();
+    public DbSet<BillingAuditLog> BillingAuditLogs => Set<BillingAuditLog>();
+    public DbSet<EventEmailTemplate> EventEmailTemplates => Set<EventEmailTemplate>();
+    public DbSet<AutomationReminderLog> AutomationReminderLogs => Set<AutomationReminderLog>();
     public DbSet<InvestmentInvestor> InvestmentInvestors => Set<InvestmentInvestor>();
     public DbSet<InvestmentPlan> InvestmentPlans => Set<InvestmentPlan>();
     public DbSet<InvestmentPayment> InvestmentPayments => Set<InvestmentPayment>();
@@ -46,6 +50,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     // --------------------
     public DbSet<PermissionRole> PermissionRoles => Set<PermissionRole>();
     public DbSet<PermissionRoleModule> PermissionRoleModules => Set<PermissionRoleModule>();
+    public DbSet<PermissionRoleAction> PermissionRoleActions => Set<PermissionRoleAction>();
     public DbSet<UserPermissionRole> UserPermissionRoles => Set<UserPermissionRole>();
 
     // --------------------
@@ -415,8 +420,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.CommissionPercent).HasColumnType("numeric(7,5)");
             e.Property(x => x.CommissionAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.Notes).HasMaxLength(1200);
+            e.Property(x => x.OwnerUserId).HasMaxLength(64);
             e.HasIndex(x => x.QuoteRequestId).IsUnique();
             e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasIndex(x => new { x.WorkflowStage, x.StageDueAt });
             e.HasIndex(x => x.SellerProfileId);
             e.HasIndex(x => x.ClientId);
 
@@ -434,6 +441,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany()
                 .HasForeignKey(x => x.ClientId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<SalesAuditLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(80);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.UserName).HasMaxLength(180);
+            e.Property(x => x.Details).HasMaxLength(1400);
+            e.HasIndex(x => new { x.SalesOpportunityId, x.CreatedAt });
+            e.HasOne(x => x.SalesOpportunity)
+                .WithMany()
+                .HasForeignKey(x => x.SalesOpportunityId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<BillingInvoicePlan>(e =>
@@ -493,6 +514,37 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.ErrorMessage).HasMaxLength(1200);
             e.HasIndex(x => new { x.PlanId, x.ScheduledFor }).IsUnique();
             e.HasIndex(x => new { x.Status, x.ScheduledFor });
+        });
+
+        b.Entity<BillingAuditLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(80);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.UserName).HasMaxLength(180);
+            e.Property(x => x.Details).HasMaxLength(1400);
+            e.HasIndex(x => new { x.BillingPlanId, x.CreatedAt });
+            e.HasOne(x => x.BillingPlan)
+                .WithMany()
+                .HasForeignKey(x => x.BillingPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<EventEmailTemplate>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventKey).HasMaxLength(80);
+            e.Property(x => x.SubjectTemplate).HasMaxLength(220);
+            e.Property(x => x.BodyTemplate).HasMaxLength(12000);
+            e.HasIndex(x => x.EventKey).IsUnique();
+        });
+
+        b.Entity<AutomationReminderLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ReminderType).HasMaxLength(80);
+            e.Property(x => x.LogDate).HasColumnType("date");
+            e.HasIndex(x => new { x.ReminderType, x.LogDate }).IsUnique();
         });
 
         b.Entity<InvestmentInvestor>(e =>
@@ -682,6 +734,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
             e.Property(x => x.ModuleKey).HasMaxLength(60);
             e.HasIndex(x => new { x.PermissionRoleId, x.ModuleKey }).IsUnique();
+        });
+
+        b.Entity<PermissionRoleAction>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.ActionKey).HasMaxLength(80);
+            e.HasIndex(x => new { x.PermissionRoleId, x.ActionKey }).IsUnique();
+            e.HasOne(x => x.PermissionRole)
+                .WithMany()
+                .HasForeignKey(x => x.PermissionRoleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<UserPermissionRole>(e =>

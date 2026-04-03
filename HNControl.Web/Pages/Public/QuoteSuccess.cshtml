@@ -21,7 +21,13 @@
                     <div class="alert alert-warning">Se genero la solicitud, pero el envio de correo fallo. Nuestro equipo dara seguimiento con tu folio.</div>
                 }
 
-                <a class="btn btn-primary" asp-page="/Public/Quote">Nueva cotizacion</a>
+                <div class="d-flex gap-2 flex-wrap">
+                    @if (Model.HasPdf && Model.Id.HasValue)
+                    {
+                        <a class="btn btn-outline-primary" asp-page="./QuoteSuccess" asp-page-handler="Download" asp-route-id="@Model.Id">Descargar PDF</a>
+                    }
+                    <a class="btn btn-primary" asp-page="/Public/Quote">Nueva cotizacion</a>
+                </div>
             </div>
         </div>
     </div>

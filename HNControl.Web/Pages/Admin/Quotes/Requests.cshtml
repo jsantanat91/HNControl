@@ -99,10 +99,10 @@
                 <div class="text-end">
                     <div><strong>Total estimado:</strong> @r.EstimatedTotal.ToString("C2")</div>
                     <div><span class="badge @(r.ManualItemsCount > 0 ? "text-bg-warning" : "text-bg-success")">Manual: @r.ManualItemsCount</span></div>
-                    <a class="btn btn-sm btn-outline-dark mt-2" asp-page="/Projects/Sales/Index" asp-route-quoteId="@r.Id">Ventas</a>
+                    <a class="btn btn-sm btn-outline-dark mt-2" href="/Ventas?quoteId=@r.Id">Ventas</a>
                     @if (r.Status == "Accepted")
                     {
-                        <a class="btn btn-sm btn-outline-success mt-2" asp-page="/Projects/Billing/Index" asp-route-quoteId="@r.Id">Facturacion</a>
+                        <a class="btn btn-sm btn-outline-success mt-2" href="/Facturacion?quoteId=@r.Id">Facturacion</a>
                     }
                     @if (r.HasPdf)
                     {

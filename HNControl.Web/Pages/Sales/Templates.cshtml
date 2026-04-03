@@ -1,0 +1,92 @@
+﻿@page
+@model HNControl.Web.Pages.Sales.TemplatesModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Plantillas de correo";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Plantillas de correo por evento</h1>
+        <div class="text-muted small">Variables dinamicas en formato {{Variable}}.</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
+        <a class="btn btn-outline-secondary" href="/Ventas/Workflow">Workflow</a>
+    </div>
+</div>
+
+<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<div class="row g-3">
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Editar plantilla</div>
+            <form method="post" asp-page-handler="Save">
+                <div class="card-body row g-2">
+                    <div class="col-12">
+                        <label class="form-label">Evento</label>
+                        <input class="form-control" asp-for="EventKey" placeholder="billing.invoice.scheduled" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Asunto</label>
+                        <input class="form-control" asp-for="SubjectTemplate" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Cuerpo (HTML basico)</label>
+                        <textarea class="form-control" asp-for="BodyTemplate" rows="10"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="IsActive" />
+                            <label class="form-check-label" asp-for="IsActive">Activa</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-primary" type="submit">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Plantillas existentes</div>
+            <div class="card-body">
+                @if (!Model.Rows.Any())
+                {
+                    <div class="text-muted small">Sin plantillas.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var row in Model.Rows)
+                        {
+                            <div class="border rounded-3 p-2 d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <div class="fw-semibold">@row.EventKey</div>
+                                    <div class="small text-muted text-truncate" style="max-width:430px">@row.SubjectTemplate</div>
+                                    <div class="small text-muted">Actualizada: @row.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                    <span class="badge @(row.IsActive ? "text-bg-success" : "text-bg-secondary")">@(row.IsActive ? "Activa" : "Inactiva")</span>
+                                </div>
+                                <a class="btn btn-sm btn-outline-primary" asp-page="./Templates" asp-page-handler="Load" asp-route-key="@row.EventKey">Editar</a>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <hr class="my-3" />
+                <div class="small text-muted">
+                    Variables sugeridas:<br />
+                    {{Fecha}}, {{Cliente}}, {{Periodo}}, {{Concepto}}, {{Monto}}, {{Vendedor}}, {{Folio}}, {{MontoComision}}, {{ContratosPendientes}}, {{FacturasPendientes}}, {{ComisionesPendientes}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

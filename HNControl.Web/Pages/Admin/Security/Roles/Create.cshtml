@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Security.Roles.CreateModel
 @{
     Layout = "_Layout";
@@ -8,7 +8,7 @@
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
         <h1 class="h4 mb-1">Nuevo rol de permisos</h1>
-        <div class="text-muted">Define qué módulos verá el empleado bajo este rol.</div>
+        <div class="text-muted">Define que modulos y acciones podra usar el empleado.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="./Index">Volver</a>
 </div>
@@ -23,7 +23,7 @@
                 <input class="form-control" asp-for="Input.Name" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">Descripcion</label>
                 <input class="form-control" asp-for="Input.Description" />
             </div>
 
@@ -43,8 +43,8 @@
 
         <hr class="my-4" />
 
-        <h2 class="h6 mb-2">Módulos permitidos</h2>
-        <div class="text-muted small mb-3">Selecciona los módulos que el empleado podrá usar con este rol.</div>
+        <h2 class="h6 mb-2">Modulos permitidos</h2>
+        <div class="text-muted small mb-3">Selecciona los modulos que el empleado podra usar con este rol.</div>
 
         <div class="row g-2">
             @foreach (var m in Model.Modules)
@@ -55,6 +55,28 @@
                         <input class="form-check-input m-0" type="checkbox" name="Input.SelectedModules" id="@id" value="@m.Key"
                                @(Model.Input.SelectedModules.Contains(m.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
                         <span class="fw-semibold">@m.Label</span>
+                    </label>
+                </div>
+            }
+        </div>
+
+        <hr class="my-4" />
+
+        <h2 class="h6 mb-2">Permisos por accion</h2>
+        <div class="text-muted small mb-3">Define permisos finos: ver, gestionar, mover workflow y enviar.</div>
+
+        <div class="row g-2">
+            @foreach (var a in Model.Actions)
+            {
+                var id = $"a_{a.Key}";
+                <div class="col-12 col-md-6">
+                    <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-action-item" for="@id" style="cursor:pointer;">
+                        <input class="form-check-input m-0" type="checkbox" name="Input.SelectedActions" id="@id" value="@a.Key"
+                               @(Model.Input.SelectedActions.Contains(a.Key, StringComparer.OrdinalIgnoreCase) ? "checked" : "") />
+                        <div class="d-flex flex-column">
+                            <span class="fw-semibold">@a.Label</span>
+                            <span class="text-muted small">@a.Key</span>
+                        </div>
                     </label>
                 </div>
             }
@@ -72,6 +94,5 @@
 }
 
 <style>
-    .role-module-item:hover { box-shadow: 0 .2rem .6rem rgba(0,0,0,.08); }
+    .role-module-item:hover, .role-action-item:hover { box-shadow: 0 .2rem .6rem rgba(0,0,0,.08); }
 </style>
-

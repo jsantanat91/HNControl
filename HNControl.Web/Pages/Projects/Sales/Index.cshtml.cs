@@ -1,5 +1,6 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +15,19 @@ public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
+    private readonly IEmailSender _email;
+    private readonly IEventEmailTemplateService _templates;
 
-    public IndexModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr)
+    public IndexModel(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userMgr,
+        IEmailSender email,
+        IEventEmailTemplateService templates)
     {
         _db = db;
         _userMgr = userMgr;
+        _email = email;
+        _templates = templates;
     }
 
     [TempData] public string? Flash { get; set; }
@@ -112,19 +121,28 @@ public class IndexModel : PageModel
         var pct = Math.Clamp(CommissionPercent, 0m, 1m);
         var amount = Math.Round((quote.EstimatedTotal ?? quote.SubtotalAuto) * pct, 2);
 
-        _db.SalesOpportunities.Add(new SalesOpportunity
+        var opp = new SalesOpportunity
         {
             QuoteRequestId = QuoteId,
             SellerProfileId = SellerProfileId,
             ClientId = quote.ClientId,
             Status = SalesOpportunityStatus.Prospect,
+            WorkflowStage = SalesWorkflowStage.Lead,
+            StageChangedAt = DateTime.UtcNow,
+            StageDueAt = DateTime.UtcNow.Date.AddDays(2),
             CommissionPercent = pct,
             CommissionAmount = amount,
             Notes = (OpportunityNotes ?? "").Trim(),
+            OwnerUserId = await _db.SalesSellerProfiles
+                .Where(x => x.Id == SellerProfileId)
+                .Select(x => x.EmployeeUserId)
+                .FirstOrDefaultAsync(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
-        });
+        };
+        _db.SalesOpportunities.Add(opp);
         await _db.SaveChangesAsync();
+        await AddSalesAuditAsync(opp.Id, "opportunity.create", "Se creo oportunidad comercial desde cotizacion.");
 
         Flash = "Oportunidad creada.";
         FlashType = "success";
@@ -140,7 +158,10 @@ public class IndexModel : PageModel
         if (opp == null) return RedirectToPage();
 
         opp.Status = SalesOpportunityStatus.ClosedWon;
+        opp.WorkflowStage = SalesWorkflowStage.ClosedWon;
         opp.ClosedAt = DateTime.UtcNow;
+        opp.StageChangedAt = DateTime.UtcNow;
+        opp.StageDueAt = null;
         opp.UpdatedAt = DateTime.UtcNow;
 
         if (opp.Client != null && opp.Client.IsTemporaryLead)
@@ -159,6 +180,7 @@ public class IndexModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+        await AddSalesAuditAsync(opp.Id, "opportunity.closed.won", "Venta cerrada como ganada.");
         Flash = "Venta marcada como cerrada (won).";
         FlashType = "success";
         return RedirectToPage();
@@ -174,7 +196,10 @@ public class IndexModel : PageModel
         if (opp.SellerProfile == null || opp.SellerProfile.Employee == null) return RedirectToPage();
 
         opp.Status = SalesOpportunityStatus.ContractSigned;
+        opp.WorkflowStage = SalesWorkflowStage.Commission;
         opp.ContractSignedAt = DateTime.UtcNow;
+        opp.StageChangedAt = DateTime.UtcNow;
+        opp.StageDueAt = DateTime.UtcNow.Date.AddDays(2);
         opp.UpdatedAt = DateTime.UtcNow;
 
         if (!opp.BonusDeductionId.HasValue)
@@ -200,10 +225,12 @@ public class IndexModel : PageModel
             _db.EmployeeDeductions.Add(deduction);
             await _db.SaveChangesAsync();
             opp.BonusDeductionId = deduction.Id;
+            await SendCommissionEmailAsync(opp);
         }
 
         opp.Status = SalesOpportunityStatus.CommissionApplied;
         await _db.SaveChangesAsync();
+        await AddSalesAuditAsync(opp.Id, "commission.applied", $"Comision aplicada por {opp.CommissionAmount:C2}.");
         Flash = "Contrato firmado y comision aplicada a proxima nomina.";
         FlashType = "success";
         return RedirectToPage();
@@ -293,5 +320,42 @@ public class IndexModel : PageModel
                 max = n;
         }
         return $"HN-{max + 1:0000}";
+    }
+
+    private async Task AddSalesAuditAsync(Guid opportunityId, string eventType, string details)
+    {
+        _db.SalesAuditLogs.Add(new SalesAuditLog
+        {
+            SalesOpportunityId = opportunityId,
+            EventType = eventType,
+            UserId = _userMgr.GetUserId(User),
+            UserName = User.Identity?.Name ?? "-",
+            Details = details,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task SendCommissionEmailAsync(SalesOpportunity opp)
+    {
+        var email = opp.SellerProfile?.Employee?.Email;
+        if (string.IsNullOrWhiteSpace(email)) return;
+
+        var folio = opp.QuoteRequest?.Folio ?? opp.QuoteRequestId.ToString("N");
+        var sellerName = opp.SellerProfile?.Employee?.FullName ?? "Vendedor";
+        var amount = opp.CommissionAmount.ToString("C2");
+
+        var (subject, body) = await _templates.RenderAsync(
+            "sales.commission.paid",
+            $"Comision registrada {folio}",
+            $"<p>Hola {sellerName},</p><p>Tu comision por la venta {folio} fue registrada por <b>{amount}</b>.</p>",
+            new Dictionary<string, string>
+            {
+                ["Folio"] = folio,
+                ["Vendedor"] = sellerName,
+                ["MontoComision"] = amount
+            });
+
+        await _email.SendAsync(email!, subject, body);
     }
 }

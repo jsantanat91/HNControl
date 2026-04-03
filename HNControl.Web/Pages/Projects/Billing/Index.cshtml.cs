@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -17,13 +17,20 @@ public class IndexModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IBillingInvoicePdfRenderer _pdf;
+    private readonly IEventEmailTemplateService _templates;
 
-    public IndexModel(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IBillingInvoicePdfRenderer pdf)
+    public IndexModel(
+        ApplicationDbContext db,
+        IFileStorage storage,
+        IEmailSender email,
+        IBillingInvoicePdfRenderer pdf,
+        IEventEmailTemplateService templates)
     {
         _db = db;
         _storage = storage;
         _email = email;
         _pdf = pdf;
+        _templates = templates;
     }
 
     [TempData] public string? Flash { get; set; }
@@ -37,6 +44,7 @@ public class IndexModel : PageModel
 
     public List<PlanVm> Plans { get; set; } = new();
     public List<RunVm> Runs { get; set; } = new();
+    public List<AuditVm> Audits { get; set; } = new();
 
     public int ActivePlans { get; set; }
     public int PendingRuns { get; set; }
@@ -63,6 +71,8 @@ public class IndexModel : PageModel
         string Status,
         string Email,
         bool HasPdf);
+
+    public record AuditVm(DateTime CreatedAt, string Client, string EventType, string Details, string UserName);
 
     public class InputModel
     {
@@ -166,6 +176,7 @@ public class IndexModel : PageModel
         });
 
         await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(plan.Id, "billing.plan.create", $"Plan creado por {plan.Total:C2}, periodicidad {plan.Periodicity}.");
 
         Flash = "Plan de facturacion creado.";
         FlashType = "success";
@@ -210,12 +221,20 @@ public class IndexModel : PageModel
         var fileName = $"factura_simulada_{plan.ClientId:N}_{run.ScheduledFor:yyyyMMdd}.pdf";
         var (storagePath, _, _) = await _storage.SaveBytesAsync(pdfBytes, "billing", fileName, "application/pdf");
 
-        var subject = $"Estado de facturacion {plan.Client?.Name} · {run.PeriodLabel}";
-        var body = $@"
-<p>Hola,</p>
+        var (subject, body) = await _templates.RenderAsync(
+            "billing.invoice.scheduled",
+            $"Estado de facturacion {plan.Client?.Name} - {run.PeriodLabel}",
+            $@"<p>Hola,</p>
 <p>Compartimos el estado de cuenta programado del periodo <b>{run.PeriodLabel}</b>.</p>
 <p>Concepto: <b>{plan.Concept}</b><br/>Total: <b>{plan.Total:C2}</b></p>
-<p>Este documento es simulacion de facturacion interna (sin timbrado SAT).</p>";
+<p>Este documento es simulacion de facturacion interna (sin timbrado SAT).</p>",
+            new Dictionary<string, string>
+            {
+                ["Cliente"] = plan.Client?.Name ?? "-",
+                ["Periodo"] = run.PeriodLabel,
+                ["Concepto"] = plan.Concept,
+                ["Monto"] = plan.Total.ToString("C2")
+            });
 
         await _email.SendAsync(plan.SendToEmail, subject, body, pdfBytes, fileName, "application/pdf");
 
@@ -233,6 +252,7 @@ public class IndexModel : PageModel
         AdvancePlan(plan);
 
         await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(plan.Id, "billing.run.sent", $"Enviado {run.PeriodLabel} a {plan.SendToEmail}.");
         Flash = "Factura enviada y ciclo actualizado.";
         FlashType = "success";
         return RedirectToPage();
@@ -251,6 +271,7 @@ public class IndexModel : PageModel
         };
         plan.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(plan.Id, "billing.plan.toggle", $"Plan cambiado a {plan.Status}.");
         Flash = plan.Status == BillingPlanStatus.Active ? "Plan reactivado." : "Plan pausado.";
         FlashType = "info";
         return RedirectToPage();
@@ -270,7 +291,7 @@ public class IndexModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive && !x.IsTemporaryLead)
             .OrderBy(x => x.Name)
-            .Select(x => new { x.Id, Label = x.ClientCode + " · " + x.Name })
+            .Select(x => new { x.Id, Label = x.ClientCode + " Â· " + x.Name })
             .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Label");
 
@@ -280,7 +301,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == SalesOpportunityStatus.ClosedWon || x.Status == SalesOpportunityStatus.ContractSigned || x.Status == SalesOpportunityStatus.CommissionApplied)
             .OrderByDescending(x => x.CreatedAt)
             .Take(200)
-            .Select(x => new { x.Id, Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " · " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-") })
+            .Select(x => new { x.Id, Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " Â· " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-") })
             .ToListAsync();
         OpportunityItems = new SelectList(opportunities, "Id", "Label");
 
@@ -289,7 +310,7 @@ public class IndexModel : PageModel
             .Where(x => x.Status == QuoteRequestStatus.Accepted)
             .OrderByDescending(x => x.CreatedAt)
             .Take(300)
-            .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })
+            .Select(x => new { x.Id, Label = x.Folio + " Â· " + x.CustomerName })
             .ToListAsync();
         QuoteItems = new SelectList(quotes, "Id", "Label");
 
@@ -307,7 +328,7 @@ public class IndexModel : PageModel
                 x.Status.ToString(),
                 x.NextRunDate,
                 x.SendToEmail,
-                $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Regimen {x.FiscalRegimeCode}"))
+                $"Tipo {MapInvoiceType(x.InvoiceType)} Â· Uso {x.CfdiUseCode} Â· Regimen {x.FiscalRegimeCode}"))
             .ToListAsync();
 
         Runs = await _db.BillingInvoiceRuns
@@ -325,6 +346,19 @@ public class IndexModel : PageModel
                 x.Status.ToString(),
                 x.SentToEmail,
                 !string.IsNullOrWhiteSpace(x.PdfStoragePath)))
+            .ToListAsync();
+
+        Audits = await _db.BillingAuditLogs
+            .AsNoTracking()
+            .Include(x => x.BillingPlan!).ThenInclude(x => x.Client)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(50)
+            .Select(x => new AuditVm(
+                x.CreatedAt,
+                x.BillingPlan != null && x.BillingPlan.Client != null ? x.BillingPlan.Client.Name : "-",
+                x.EventType,
+                x.Details,
+                x.UserName))
             .ToListAsync();
 
         ActivePlans = Plans.Count(x => x.Status == nameof(BillingPlanStatus.Active));
@@ -456,4 +490,19 @@ public class IndexModel : PageModel
         foreach (var p in pieces.Distinct(StringComparer.OrdinalIgnoreCase))
             yield return p.Trim();
     }
+
+    private async Task AddBillingAuditAsync(Guid planId, string eventType, string details)
+    {
+        _db.BillingAuditLogs.Add(new BillingAuditLog
+        {
+            BillingPlanId = planId,
+            EventType = eventType,
+            UserId = User.Identity?.Name,
+            UserName = User.Identity?.Name ?? "-",
+            Details = details,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+    }
 }
+

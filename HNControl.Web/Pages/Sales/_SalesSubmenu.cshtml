@@ -1,0 +1,23 @@
+﻿@{
+    var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
+    string Btn(string href, string text, string cls)
+    {
+        var active = path.StartsWith(href.ToLowerInvariant()) ? "text-white" : "";
+        var outline = path.StartsWith(href.ToLowerInvariant()) ? "" : "btn-outline-" + cls;
+        return $"btn btn-sm px-3 py-2 fw-semibold {(string.IsNullOrWhiteSpace(outline) ? "btn-" + cls : outline)} {active}";
+    }
+}
+
+<div class="card border-0 shadow-soft mb-3">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-muted small me-2">Comercial:</span>
+        <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
+        <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
+        <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
+        <a href="/Facturacion" class="@Btn("/facturacion","Facturacion","warning")">Facturacion</a>
+        @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+        {
+            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
+        }
+    </div>
+</div>

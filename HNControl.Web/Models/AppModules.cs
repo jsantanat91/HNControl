@@ -103,6 +103,7 @@ public static class AppModules
         if (viewEnginePath.StartsWith("/Projects/Sales", StringComparison.OrdinalIgnoreCase)) return Sales;
         if (viewEnginePath.StartsWith("/Projects", StringComparison.OrdinalIgnoreCase)) return Projects;
         if (viewEnginePath.StartsWith("/Sales", StringComparison.OrdinalIgnoreCase)) return Sales;
+        if (viewEnginePath.StartsWith("/Facturacion", StringComparison.OrdinalIgnoreCase)) return Billing;
         if (viewEnginePath.StartsWith("/Knowledge", StringComparison.OrdinalIgnoreCase)) return Knowledge;
         if (viewEnginePath.StartsWith("/Carriers", StringComparison.OrdinalIgnoreCase)) return Carriers;
         if (viewEnginePath.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase)) return Inventory;

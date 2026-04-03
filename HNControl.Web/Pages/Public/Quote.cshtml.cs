@@ -98,13 +98,13 @@ public class QuoteModel : PageModel
             request.Status = QuoteRequestStatus.Emailed;
             await _db.SaveChangesAsync();
 
-            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 1 });
+            return RedirectToPage("/Public/QuoteSuccess", new { id = request.Id, folio = request.Folio, sent = 1 });
         }
         catch
         {
             request.Status = QuoteRequestStatus.EmailError;
             await _db.SaveChangesAsync();
-            return RedirectToPage("/Public/QuoteSuccess", new { folio = request.Folio, sent = 0 });
+            return RedirectToPage("/Public/QuoteSuccess", new { id = request.Id, folio = request.Folio, sent = 0 });
         }
     }
 
@@ -245,15 +245,21 @@ public class QuoteModel : PageModel
 
         if (manualPicks != null)
         {
-            foreach (var m in manualPicks.Where(x => !string.IsNullOrWhiteSpace(x.Description)))
+            foreach (var m in manualPicks.Where(x =>
+                !string.IsNullOrWhiteSpace(x.Description) ||
+                !string.IsNullOrWhiteSpace(x.ServiceName) ||
+                !string.IsNullOrWhiteSpace(x.CategoryName)))
             {
                 var qty = m.Quantity <= 0 ? 1 : m.Quantity;
+                var desc = string.IsNullOrWhiteSpace(m.Description)
+                    ? $"{(string.IsNullOrWhiteSpace(m.ServiceName) ? "Concepto libre" : m.ServiceName.Trim())} ({(string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim())})"
+                    : m.Description.Trim();
                 request.Lines.Add(new QuoteRequestLine
                 {
                     CategoryName = string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim(),
                     ServiceName = string.IsNullOrWhiteSpace(m.ServiceName) ? "Concepto libre" : m.ServiceName.Trim(),
                     SubproductName = null,
-                    Description = m.Description.Trim(),
+                    Description = desc,
                     Quantity = qty,
                     UnitPrice = m.UnitPrice,
                     PriceIncludesVat = false,
@@ -292,6 +298,19 @@ public class QuoteModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive)
             .ToListAsync();
+        var inventoryItems = await _db.InventoryItems
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new
+            {
+                x.Id,
+                x.Name,
+                x.Category,
+                x.Unit,
+                x.QuantityOnHand
+            })
+            .ToListAsync();
 
         object Pack(QuoteSegment seg)
         {
@@ -309,7 +328,8 @@ public class QuoteModel : PageModel
         CatalogPayload = new Dictionary<string, object>
         {
             [QuoteSegment.Residential.ToString()] = Pack(QuoteSegment.Residential),
-            [QuoteSegment.Business.ToString()] = Pack(QuoteSegment.Business)
+            [QuoteSegment.Business.ToString()] = Pack(QuoteSegment.Business),
+            ["inventoryItems"] = inventoryItems
         };
     }
 

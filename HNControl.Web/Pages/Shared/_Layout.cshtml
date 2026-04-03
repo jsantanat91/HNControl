@@ -125,6 +125,14 @@
                         <span class="hn-side-icon"><i class="bi bi-calculator"></i></span>
                         <span class="hn-side-text">Cotizaciones</span>
                     </a>
+                    <a class="hn-side-link @Active("/Ventas")" href="/Ventas">
+                        <span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                        <span class="hn-side-text">Ventas</span>
+                    </a>
+                    <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion">
+                        <span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span>
+                        <span class="hn-side-text">Facturación</span>
+                    </a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index">
                         <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
                         <span class="hn-side-text">Vacaciones</span>
@@ -149,6 +157,13 @@
                         <span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span>
                         <span class="hn-side-text">Mi ficha</span>
                     </a>
+                    @if (Has(HNControl.Web.Models.AppModules.Sales))
+                    {
+                        <a class="hn-side-link @Active("/Ventas")" href="/Ventas">
+                            <span class="hn-side-icon"><i class="bi bi-funnel"></i></span>
+                            <span class="hn-side-text">Ventas</span>
+                        </a>
+                    }
                     @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
                     {
                         <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My">
@@ -319,6 +334,8 @@
                     <a class="hn-side-link @Active("/Monitoring")" asp-page="/Monitoring/Index"><span class="hn-side-icon"><i class="bi bi-activity"></i></span><span class="hn-side-text">Monitoreo</span></a>
                     <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a>
                     <a class="hn-side-link @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog"><span class="hn-side-icon"><i class="bi bi-calculator"></i></span><span class="hn-side-text">Cotizaciones</span></a>
+                    <a class="hn-side-link @Active("/Ventas")" href="/Ventas"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></a>
+                    <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a>
                     <a class="hn-side-link @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index"><span class="hn-side-icon"><i class="bi bi-shield-lock"></i></span><span class="hn-side-text">Seguridad</span></a>
@@ -327,6 +344,8 @@
                 else
                 {
                     <a class="hn-side-link @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile"><span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span><span class="hn-side-text">Mi ficha</span></a>
+                    @if (Has(HNControl.Web.Models.AppModules.Sales))
+                    { <a class="hn-side-link @Active("/Ventas")" href="/Ventas"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></a> }
                     @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
                     { <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My"><span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span><span class="hn-side-text">Mis cotizaciones</span></a> }
                     @if (Has(AppModules.ServiceOrders))

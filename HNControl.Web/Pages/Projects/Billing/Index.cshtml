@@ -13,7 +13,7 @@
     </div>
 </div>
 
-<partial name="/Pages/Projects/_ProjectsSubmenu.cshtml" />
+<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
 
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
@@ -254,5 +254,32 @@
                 }
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card shadow-soft hn-hover mt-3">
+    <div class="card-header fw-semibold">Bitacora de facturacion</div>
+    <div class="card-body">
+        @if (!Model.Audits.Any())
+        {
+            <div class="text-muted small">Sin eventos.</div>
+        }
+        else
+        {
+            <div class="vstack gap-2">
+                @foreach (var a in Model.Audits)
+                {
+                    <div class="border rounded-3 p-2">
+                        <div class="d-flex justify-content-between gap-2">
+                            <span class="fw-semibold">@a.EventType</span>
+                            <span class="small text-muted">@a.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                        </div>
+                        <div class="small">@a.Client</div>
+                        <div class="small text-muted">@a.Details</div>
+                        <div class="small text-muted">Usuario: @a.UserName</div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>

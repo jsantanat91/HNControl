@@ -24,6 +24,14 @@
         <input type="hidden" asp-for="ClientId" />
 
         <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label">Paquete de servicio (inventario)</label>
+                <select class="form-select" asp-for="Input.ServicePackageId" asp-items="Model.ServicePackageItems">
+                    <option value="">-- Captura manual --</option>
+                </select>
+                <div class="form-text">Opcional. Si lo eliges, se prellena para contrato/cotización.</div>
+            </div>
+
             <div class="col-md-4">
                 <label class="form-label">Categoria</label>
                 <select class="form-select" asp-for="Input.ServiceType" asp-items="Model.ServiceTypeItems"></select>

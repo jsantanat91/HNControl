@@ -1,0 +1,130 @@
+@page
+@model HNControl.Web.Pages.Admin.Inventory.Services.IndexModel
+@using HNControl.Web.Models
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Servicios (Inventario)";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Servicios de inventario</h1>
+        <div class="text-muted small">Paquetes base para contratos y cotizaciones.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Items</a>
+        <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Clientes</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Info))
+{
+    <div class="alert alert-success">@Model.Info</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" asp-page-handler="Add" class="card shadow-soft hn-hover mb-3">
+    <div class="card-header fw-semibold">Nuevo paquete de servicio</div>
+    <div class="card-body row g-2">
+        <div class="col-md-4">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" asp-for="Input.Name" placeholder="Ej: Internet dedicado 200 MB" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" asp-for="Input.ServiceType" asp-items="Html.GetEnumSelectList<ClientServiceType>()"></select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Modalidad</label>
+            <select class="form-select" asp-for="Input.OfferType" asp-items="Html.GetEnumSelectList<QuoteOfferType>()"></select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Precio base</label>
+            <input class="form-control" asp-for="Input.UnitPrice" type="number" min="0" step="0.01" />
+            <div class="form-text">Si va en 0, queda como precio manual.</div>
+        </div>
+        <div class="col-12">
+            <label class="form-label">Descripción</label>
+            <input class="form-control" asp-for="Input.Description" placeholder="Detalle corto del paquete" />
+        </div>
+    </div>
+    <div class="card-footer">
+        <button class="btn btn-primary" type="submit">Guardar paquete</button>
+    </div>
+</form>
+
+<div class="row g-3">
+@foreach (var row in Model.Rows)
+{
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="fw-bold">@row.Name</div>
+                        <div class="text-muted small">Orden: @row.SortOrder</div>
+                    </div>
+                    <span class="badge @(row.IsActive ? "text-bg-success" : "text-bg-secondary")">@(row.IsActive ? "Activo" : "Inactivo")</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap my-2">
+                    <span class="badge text-bg-light border">@row.ServiceType</span>
+                    <span class="badge text-bg-light border">@row.OfferType</span>
+                    <span class="badge @(row.UnitPrice.HasValue ? "text-bg-info" : "text-bg-warning")">
+                        @(row.UnitPrice.HasValue ? row.UnitPrice.Value.ToString("C2") : "Precio manual")
+                    </span>
+                </div>
+                <div class="text-muted small">@row.Description</div>
+            </div>
+            <div class="card-footer">
+                <form method="post" asp-page-handler="Update" class="row g-2">
+                    <input type="hidden" name="id" value="@row.Id" />
+                    <div class="col-md-6">
+                        <input class="form-control form-control-sm" name="name" value="@row.Name" />
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-sm" name="description" value="@row.Description" />
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select form-select-sm" name="serviceType">
+                            @foreach (var t in Enum.GetValues<ClientServiceType>())
+                            {
+                                <option value="@t" selected="@(t == row.ServiceType)">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select form-select-sm" name="offerType">
+                            @foreach (var t in Enum.GetValues<QuoteOfferType>())
+                            {
+                                <option value="@t" selected="@(t == row.OfferType)">@t</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input class="form-control form-control-sm" type="number" min="0" step="0.01" name="unitPrice" value="@(row.UnitPrice?.ToString("0.##"))" />
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Actualizar</button>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit" formaction="?handler=Toggle&id=@row.Id">
+                            @(row.IsActive ? "Desactivar" : "Activar")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+</div>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card mt-3"><div class="card-body text-muted">Sin paquetes de servicio aún.</div></div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+

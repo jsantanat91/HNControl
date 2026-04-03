@@ -102,6 +102,7 @@ builder.Services.AddScoped<MobileJwtTokenService>();
 // --------------------
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IModuleAccessService, ModuleAccessService>();
+builder.Services.AddScoped<IActionAccessService, ActionAccessService>();
 builder.Services.AddScoped<ModulePermissionPageFilter>();
 
 // --------------------
@@ -182,6 +183,13 @@ builder.Services.AddRazorPages(options =>
 
     // Seguridad / permisos (Admin)
     options.Conventions.AuthorizeFolder("/Admin/Security", "AdminOnly");
+
+    // Alias de modulos principales (sin mover implementacion actual)
+    options.Conventions.AddPageRoute("/Sales/Dashboard", "/Ventas");
+    options.Conventions.AddPageRoute("/Sales/Workflow", "/Ventas/Workflow");
+    options.Conventions.AddPageRoute("/Sales/Templates", "/Ventas/Plantillas");
+    options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
+    options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
 })
 .AddMvcOptions(o => o.Filters.AddService<ModulePermissionPageFilter>());
 
@@ -203,9 +211,11 @@ builder.Services.AddScoped<IQuoteRequestPdfRenderer, QuoteRequestPdfRenderer>();
 builder.Services.AddScoped<IClientLegalPdfRenderer, ClientLegalPdfRenderer>();
 builder.Services.AddScoped<IProjectDeliveryPdfRenderer, ProjectDeliveryPdfRenderer>();
 builder.Services.AddScoped<IBillingInvoicePdfRenderer, BillingInvoicePdfRenderer>();
+builder.Services.AddScoped<IEventEmailTemplateService, EventEmailTemplateService>();
 builder.Services.AddScoped<IPayrollReceiptService, PayrollReceiptService>();
 builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
 builder.Services.AddHostedService<PayrollReceiptDispatchWorker>();
+builder.Services.AddHostedService<CommercialReminderWorker>();
 
 // QuestPDF licencia community
 QuestPDF.Settings.License = LicenseType.Community;

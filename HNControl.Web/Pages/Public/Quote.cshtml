@@ -130,6 +130,21 @@
                                                 <button class="btn btn-outline-primary" type="button" id="addManualBtn">Agregar libre</button>
                                             </div>
                                         </div>
+                                        <hr />
+                                        <div class="fw-semibold mb-2">Agregar desde inventario</div>
+                                        <div class="row g-2">
+                                            <div class="col-md-8">
+                                                <select id="inventoryItemSelect" class="form-select">
+                                                    <option value="">-- Selecciona item de inventario --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input id="inventoryQty" class="form-control" type="number" min="1" value="1" />
+                                            </div>
+                                            <div class="col-md-2 d-grid">
+                                                <button class="btn btn-outline-dark" type="button" id="addInventoryBtn">Agregar item</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -224,6 +239,7 @@
     const payload = @Html.Raw(catalogJson);
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
+    const inventoryItems = payload.inventoryItems || [];
     const lines = [];
     const manualLines = [];
 
@@ -242,6 +258,9 @@
     const manualDescription = document.getElementById('manualDescription');
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
+    const inventoryItemSelect = document.getElementById('inventoryItemSelect');
+    const inventoryQty = document.getElementById('inventoryQty');
+    const addInventoryBtn = document.getElementById('addInventoryBtn');
     const categoryCards = document.getElementById('categoryCards');
     const serviceCards = document.getElementById('serviceCards');
     const subproductCards = document.getElementById('subproductCards');
@@ -272,6 +291,18 @@
 
     function toMoney(v){
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
+    }
+
+    function fillInventorySelect(){
+        if(!inventoryItemSelect) return;
+        inventoryItemSelect.innerHTML = '<option value="">-- Selecciona item de inventario --</option>';
+        inventoryItems.forEach(x => {
+            const opt = document.createElement('option');
+            opt.value = String(x.id);
+            const stock = Number(x.quantityOnHand || 0);
+            opt.textContent = `${x.name} · ${x.category || 'Sin categoría'} · Stock: ${stock} ${x.unit || 'pza'}`;
+            inventoryItemSelect.appendChild(opt);
+        });
     }
 
     function labelOffer(offer){
@@ -569,23 +600,49 @@
     });
 
     addManualBtn.addEventListener('click', () => {
+        const serviceTxt = String(manualService.value || '').trim();
+        const categoryTxt = String(manualCategory.value || '').trim();
         const description = String(manualDescription.value || '').trim();
-        if(!description){
-            alert('Describe el concepto libre.');
+        if(!description && !serviceTxt && !categoryTxt){
+            alert('Escribe al menos servicio, categoría o descripción.');
             return;
         }
         const qtyVal = Math.max(1, Number(manualQty.value || 1));
         const priceVal = Math.max(0, Number(manualPrice.value || 0));
         manualLines.push({
-            categoryName: String(manualCategory.value || '').trim(),
-            serviceName: String(manualService.value || '').trim(),
-            description,
+            categoryName: categoryTxt,
+            serviceName: serviceTxt,
+            description: description || serviceTxt || categoryTxt || 'Concepto libre',
             quantity: qtyVal,
             unitPrice: priceVal
         });
         manualDescription.value = '';
         manualPrice.value = '';
         manualQty.value = '1';
+        renderCart();
+    });
+
+    addInventoryBtn?.addEventListener('click', () => {
+        const id = String(inventoryItemSelect?.value || '');
+        if(!id){
+            alert('Selecciona un item de inventario.');
+            return;
+        }
+        const item = inventoryItems.find(x => String(x.id) === id);
+        if(!item){
+            alert('No se encontró el item seleccionado.');
+            return;
+        }
+        const qtyVal = Math.max(1, Number(inventoryQty?.value || 1));
+        manualLines.push({
+            categoryName: item.category || 'Inventario',
+            serviceName: item.name || 'Item inventario',
+            description: `Item inventario (${item.unit || 'pza'})`,
+            quantity: qtyVal,
+            unitPrice: 0
+        });
+        if(inventoryQty) inventoryQty.value = '1';
+        if(inventoryItemSelect) inventoryItemSelect.value = '';
         renderCart();
     });
 
@@ -604,6 +661,7 @@
     });
 
     renderCategories();
+    fillInventorySelect();
     renderServices();
     renderSubproducts();
     renderCart();

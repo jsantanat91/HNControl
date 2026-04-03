@@ -1,0 +1,122 @@
+﻿@page
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.Sales.WorkflowModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Workflow comercial";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Workflow comercial</h1>
+        <div class="text-muted small">Lead > Cotizacion > Cierre > Contrato > Firma > Facturacion > Comision</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
+        <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
+    </div>
+</div>
+
+<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
+
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
+}
+
+<div class="alert alert-light border mb-3">
+    <b>Alcance:</b> @(Model.CanViewAll ? "Global" : "Solo tus tratos")
+    <span class="ms-2 badge text-bg-success">Hoy</span>
+    <span class="ms-1 badge text-bg-warning">Proximo</span>
+    <span class="ms-1 badge text-bg-danger">Atrasado</span>
+</div>
+
+<div class="workflow-board pb-2">
+    @foreach (var stage in Enum.GetValues<SalesWorkflowStage>())
+    {
+        var items = Model.Board.ContainsKey(stage) ? Model.Board[stage] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
+        <section class="wf-col card shadow-soft border-0">
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>@HNControl.Web.Pages.Sales.WorkflowModel.StageLabel(stage)</span>
+                <span class="badge text-bg-primary">@items.Count</span>
+            </div>
+            <div class="card-body wf-col-body">
+                @if (!items.Any())
+                {
+                    <div class="text-muted small">Sin tratos</div>
+                }
+                else
+                {
+                    foreach (var d in items)
+                    {
+                        var slaClass = d.IsOverdue ? "text-bg-danger" : d.IsToday ? "text-bg-success" : d.IsSoon ? "text-bg-warning" : "text-bg-secondary";
+                        <article class="border rounded-3 p-2 mb-2 wf-card">
+                            <div class="fw-semibold">@d.Folio</div>
+                            <div class="small">@d.Customer</div>
+                            <div class="small text-muted">Vendedor: @d.Seller</div>
+                            <div class="small text-muted">Owner: @d.Owner</div>
+                            <div class="small">Monto: <b>@d.Total.ToString("C")</b></div>
+
+                            <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                @if (d.StageDueAt.HasValue)
+                                {
+                                    <span class="badge @slaClass">SLA @d.StageDueAt.Value.ToString("yyyy-MM-dd")</span>
+                                }
+                                <span class="badge text-bg-light">@d.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")</span>
+                            </div>
+
+                            @if (Model.CanMove)
+                            {
+                                <form method="post" asp-page-handler="MoveStage" class="mt-2">
+                                    <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select" name="NewStage" asp-items="Model.StageItems"></select>
+                                        <button class="btn btn-outline-primary" type="submit">Mover</button>
+                                    </div>
+                                </form>
+                            }
+
+                            @if (Model.CanAssign)
+                            {
+                                <form method="post" asp-page-handler="Assign" class="mt-2">
+                                    <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                    <select class="form-select form-select-sm mb-1" name="AssignSellerProfileId" asp-items="Model.SellerItems">
+                                        <option value="">-- vendedor --</option>
+                                    </select>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select" name="AssignOwnerUserId" asp-items="Model.OwnerItems">
+                                            <option value="">-- owner --</option>
+                                        </select>
+                                        <button class="btn btn-outline-dark" type="submit">Asignar</button>
+                                    </div>
+                                </form>
+                            }
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    .workflow-board {
+        display: grid;
+        grid-template-columns: repeat(9, minmax(260px, 1fr));
+        gap: .75rem;
+        overflow-x: auto;
+    }
+
+    .wf-col {
+        min-height: 380px;
+    }
+
+    .wf-col-body {
+        max-height: 72vh;
+        overflow-y: auto;
+    }
+
+    .wf-card {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+</style>

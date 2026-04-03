@@ -15,6 +15,7 @@ public class CreateModel : PageModel
     public CreateModel(ApplicationDbContext db) => _db = db;
 
     public List<ModuleOption> Modules { get; set; } = new();
+    public List<ModuleOption> Actions { get; set; } = new();
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -37,12 +38,14 @@ public class CreateModel : PageModel
         public bool IsActive { get; set; } = true;
 
         public List<string> SelectedModules { get; set; } = new();
+        public List<string> SelectedActions { get; set; } = new();
     }
 
     public void OnGet()
     {
         LoadModules();
         Input.SelectedModules = AppModules.EmployeeDefaults.ToList();
+        Input.SelectedActions = AppActions.EmployeeDefaults.ToList();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -88,6 +91,20 @@ public class CreateModel : PageModel
             });
         }
 
+        var selectedActions = Input.SelectedActions
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var key in selectedActions)
+        {
+            _db.PermissionRoleActions.Add(new PermissionRoleAction
+            {
+                PermissionRoleId = role.Id,
+                ActionKey = key.Trim()
+            });
+        }
+
         _db.PermissionRoles.Add(role);
         await _db.SaveChangesAsync();
 
@@ -98,6 +115,10 @@ public class CreateModel : PageModel
     {
         Modules = AppModules.AllKnown
             .Select(k => new ModuleOption { Key = k, Label = AppModules.Label(k) })
+            .ToList();
+
+        Actions = AppActions.AllKnown
+            .Select(k => new ModuleOption { Key = k, Label = AppActions.Label(k) })
             .ToList();
     }
 }

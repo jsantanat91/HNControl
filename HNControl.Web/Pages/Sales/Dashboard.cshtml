@@ -1,0 +1,194 @@
+﻿@page
+@model HNControl.Web.Pages.Sales.DashboardModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Dashboard comercial";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Dashboard comercial</h1>
+        <div class="text-muted small">Embudo, tasa de cierre, ticket promedio y comision proyectada.</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="/Ventas/Workflow">Workflow</a>
+        <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
+        @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+        {
+            <a class="btn btn-outline-dark" href="/Ventas/Plantillas">Plantillas</a>
+        }
+    </div>
+</div>
+
+<partial name="/Pages/Sales/_SalesSubmenu.cshtml" />
+
+<div class="alert alert-info py-2 mb-3">
+    <b>Alcance:</b>
+    @(Model.IsOwnScope ? "solo tus oportunidades" : "vista global")
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft h-100 border-0 bg-primary-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Leads abiertos</div>
+                <div class="fs-3 fw-bold">@Model.LeadsOpen</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft h-100 border-0 bg-success-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Cierre ganado</div>
+                <div class="fs-3 fw-bold">@Model.ClosedWon</div>
+                <div class="small text-muted">@Model.CloseRate.ToString("0.##")% tasa de cierre</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft h-100 border-0 bg-warning-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Ticket promedio</div>
+                <div class="fs-3 fw-bold">@Model.AvgTicket.ToString("C")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-soft h-100 border-0 bg-info-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Comision proyectada</div>
+                <div class="fs-3 fw-bold">@Model.CommissionProjected.ToString("C")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-7">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Embudo comercial</div>
+            <div class="card-body">
+                <canvas id="funnelChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-5">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Top vendedores (monto)</div>
+            <div class="card-body">
+                <canvas id="sellerChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Detalle por vendedor</div>
+            <div class="card-body">
+                @if (!Model.Sellers.Any())
+                {
+                    <div class="text-muted small">Sin datos.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Vendedor</th>
+                                    <th>Tratos</th>
+                                    <th>Monto</th>
+                                    <th>Comision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var s in Model.Sellers)
+                            {
+                                <tr>
+                                    <td>@s.Seller</td>
+                                    <td>@s.Deals</td>
+                                    <td>@s.Amount.ToString("C")</td>
+                                    <td>@s.Commission.ToString("C")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft hn-hover h-100">
+            <div class="card-header fw-semibold">Bitacora comercial (reciente)</div>
+            <div class="card-body">
+                @if (!Model.RecentAudit.Any())
+                {
+                    <div class="text-muted small">Sin actividad reciente.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var a in Model.RecentAudit)
+                        {
+                            <div class="border rounded-3 p-2">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <span class="fw-semibold">@a.EventType</span>
+                                    <span class="small text-muted">@a.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                                </div>
+                                <div class="small">@a.Details</div>
+                                <div class="small text-muted">Por: @a.UserName</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const funnelLabels = @Html.Raw(Model.FunnelLabelsJson);
+    const funnelValues = @Html.Raw(Model.FunnelValuesJson);
+    const sellerLabels = @Html.Raw(Model.SellerLabelsJson);
+    const sellerValues = @Html.Raw(Model.SellerValuesJson);
+
+    const funnelCtx = document.getElementById('funnelChart');
+    if (funnelCtx && funnelLabels.length) {
+        new Chart(funnelCtx, {
+            type: 'bar',
+            data: {
+                labels: funnelLabels,
+                datasets: [{
+                    label: 'Oportunidades',
+                    data: funnelValues,
+                    borderWidth: 0,
+                    borderRadius: 8,
+                    backgroundColor: ['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#ef4444','#14b8a6','#10b981','#16a34a','#6b7280']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+
+    const sellerCtx = document.getElementById('sellerChart');
+    if (sellerCtx && sellerLabels.length) {
+        new Chart(sellerCtx, {
+            type: 'doughnut',
+            data: {
+                labels: sellerLabels,
+                datasets: [{
+                    data: sellerValues,
+                    borderWidth: 1,
+                    backgroundColor: ['#2563eb','#059669','#f59e0b','#ef4444','#8b5cf6','#0ea5e9','#f43f5e','#14b8a6']
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+})();
+</script>
+}

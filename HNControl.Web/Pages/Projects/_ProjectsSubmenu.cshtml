@@ -19,11 +19,6 @@
         <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Delivery") ? "project-sub-btn-active" : "project-sub-btn-delivery")"
            asp-page="/Projects/Delivery/Index">Formato de entrega</a>
 
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Sales") ? "project-sub-btn-active" : "project-sub-btn-sales")"
-           asp-page="/Projects/Sales/Index">Ventas</a>
-
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Billing") ? "project-sub-btn-active" : "project-sub-btn-billing")"
-           asp-page="/Projects/Billing/Index">Facturacion</a>
     </div>
 </div>
 
@@ -57,18 +52,6 @@
         border-color: #b45309;
         color: #92400e;
         background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(251,191,36,.10));
-    }
-
-    .project-sub-btn-sales {
-        border-color: #be123c;
-        color: #9f1239;
-        background: linear-gradient(135deg, rgba(244,63,94,.20), rgba(251,113,133,.10));
-    }
-
-    .project-sub-btn-billing {
-        border-color: #1d4ed8;
-        color: #1e3a8a;
-        background: linear-gradient(135deg, rgba(14,116,144,.20), rgba(59,130,246,.11));
     }
 
     .project-sub-btn-active {

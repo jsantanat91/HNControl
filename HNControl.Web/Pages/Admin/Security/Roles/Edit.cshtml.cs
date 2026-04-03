@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,6 +26,7 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
         public InputModel Input { get; set; } = new();
 
         public List<SelectListItem> ModuleOptions { get; set; } = new();
+        public List<SelectListItem> ActionOptions { get; set; } = new();
 
         public class InputModel
         {
@@ -34,9 +35,8 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
             public string Description { get; set; } = "";
             public bool IsDefault { get; set; }
             public bool IsActive { get; set; } = true;
-
-            // keys posteadas del checklist
             public List<string> SelectedModules { get; set; } = new();
+            public List<string> SelectedActions { get; set; } = new();
         }
 
         public async Task<IActionResult> OnGetAsync(Guid id)
@@ -53,6 +53,12 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
                 .Select(x => x.ModuleKey)
                 .ToListAsync();
 
+            var roleActions = await _db.PermissionRoleActions
+                .AsNoTracking()
+                .Where(x => x.PermissionRoleId == id)
+                .Select(x => x.ActionKey)
+                .ToListAsync();
+
             Input = new InputModel
             {
                 Id = role.Id,
@@ -60,10 +66,11 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
                 Description = role.Description,
                 IsDefault = role.IsDefault,
                 IsActive = role.IsActive,
-                SelectedModules = roleModules
+                SelectedModules = roleModules,
+                SelectedActions = roleActions
             };
 
-            LoadModuleOptions();
+            LoadOptions();
             return Page();
         }
 
@@ -71,25 +78,22 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
         {
             if (!ModelState.IsValid)
             {
-                LoadModuleOptions();
+                LoadOptions();
                 return Page();
             }
 
-            // 1) Recarga tracked (esto elimina el “grafo posteado” y mata el concurrency)
             var role = await _db.PermissionRoles
                 .FirstOrDefaultAsync(x => x.Id == Input.Id);
 
             if (role == null)
-                return NotFound(); // ya no existe
+                return NotFound();
 
-            // 2) Actualiza campos simples
             role.Name = (Input.Name ?? "").Trim();
             role.Description = (Input.Description ?? "").Trim();
             role.IsDefault = Input.IsDefault;
             role.IsActive = Input.IsActive;
             role.UpdatedAt = DateTime.UtcNow;
 
-            // 3) Si lo marcaron default, baja el default de los demás
             if (role.IsDefault)
             {
                 await _db.PermissionRoles
@@ -99,26 +103,47 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
                         .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
             }
 
-            // 4) Reemplaza módulos de forma segura (NO Update(graph))
-            var wanted = (Input.SelectedModules ?? new List<string>())
+            var wantedModules = (Input.SelectedModules ?? new List<string>())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Select(x => x.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var existing = await _db.PermissionRoleModules
+            var existingModules = await _db.PermissionRoleModules
                 .Where(x => x.PermissionRoleId == role.Id)
                 .ToListAsync();
 
-            _db.PermissionRoleModules.RemoveRange(existing);
+            _db.PermissionRoleModules.RemoveRange(existingModules);
 
-            foreach (var key in wanted)
+            foreach (var key in wantedModules)
             {
                 _db.PermissionRoleModules.Add(new PermissionRoleModule
                 {
                     Id = Guid.NewGuid(),
                     PermissionRoleId = role.Id,
                     ModuleKey = key
+                });
+            }
+
+            var wantedActions = (Input.SelectedActions ?? new List<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var existingActions = await _db.PermissionRoleActions
+                .Where(x => x.PermissionRoleId == role.Id)
+                .ToListAsync();
+
+            _db.PermissionRoleActions.RemoveRange(existingActions);
+
+            foreach (var key in wantedActions)
+            {
+                _db.PermissionRoleActions.Add(new PermissionRoleAction
+                {
+                    Id = Guid.NewGuid(),
+                    PermissionRoleId = role.Id,
+                    ActionKey = key
                 });
             }
 
@@ -130,18 +155,18 @@ namespace HNControl.Web.Pages.Admin.Security.Roles
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Si alguien lo tocó al mismo tiempo o había tracking raro, recarga y avisa
-                TempData["Error"] = "El rol cambió mientras lo editabas. Refresca y vuelve a intentar.";
+                TempData["Error"] = "El rol cambiÃ³ mientras lo editabas. Refresca y vuelve a intentar.";
                 return RedirectToPage("./Edit", new { id = Input.Id });
             }
         }
 
-        private void LoadModuleOptions()
+        private void LoadOptions()
         {
-            // Ajusta a tu fuente real de módulos si ya la tienes en un helper.
-            // Aquí asumo que tienes AppModules.All o algo parecido; si no, deja hardcode.
-            var all = AppModules.All; // List<(string Key, string Label)>
-            ModuleOptions = all.Select(m => new SelectListItem(m.Label, m.Key)).ToList();
+            var allModules = AppModules.All;
+            ModuleOptions = allModules.Select(m => new SelectListItem(m.Label, m.Key)).ToList();
+
+            var allActions = AppActions.AllKnown.Select(k => (Key: k, Label: AppActions.Label(k))).ToList();
+            ActionOptions = allActions.Select(a => new SelectListItem(a.Label, a.Key)).ToList();
         }
     }
 }

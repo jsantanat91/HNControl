@@ -13,6 +13,8 @@ namespace HNControl.Web.Pages.Clients.Services;
 [Authorize(Roles = AppRoles.Admin)]
 public class CreateModel : PageModel
 {
+    private const string ServicePackageMarker = "INV_SERVICE_PACKAGE";
+
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly ISecretProtector _protector;
@@ -34,6 +36,7 @@ public class CreateModel : PageModel
         new(Enum.GetValues<ClientServiceType>().Select(x => new { Id = x, Name = x.ToString() }), "Id", "Name");
 
     public SelectList ProjectItems { get; set; } = default!;
+    public SelectList ServicePackageItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
@@ -41,6 +44,8 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        public Guid? ServicePackageId { get; set; }
+
         [Required] public ClientServiceType ServiceType { get; set; } = ClientServiceType.Internet;
 
         [Required, MaxLength(200)]
@@ -101,6 +106,7 @@ public class CreateModel : PageModel
         ClientName = client.Name;
         ClientCode = client.ClientCode;
         await LoadProjectsAsync();
+        await LoadServicePackagesAsync();
 
         if (Input.ContractStartDate == null)
             Input.ContractStartDate = DateTime.Today;
@@ -129,15 +135,42 @@ public class CreateModel : PageModel
         ClientName = client.Name;
         ClientCode = client.ClientCode;
         await LoadProjectsAsync();
+        await LoadServicePackagesAsync();
+
+        if (Input.ServicePackageId.HasValue && string.IsNullOrWhiteSpace(Input.Label))
+        {
+            var packageName = await _db.QuoteCatalogItems
+                .AsNoTracking()
+                .Where(x => x.Id == Input.ServicePackageId.Value && x.VariantGroup == ServicePackageMarker)
+                .Select(x => x.Name)
+                .FirstOrDefaultAsync();
+            if (!string.IsNullOrWhiteSpace(packageName))
+            {
+                Input.Label = packageName;
+                ModelState.Remove("Input.Label");
+            }
+        }
 
         if (!ModelState.IsValid) return Page();
+
+        QuoteCatalogItem? selectedPackage = null;
+        if (Input.ServicePackageId.HasValue)
+        {
+            selectedPackage = await _db.QuoteCatalogItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == Input.ServicePackageId.Value && x.VariantGroup == ServicePackageMarker);
+        }
+
+        var serviceType = Input.ServiceType;
+        if (selectedPackage != null && Enum.TryParse<ClientServiceType>(selectedPackage.VariantValue, true, out var parsedType))
+            serviceType = parsedType;
 
         var contract = new ClientServiceContract
         {
             ClientId = ClientId,
             ProjectId = Input.ProjectId,
-            ServiceType = Input.ServiceType,
-            Label = (Input.Label ?? "").Trim(),
+            ServiceType = serviceType,
+            Label = string.IsNullOrWhiteSpace(Input.Label) && selectedPackage != null ? selectedPackage.Name : (Input.Label ?? "").Trim(),
             Provider = (Input.Provider ?? "").Trim(),
             AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? client.ClientCode : Input.AccountNumber.Trim(),
             ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber)
@@ -149,7 +182,7 @@ public class CreateModel : PageModel
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = (Input.Notes ?? "").Trim(),
-            MonthlyAmount = Input.MonthlyAmount,
+            MonthlyAmount = Input.MonthlyAmount ?? selectedPackage?.UnitPrice,
             Branch = (Input.Branch ?? "").Trim(),
             BranchAddress = (Input.BranchAddress ?? "").Trim(),
             CreatedAt = DateTime.UtcNow,
@@ -215,5 +248,21 @@ public class CreateModel : PageModel
             .ToListAsync();
 
         ProjectItems = new SelectList(projs, "Id", "Title");
+    }
+
+    private async Task LoadServicePackagesAsync()
+    {
+        var rows = await _db.QuoteCatalogItems
+            .AsNoTracking()
+            .Where(x => x.VariantGroup == ServicePackageMarker && x.NodeType == QuoteNodeType.Service && x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new
+            {
+                x.Id,
+                Label = x.Name + (x.UnitPrice.HasValue ? $" · {x.UnitPrice.Value.ToString("C2")}" : " · Precio manual")
+            })
+            .ToListAsync();
+
+        ServicePackageItems = new SelectList(rows, "Id", "Label");
     }
 }

@@ -13,47 +13,12 @@ namespace HNControl.Web.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "BillingEmail",
-                table: "Clients",
-                type: "character varying(256)",
-                maxLength: 256,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "BusinessLine",
-                table: "Clients",
-                type: "character varying(180)",
-                maxLength: 180,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "FiscalAddress",
-                table: "Clients",
-                type: "character varying(400)",
-                maxLength: 400,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "LegalEmail",
-                table: "Clients",
-                type: "character varying(256)",
-                maxLength: 256,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "LegalPosition",
-                table: "Clients",
-                type: "character varying(120)",
-                maxLength: 120,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "LegalRepresentative",
-                table: "Clients",
-                type: "character varying(160)",
-                maxLength: 160,
-                nullable: true);
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""BillingEmail"" character varying(256);");
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""BusinessLine"" character varying(180);");
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""FiscalAddress"" character varying(400);");
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""LegalEmail"" character varying(256);");
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""LegalPosition"" character varying(120);");
+            migrationBuilder.Sql(@"ALTER TABLE ""Clients"" ADD COLUMN IF NOT EXISTS ""LegalRepresentative"" character varying(160);");
 
             migrationBuilder.CreateTable(
                 name: "ClientLegalDocuments",

@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Security.Roles.EditModel
 @{
     ViewData["Title"] = "Editar rol de permisos";
@@ -8,7 +8,7 @@
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h2 class="mb-0">@ViewData["Title"]</h2>
-            <div class="text-muted">Ajusta módulos, estado y parámetros del rol.</div>
+            <div class="text-muted">Ajusta modulos, acciones y estado del rol.</div>
         </div>
         <a class="btn btn-outline-secondary" asp-page="./Index">Volver</a>
     </div>
@@ -36,13 +36,13 @@
                 <div class="col-md-6">
                     <label class="form-label">Activo</label>
                     <select class="form-select" asp-for="Input.IsActive">
-                        <option value="true">Sí</option>
+                        <option value="true">Si</option>
                         <option value="false">No</option>
                     </select>
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Descripción</label>
+                    <label class="form-label">Descripcion</label>
                     <textarea class="form-control" asp-for="Input.Description" rows="2" maxlength="400"></textarea>
                     <span class="text-danger small" asp-validation-for="Input.Description"></span>
                 </div>
@@ -52,18 +52,18 @@
                         <input class="form-check-input" type="checkbox" asp-for="Input.IsDefault" />
                         <label class="form-check-label" asp-for="Input.IsDefault">Rol por defecto (empleados nuevos)</label>
                     </div>
-                    <div class="text-muted small">Si lo marcas como default, se desmarca automáticamente en los demás.</div>
+                    <div class="text-muted small">Si lo marcas como default, se desmarca automaticamente en los demas.</div>
                 </div>
             </div>
 
             <hr class="my-4" />
 
             <div class="d-flex align-items-center justify-content-between mb-2">
-                <h5 class="mb-0">Módulos permitidos</h5>
-                <div class="text-muted small">Marca lo que el empleado podrá ver/usar.</div>
+                <h5 class="mb-0">Modulos permitidos</h5>
+                <div class="text-muted small">Marca lo que el empleado podra ver/usar.</div>
             </div>
 
-            <div class="row g-2">
+            <div class="row g-2 mb-3">
                 @foreach (var opt in Model.ModuleOptions)
                 {
                     var key = opt.Value ?? "";
@@ -74,6 +74,33 @@
                             <input class="form-check-input m-0"
                                    type="checkbox"
                                    name="Input.SelectedModules"
+                                   value="@key"
+                                   @(isChecked ? "checked" : "") />
+                            <div class="d-flex flex-column">
+                                <span class="fw-semibold">@opt.Text</span>
+                                <span class="text-muted small">@key</span>
+                            </div>
+                        </label>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="mb-0">Permisos por accion</h5>
+                <div class="text-muted small">Control fino por accion del flujo comercial y facturacion.</div>
+            </div>
+
+            <div class="row g-2">
+                @foreach (var opt in Model.ActionOptions)
+                {
+                    var key = opt.Value ?? "";
+                    var isChecked = Model.Input.SelectedActions?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
+
+                    <div class="col-12 col-md-6">
+                        <label class="d-flex align-items-center gap-2 border rounded-3 p-2 role-action-item" style="cursor:pointer;">
+                            <input class="form-check-input m-0"
+                                   type="checkbox"
+                                   name="Input.SelectedActions"
                                    value="@key"
                                    @(isChecked ? "checked" : "") />
                             <div class="d-flex flex-column">
@@ -98,9 +125,8 @@
 }
 
 <style>
-    .role-module-item:hover {
+    .role-module-item:hover, .role-action-item:hover {
         box-shadow: 0 .25rem .75rem rgba(0,0,0,.08);
         transition: box-shadow .15s ease-in-out;
     }
 </style>
-

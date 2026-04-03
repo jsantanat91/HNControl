@@ -11,6 +11,19 @@ public enum SalesOpportunityStatus
     CommissionApplied = 5
 }
 
+public enum SalesWorkflowStage
+{
+    Lead = 1,
+    Quotation = 2,
+    Closing = 3,
+    Contract = 4,
+    Signature = 5,
+    Billing = 6,
+    Commission = 7,
+    ClosedWon = 8,
+    ClosedLost = 9
+}
+
 public class SalesSellerProfile
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -48,6 +61,13 @@ public class SalesOpportunity
     public DateTime? ContractSignedAt { get; set; }
 
     public Guid? BonusDeductionId { get; set; }
+
+    public SalesWorkflowStage WorkflowStage { get; set; } = SalesWorkflowStage.Lead;
+    public DateTime StageChangedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? StageDueAt { get; set; }
+
+    [MaxLength(64)]
+    public string? OwnerUserId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
