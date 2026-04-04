@@ -243,6 +243,7 @@ using (var scope = app.Services.CreateScope())
 
     var db = services.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
+    await EnsureQuoteSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
@@ -360,4 +361,59 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
 
     // Permisos de módulos (rol default + asignación automática)
     await SeedModulePermissions.EnsureAsync(db, userMgr);
+}
+
+static async Task EnsureQuoteSchemaAsync(ApplicationDbContext db)
+{
+    await db.Database.ExecuteSqlRawAsync("""
+DO $$
+DECLARE
+    quote_requests_table text;
+    quote_request_lines_table text;
+BEGIN
+    quote_requests_table := COALESCE(
+        to_regclass('public."QuoteRequests"')::text,
+        to_regclass('public."quoterequests"')::text
+    );
+
+    IF quote_requests_table IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = trim(both '"' from split_part(quote_requests_table, '.', 2))
+              AND column_name = 'GeneralTerms'
+        ) THEN
+            EXECUTE format('ALTER TABLE %s ADD COLUMN "GeneralTerms" character varying(4000);', quote_requests_table);
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = trim(both '"' from split_part(quote_requests_table, '.', 2))
+              AND column_name = 'ContractTermMonths'
+        ) THEN
+            EXECUTE format('ALTER TABLE %s ADD COLUMN "ContractTermMonths" integer;', quote_requests_table);
+        END IF;
+    END IF;
+
+    quote_request_lines_table := COALESCE(
+        to_regclass('public."QuoteRequestLines"')::text,
+        to_regclass('public."quoterequestlines"')::text
+    );
+
+    IF quote_request_lines_table IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = trim(both '"' from split_part(quote_request_lines_table, '.', 2))
+              AND column_name = 'Recurrence'
+        ) THEN
+            EXECUTE format('ALTER TABLE %s ADD COLUMN "Recurrence" character varying(30);', quote_request_lines_table);
+        END IF;
+    END IF;
+END $$;
+""");
 }
