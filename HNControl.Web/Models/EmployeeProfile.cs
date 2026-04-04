@@ -10,34 +10,34 @@ public class EmployeeProfile
     public string UserId { get; set; } = default!;
 
     [MaxLength(200)]
-    public string FullName { get; set; } = "";
+    public string? FullName { get; set; }
 
     [MaxLength(256)]
-    public string Email { get; set; } = "";
+    public string? Email { get; set; }
 
     [MaxLength(40)]
-    public string Phone { get; set; } = "";
+    public string? Phone { get; set; }
 
     [MaxLength(20)]
-    public string Nss { get; set; } = "";
+    public string? Nss { get; set; }
 
     // Guardamos "Gender" (pero varias pantallas usan "Sex")
     [MaxLength(20)]
-    public string Gender { get; set; } = "";
+    public string? Gender { get; set; }
 
     // ✅ Alias para pantallas/handlers viejos que usan Sex
     [NotMapped]
     public string Sex
     {
-        get => Gender;
-        set => Gender = value ?? "";
+        get => Gender ?? "";
+        set => Gender = value;
     }
 
     [MaxLength(120)]
-    public string Position { get; set; } = "";
+    public string? Position { get; set; }
 
     [MaxLength(120)]
-    public string EducationLevel { get; set; } = "";
+    public string? EducationLevel { get; set; }
 
     // --- Datos adicionales (RH) ---
 
@@ -49,48 +49,48 @@ public class EmployeeProfile
 
     // CURP (MX)
     [MaxLength(18)]
-    public string Curp { get; set; } = "";
+    public string? Curp { get; set; }
 
     // RFC (MX, para nomina timbrada futura)
     [MaxLength(13)]
-    public string Rfc { get; set; } = "";
+    public string? Rfc { get; set; }
 
     [MaxLength(10)]
-    public string PostalCode { get; set; } = "";
+    public string? PostalCode { get; set; }
 
     [MaxLength(30)]
-    public string EmployeeNumber { get; set; } = "";
+    public string? EmployeeNumber { get; set; }
 
     [MaxLength(3)]
-    public string SatContractTypeCode { get; set; } = "";
+    public string? SatContractTypeCode { get; set; }
 
     [MaxLength(3)]
-    public string SatWorkdayTypeCode { get; set; } = "";
+    public string? SatWorkdayTypeCode { get; set; }
 
     [MaxLength(3)]
-    public string SatJobRiskCode { get; set; } = "";
+    public string? SatJobRiskCode { get; set; }
 
     [MaxLength(120)]
-    public string BankName { get; set; } = "";
+    public string? BankName { get; set; }
 
     [MaxLength(30)]
-    public string BankAccount { get; set; } = "";
+    public string? BankAccount { get; set; }
 
     [MaxLength(18)]
-    public string BankClabe { get; set; } = "";
+    public string? BankClabe { get; set; }
 
     [MaxLength(500)]
-    public string ProfilePhotoStoragePath { get; set; } = "";
+    public string? ProfilePhotoStoragePath { get; set; }
 
     [MaxLength(120)]
-    public string ProfilePhotoContentType { get; set; } = "";
+    public string? ProfilePhotoContentType { get; set; }
 
     [MaxLength(255)]
-    public string ProfilePhotoOriginalFileName { get; set; } = "";
+    public string? ProfilePhotoOriginalFileName { get; set; }
 
     // Dirección
     [MaxLength(400)]
-    public string Address { get; set; } = "";
+    public string? Address { get; set; }
 
     // Sueldo base (lo usamos para cálculo 80/20)
     public decimal SalaryBase { get; set; } = 0m;

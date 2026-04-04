@@ -339,8 +339,8 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
         await userMgr.AddToRoleAsync(adminUser, AppRoles.Admin);
 
     // Perfil admin (1:1)
-    var profile = await db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == adminUser.Id);
-    if (profile == null)
+    var profileExists = await db.EmployeeProfiles.AnyAsync(x => x.UserId == adminUser.Id);
+    if (!profileExists)
     {
         db.EmployeeProfiles.Add(new EmployeeProfile
         {
