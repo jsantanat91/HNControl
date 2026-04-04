@@ -14,10 +14,12 @@ namespace HNControl.Web.Pages.Admin.Employees;
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
 
-    public DetailsModel(ApplicationDbContext db)
+    public DetailsModel(ApplicationDbContext db, IFileStorage storage)
     {
         _db = db;
+        _storage = storage;
     }
 
     public string UserId { get; set; } = default!;
@@ -115,6 +117,31 @@ public class DetailsModel : PageModel
         await LoadVacationsAndExamsAsync(userId);
 
         return Page();
+    }
+
+    public async Task<IActionResult> OnGetPhotoAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return NotFound();
+
+        var p = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => new { x.ProfilePhotoStoragePath, x.ProfilePhotoOriginalFileName })
+            .FirstOrDefaultAsync();
+
+        if (p == null || string.IsNullOrWhiteSpace(p.ProfilePhotoStoragePath))
+            return NotFound();
+
+        try
+        {
+            var name = string.IsNullOrWhiteSpace(p.ProfilePhotoOriginalFileName) ? "foto_empleado" : p.ProfilePhotoOriginalFileName;
+            var (stream, contentType, _) = await _storage.OpenAsync(p.ProfilePhotoStoragePath, name);
+            return File(stream, contentType);
+        }
+        catch
+        {
+            return NotFound();
+        }
     }
 
     private void BuildMonthItems(string selected)

@@ -167,6 +167,8 @@ public class QuoteModel : PageModel
             CustomerLocation = Input.CustomerLocation.Trim(),
             CompanyName = string.IsNullOrWhiteSpace(Input.CompanyName) ? null : Input.CompanyName.Trim(),
             Notes = string.IsNullOrWhiteSpace(Input.Notes) ? null : Input.Notes.Trim(),
+            GeneralTerms = string.IsNullOrWhiteSpace(Input.GeneralTerms) ? null : Input.GeneralTerms.Trim(),
+            ContractTermMonths = Input.ContractTermMonths is 12 or 18 or 24 or 36 ? Input.ContractTermMonths : null,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -226,7 +228,8 @@ public class QuoteModel : PageModel
                 ItemImageUrl = selected.ImageUrl,
                 BaseAmount = manual ? null : baseAmount,
                 VatAmount = manual ? null : vatAmount,
-                LineTotal = lineTotal
+                LineTotal = lineTotal,
+                Recurrence = DefaultRecurrenceForOffer(selected.OfferType)
             });
         }
 
@@ -270,6 +273,8 @@ public class QuoteModel : PageModel
                     BaseAmount = null,
                     VatAmount = null,
                     LineTotal = null
+                    ,
+                    Recurrence = NormalizeRecurrence(m.Recurrence)
                 });
             }
         }
@@ -409,6 +414,8 @@ public class QuoteModel : PageModel
         public string CustomerLocation { get; set; } = string.Empty;
         public string? CompanyName { get; set; }
         public string? Notes { get; set; }
+        public string? GeneralTerms { get; set; }
+        public int? ContractTermMonths { get; set; }
     }
 
     public class LinePickVm
@@ -426,6 +433,26 @@ public class QuoteModel : PageModel
         public string Description { get; set; } = "";
         public int Quantity { get; set; } = 1;
         public decimal? UnitPrice { get; set; }
+        public string? Recurrence { get; set; }
+    }
+
+    private static string DefaultRecurrenceForOffer(QuoteOfferType offerType) => offerType switch
+    {
+        QuoteOfferType.MonthlyRent => "Mensual",
+        QuoteOfferType.Lease => "Mensual",
+        _ => "Unica"
+    };
+
+    private static string NormalizeRecurrence(string? recurrence)
+    {
+        return (recurrence ?? "").Trim().ToLowerInvariant() switch
+        {
+            "semanal" => "Semanal",
+            "mensual" => "Mensual",
+            "anual" => "Anual",
+            "otro" => "Otro",
+            _ => "Unica"
+        };
     }
 
     private async Task<Client?> TryLoadClientContextAsync(string? token)

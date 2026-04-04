@@ -110,6 +110,9 @@ public class QuoteRequest
 
     [MaxLength(1200)]
     public string? Notes { get; set; }
+    [MaxLength(4000)]
+    public string? GeneralTerms { get; set; }
+    public int? ContractTermMonths { get; set; }
 
     public decimal SubtotalAuto { get; set; }
     public decimal SubtotalBeforeVat { get; set; }
@@ -157,6 +160,8 @@ public class QuoteRequestLine
     public bool IsManualPrice { get; set; }
     public decimal? LineTotal { get; set; }
     public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+    [MaxLength(30)]
+    public string? Recurrence { get; set; }
 
     [MaxLength(600)]
     public string? ItemImageUrl { get; set; }

@@ -9,6 +9,14 @@
     var path = Context?.Request?.Path.Value ?? "";
     string Active(string startsWith)
         => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    var isSalesPath = path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase);
+    var isSystemPath = path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase);
+    var isSystemConfigPath = path.StartsWith("/Admin/System/Configuration", StringComparison.OrdinalIgnoreCase);
+    var isSystemBackupPath = path.StartsWith("/Admin/System/Backup", StringComparison.OrdinalIgnoreCase);
+    var isSecurityPath = path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase);
 
     // Permisos por m&oacute;dulo (solo aplica a Employees). Admin bypass.
     var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -143,7 +151,7 @@
                         <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                         <span class="hn-side-text">Tickets</span>
                     </a>
-                    <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
+                    <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")">
                             <span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span>
                             <span class="hn-side-text">Ventas</span>
@@ -168,15 +176,15 @@
                         <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
                         <span class="hn-side-text">Ex&aacute;menes</span>
                     </a>
-                    <details class="hn-side-group" @((path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                    <details class="hn-side-group" @(isSystemPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Admin/System")">
                             <span class="hn-side-icon"><i class="bi bi-database"></i></span>
                             <span class="hn-side-text">Sistema</span>
                         </summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Admin/System/Configuration")" asp-page="/Admin/System/Configuration">Configuración</a>
-                            <a class="hn-side-sublink @Active("/Admin/System")" asp-page="/Admin/System/Backup">Respaldo DB</a>
-                            <a class="hn-side-sublink @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
+                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuración</a>
+                            <a class="hn-side-sublink @(isSystemBackupPath ? "active" : "")" asp-page="/Admin/System/Backup">Respaldo DB</a>
+                            <a class="hn-side-sublink @(isSecurityPath ? "active" : "")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
                         </div>
                     </details>
                 }
@@ -196,7 +204,7 @@
                     }
                     @if (Has(HNControl.Web.Models.AppModules.Sales))
                     {
-                        <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
+                        <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")">
                                 <span class="hn-side-icon"><i class="bi bi-funnel"></i></span>
                                 <span class="hn-side-text">Ventas</span>
@@ -445,7 +453,7 @@
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a>
-                    <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
+                    <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
@@ -458,12 +466,12 @@
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a>
-                    <details class="hn-side-group" @((path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase)) ? "open" : "")>
+                    <details class="hn-side-group" @(isSystemPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Admin/System")"><span class="hn-side-icon"><i class="bi bi-database"></i></span><span class="hn-side-text">Sistema</span></summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Admin/System/Configuration")" asp-page="/Admin/System/Configuration">Configuración</a>
-                            <a class="hn-side-sublink @Active("/Admin/System")" asp-page="/Admin/System/Backup">Respaldo DB</a>
-                            <a class="hn-side-sublink @Active("/Admin/Security")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
+                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuración</a>
+                            <a class="hn-side-sublink @(isSystemBackupPath ? "active" : "")" asp-page="/Admin/System/Backup">Respaldo DB</a>
+                            <a class="hn-side-sublink @(isSecurityPath ? "active" : "")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
                         </div>
                     </details>
                 }
@@ -474,7 +482,7 @@
                     { <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a> }
                     @if (Has(HNControl.Web.Models.AppModules.Sales))
                     {
-                        <details class="hn-side-group" @(path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
+                        <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
                                 @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))

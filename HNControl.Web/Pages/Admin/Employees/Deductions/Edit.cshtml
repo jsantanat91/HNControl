@@ -219,13 +219,13 @@
                 const mode = modeEl ? parseInt(modeEl.value || '1', 10) : 1;
                 const freq = freqEl ? parseInt(freqEl.value || '1', 10) : 1;
                 const type = typeEl ? parseInt(typeEl.value || '99', 10) : 99;
+                if (type === 5 && directionEl) directionEl.value = '2';
                 const direction = directionEl ? parseInt(directionEl.value || '1', 10) : 1;
                 const isBonus = direction === 2;
                 const isSingleDeductType = !isBonus && (type === 1 || type === 3 || type === 4 || type === 99);
 
                 if (isBonus) {
                     if (modeEl) modeEl.value = '1';
-                    if (typeEl) typeEl.value = '99';
                     if (freqEl) freqEl.value = '1';
                     if (applyEl) applyEl.value = '';
                     if (termEl) termEl.value = '';
@@ -253,7 +253,7 @@
                 const isLoan = !isBonus && type === 2;
                 setSection(wrapLoan, isLoan);
                 setSection(wrapTerm, isLoan);
-                setSection(wrapType, !isBonus);
+                setSection(wrapType, true);
                 setSection(wrapStartDate, !isBonus && !isSingleDeductType);
 
                 const hasTerm = isLoan && termEl && termEl.value && parseInt(termEl.value || '0', 10) > 0;

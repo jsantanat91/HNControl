@@ -4,6 +4,7 @@ using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -17,11 +18,13 @@ public class EditModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IFileStorage _storage;
 
-    public EditModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+    public EditModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IFileStorage storage)
     {
         _db = db;
         _userManager = userManager;
+        _storage = storage;
     }
 
     public EmployeeProfile? Employee { get; set; }
@@ -43,6 +46,16 @@ public class EditModel : PageModel
         [MaxLength(20)] public string? Nss { get; set; }
 
         [MaxLength(18)] public string? Curp { get; set; }
+        [MaxLength(13)] public string? Rfc { get; set; }
+        [MaxLength(10)] public string? PostalCode { get; set; }
+        [MaxLength(120)] public string? EducationLevel { get; set; }
+        [MaxLength(30)] public string? EmployeeNumber { get; set; }
+        [MaxLength(3)] public string? SatContractTypeCode { get; set; }
+        [MaxLength(3)] public string? SatWorkdayTypeCode { get; set; }
+        [MaxLength(3)] public string? SatJobRiskCode { get; set; }
+        [MaxLength(120)] public string? BankName { get; set; }
+        [MaxLength(30)] public string? BankAccount { get; set; }
+        [MaxLength(18)] public string? BankClabe { get; set; }
         [MaxLength(400)] public string? Address { get; set; }
 
         [DataType(DataType.Date)] public DateTime? BirthDate { get; set; }
@@ -57,6 +70,8 @@ public class EditModel : PageModel
 
         public Guid? PermissionRoleId { get; set; }
         public bool IsInventoryManager { get; set; }
+        public IFormFile? PhotoFile { get; set; }
+        public bool RemovePhoto { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(string userId)
@@ -81,6 +96,16 @@ public class EditModel : PageModel
             Sex = Employee.Sex,
             Nss = Employee.Nss,
             Curp = Employee.Curp,
+            Rfc = Employee.Rfc,
+            PostalCode = Employee.PostalCode,
+            EducationLevel = Employee.EducationLevel,
+            EmployeeNumber = Employee.EmployeeNumber,
+            SatContractTypeCode = Employee.SatContractTypeCode,
+            SatWorkdayTypeCode = Employee.SatWorkdayTypeCode,
+            SatJobRiskCode = Employee.SatJobRiskCode,
+            BankName = Employee.BankName,
+            BankAccount = Employee.BankAccount,
+            BankClabe = Employee.BankClabe,
             Address = Employee.Address,
             BirthDate = Employee.BirthDate,
             HireDate = Employee.HireDate,
@@ -155,6 +180,16 @@ public class EditModel : PageModel
         Employee.Sex = (Input.Sex ?? "").Trim();
         Employee.Nss = (Input.Nss ?? "").Trim();
         Employee.Curp = (Input.Curp ?? "").Trim().ToUpperInvariant();
+        Employee.Rfc = (Input.Rfc ?? "").Trim().ToUpperInvariant();
+        Employee.PostalCode = (Input.PostalCode ?? "").Trim();
+        Employee.EducationLevel = (Input.EducationLevel ?? "").Trim();
+        Employee.EmployeeNumber = (Input.EmployeeNumber ?? "").Trim();
+        Employee.SatContractTypeCode = (Input.SatContractTypeCode ?? "").Trim();
+        Employee.SatWorkdayTypeCode = (Input.SatWorkdayTypeCode ?? "").Trim();
+        Employee.SatJobRiskCode = (Input.SatJobRiskCode ?? "").Trim();
+        Employee.BankName = (Input.BankName ?? "").Trim();
+        Employee.BankAccount = (Input.BankAccount ?? "").Trim();
+        Employee.BankClabe = (Input.BankClabe ?? "").Trim();
         Employee.Address = (Input.Address ?? "").Trim();
         Employee.BirthDate = Input.BirthDate;
         Employee.HireDate = Input.HireDate;
@@ -166,6 +201,30 @@ public class EditModel : PageModel
         Employee.VacationAllowanceDays = vacDays2;
         Employee.Email = Input.Email.Trim();
         Employee.UpdatedAt = DateTime.UtcNow;
+
+        if (Input.RemovePhoto)
+        {
+            await _storage.DeleteIfExistsAsync(Employee.ProfilePhotoStoragePath);
+            Employee.ProfilePhotoStoragePath = "";
+            Employee.ProfilePhotoContentType = "";
+            Employee.ProfilePhotoOriginalFileName = "";
+        }
+        else if (Input.PhotoFile is { Length: > 0 })
+        {
+            if (!string.IsNullOrWhiteSpace(Employee.ProfilePhotoStoragePath))
+                await _storage.DeleteIfExistsAsync(Employee.ProfilePhotoStoragePath);
+
+            var (path, _, ct, originalName) = await _storage.SaveFileAsync(
+                Input.PhotoFile,
+                $"employees/{Employee.UserId}/profile",
+                $"photo_{DateTime.UtcNow:yyyyMMddHHmmss}",
+                new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                5 * 1024 * 1024);
+
+            Employee.ProfilePhotoStoragePath = path;
+            Employee.ProfilePhotoContentType = ct;
+            Employee.ProfilePhotoOriginalFileName = originalName;
+        }
 
         // Update Identity email/username
         var user = await _userManager.FindByIdAsync(Input.UserId);

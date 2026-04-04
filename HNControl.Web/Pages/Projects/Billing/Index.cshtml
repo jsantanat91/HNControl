@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">Facturación</h1>
-        <div class="text-muted small">Programación de facturas internas (sin timbrado) con recurrencia, PDF y envio.</div>
+        <div class="text-muted small">Programación, sincronización CFDI SAT, cancelación y envío con PDF.</div>
     </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
@@ -223,6 +223,7 @@
                                     <th>Periodo</th>
                                     <th>Fecha</th>
                                     <th>Status</th>
+                                    <th>CFDI SAT</th>
                                     <th>Correo</th>
                                     <th></th>
                                 </tr>
@@ -236,11 +237,43 @@
                                         <td>@r.PeriodLabel</td>
                                         <td>@r.ScheduledFor.ToString("yyyy-MM-dd")</td>
                                         <td><span class="badge @b">@r.Status</span></td>
+                                        <td>
+                                            @{
+                                                var cfdiBadge = r.CfdiStatus == nameof(BillingCfdiStatus.Vigente) ? "text-bg-success"
+                                                    : r.CfdiStatus == nameof(BillingCfdiStatus.Cancelled) ? "text-bg-danger"
+                                                    : r.CfdiStatus == nameof(BillingCfdiStatus.CancelPending) ? "text-bg-warning"
+                                                    : "text-bg-secondary";
+                                            }
+                                            <span class="badge @cfdiBadge">@r.CfdiStatus</span>
+                                            @if (!string.IsNullOrWhiteSpace(r.CfdiUuid))
+                                            {
+                                                <div class="small text-muted">UUID: @r.CfdiUuid</div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(r.SatStatusMessage))
+                                            {
+                                                <div class="small text-muted">@r.SatStatusMessage</div>
+                                            }
+                                        </td>
                                         <td>@r.Email</td>
                                         <td class="text-end">
                                             @if (r.HasPdf)
                                             {
                                                 <a class="btn btn-sm btn-outline-primary" asp-page="./Index" asp-page-handler="DownloadPdf" asp-route-runId="@r.Id">PDF</a>
+                                            }
+                                            @if (r.Status == nameof(BillingRunStatus.Sent))
+                                            {
+                                                <form method="post" asp-page-handler="SyncCfdi" class="d-inline">
+                                                    <input type="hidden" name="runId" value="@r.Id" />
+                                                    <button class="btn btn-sm btn-outline-info" type="submit">Sync CFDI</button>
+                                                </form>
+                                            }
+                                            @if (r.Status == nameof(BillingRunStatus.Sent) && r.CfdiStatus != nameof(BillingCfdiStatus.Cancelled))
+                                            {
+                                                <form method="post" asp-page-handler="CancelCfdi" class="d-inline">
+                                                    <input type="hidden" name="runId" value="@r.Id" />
+                                                    <input type="hidden" name="reasonCode" value="02" />
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar CFDI</button>
+                                                </form>
                                             }
                                         </td>
                                     </tr>

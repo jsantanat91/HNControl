@@ -42,11 +42,19 @@ else if (!isTable)
         @foreach (var r in Model.Rows)
         {
             var initials = string.Join("", (r.FullName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x.Substring(0, 1))).ToUpperInvariant();
+            var photoUrl = Url.Page("/Admin/Employees/Details", "Photo", new { userId = r.UserId });
             <div class="col d-flex">
                 <div class="card shadow-soft hn-hover w-100 hn-emp-card">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start gap-3">
-                            <div class="hn-emp-avatar">@(string.IsNullOrWhiteSpace(initials) ? "EM" : initials)</div>
+                            @if (r.HasPhoto)
+                            {
+                                <img class="hn-emp-avatar-img" src="@photoUrl" alt="Foto @r.FullName" />
+                            }
+                            else
+                            {
+                                <div class="hn-emp-avatar">@(string.IsNullOrWhiteSpace(initials) ? "EM" : initials)</div>
+                            }
                             <div class="flex-grow-1 min-w-0">
                                 <div class="fw-bold fs-5 lh-sm">@r.FullName</div>
                                 <div class="text-muted small text-truncate">@r.Email</div>
@@ -137,6 +145,15 @@ else
             font-weight: 800;
             color: #1e40af;
             background: rgba(37,99,235,.12);
+            border: 1px solid rgba(37,99,235,.25);
+            flex: 0 0 auto;
+        }
+
+        .hn-emp-avatar-img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            object-fit: cover;
             border: 1px solid rgba(37,99,235,.25);
             flex: 0 0 auto;
         }

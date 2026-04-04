@@ -16,12 +16,14 @@ public class DashboardModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IPayrollReceiptService _payrollReceipt;
     private readonly IEmailSender _emailSender;
+    private readonly IFileStorage _storage;
 
-    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender)
+    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IFileStorage storage)
     {
         _db = db;
         _payrollReceipt = payrollReceipt;
         _emailSender = emailSender;
+        _storage = storage;
     }
 
     public record KpiVm(
@@ -43,6 +45,7 @@ public class DashboardModel : PageModel
     public record PayrollSummaryVm(
         string UserId,
         string Name,
+        bool HasPhoto,
         decimal SalaryBase,
         decimal VariablePct,
         decimal Deductions,
@@ -261,7 +264,31 @@ public class DashboardModel : PageModel
         TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
     }
 
-    public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payrollYear, int? payrollMonth, int? payrollHalf)
+        public async Task<IActionResult> OnGetPayrollPhotoAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return NotFound();
+
+        var p = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => new { x.ProfilePhotoStoragePath, x.ProfilePhotoOriginalFileName })
+            .FirstOrDefaultAsync();
+
+        if (p == null || string.IsNullOrWhiteSpace(p.ProfilePhotoStoragePath))
+            return NotFound();
+
+        try
+        {
+            var name = string.IsNullOrWhiteSpace(p.ProfilePhotoOriginalFileName) ? "foto_empleado" : p.ProfilePhotoOriginalFileName;
+            var (stream, contentType, _) = await _storage.OpenAsync(p.ProfilePhotoStoragePath, name);
+            return File(stream, contentType);
+        }
+        catch
+        {
+            return NotFound();
+        }
+    }
+public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payrollYear, int? payrollMonth, int? payrollHalf)
     {
         var (selectedYear, selectedMonth, selectedHalf, selectedStart, selectedEnd) =
             ResolveSelectedPayrollPeriod(payrollYear, payrollMonth, payrollHalf);
@@ -402,6 +429,7 @@ public class DashboardModel : PageModel
             rows.Add(new PayrollSummaryVm(
                 e.UserId,
                 e.FullName,
+                !string.IsNullOrWhiteSpace(e.ProfilePhotoStoragePath),
                 e.SalaryBase,
                 vp,
                 deductions,
@@ -454,3 +482,7 @@ public class DashboardModel : PageModel
         }
     }
 }
+
+
+
+

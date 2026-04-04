@@ -36,6 +36,9 @@ public class EmployeeProfile
     [MaxLength(120)]
     public string Position { get; set; } = "";
 
+    [MaxLength(120)]
+    public string EducationLevel { get; set; } = "";
+
     // --- Datos adicionales (RH) ---
 
     // Fecha de ingreso (para calcular antigüedad)
@@ -47,6 +50,43 @@ public class EmployeeProfile
     // CURP (MX)
     [MaxLength(18)]
     public string Curp { get; set; } = "";
+
+    // RFC (MX, para nomina timbrada futura)
+    [MaxLength(13)]
+    public string Rfc { get; set; } = "";
+
+    [MaxLength(10)]
+    public string PostalCode { get; set; } = "";
+
+    [MaxLength(30)]
+    public string EmployeeNumber { get; set; } = "";
+
+    [MaxLength(3)]
+    public string SatContractTypeCode { get; set; } = "";
+
+    [MaxLength(3)]
+    public string SatWorkdayTypeCode { get; set; } = "";
+
+    [MaxLength(3)]
+    public string SatJobRiskCode { get; set; } = "";
+
+    [MaxLength(120)]
+    public string BankName { get; set; } = "";
+
+    [MaxLength(30)]
+    public string BankAccount { get; set; } = "";
+
+    [MaxLength(18)]
+    public string BankClabe { get; set; } = "";
+
+    [MaxLength(500)]
+    public string ProfilePhotoStoragePath { get; set; } = "";
+
+    [MaxLength(120)]
+    public string ProfilePhotoContentType { get; set; } = "";
+
+    [MaxLength(255)]
+    public string ProfilePhotoOriginalFileName { get; set; } = "";
 
     // Dirección
     [MaxLength(400)]

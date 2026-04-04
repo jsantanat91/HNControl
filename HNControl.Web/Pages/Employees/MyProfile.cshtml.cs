@@ -15,11 +15,13 @@ public class MyProfileModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
 
-    public MyProfileModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db)
+    public MyProfileModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db, IFileStorage storage)
     {
         _userMgr = userMgr;
         _db = db;
+        _storage = storage;
     }
 
     public EmployeeProfile? Profile { get; set; }
@@ -113,6 +115,32 @@ public class MyProfileModel : PageModel
         await LoadExamsAsync(userId);
         await LoadTicketsAsync(userId);
         await LoadKpiHistoryAsync(userId);
+    }
+
+    public async Task<IActionResult> OnGetPhotoAsync()
+    {
+        var userId = _userMgr.GetUserId(User);
+        if (string.IsNullOrWhiteSpace(userId)) return NotFound();
+
+        var p = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => new { x.ProfilePhotoStoragePath, x.ProfilePhotoOriginalFileName })
+            .FirstOrDefaultAsync();
+
+        if (p == null || string.IsNullOrWhiteSpace(p.ProfilePhotoStoragePath))
+            return NotFound();
+
+        try
+        {
+            var name = string.IsNullOrWhiteSpace(p.ProfilePhotoOriginalFileName) ? "mi_foto" : p.ProfilePhotoOriginalFileName;
+            var (stream, contentType, _) = await _storage.OpenAsync(p.ProfilePhotoStoragePath, name);
+            return File(stream, contentType);
+        }
+        catch
+        {
+            return NotFound();
+        }
     }
 
     private async Task LoadViaticosAsync(string userId)

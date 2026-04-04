@@ -38,6 +38,15 @@ public enum BillingRunStatus
     Cancelled = 3
 }
 
+public enum BillingCfdiStatus
+{
+    Pending = 1,
+    Vigente = 2,
+    CancelPending = 3,
+    Cancelled = 4,
+    Unknown = 99
+}
+
 public class BillingInvoicePlan
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -127,6 +136,24 @@ public class BillingInvoiceRun
 
     [MaxLength(1200)]
     public string? ErrorMessage { get; set; }
+
+    [MaxLength(60)]
+    public string CfdiUuid { get; set; } = "";
+
+    public BillingCfdiStatus CfdiStatus { get; set; } = BillingCfdiStatus.Pending;
+
+    [MaxLength(40)]
+    public string CancelReasonCode { get; set; } = "";
+
+    [MaxLength(1200)]
+    public string SatStatusMessage { get; set; } = "";
+
+    [MaxLength(120)]
+    public string PacTrackingId { get; set; } = "";
+
+    public DateTime? LastSyncAt { get; set; }
+    public DateTime? CancellationRequestedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

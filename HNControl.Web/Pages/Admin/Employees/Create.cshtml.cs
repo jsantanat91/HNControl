@@ -3,6 +3,7 @@ using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -17,11 +18,13 @@ public class CreateModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly ApplicationDbContext _db;
+    private readonly IFileStorage _storage;
 
-    public CreateModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db)
+    public CreateModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db, IFileStorage storage)
     {
         _userMgr = userMgr;
         _db = db;
+        _storage = storage;
     }
 
     [BindProperty]
@@ -41,6 +44,16 @@ public class CreateModel : PageModel
         public string Phone { get; set; } = "";
 
         [MaxLength(18)] public string Curp { get; set; } = "";
+        [MaxLength(13)] public string Rfc { get; set; } = "";
+        [MaxLength(10)] public string PostalCode { get; set; } = "";
+        [MaxLength(120)] public string EducationLevel { get; set; } = "";
+        [MaxLength(30)] public string EmployeeNumber { get; set; } = "";
+        [MaxLength(3)] public string SatContractTypeCode { get; set; } = "";
+        [MaxLength(3)] public string SatWorkdayTypeCode { get; set; } = "";
+        [MaxLength(3)] public string SatJobRiskCode { get; set; } = "";
+        [MaxLength(120)] public string BankName { get; set; } = "";
+        [MaxLength(30)] public string BankAccount { get; set; } = "";
+        [MaxLength(18)] public string BankClabe { get; set; } = "";
         [MaxLength(400)] public string Address { get; set; } = "";
 
         [DataType(DataType.Date)] public DateTime? BirthDate { get; set; }
@@ -56,6 +69,7 @@ public class CreateModel : PageModel
         public Guid? PermissionRoleId { get; set; }
 
         [Required] public string Password { get; set; } = "";
+        public IFormFile? PhotoFile { get; set; }
     }
 
     public async Task OnGetAsync()
@@ -140,6 +154,16 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
             Position = Input.Position,
             Phone = Input.Phone,
             Curp = (Input.Curp ?? "").Trim().ToUpperInvariant(),
+            Rfc = (Input.Rfc ?? "").Trim().ToUpperInvariant(),
+            PostalCode = (Input.PostalCode ?? "").Trim(),
+            EducationLevel = (Input.EducationLevel ?? "").Trim(),
+            EmployeeNumber = (Input.EmployeeNumber ?? "").Trim(),
+            SatContractTypeCode = (Input.SatContractTypeCode ?? "").Trim(),
+            SatWorkdayTypeCode = (Input.SatWorkdayTypeCode ?? "").Trim(),
+            SatJobRiskCode = (Input.SatJobRiskCode ?? "").Trim(),
+            BankName = (Input.BankName ?? "").Trim(),
+            BankAccount = (Input.BankAccount ?? "").Trim(),
+            BankClabe = (Input.BankClabe ?? "").Trim(),
             Address = (Input.Address ?? "").Trim(),
             BirthDate = Input.BirthDate,
             HireDate = Input.HireDate,
@@ -149,6 +173,26 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
         });
 
         await _db.SaveChangesAsync();
+
+        if (Input.PhotoFile is { Length: > 0 })
+        {
+            var (path, _, ct, originalName) = await _storage.SaveFileAsync(
+                Input.PhotoFile,
+                $"employees/{user.Id}/profile",
+                $"photo_{DateTime.UtcNow:yyyyMMddHHmmss}",
+                new[] { ".jpg", ".jpeg", ".png", ".webp" },
+                5 * 1024 * 1024);
+
+            var p = await _db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == user.Id);
+            if (p != null)
+            {
+                p.ProfilePhotoStoragePath = path;
+                p.ProfilePhotoContentType = ct;
+                p.ProfilePhotoOriginalFileName = originalName;
+                p.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
 
         // Asignación de rol de permisos por módulo (solo para Employee)
         if (!IsGlobalRole(Input.AppRole))

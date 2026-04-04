@@ -12,7 +12,7 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    public record Row(string UserId, string FullName, string Email, string Position, decimal SalaryBase, bool IsInventoryManager);
+    public record Row(string UserId, string FullName, string Email, string Position, decimal SalaryBase, bool IsInventoryManager, bool HasPhoto);
     public List<Row> Rows { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -40,7 +40,8 @@ public class IndexModel : PageModel
                 e.Email,
                 e.Position,
                 e.SalaryBase,
-                managerUserIds.Contains(e.UserId)))
+                managerUserIds.Contains(e.UserId),
+                !string.IsNullOrWhiteSpace(e.ProfilePhotoStoragePath)))
             .ToList();
     }
 }

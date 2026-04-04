@@ -111,20 +111,29 @@
                                     <div class="card-body">
                                         <div class="fw-semibold mb-2">Concepto libre (manual)</div>
                                         <div class="row g-2">
-                                            <div class="col-md-3">
-                                                <input id="manualCategory" class="form-control" placeholder="Categoria" />
-                                            </div>
-                                            <div class="col-md-3">
+                                            <div class="col-md-2">
                                                 <input id="manualService" class="form-control" placeholder="Servicio" />
                                             </div>
                                             <div class="col-md-4">
                                                 <input id="manualDescription" class="form-control" placeholder="Descripcion del concepto" />
                                             </div>
+                                            <div class="col-md-2">
+                                                <select id="manualRecurrence" class="form-select">
+                                                    <option value="Unica">Unica</option>
+                                                    <option value="Semanal">Semanal</option>
+                                                    <option value="Mensual">Mensual</option>
+                                                    <option value="Anual">Anual</option>
+                                                    <option value="Otro">Otro</option>
+                                                </select>
+                                            </div>
                                             <div class="col-md-1">
                                                 <input id="manualQty" class="form-control" type="number" min="1" value="1" />
                                             </div>
-                                            <div class="col-md-1">
-                                                <input id="manualPrice" class="form-control" type="number" min="0" step="0.01" placeholder="$" />
+                                            <div class="col-md-3">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input id="manualPrice" class="form-control" type="number" min="0" step="0.01" placeholder="0.00" />
+                                                </div>
                                             </div>
                                             <div class="col-12 d-grid d-md-flex justify-content-md-end">
                                                 <button class="btn btn-outline-primary" type="button" id="addManualBtn">Agregar libre</button>
@@ -212,6 +221,20 @@
                                     <label class="form-label">Comentarios (opcional)</label>
                                     <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
                                 </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Condiciones generales</label>
+                                    <textarea class="form-control" asp-for="Input.GeneralTerms" rows="3" placeholder="Alcances, terminos de soporte, garantias y condiciones comerciales."></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Tiempo de contrato</label>
+                                    <select class="form-select" asp-for="Input.ContractTermMonths">
+                                        <option value="">Sin plazo fijo</option>
+                                        <option value="12">12 meses</option>
+                                        <option value="18">18 meses</option>
+                                        <option value="24">24 meses</option>
+                                        <option value="36">36 meses</option>
+                                    </select>
+                                </div>
                             </div>
                         }
                     </section>
@@ -268,9 +291,9 @@
     const linesJson = document.getElementById('linesJson');
     const manualLinesJson = document.getElementById('manualLinesJson');
     const addManualBtn = document.getElementById('addManualBtn');
-    const manualCategory = document.getElementById('manualCategory');
     const manualService = document.getElementById('manualService');
     const manualDescription = document.getElementById('manualDescription');
+    const manualRecurrence = document.getElementById('manualRecurrence');
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
     const inventoryHardwareSelect = document.getElementById('inventoryHardwareSelect');
@@ -460,7 +483,8 @@
             serviceName: x.serviceName,
             description: x.description,
             quantity: x.quantity,
-            unitPrice: x.unitPrice
+            unitPrice: x.unitPrice,
+            recurrence: x.recurrence
         })));
 
         const cLines = document.getElementById('confirmLinesCount');
@@ -485,7 +509,10 @@
                     <div>
                         <div class="fw-semibold">${l.serviceName}</div>
                         <div class="small text-muted">${l.categoryName}${l.subproductName ? ' · ' + l.subproductName : ''}</div>
-                        <div class="small"><span class="badge text-bg-light border">${labelOffer(l.offerType)}</span></div>
+                        <div class="small d-flex gap-1 flex-wrap">
+                            <span class="badge text-bg-light border">${labelOffer(l.offerType)}</span>
+                            <span class="badge text-bg-info">${l.recurrence || 'Unica'}</span>
+                        </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button>
                 </div>
@@ -511,7 +538,10 @@
                     <div>
                         <div class="fw-semibold">${l.serviceName || 'Concepto libre'}</div>
                         <div class="small text-muted">${l.categoryName || 'Libre'} · ${l.description || ''}</div>
-                        <div class="small"><span class="badge text-bg-warning">Manual</span></div>
+                        <div class="small d-flex gap-1 flex-wrap">
+                            <span class="badge text-bg-warning">Manual</span>
+                            <span class="badge text-bg-info">${l.recurrence || 'Unica'}</span>
+                        </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del-manual="${idx}">Quitar</button>
                 </div>
@@ -620,7 +650,10 @@
             vat,
             total,
             isManual,
-            offerType: selected.offerType || 'Sale'
+            offerType: selected.offerType || 'Sale',
+            recurrence: selected.offerType === 'MonthlyRent'
+                ? 'Mensual'
+                : (selected.offerType === 'Lease' ? 'Mensual' : 'Unica')
         });
 
         renderCart();
@@ -630,20 +663,20 @@
 
     addManualBtn.addEventListener('click', () => {
         const serviceTxt = String(manualService.value || '').trim();
-        const categoryTxt = String(manualCategory.value || '').trim();
         const description = String(manualDescription.value || '').trim();
-        if(!description && !serviceTxt && !categoryTxt){
-            alert('Escribe al menos servicio, categoría o descripción.');
+        if(!description && !serviceTxt){
+            alert('Escribe al menos servicio o descripcion.');
             return;
         }
         const qtyVal = Math.max(1, Number(manualQty.value || 1));
         const priceVal = Math.max(0, Number(manualPrice.value || 0));
         manualLines.push({
-            categoryName: categoryTxt,
+            categoryName: 'Libre',
             serviceName: serviceTxt,
-            description: description || serviceTxt || categoryTxt || 'Concepto libre',
+            description: description || serviceTxt || 'Concepto libre',
             quantity: qtyVal,
-            unitPrice: priceVal
+            unitPrice: priceVal,
+            recurrence: String(manualRecurrence?.value || 'Unica')
         });
         manualDescription.value = '';
         manualPrice.value = '';
@@ -668,7 +701,8 @@
             serviceName: item.name || 'Item inventario',
             description: `Item inventario (${item.unit || 'pza'})`,
             quantity: qtyVal,
-            unitPrice: 0
+            unitPrice: 0,
+            recurrence: 'Unica'
         });
         if(inventoryHardwareQty) inventoryHardwareQty.value = '1';
         if(inventoryHardwareSelect) inventoryHardwareSelect.value = '';
@@ -692,7 +726,8 @@
             serviceName: item.name || 'Servicio',
             description: `Servicio (${labelOffer(item.offerType || 'MonthlyRent')})`,
             quantity: qtyVal,
-            unitPrice: Number(item.unitPrice || 0)
+            unitPrice: Number(item.unitPrice || 0),
+            recurrence: (item.offerType || 'Sale') === 'MonthlyRent' ? 'Mensual' : 'Unica'
         });
         if(inventoryServiceQty) inventoryServiceQty.value = '1';
         if(inventoryServiceSelect) inventoryServiceSelect.value = '';
@@ -741,6 +776,12 @@
 .quote-step-pill.active{ border-color:#1d4ed8; background:#e8efff; color:#1d4ed8; }
 .quote-step-pill.is-skipped{ opacity:.55; }
 .quote-step-panel{ min-height: 220px; }
+.quote-step-panel .input-group-text{
+    background:#eef2ff;
+    border-color:#c7d2fe;
+    font-weight:700;
+    color:#1e3a8a;
+}
 
 .hn-grid-cards{
     display:grid;

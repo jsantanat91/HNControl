@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -26,6 +28,8 @@ public class ConfigurationModel : PageModel
 
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
+    [TempData] public string? FiscalValidation { get; set; }
+    [TempData] public string? FiscalValidationType { get; set; }
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
@@ -82,54 +86,16 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
-        if (!ModelState.IsValid)
-        {
-            await LoadAsync();
-            return Page();
-        }
+        return await OnPostSaveGeneralAsync();
+    }
 
-        var entity = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
-        if (entity == null)
-        {
-            entity = new SystemConfiguration();
-            _db.SystemConfigurations.Add(entity);
-        }
+    public async Task<IActionResult> OnPostSaveGeneralAsync()
+    {
+        var entity = await GetOrCreateAsync();
 
         entity.CompanyName = (Input.CompanyName ?? "").Trim();
         entity.CompanyLegalName = (Input.CompanyLegalName ?? "").Trim();
-        entity.CompanyRfc = (Input.CompanyRfc ?? "").Trim().ToUpperInvariant();
-        entity.CompanyFiscalRegimeCode = (Input.CompanyFiscalRegimeCode ?? "").Trim().ToUpperInvariant();
-        entity.CompanyFiscalZipCode = (Input.CompanyFiscalZipCode ?? "").Trim();
-        entity.CompanyFiscalAddress = (Input.CompanyFiscalAddress ?? "").Trim();
         entity.BillingEmail = (Input.BillingEmail ?? "").Trim();
-        entity.SmtpHost = (Input.SmtpHost ?? "").Trim();
-        entity.SmtpPort = Input.SmtpPort;
-        entity.SmtpUser = (Input.SmtpUser ?? "").Trim();
-        entity.SmtpFromEmail = (Input.SmtpFromEmail ?? "").Trim();
-        entity.SmtpFromName = (Input.SmtpFromName ?? "").Trim();
-        entity.SmtpSecurity = (Input.SmtpSecurity ?? "").Trim();
-        entity.SmtpHeloDomain = (Input.SmtpHeloDomain ?? "").Trim();
-        entity.SmtpTimeoutMs = Input.SmtpTimeoutMs;
-
-        entity.BillingPacProvider = Input.BillingPacProvider;
-        entity.BillingPacApiBaseUrl = (Input.BillingPacApiBaseUrl ?? "").Trim();
-        entity.BillingPacApiKey = (Input.BillingPacApiKey ?? "").Trim();
-        entity.BillingPacUsername = (Input.BillingPacUsername ?? "").Trim();
-        entity.CfdiVersion = string.IsNullOrWhiteSpace(Input.CfdiVersion) ? "4.0" : Input.CfdiVersion.Trim();
-        entity.CfdiSerieDefault = string.IsNullOrWhiteSpace(Input.CfdiSerieDefault) ? "A" : Input.CfdiSerieDefault.Trim().ToUpperInvariant();
-        entity.Notes = (Input.Notes ?? "").Trim();
-
-        if (!string.IsNullOrWhiteSpace(Input.SmtpPassword))
-            entity.SmtpPasswordProtected = _protector.Protect(Input.SmtpPassword.Trim());
-
-        if (!string.IsNullOrWhiteSpace(Input.BillingPacApiSecret))
-            entity.BillingPacApiSecretProtected = _protector.Protect(Input.BillingPacApiSecret.Trim());
-
-        if (!string.IsNullOrWhiteSpace(Input.BillingPacPassword))
-            entity.BillingPacPasswordProtected = _protector.Protect(Input.BillingPacPassword.Trim());
-
-        if (!string.IsNullOrWhiteSpace(Input.CsdPassword))
-            entity.CsdPasswordProtected = _protector.Protect(Input.CsdPassword.Trim());
 
         if (Input.CompanyLogo is { Length: > 0 })
         {
@@ -146,6 +112,108 @@ public class ConfigurationModel : PageModel
             entity.CompanyLogoStoragePath = saved.storagePath;
             entity.CompanyLogoOriginalFileName = saved.originalName;
         }
+
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Flash = "Configuracion general guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveSmtpAsync()
+    {
+        var entity = await GetOrCreateAsync();
+
+        entity.SmtpHost = (Input.SmtpHost ?? "").Trim();
+        entity.SmtpPort = Input.SmtpPort is > 0 and <= 65535 ? Input.SmtpPort : 587;
+        entity.SmtpUser = (Input.SmtpUser ?? "").Trim();
+        entity.SmtpFromEmail = (Input.SmtpFromEmail ?? "").Trim();
+        entity.SmtpFromName = string.IsNullOrWhiteSpace(Input.SmtpFromName) ? "HN Control" : Input.SmtpFromName.Trim();
+        entity.SmtpSecurity = string.IsNullOrWhiteSpace(Input.SmtpSecurity) ? "StartTls" : Input.SmtpSecurity.Trim();
+        entity.SmtpHeloDomain = (Input.SmtpHeloDomain ?? "").Trim();
+        entity.SmtpTimeoutMs = Input.SmtpTimeoutMs is >= 1000 and <= 120000 ? Input.SmtpTimeoutMs : 15000;
+
+        if (!string.IsNullOrWhiteSpace(Input.SmtpPassword))
+            entity.SmtpPasswordProtected = _protector.Protect(Input.SmtpPassword.Trim());
+
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Flash = "Configuracion SMTP guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostValidateSmtpAsync()
+    {
+        var cfg = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        var host = string.IsNullOrWhiteSpace(Input.SmtpHost) ? (cfg?.SmtpHost ?? "").Trim() : Input.SmtpHost.Trim();
+        var port = Input.SmtpPort > 0 ? Input.SmtpPort : (cfg?.SmtpPort > 0 ? cfg.SmtpPort : 587);
+        var user = string.IsNullOrWhiteSpace(Input.SmtpUser) ? (cfg?.SmtpUser ?? "").Trim() : Input.SmtpUser.Trim();
+        var pass = !string.IsNullOrWhiteSpace(Input.SmtpPassword)
+            ? Input.SmtpPassword.Trim()
+            : (!string.IsNullOrWhiteSpace(cfg?.SmtpPasswordProtected) ? _protector.Unprotect(cfg!.SmtpPasswordProtected) : "");
+        var fromEmail = string.IsNullOrWhiteSpace(Input.SmtpFromEmail) ? (cfg?.SmtpFromEmail ?? "").Trim() : Input.SmtpFromEmail.Trim();
+        var security = string.IsNullOrWhiteSpace(Input.SmtpSecurity) ? (cfg?.SmtpSecurity ?? "StartTls") : Input.SmtpSecurity.Trim();
+        var timeoutMs = Input.SmtpTimeoutMs > 0 ? Input.SmtpTimeoutMs : (cfg?.SmtpTimeoutMs > 0 ? cfg.SmtpTimeoutMs : 15000);
+
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(fromEmail))
+        {
+            Flash = "Para validar SMTP completa Servidor SMTP y Correo remitente.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        try
+        {
+            using var client = new SmtpClient();
+            client.Timeout = timeoutMs;
+            await client.ConnectAsync(host, port, ParseSecurity(security));
+            if (!string.IsNullOrWhiteSpace(user))
+                await client.AuthenticateAsync(user, pass);
+            await client.DisconnectAsync(true);
+
+            Flash = "Conexion SMTP valida. El servidor respondio correctamente.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            Flash = $"No se pudo validar SMTP: {ex.Message}";
+            FlashType = "danger";
+        }
+
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveFiscalAsync()
+    {
+        var entity = await GetOrCreateAsync();
+
+        entity.CompanyRfc = (Input.CompanyRfc ?? "").Trim().ToUpperInvariant();
+        entity.CompanyFiscalRegimeCode = (Input.CompanyFiscalRegimeCode ?? "").Trim().ToUpperInvariant();
+        entity.CompanyFiscalZipCode = (Input.CompanyFiscalZipCode ?? "").Trim();
+        entity.CompanyFiscalAddress = (Input.CompanyFiscalAddress ?? "").Trim();
+        entity.BillingPacProvider = Input.BillingPacProvider;
+        entity.BillingPacApiBaseUrl = (Input.BillingPacApiBaseUrl ?? "").Trim();
+        entity.BillingPacApiKey = (Input.BillingPacApiKey ?? "").Trim();
+        entity.BillingPacUsername = (Input.BillingPacUsername ?? "").Trim();
+        entity.CfdiVersion = string.IsNullOrWhiteSpace(Input.CfdiVersion) ? "4.0" : Input.CfdiVersion.Trim();
+        entity.CfdiSerieDefault = string.IsNullOrWhiteSpace(Input.CfdiSerieDefault) ? "A" : Input.CfdiSerieDefault.Trim().ToUpperInvariant();
+        entity.Notes = (Input.Notes ?? "").Trim();
+
+        if (!string.IsNullOrWhiteSpace(Input.BillingPacApiSecret))
+            entity.BillingPacApiSecretProtected = _protector.Protect(Input.BillingPacApiSecret.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.BillingPacPassword))
+            entity.BillingPacPasswordProtected = _protector.Protect(Input.BillingPacPassword.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.CsdPassword))
+            entity.CsdPasswordProtected = _protector.Protect(Input.CsdPassword.Trim());
 
         if (Input.CsdCerFile is { Length: > 0 })
         {
@@ -180,8 +248,50 @@ public class ConfigurationModel : PageModel
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Flash = "Configuración guardada.";
+        Flash = "Configuracion fiscal / PAC guardada.";
         FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostValidateFiscalAsync()
+    {
+        var cfg = await _db.SystemConfigurations
+            .AsNoTracking()
+            .OrderByDescending(x => x.UpdatedAt)
+            .FirstOrDefaultAsync();
+
+        if (cfg == null)
+        {
+            FiscalValidation = "Primero guarda la configuracion fiscal y PAC.";
+            FiscalValidationType = "warning";
+            return RedirectToPage();
+        }
+
+        var missing = new List<string>();
+        if (cfg.BillingPacProvider == PacProvider.None) missing.Add("Proveedor PAC");
+        if (string.IsNullOrWhiteSpace(cfg.BillingPacApiBaseUrl)) missing.Add("API base URL");
+        if (string.IsNullOrWhiteSpace(cfg.BillingPacApiKey)) missing.Add("API key");
+        if (string.IsNullOrWhiteSpace(cfg.BillingPacApiSecretProtected)) missing.Add("API secret");
+        if (string.IsNullOrWhiteSpace(cfg.BillingPacUsername)) missing.Add("Usuario PAC");
+        if (string.IsNullOrWhiteSpace(cfg.BillingPacPasswordProtected)) missing.Add("Password PAC");
+        if (string.IsNullOrWhiteSpace(cfg.CsdCerStoragePath)) missing.Add("Archivo CSD .cer");
+        if (string.IsNullOrWhiteSpace(cfg.CsdKeyStoragePath)) missing.Add("Archivo CSD .key");
+        if (string.IsNullOrWhiteSpace(cfg.CsdPasswordProtected)) missing.Add("Password CSD");
+        if (string.IsNullOrWhiteSpace(cfg.CompanyRfc)) missing.Add("RFC emisor");
+        if (string.IsNullOrWhiteSpace(cfg.CompanyFiscalRegimeCode)) missing.Add("Regimen fiscal");
+        if (string.IsNullOrWhiteSpace(cfg.CompanyFiscalZipCode)) missing.Add("CP fiscal");
+
+        if (missing.Count == 0)
+        {
+            FiscalValidation = "Configuracion fiscal validada: listo para timbrado oficial, sincronizacion SAT en vivo y cancelacion CFDI.";
+            FiscalValidationType = "success";
+        }
+        else
+        {
+            FiscalValidation = "Faltan datos para operacion fiscal SAT/PAC: " + string.Join(", ", missing) + ".";
+            FiscalValidationType = "warning";
+        }
+
         return RedirectToPage();
     }
 
@@ -253,6 +363,28 @@ public class ConfigurationModel : PageModel
         HasPacSecret = !string.IsNullOrWhiteSpace(cfg.BillingPacApiSecretProtected);
         HasPacPassword = !string.IsNullOrWhiteSpace(cfg.BillingPacPasswordProtected);
         HasCsdPassword = !string.IsNullOrWhiteSpace(cfg.CsdPasswordProtected);
+    }
+
+    private async Task<SystemConfiguration> GetOrCreateAsync()
+    {
+        var entity = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        if (entity != null) return entity;
+
+        entity = new SystemConfiguration();
+        _db.SystemConfigurations.Add(entity);
+        return entity;
+    }
+
+    private static SecureSocketOptions ParseSecurity(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "sslonconnect" or "ssl" or "tls" => SecureSocketOptions.SslOnConnect,
+            "starttls" => SecureSocketOptions.StartTls,
+            "starttlswhenavailable" => SecureSocketOptions.StartTlsWhenAvailable,
+            "none" => SecureSocketOptions.None,
+            _ => SecureSocketOptions.Auto
+        };
     }
 
     private static string PacLabel(PacProvider provider) => provider switch

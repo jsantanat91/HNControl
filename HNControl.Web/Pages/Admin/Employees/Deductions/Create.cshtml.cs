@@ -50,6 +50,8 @@ public class CreateModel : PageModel
         if (!ModelState.IsValid) return Page();
 
         var now = DateTime.UtcNow;
+        if (Input.Type == EmployeeDeductionType.ComisionVenta)
+            Input.Direction = EmployeeDeductionDirection.Bonus;
 
         var start = Input.StartDate ?? now.Date;
         var freq = Input.Frequency;
@@ -65,7 +67,6 @@ public class CreateModel : PageModel
             start = bonusStart;
             Input.StartDate = bonusStart;
             Input.EndDate = bonusEnd;
-            Input.Type = EmployeeDeductionType.Otro;
             Input.Mode = EmployeeDeductionMode.FixedAmount;
             freq = EmployeeDeductionFrequency.Biweekly;
             applyHalf = null;

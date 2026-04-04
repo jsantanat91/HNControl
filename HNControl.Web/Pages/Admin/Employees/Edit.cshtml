@@ -13,21 +13,14 @@
 
 <h1 class="h4 mb-3">Editar empleado</h1>
 
-@if (!string.IsNullOrWhiteSpace(Model.Info))
-{
-    <div class="alert alert-info">@Model.Info</div>
-}
-
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
     <div class="card-body">
         <input type="hidden" asp-for="Input.UserId" />
-
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.FullName" />
             </div>
-
             <div class="col-md-6">
                 <label class="form-label">Puesto</label>
                 <input class="form-control" asp-for="Input.Position" />
@@ -41,12 +34,10 @@
                     <option value="Mujer">Mujer</option>
                 </select>
             </div>
-
             <div class="col-md-4">
                 <label class="form-label">Telefono</label>
                 <input class="form-control" asp-for="Input.Phone" />
             </div>
-
             <div class="col-md-4">
                 <label class="form-label">NSS</label>
                 <input class="form-control" asp-for="Input.Nss" />
@@ -56,35 +47,85 @@
                 <label class="form-label">CURP</label>
                 <input class="form-control text-uppercase" asp-for="Input.Curp" maxlength="18" />
             </div>
+            <div class="col-md-4">
+                <label class="form-label">RFC</label>
+                <input class="form-control text-uppercase" asp-for="Input.Rfc" maxlength="13" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Nivel de estudios</label>
+                <input class="form-control" asp-for="Input.EducationLevel" />
+            </div>
 
             <div class="col-md-4">
                 <label class="form-label">Fecha de nacimiento</label>
                 <input class="form-control" asp-for="Input.BirthDate" type="date" />
             </div>
-
             <div class="col-md-4">
-                <label class="form-label">Fecha de ingreso (antiguedad)</label>
+                <label class="form-label">Fecha de ingreso</label>
                 <input class="form-control" asp-for="Input.HireDate" type="date" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Numero empleado</label>
+                <input class="form-control" asp-for="Input.EmployeeNumber" />
             </div>
 
             <div class="col-12">
                 <label class="form-label">Direccion</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
-
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label class="form-label">Codigo postal</label>
+                <input class="form-control" asp-for="Input.PostalCode" />
+            </div>
+            <div class="col-md-4">
                 <label class="form-label">Correo (login)</label>
                 <input class="form-control" asp-for="Input.Email" type="email" />
             </div>
-
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label">Sueldo base mensual</label>
                 <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label">Vacaciones (dias por anio)</label>
                 <input class="form-control" asp-for="Input.VacationAllowanceDays" type="number" min="0" max="60" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Foto (opcional)</label>
+                <input class="form-control" asp-for="Input.PhotoFile" type="file" accept=".jpg,.jpeg,.png,.webp" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Input.RemovePhoto" type="checkbox" />
+                    <label class="form-check-label" asp-for="Input.RemovePhoto">Quitar foto actual</label>
+                </div>
+            </div>
+
+            <div class="col-12"><hr /></div>
+            <div class="col-12"><div class="fw-semibold">Datos para nomina timbrada (futuro)</div></div>
+            <div class="col-md-4">
+                <label class="form-label">SAT tipo contrato</label>
+                <input class="form-control" asp-for="Input.SatContractTypeCode" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">SAT tipo jornada</label>
+                <input class="form-control" asp-for="Input.SatWorkdayTypeCode" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">SAT riesgo puesto</label>
+                <input class="form-control" asp-for="Input.SatJobRiskCode" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Banco</label>
+                <input class="form-control" asp-for="Input.BankName" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Cuenta</label>
+                <input class="form-control" asp-for="Input.BankAccount" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">CLABE</label>
+                <input class="form-control" asp-for="Input.BankClabe" maxlength="18" />
             </div>
 
             <div class="col-md-3">
@@ -94,20 +135,17 @@
                     <option value="Admin">SuperAdmin (Master)</option>
                 </select>
             </div>
-
             <div class="col-md-3" id="permissionRoleWrap">
-                <label class="form-label">Rol de permisos por modulo</label>
+                <label class="form-label">Rol permisos modulo</label>
                 <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions" id="permissionRoleSelect">
                     <option value="">(sin asignar)</option>
                 </select>
-                <div class="form-text">Solo aplica a Employee. Se gestiona en <a asp-page="/Admin/Security/Roles/Index">Seguridad</a>.</div>
             </div>
-
             <div class="col-md-6">
                 <div class="form-check mt-2">
                     <input class="form-check-input" asp-for="Input.IsInventoryManager" type="checkbox" />
                     <label class="form-check-label" asp-for="Input.IsInventoryManager">
-                        Encargado de inventario (puede cargar stock y aprobar solicitudes)
+                        Encargado de inventario
                     </label>
                 </div>
             </div>
@@ -138,3 +176,4 @@
         })();
     </script>
 }
+

@@ -17,6 +17,7 @@ public class IndexModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IBillingInvoicePdfRenderer _pdf;
+    private readonly IBillingFiscalService _fiscal;
     private readonly IEventEmailTemplateService _templates;
 
     public IndexModel(
@@ -24,12 +25,14 @@ public class IndexModel : PageModel
         IFileStorage storage,
         IEmailSender email,
         IBillingInvoicePdfRenderer pdf,
+        IBillingFiscalService fiscal,
         IEventEmailTemplateService templates)
     {
         _db = db;
         _storage = storage;
         _email = email;
         _pdf = pdf;
+        _fiscal = fiscal;
         _templates = templates;
     }
 
@@ -70,7 +73,10 @@ public class IndexModel : PageModel
         DateTime ScheduledFor,
         string Status,
         string Email,
-        bool HasPdf);
+        bool HasPdf,
+        string CfdiUuid,
+        string CfdiStatus,
+        string SatStatusMessage);
 
     public record AuditVm(DateTime CreatedAt, string Client, string EventType, string Details, string UserName);
 
@@ -246,6 +252,13 @@ public class IndexModel : PageModel
         run.PdfStoragePath = storagePath;
         run.SentToEmail = plan.SendToEmail;
 
+        var sync = await _fiscal.SyncAsync(plan, run);
+        run.CfdiStatus = sync.Status;
+        if (!string.IsNullOrWhiteSpace(sync.CfdiUuid)) run.CfdiUuid = sync.CfdiUuid;
+        run.PacTrackingId = sync.TrackingId;
+        run.LastSyncAt = DateTime.UtcNow;
+        run.SatStatusMessage = sync.Message;
+
         plan.LastSentAt = DateTime.UtcNow;
         plan.UpdatedAt = DateTime.UtcNow;
 
@@ -255,6 +268,82 @@ public class IndexModel : PageModel
         await AddBillingAuditAsync(plan.Id, "billing.run.sent", $"Enviado {run.PeriodLabel} a {plan.SendToEmail}.");
         Flash = "Factura enviada y ciclo actualizado.";
         FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSyncCfdiAsync(Guid runId)
+    {
+        var run = await _db.BillingInvoiceRuns
+            .Include(x => x.Plan!)
+            .ThenInclude(x => x.Client)
+            .FirstOrDefaultAsync(x => x.Id == runId);
+
+        if (run == null || run.Plan == null)
+            return RedirectToPage();
+
+        if (run.Status != BillingRunStatus.Sent)
+        {
+            Flash = "Primero marca el envío para poder sincronizar CFDI.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var result = await _fiscal.SyncAsync(run.Plan, run);
+        run.CfdiStatus = result.Status;
+        run.CfdiUuid = result.CfdiUuid;
+        run.PacTrackingId = result.TrackingId;
+        run.LastSyncAt = DateTime.UtcNow;
+        run.SatStatusMessage = result.Message;
+
+        await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(run.PlanId, "billing.cfdi.sync", $"Sync CFDI: {result.Message}");
+
+        Flash = result.Message;
+        FlashType = result.Ok ? "success" : "warning";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostCancelCfdiAsync(Guid runId, string? reasonCode)
+    {
+        var run = await _db.BillingInvoiceRuns
+            .Include(x => x.Plan!)
+            .ThenInclude(x => x.Client)
+            .FirstOrDefaultAsync(x => x.Id == runId);
+
+        if (run == null || run.Plan == null)
+            return RedirectToPage();
+
+        if (run.Status != BillingRunStatus.Sent)
+        {
+            Flash = "Solo puedes cancelar CFDI de corridas enviadas.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var reason = string.IsNullOrWhiteSpace(reasonCode) ? "02" : reasonCode.Trim();
+        var result = await _fiscal.CancelAsync(run.Plan, run, reason);
+
+        if (result.Ok)
+        {
+            run.CfdiStatus = BillingCfdiStatus.Cancelled;
+            run.CancelReasonCode = reason;
+            run.CancellationRequestedAt = DateTime.UtcNow;
+            run.CancelledAt = DateTime.UtcNow;
+            run.LastSyncAt = DateTime.UtcNow;
+            run.SatStatusMessage = result.Message;
+            run.PacTrackingId = result.TrackingId;
+            run.Status = BillingRunStatus.Cancelled;
+        }
+        else
+        {
+            run.SatStatusMessage = result.Message;
+        }
+
+        await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(run.PlanId, "billing.cfdi.cancel", $"Cancelación CFDI: {result.Message}");
+
+        Flash = result.Message;
+        FlashType = result.Ok ? "success" : "warning";
         return RedirectToPage();
     }
 
@@ -345,7 +434,10 @@ public class IndexModel : PageModel
                 x.ScheduledFor,
                 x.Status.ToString(),
                 x.SentToEmail,
-                !string.IsNullOrWhiteSpace(x.PdfStoragePath)))
+                !string.IsNullOrWhiteSpace(x.PdfStoragePath),
+                x.CfdiUuid,
+                x.CfdiStatus.ToString(),
+                x.SatStatusMessage))
             .ToListAsync();
 
         Audits = await _db.BillingAuditLogs

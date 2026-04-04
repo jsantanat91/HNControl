@@ -135,9 +135,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Nss).HasMaxLength(50);
             e.Property(x => x.Gender).HasMaxLength(20);
             e.Property(x => x.Position).HasMaxLength(120);
+            e.Property(x => x.EducationLevel).HasMaxLength(120);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.Curp).HasMaxLength(18);
+            e.Property(x => x.Rfc).HasMaxLength(13);
+            e.Property(x => x.PostalCode).HasMaxLength(10);
+            e.Property(x => x.EmployeeNumber).HasMaxLength(30);
+            e.Property(x => x.SatContractTypeCode).HasMaxLength(3);
+            e.Property(x => x.SatWorkdayTypeCode).HasMaxLength(3);
+            e.Property(x => x.SatJobRiskCode).HasMaxLength(3);
+            e.Property(x => x.BankName).HasMaxLength(120);
+            e.Property(x => x.BankAccount).HasMaxLength(30);
+            e.Property(x => x.BankClabe).HasMaxLength(18);
             e.Property(x => x.Address).HasMaxLength(400);
+            e.Property(x => x.ProfilePhotoStoragePath).HasMaxLength(500);
+            e.Property(x => x.ProfilePhotoContentType).HasMaxLength(120);
+            e.Property(x => x.ProfilePhotoOriginalFileName).HasMaxLength(255);
             e.Property(x => x.HireDate).HasColumnType("date");
             e.Property(x => x.BirthDate).HasColumnType("date");
             e.Property(x => x.SalaryBase).HasColumnType("numeric(12,2)");
@@ -514,8 +527,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.SentToEmail).HasMaxLength(256);
             e.Property(x => x.PdfStoragePath).HasMaxLength(500);
             e.Property(x => x.ErrorMessage).HasMaxLength(1200);
+            e.Property(x => x.CfdiUuid).HasMaxLength(60);
+            e.Property(x => x.CancelReasonCode).HasMaxLength(40);
+            e.Property(x => x.SatStatusMessage).HasMaxLength(1200);
+            e.Property(x => x.PacTrackingId).HasMaxLength(120);
             e.HasIndex(x => new { x.PlanId, x.ScheduledFor }).IsUnique();
             e.HasIndex(x => new { x.Status, x.ScheduledFor });
+            e.HasIndex(x => x.CfdiUuid);
         });
 
         b.Entity<BillingAuditLog>(e =>
@@ -1199,6 +1217,7 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.CustomerLocation).HasMaxLength(260);
             e.Property(x => x.CompanyName).HasMaxLength(200);
             e.Property(x => x.Notes).HasMaxLength(1200);
+            e.Property(x => x.GeneralTerms).HasMaxLength(4000);
             e.Property(x => x.PdfStoragePath).HasMaxLength(500);
             e.Property(x => x.AcceptedByUserId).HasMaxLength(64);
             e.Property(x => x.SubtotalAuto).HasColumnType("numeric(12,2)");
@@ -1233,6 +1252,7 @@ b.Entity<ServiceOrder>(e =>
             e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
             e.Property(x => x.LineTotal).HasColumnType("numeric(12,2)");
             e.Property(x => x.ItemImageUrl).HasMaxLength(600);
+            e.Property(x => x.Recurrence).HasMaxLength(30);
             e.HasIndex(x => x.QuoteRequestId);
         });
 

@@ -41,6 +41,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
             .FirstOrDefaultAsync();
 
         var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
+        var companyLegal = string.IsNullOrWhiteSpace(sys?.CompanyLegalName) ? company : sys!.CompanyLegalName.Trim();
         var logo = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
 
         var created = q.CreatedAt == default ? DateTime.UtcNow : q.CreatedAt;
@@ -57,7 +58,8 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                 {
                     r.RelativeItem().Column(col =>
                     {
-                        col.Item().Text(company).FontSize(15).SemiBold();
+                        col.Item().Text(companyLegal).FontSize(15).SemiBold();
+                        col.Item().Text(company).FontSize(10).FontColor(Colors.Grey.Darken1);
                         col.Item().Text("Cotizacion a la medida").FontSize(12).FontColor(Colors.Grey.Darken2);
                         col.Item().Text($"Folio: {q.Folio}").SemiBold();
                     });
@@ -108,8 +110,9 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                             {
                                 cd.RelativeColumn(1.1f);
                                 cd.RelativeColumn(1.1f);
-                                cd.RelativeColumn(1.1f);
+                                cd.RelativeColumn(1f);
                                 cd.ConstantColumn(40);
+                                cd.ConstantColumn(65);
                                 cd.ConstantColumn(70);
                                 cd.ConstantColumn(72);
                                 cd.ConstantColumn(82);
@@ -120,6 +123,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 h.Cell().Element(CellHead).Text("Servicio");
                                 h.Cell().Element(CellHead).Text("Subproducto");
                                 h.Cell().Element(CellHead).AlignCenter().Text("Cant");
+                                h.Cell().Element(CellHead).AlignCenter().Text("Recurr.");
                                 h.Cell().Element(CellHead).AlignCenter().Text("Modalidad");
                                 h.Cell().Element(CellHead).AlignRight().Text("Costo");
                                 h.Cell().Element(CellHead).AlignRight().Text("Total");
@@ -131,6 +135,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 t.Cell().Element(CellBody).Text(line.ServiceName);
                                 t.Cell().Element(CellBody).Text(line.SubproductName ?? "-");
                                 t.Cell().Element(CellBody).AlignCenter().Text(line.Quantity.ToString());
+                                t.Cell().Element(CellBody).AlignCenter().Text(string.IsNullOrWhiteSpace(line.Recurrence) ? "Unica" : line.Recurrence);
                                 t.Cell().Element(CellBody).AlignCenter().Text(LabelOffer(line.OfferType));
                                 t.Cell().Element(CellBody).AlignRight()
                                     .Text(line.IsManualPrice ? "Manual" : $"{Money(line.UnitPrice)} {(line.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}");
@@ -148,6 +153,13 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                             x.Item().Text(string.IsNullOrWhiteSpace(q.Notes)
                                 ? "La cotizacion puede ajustarse despues de visita tecnica."
                                 : q.Notes);
+                            if (q.ContractTermMonths.HasValue)
+                                x.Item().PaddingTop(4).Text($"Tiempo de contrato: {q.ContractTermMonths} meses").SemiBold();
+                            if (!string.IsNullOrWhiteSpace(q.GeneralTerms))
+                            {
+                                x.Item().PaddingTop(6).Text("Condiciones generales").SemiBold();
+                                x.Item().Text(q.GeneralTerms);
+                            }
                         });
                         r.ConstantItem(190).Column(x =>
                         {
@@ -159,7 +171,7 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                     });
                 });
 
-                p.Footer().AlignCenter().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm} · {company}")
+                p.Footer().AlignCenter().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm} · {companyLegal}")
                     .FontSize(9).FontColor(Colors.Grey.Darken1);
             });
         });

@@ -53,6 +53,32 @@
             background: rgba(255, 255, 255, .72);
         }
 
+        .myprofile-avatar {
+            width: 84px;
+            height: 84px;
+            border-radius: 18px;
+            object-fit: cover;
+            border: 1px solid rgba(37, 99, 235, .25);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, .14);
+            flex: 0 0 auto;
+        }
+
+        .myprofile-avatar-fallback {
+            width: 84px;
+            height: 84px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: #1d4ed8;
+            background: linear-gradient(140deg, rgba(219, 234, 254, .95), rgba(191, 219, 254, .75));
+            border: 1px solid rgba(37, 99, 235, .25);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+            flex: 0 0 auto;
+        }
+
         .chart-box-sm {
             max-width: 220px;
             margin-top: .65rem;
@@ -116,6 +142,41 @@ else
             <div class="text-muted small">Vista r&aacute;pida de n&oacute;mina, deducciones y estado operativo.</div>
         </div>
         <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary">@Model.Profile.Position</span>
+    </div>
+
+    <div class="card shadow-soft hn-hover profile-card mb-3">
+        <div class="card-body">
+            @{
+                var hasPhoto = !string.IsNullOrWhiteSpace(Model.Profile.ProfilePhotoStoragePath);
+                var photoUrl = Url.Page("/Employees/MyProfile", "Photo");
+                var initials = string.Join("", (Model.Profile.FullName ?? "")
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Take(2)
+                    .Select(x => x.Substring(0, 1))).ToUpperInvariant();
+            }
+            <div class="d-flex align-items-start gap-3 flex-wrap">
+                @if (hasPhoto)
+                {
+                    <img class="myprofile-avatar" src="@photoUrl" alt="Foto @Model.Profile.FullName" />
+                }
+                else
+                {
+                    <div class="myprofile-avatar-fallback">@((string.IsNullOrWhiteSpace(initials) ? "EM" : initials))</div>
+                }
+
+                <div class="flex-grow-1">
+                    <div class="fs-5 fw-semibold">@Model.Profile.FullName</div>
+                    <div class="text-muted small">@Model.Profile.Email &middot; @Model.Profile.Position</div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="hn-badge hn-badge-blue">RFC: @(string.IsNullOrWhiteSpace(Model.Profile.Rfc) ? "-" : Model.Profile.Rfc)</span>
+                        <span class="hn-badge hn-badge-green">NSS: @(string.IsNullOrWhiteSpace(Model.Profile.Nss) ? "-" : Model.Profile.Nss)</span>
+                        <span class="hn-badge hn-badge-gray">CURP: @(string.IsNullOrWhiteSpace(Model.Profile.Curp) ? "-" : Model.Profile.Curp)</span>
+                        <span class="hn-badge hn-badge-amber">Estudios: @(string.IsNullOrWhiteSpace(Model.Profile.EducationLevel) ? "-" : Model.Profile.EducationLevel)</span>
+                        <span class="hn-badge hn-badge-gray">Nacimiento: @(Model.Profile.BirthDate?.ToString("yyyy-MM-dd") ?? "-")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-2 mb-3">
@@ -211,6 +272,18 @@ else
                             <dt class="col-5 text-muted">CURP</dt>
                             <dd class="col-7">@Model.Profile.Curp</dd>
 
+                            <dt class="col-5 text-muted">RFC</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.Rfc) ? Model.Profile.Rfc : "-")</dd>
+
+                            <dt class="col-5 text-muted">No. empleado</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.EmployeeNumber) ? Model.Profile.EmployeeNumber : "-")</dd>
+
+                            <dt class="col-5 text-muted">Nivel de estudios</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.EducationLevel) ? Model.Profile.EducationLevel : "-")</dd>
+
+                            <dt class="col-5 text-muted">Nacimiento</dt>
+                            <dd class="col-7">@(Model.Profile.BirthDate?.ToString("yyyy-MM-dd") ?? "-")</dd>
+
                             <dt class="col-5 text-muted">Ingreso</dt>
                             <dd class="col-7">
                                 @(Model.Profile.HireDate?.ToString("yyyy-MM-dd") ?? "-")
@@ -222,6 +295,27 @@ else
 
                             <dt class="col-5 text-muted">Sueldo mensual</dt>
                             <dd class="col-7 fw-semibold">@Model.Profile.SalaryBase.ToString("C")</dd>
+
+                            <dt class="col-5 text-muted">C&oacute;digo SAT contrato</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.SatContractTypeCode) ? Model.Profile.SatContractTypeCode : "-")</dd>
+
+                            <dt class="col-5 text-muted">C&oacute;digo SAT jornada</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.SatWorkdayTypeCode) ? Model.Profile.SatWorkdayTypeCode : "-")</dd>
+
+                            <dt class="col-5 text-muted">Riesgo SAT</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.SatJobRiskCode) ? Model.Profile.SatJobRiskCode : "-")</dd>
+
+                            <dt class="col-5 text-muted">Banco</dt>
+                            <dd class="col-7">@(!string.IsNullOrWhiteSpace(Model.Profile.BankName) ? Model.Profile.BankName : "-")</dd>
+
+                            <dt class="col-5 text-muted">Cuenta / CLABE</dt>
+                            <dd class="col-7">
+                                @(string.IsNullOrWhiteSpace(Model.Profile.BankAccount) ? "-" : Model.Profile.BankAccount)
+                                @if (!string.IsNullOrWhiteSpace(Model.Profile.BankClabe))
+                                {
+                                    <span class="text-muted">&middot; @Model.Profile.BankClabe</span>
+                                }
+                            </dd>
 
                             @if (!string.IsNullOrWhiteSpace(Model.Profile.Address))
                             {

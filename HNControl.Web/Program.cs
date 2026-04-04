@@ -211,6 +211,7 @@ builder.Services.AddScoped<IQuoteRequestPdfRenderer, QuoteRequestPdfRenderer>();
 builder.Services.AddScoped<IClientLegalPdfRenderer, ClientLegalPdfRenderer>();
 builder.Services.AddScoped<IProjectDeliveryPdfRenderer, ProjectDeliveryPdfRenderer>();
 builder.Services.AddScoped<IBillingInvoicePdfRenderer, BillingInvoicePdfRenderer>();
+builder.Services.AddScoped<IBillingFiscalService, BillingFiscalService>();
 builder.Services.AddScoped<IEventEmailTemplateService, EventEmailTemplateService>();
 builder.Services.AddScoped<IPayrollReceiptService, PayrollReceiptService>();
 builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
