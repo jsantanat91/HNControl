@@ -253,6 +253,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureBillingSchemaAsync(db);
     await EnsureSecuritySchemaAsync(db);
     await EnsureOrgChartSchemaAsync(db);
+    await EnsureProjectActivitySchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
@@ -518,6 +519,8 @@ CREATE TABLE IF NOT EXISTS public."EmployeeOrgChartNodes" (
     "UserId" character varying(64) NOT NULL,
     "ReportsToUserId" character varying(64) NULL,
     "SortOrder" integer NOT NULL DEFAULT 0,
+    "PositionX" integer NOT NULL DEFAULT 0,
+    "PositionY" integer NOT NULL DEFAULT 0,
     "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
     "UpdatedByUserId" character varying(64) NULL,
     CONSTRAINT "PK_EmployeeOrgChartNodes" PRIMARY KEY ("Id")
@@ -527,10 +530,62 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_EmployeeOrgChartNodes_UserId"
     ON public."EmployeeOrgChartNodes" ("UserId");
 CREATE INDEX IF NOT EXISTS "IX_EmployeeOrgChartNodes_ReportsToUserId_SortOrder"
     ON public."EmployeeOrgChartNodes" ("ReportsToUserId", "SortOrder");
+
+ALTER TABLE IF EXISTS public."EmployeeOrgChartNodes"
+    ADD COLUMN IF NOT EXISTS "PositionX" integer NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS public."EmployeeOrgChartNodes"
+    ADD COLUMN IF NOT EXISTS "PositionY" integer NOT NULL DEFAULT 0;
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureOrgChartSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureProjectActivitySchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16) NOT NULL DEFAULT 'hours';
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "DurationValue" integer NOT NULL DEFAULT 1;
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16) NOT NULL DEFAULT 'hours';
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "DurationValue" integer NOT NULL DEFAULT 1;
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+
+UPDATE public."ProjectActivities"
+SET "DurationUnit" = COALESCE(NULLIF("DurationUnit", ''), 'hours'),
+    "DurationValue" = CASE
+        WHEN "DurationValue" IS NULL OR "DurationValue" < 1
+            THEN GREATEST(1, COALESCE("PlannedDays", 1))
+        ELSE "DurationValue"
+    END
+WHERE "DurationUnit" IS NULL OR "DurationUnit" = '' OR "DurationValue" IS NULL OR "DurationValue" < 1;
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureProjectActivitySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
     }
 }

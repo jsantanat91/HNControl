@@ -322,6 +322,7 @@ public class CatalogModel : PageModel
         Items = raw.Select(x => new CatalogRowVm
         {
             Id = x.Id,
+            ParentId = x.ParentId,
             Segment = x.Segment,
             NodeType = x.NodeType,
             Name = x.Name,
@@ -483,6 +484,7 @@ public class CatalogModel : PageModel
     public class CatalogRowVm
     {
         public Guid Id { get; set; }
+        public Guid? ParentId { get; set; }
         public QuoteSegment Segment { get; set; }
         public QuoteNodeType NodeType { get; set; }
         public string Name { get; set; } = string.Empty;

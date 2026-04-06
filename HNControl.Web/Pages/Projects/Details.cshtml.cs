@@ -43,15 +43,18 @@ public class DetailsModel : PageModel
     public int GanttTotalDays { get; set; }
     public int GanttElapsedDays { get; set; }
     public double GanttProgressPercent { get; set; }
-    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, double WidthPercent, double OffsetPercent, string ColorHex);
+    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, string StartText, string EndText, double WidthPercent, double OffsetPercent, string ColorHex);
     public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Hours, string DurationLabel, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
     public List<ActivityRow> Activities { get; set; } = new();
+    public List<EmployeeOptionVm> EmployeeOptions { get; set; } = new();
 
     [BindProperty] public ActivityInput InputActivity { get; set; } = new();
 
     public class ActivityInput
     {
         public Guid ProjectId { get; set; }
+        [StringLength(64)]
+        public string? AssignedToUserId { get; set; }
         [StringLength(200)]
         public string AssignedTo { get; set; } = "";
         [StringLength(1000)]
@@ -60,7 +63,10 @@ public class DetailsModel : PageModel
         public int DurationValue { get; set; } = 1;
         [Required]
         public string DurationUnit { get; set; } = "hours";
+        public DateTime? StartDateLocal { get; set; }
+        public DateTime? EndDateLocal { get; set; }
     }
+    public record EmployeeOptionVm(string UserId, string FullName);
 
     public record AccessRow(string Source, string Label, string HostOrUrl, string Username, bool CanViewPassword, string PasswordPlain, string Notes);
     public List<AccessRow> AccessRows { get; set; } = new();
@@ -122,6 +128,13 @@ public class DetailsModel : PageModel
         }
         BuildActivityGantt(Project);
 
+        EmployeeOptions = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.FullName)
+            .Select(x => new EmployeeOptionVm(x.UserId, x.FullName))
+            .ToListAsync();
+
         foreach (var a in Project.Accesses.OrderBy(x => x.Label))
         {
             var canView = isAdmin || (userId == Project.AssignedUserId);
@@ -182,6 +195,12 @@ public class DetailsModel : PageModel
         if (string.IsNullOrWhiteSpace(InputActivity.Description))
             return RedirectToPage(new { id = InputActivity.ProjectId });
 
+        if (InputActivity.StartDateLocal.HasValue && InputActivity.EndDateLocal.HasValue
+            && InputActivity.EndDateLocal.Value.Date < InputActivity.StartDateLocal.Value.Date)
+        {
+            (InputActivity.StartDateLocal, InputActivity.EndDateLocal) = (InputActivity.EndDateLocal, InputActivity.StartDateLocal);
+        }
+
         int nextOrder;
         try
         {
@@ -197,11 +216,21 @@ public class DetailsModel : PageModel
         _db.ProjectActivities.Add(new ProjectActivity
         {
             ProjectId = p.Id,
-            AssignedToName = string.IsNullOrWhiteSpace(InputActivity.AssignedTo)
-                ? (p.AssignedEmployee?.FullName ?? p.AssignedUserId)
-                : InputActivity.AssignedTo.Trim(),
+            AssignedToUserId = string.IsNullOrWhiteSpace(InputActivity.AssignedToUserId) ? null : InputActivity.AssignedToUserId.Trim(),
+            AssignedToName = string.IsNullOrWhiteSpace(InputActivity.AssignedToUserId)
+                ? (string.IsNullOrWhiteSpace(InputActivity.AssignedTo)
+                    ? (p.AssignedEmployee?.FullName ?? p.AssignedUserId)
+                    : InputActivity.AssignedTo.Trim())
+                : (await _db.EmployeeProfiles.AsNoTracking()
+                    .Where(e => e.UserId == InputActivity.AssignedToUserId)
+                    .Select(e => e.FullName)
+                    .FirstOrDefaultAsync() ?? InputActivity.AssignedToUserId.Trim()),
             Description = InputActivity.Description.Trim(),
             PlannedDays = ParseDurationToHours(InputActivity.DurationValue, InputActivity.DurationUnit),
+            DurationUnit = NormalizeDurationUnit(InputActivity.DurationUnit),
+            DurationValue = Math.Max(1, InputActivity.DurationValue),
+            StartAtUtc = InputActivity.StartDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.StartDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
+            EndAtUtc = InputActivity.EndDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.EndDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
             SortOrder = nextOrder
         });
 
@@ -377,9 +406,14 @@ public class DetailsModel : PageModel
                                     r.ConstantItem(timelineWidth).Height(16).Border(0.6f).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Layers(l =>
                                     {
                                         l.Layer().Background(Colors.Grey.Lighten5);
-                                        l.PrimaryLayer().PaddingLeft((float)(timelineWidth * row.OffsetPercent / 100d)).Element(bar =>
+                                        var rawOffset = (float)(timelineWidth * row.OffsetPercent / 100d);
+                                        var safeOffset = Math.Clamp(rawOffset, 0f, timelineWidth - 2f);
+                                        var rawWidth = (float)(timelineWidth * row.WidthPercent / 100d);
+                                        var safeWidth = Math.Clamp(rawWidth, 2f, Math.Max(2f, timelineWidth - safeOffset));
+                                        l.PrimaryLayer().Element(bar =>
                                         {
-                                            bar.Width((float)Math.Max(2d, timelineWidth * row.WidthPercent / 100d))
+                                            bar.PaddingLeft(safeOffset)
+                                                .Width(safeWidth)
                                                 .Height(16)
                                                 .Background(GetGanttColor(row.ColorIndex))
                                                 .AlignMiddle()
@@ -580,6 +614,8 @@ public class DetailsModel : PageModel
                 FormatDuration(hours),
                 start,
                 end,
+                a.StartAtUtc.HasValue ? a.StartAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd") : "-",
+                a.EndAtUtc.HasValue ? a.EndAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd") : "-",
                 Math.Round(width, 2),
                 Math.Round(offset, 2),
                 color
@@ -605,14 +641,17 @@ public class DetailsModel : PageModel
             var endDate = planStartLocal.AddHours(endHour);
             var offset = (cursor * 100d) / totalPlanHours;
             var width = (hours * 100d) / totalPlanHours;
+            width = Math.Min(width, Math.Max(0, 100 - offset));
             cursor += hours;
 
-            var progress = CalcProgress(nowLocal, startDate, endDate);
+            var finalStart = a.StartAtUtc.HasValue ? a.StartAtUtc.Value.ToLocalTime() : startDate;
+            var finalEnd = a.EndAtUtc.HasValue ? a.EndAtUtc.Value.ToLocalTime() : endDate;
+            var progress = CalcProgress(nowLocal, finalStart, finalEnd);
             rows.Add(new PdfGanttRow(
                 string.IsNullOrWhiteSpace(a.Description) ? "-" : a.Description.Trim(),
                 string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName.Trim(),
-                startDate,
-                endDate,
+                finalStart,
+                finalEnd,
                 hours,
                 FormatDuration(hours),
                 progress,
@@ -679,8 +718,9 @@ public class DetailsModel : PageModel
             var y = top + (i * rowH);
             var barY = y + 5;
             var barH = 12;
-            var x = Math.Max(1d, (w * row.OffsetPercent / 100d));
+            var x = Math.Clamp((w * row.OffsetPercent / 100d), 1d, w - 7d);
             var barW = Math.Max(6d, (w * row.WidthPercent / 100d));
+            barW = Math.Min(barW, Math.Max(2d, (w - 1d) - x));
             var color = GetGanttHexColor(row.ColorIndex);
             var progressW = Math.Max(2d, barW * Math.Clamp(row.ProgressPercent, 0, 100) / 100d);
 
@@ -712,6 +752,13 @@ public class DetailsModel : PageModel
         return string.Equals(unit, "days", StringComparison.OrdinalIgnoreCase)
             ? Math.Max(1, safe * 24)
             : safe;
+    }
+
+    private static string NormalizeDurationUnit(string? unit)
+    {
+        return string.Equals(unit, "days", StringComparison.OrdinalIgnoreCase)
+            ? "days"
+            : "hours";
     }
 
     private static string FormatDuration(int hours)

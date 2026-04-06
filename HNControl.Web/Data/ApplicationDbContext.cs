@@ -219,6 +219,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasIndex(x => new { x.ReportsToUserId, x.SortOrder });
         });
 
+        b.Entity<ProjectActivity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.AssignedToName).HasMaxLength(200);
+            e.Property(x => x.AssignedToUserId).HasMaxLength(64);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.Property(x => x.DurationUnit).HasMaxLength(16);
+            e.Property(x => x.ColorHex).HasMaxLength(16);
+        });
+
         b.Entity<ViaticWeek>(w =>
         {
             w.HasKey(x => x.Id);

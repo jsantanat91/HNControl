@@ -74,6 +74,8 @@ public class OrgChartModel : PageModel
                 UserId = x.UserId.Trim(),
                 ReportsToUserId = string.IsNullOrWhiteSpace(x.ReportsToUserId) ? null : x.ReportsToUserId!.Trim(),
                 SortOrder = x.SortOrder == 0 ? idx : x.SortOrder,
+                PositionX = Math.Max(0, x.PositionX),
+                PositionY = Math.Max(0, x.PositionY),
                 UpdatedAt = DateTime.UtcNow,
                 UpdatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             })
@@ -173,7 +175,9 @@ public class OrgChartModel : PageModel
             {
                 UserId = x.UserId,
                 ReportsToUserId = x.ReportsToUserId,
-                SortOrder = x.SortOrder
+                SortOrder = x.SortOrder,
+                PositionX = x.PositionX,
+                PositionY = x.PositionY
             })
             .ToListAsync();
     }
@@ -262,6 +266,8 @@ public class OrgChartModel : PageModel
         public string UserId { get; set; } = "";
         public string? ReportsToUserId { get; set; }
         public int SortOrder { get; set; }
+        public int PositionX { get; set; }
+        public int PositionY { get; set; }
     }
 
     public record ExportRow(int Level, string FullName, string Position, string ReportsToName, string Email);

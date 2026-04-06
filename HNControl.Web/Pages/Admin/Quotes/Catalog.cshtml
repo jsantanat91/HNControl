@@ -15,6 +15,9 @@
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#nuevoItemCatalogoModal">
                 + Nuevo item
             </button>
+            <button class="btn btn-outline-primary" type="button" id="newParentCategoryBtn">
+                + Nueva categoria padre
+            </button>
         <a class="btn btn-outline-primary" asp-page="./Requests">Cotizaciones</a>
     </div>
 </div>
@@ -30,10 +33,14 @@
         .OrderBy(x => x.Segment)
         .ThenBy(x => x.Name)
         .ToList();
+    var categoryIds = categories.Select(x => x.Id).ToHashSet();
+    var services = Model.Items.Where(x => x.NodeType == HNControl.Web.Models.QuoteNodeType.Service).ToList();
+    var serviceIds = services.Select(x => x.Id).ToHashSet();
 
     var catalogJson = JsonSerializer.Serialize(Model.Items.Select(x => new
     {
         id = x.Id,
+        parentId = x.ParentId,
         segment = x.Segment.ToString(),
         nodeType = x.NodeType.ToString(),
         name = x.Name,
@@ -56,40 +63,57 @@
         }
         else
         {
-            <div class="row g-3">
-                @foreach (var cat in categories)
-                {
-                    var itemsCount = Model.Items.Count(x => (x.ParentName ?? "").Contains(cat.Name, StringComparison.OrdinalIgnoreCase));
-                    <div class="col-12 col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge text-bg-light border">@Model.LabelSegment(cat.Segment)</span>
-                                <span class="hn-chip @(cat.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(cat.IsActive ? "Activo" : "Inactivo")</span>
-                            </div>
-                            <div class="fw-semibold">@cat.Name</div>
-                            <div class="small text-muted">@(!string.IsNullOrWhiteSpace(cat.Description) ? cat.Description : "Sin descripcion")</div>
-                            <div class="small text-muted mt-2">Servicios/Subservicios: @itemsCount</div>
-                            <div class="mt-3 d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-primary"
-                                        type="button"
-                                        data-category-open="true"
-                                        data-category-id="@cat.Id"
-                                        data-category-name="@cat.Name">Abrir</button>
-                                <button class="btn btn-sm btn-primary"
-                                        type="button"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#nuevoItemCatalogoModal"
-                                        data-parent-prefill="@cat.Id">Nuevo item</button>
-                            </div>
+            @foreach (var segment in new[] { HNControl.Web.Models.QuoteSegment.Residential, HNControl.Web.Models.QuoteSegment.Business, HNControl.Web.Models.QuoteSegment.Events })
+            {
+                var segmentCategories = categories.Where(c => c.Segment == segment).ToList();
+                <div class="mb-3">
+                    <div class="fw-semibold mb-2">@Model.LabelSegment(segment)</div>
+                    @if (!segmentCategories.Any())
+                    {
+                        <div class="small text-muted border rounded p-2">Sin categorias en este segmento.</div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var cat in segmentCategories)
+                            {
+                                var serviceRows = services.Where(s => s.ParentId == cat.Id).ToList();
+                                var subCount = Model.Items.Count(s => s.NodeType == HNControl.Web.Models.QuoteNodeType.Subproduct && s.ParentId.HasValue && serviceIds.Contains(s.ParentId.Value) && serviceRows.Any(sr => sr.Id == s.ParentId.Value));
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="border rounded-3 p-3 h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge text-bg-light border">@Model.LabelSegment(cat.Segment)</span>
+                                            <span class="hn-chip @(cat.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(cat.IsActive ? "Activo" : "Inactivo")</span>
+                                        </div>
+                                        <div class="fw-semibold">@cat.Name</div>
+                                        <div class="small text-muted">@(!string.IsNullOrWhiteSpace(cat.Description) ? cat.Description : "Sin descripcion")</div>
+                                        <div class="small text-muted mt-2">Servicios/Subservicios: @serviceRows.Count / @subCount</div>
+                                        <div class="mt-3 d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    type="button"
+                                                    data-category-open="true"
+                                                    data-category-id="@cat.Id"
+                                                    data-category-name="@cat.Name"
+                                                    data-category-segment="@cat.Segment">Abrir</button>
+                                            <button class="btn btn-sm btn-primary"
+                                                    type="button"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#nuevoItemCatalogoModal"
+                                                    data-parent-prefill="@cat.Id"
+                                                    data-segment-prefill="@cat.Segment">Nuevo item</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </div>
-                    </div>
-                }
-            </div>
+                    }
+                </div>
+            }
         }
     </div>
 </div>
 
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3 d-none">
     <div class="card-body">
         <h2 class="h6 mb-3">Nuevo item del catalogo</h2>
         <form method="post" asp-page-handler="Create" class="row g-3">
@@ -188,7 +212,7 @@
     </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm d-none">
     <div class="card-body">
         <h2 class="h6 mb-3">Catalogo actual</h2>
 
@@ -491,6 +515,9 @@
     const seg = document.querySelector('[name="Input.Segment"]');
     const node = document.getElementById('nodeTypeSelect');
     const parent = document.getElementById('parentSelect');
+    const modalSeg = document.getElementById('modalSegment');
+    const modalNode = document.getElementById('modalNodeType');
+    const modalParent = document.getElementById('modalParentSelect');
 
     function neededParentType(nodeType){
         if(nodeType === 'Service') return 'Category';
@@ -515,9 +542,33 @@
         });
     }
 
-    seg.addEventListener('change', refreshParents);
-    node.addEventListener('change', refreshParents);
-    refreshParents();
+    if (seg && node && parent) {
+        seg.addEventListener('change', refreshParents);
+        node.addEventListener('change', refreshParents);
+        refreshParents();
+    }
+
+    function refreshModalParents(){
+        if (!modalSeg || !modalNode || !modalParent) return;
+        const currentSeg = modalSeg.value;
+        const typeNeeded = neededParentType(modalNode.value);
+        [...modalParent.options].forEach((opt, idx) => {
+            if(idx === 0){
+                opt.hidden = !!typeNeeded;
+                if(!typeNeeded) opt.selected = true;
+                return;
+            }
+            const okSeg = opt.dataset.segment === currentSeg;
+            const okType = !typeNeeded || opt.dataset.type === typeNeeded;
+            opt.hidden = !(okSeg && okType);
+            if(opt.hidden && opt.selected) modalParent.value = '';
+        });
+    }
+    if (modalSeg && modalNode && modalParent) {
+        modalSeg.addEventListener('change', refreshModalParents);
+        modalNode.addEventListener('change', refreshModalParents);
+        refreshModalParents();
+    }
 })();
 
 (function(){
@@ -542,9 +593,10 @@
         createModal.show();
     }
 
-    function renderCategory(categoryId, categoryName){
-        const services = catalog.filter(x => x.nodeType === 'Service' && (x.parentName || '').indexOf(categoryName) >= 0);
-        const subs = catalog.filter(x => x.nodeType === 'Subproduct' && (x.parentName || '').indexOf(categoryName) >= 0);
+    function renderCategory(categoryId, categoryName, categorySegment){
+        const services = catalog.filter(x => x.nodeType === 'Service' && x.segment === categorySegment && x.parentId === categoryId);
+        const serviceIds = new Set(services.map(s => s.id));
+        const subs = catalog.filter(x => x.nodeType === 'Subproduct' && x.segment === categorySegment && x.parentId && serviceIds.has(x.parentId));
 
         let html = `<div class="mb-3"><div class="fw-semibold">${categoryName}</div><div class="small text-muted">Servicios: ${services.length} · Subservicios: ${subs.length}</div></div>`;
 
@@ -577,7 +629,8 @@
         btn.addEventListener('click', function(){
             const categoryId = this.getAttribute('data-category-id') || '';
             const categoryName = this.getAttribute('data-category-name') || 'Categoria';
-            renderCategory(categoryId, categoryName);
+            const categorySegment = this.getAttribute('data-category-segment') || 'Residential';
+            renderCategory(categoryId, categoryName, categorySegment);
             detailModal.show();
         });
     });
@@ -591,8 +644,22 @@
     document.querySelectorAll('[data-parent-prefill]').forEach(btn => {
         btn.addEventListener('click', function(){
             openCreate(this.getAttribute('data-parent-prefill') || '');
+            const seg = this.getAttribute('data-segment-prefill') || '';
+            const modalSegment = document.getElementById('modalSegment');
+            if (modalSegment && seg) modalSegment.value = seg;
         });
     });
+
+    const newParentCategoryBtn = document.getElementById('newParentCategoryBtn');
+    if (newParentCategoryBtn) {
+        newParentCategoryBtn.addEventListener('click', function(){
+            const modalNodeType = document.getElementById('modalNodeType');
+            const modalParent = document.getElementById('modalParentSelect');
+            if (modalNodeType) modalNodeType.value = 'Category';
+            if (modalParent) modalParent.value = '';
+            if (createModal) createModal.show();
+        });
+    }
 })();
 </script>
 }

@@ -39,7 +39,9 @@
         <div class="card shadow-soft h-100">
             <div class="card-header fw-semibold">Vista del organigrama</div>
             <div class="card-body">
-                <div id="orgCanvas"></div>
+                <div id="orgCanvas" class="org-dropzone">
+                    <div id="orgTreeRoot" class="org-tree-root"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -59,6 +61,7 @@
             padding: .75rem;
             background: rgba(241,245,249,.55);
         }
+        .org-tree-root { min-height: 360px; }
         .org-card {
             background: #fff;
             border: 1px solid rgba(15,23,42,.12);
@@ -68,6 +71,7 @@
             box-shadow: 0 8px 16px rgba(15,23,42,.06);
         }
         .org-card.dragging { opacity: .55; }
+        .org-card.is-selected { outline: 2px solid rgba(37,99,235,.5); }
         .org-card-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
         .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
         .org-role { font-size:.8rem; color:#64748b; }
@@ -82,6 +86,11 @@
             background: rgba(147,197,253,.25);
             border-radius: 12px;
         }
+        .org-link-help {
+            font-size: .8rem;
+            color: #64748b;
+            margin-bottom: .55rem;
+        }
     </style>
 }
 
@@ -93,6 +102,7 @@
     const links = @Html.Raw(nodesJson);
     const root = document.getElementById('orgRoot');
     const canvas = document.getElementById('orgCanvas');
+    const orgTreeRoot = document.getElementById('orgTreeRoot');
     const alertBox = document.getElementById('orgAlert');
 
     const getUserId = (x) => x?.userId || x?.UserId || '';
@@ -105,6 +115,7 @@
     const byUser = new Map(employees.map(e => [getUserId(e), e]).filter(([k]) => !!k));
     const cardByUser = new Map();
     let draggingUserId = null;
+    let selectedParentId = null;
 
     function showAlert(msg, ok) {
         alertBox.className = `alert ${ok ? 'alert-success' : 'alert-danger'}`;
@@ -127,20 +138,26 @@
             </div>
             <div class="org-children" data-parent-id="${userId}"></div>
         `;
+        card.addEventListener('click', () => {
+            if (!canEdit) return;
+            if (selectedParentId === userId) {
+                selectedParentId = null;
+            } else {
+                selectedParentId = userId;
+            }
+            cardByUser.forEach(c => c.classList.toggle('is-selected', c.dataset.userId === selectedParentId));
+        });
         cardByUser.set(userId, card);
         return card;
     }
 
     function buildBase() {
         root.innerHTML = '';
-        canvas.innerHTML = '';
-        const canvasWrap = document.createElement('div');
-        canvasWrap.className = 'org-dropzone';
-        canvas.appendChild(canvasWrap);
+        orgTreeRoot.innerHTML = '';
 
         employees.forEach(emp => {
             const card = createCard(emp);
-            canvasWrap.appendChild(card);
+            orgTreeRoot.appendChild(card);
         });
 
         const linkMap = new Map(links.map(x => [getUserId(x), x]).filter(([k]) => !!k));
@@ -156,13 +173,18 @@
             const card = cardByUser.get(userId);
             const parentId = getReportsTo(linkMap.get(userId));
             if (!parentId) {
-                root.appendChild(card);
+                orgTreeRoot.appendChild(card);
                 return;
             }
             const parent = cardByUser.get(parentId);
             const zone = parent?.querySelector('.org-children');
-            (zone || root).appendChild(card);
+            (zone || orgTreeRoot).appendChild(card);
         });
+
+        const help = document.createElement('div');
+        help.className = 'org-link-help';
+        help.textContent = 'Tip: arrastra tarjetas al panel derecho. Para enlazar por jerarquía, suelta una tarjeta sobre otra.';
+        canvas.prepend(help);
     }
 
     function isDropInsideSelf(targetZone, draggedCard) {
@@ -173,7 +195,7 @@
     function enableDnD() {
         if (!canEdit) return;
 
-        const zones = () => [root, ...document.querySelectorAll('.org-children')];
+        const zones = () => [root, orgTreeRoot, ...document.querySelectorAll('.org-children')];
         zones().forEach(zone => {
             zone.addEventListener('dragover', e => {
                 e.preventDefault();
@@ -206,16 +228,25 @@
     function collectLayout() {
         const out = [];
         let order = 0;
+        const baseRect = orgTreeRoot.getBoundingClientRect();
         function walk(zone, parentId) {
             const cards = [...zone.children].filter(x => x.classList.contains('org-card'));
             cards.forEach(card => {
                 const userId = card.dataset.userId;
+                const r = card.getBoundingClientRect();
                 order += 1;
-                out.push({ userId, reportsToUserId: parentId, sortOrder: order });
+                out.push({
+                    userId,
+                    reportsToUserId: parentId,
+                    sortOrder: order,
+                    positionX: Math.max(0, Math.round(r.left - baseRect.left)),
+                    positionY: Math.max(0, Math.round(r.top - baseRect.top))
+                });
                 const childZone = card.querySelector(':scope > .org-children');
                 if (childZone) walk(childZone, userId);
             });
         }
+        walk(orgTreeRoot, null);
         walk(root, null);
         return out;
     }

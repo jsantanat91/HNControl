@@ -125,11 +125,25 @@ public class ProjectActivity
 
     [MaxLength(200)]
     public string AssignedToName { get; set; } = "";
+    
+    [MaxLength(64)]
+    public string? AssignedToUserId { get; set; }
 
     [MaxLength(1000)]
     public string Description { get; set; } = "";
 
     public int PlannedDays { get; set; } = 1;
+    
+    [MaxLength(16)]
+    public string DurationUnit { get; set; } = "hours";
+    public int DurationValue { get; set; } = 1;
+    
+    public DateTime? StartAtUtc { get; set; }
+    public DateTime? EndAtUtc { get; set; }
+    
+    [MaxLength(16)]
+    public string? ColorHex { get; set; }
+
     public int SortOrder { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
