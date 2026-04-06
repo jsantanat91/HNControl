@@ -23,17 +23,51 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public string View { get; set; } = "normal";
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+    [BindProperty] public LeadInput Lead { get; set; } = new();
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
     public bool CanEdit { get; set; }
+    public bool CanCreateLead { get; set; }
 
-    public record Row(Guid Id, string ClientCode, string Name, string Rfc, string Kind, string Email, string ContractsSummary, DateTime CreatedAt, bool IsActive, bool IsTemporaryLead);
+    public record Row(
+        Guid Id,
+        string ClientCode,
+        string Name,
+        string Rfc,
+        string Kind,
+        string Email,
+        string ContractsSummary,
+        DateTime CreatedAt,
+        bool IsActive,
+        bool IsTemporaryLead,
+        bool IsConvertedFromLead);
     public List<Row> Rows { get; set; } = new();
+
+    public class LeadInput
+    {
+        public string ContactName { get; set; } = "";
+        public string? CompanyName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Location { get; set; }
+        public string? Notes { get; set; }
+    }
 
     public async Task OnGetAsync()
     {
-        CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
+        if (showLeads)
+        {
+            CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsEdit);
+            CanCreateLead = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
+        }
+        else
+        {
+            CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+            CanCreateLead = false;
+        }
+
         await EnsureClientCodesAsync();
 
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
@@ -46,7 +80,6 @@ public class IndexModel : PageModel
             .Include(c => c.Contracts)
             .AsQueryable();
 
-        var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
         q = q.Where(c => c.IsTemporaryLead == showLeads);
 
         var name = (Name ?? "").Trim();
@@ -87,14 +120,17 @@ public class IndexModel : PageModel
                 summary,
                 c.CreatedAt,
                 c.IsActive,
-                c.IsTemporaryLead
+                c.IsTemporaryLead,
+                c.ConvertedToFormalAt.HasValue
             );
         }).ToList();
     }
 
     public async Task<IActionResult> OnPostToggleActiveAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
     {
-        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        var leads = string.Equals(view, "leads", StringComparison.OrdinalIgnoreCase);
+        var action = leads ? AppActions.SalesProspectsEdit : AppActions.ClientsEdit;
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, action);
         if (!canEdit) return Forbid();
 
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
@@ -102,6 +138,73 @@ public class IndexModel : PageModel
         client.IsActive = !client.IsActive;
         await _db.SaveChangesAsync();
         return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+    }
+
+    public async Task<IActionResult> OnPostCreateLeadAsync(string? name, string? view, int page = 1, int pageSize = 20)
+    {
+        var canCreate = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
+        if (!canCreate) return Forbid();
+
+        var contactName = (Lead.ContactName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(contactName))
+            return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+
+        var email = (Lead.Email ?? "").Trim().ToLowerInvariant();
+        var phone = (Lead.Phone ?? "").Trim();
+        var location = (Lead.Location ?? "").Trim();
+        var company = string.IsNullOrWhiteSpace(Lead.CompanyName) ? contactName : Lead.CompanyName.Trim();
+
+        var existing = !string.IsNullOrWhiteSpace(email)
+            ? await _db.Clients.FirstOrDefaultAsync(x => x.IsTemporaryLead && x.Email != null && x.Email.ToLower() == email)
+            : null;
+
+        if (existing != null)
+        {
+            existing.Name = company;
+            existing.ContactName = contactName;
+            existing.Phone = phone;
+            existing.Address = location;
+            existing.IsActive = true;
+        }
+        else
+        {
+            _db.Clients.Add(new Client
+            {
+                ClientCode = await NextLeadCodeAsync(),
+                Name = company,
+                Type = ClientType.Moral,
+                Email = string.IsNullOrWhiteSpace(email) ? null : email,
+                Phone = phone,
+                ContactName = contactName,
+                Address = location,
+                IsTemporaryLead = true,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+    }
+
+    public async Task<IActionResult> OnPostConvertLeadToFormalAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
+    {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsConvert);
+        if (!canEdit) return Forbid();
+
+        var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
+        if (lead == null)
+            return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+        if (!lead.IsTemporaryLead)
+            return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+
+        lead.IsTemporaryLead = false;
+        lead.IsActive = true;
+        lead.ConvertedToFormalAt = DateTime.UtcNow;
+        lead.ClientCode = await NextFormalClientCodeAsync();
+
+        await _db.SaveChangesAsync();
+        return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
     }
 
     private async Task EnsureClientCodesAsync()
@@ -133,6 +236,41 @@ public class IndexModel : PageModel
 
         if (changed)
             await _db.SaveChangesAsync();
+    }
+
+    private async Task<string> NextLeadCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.IsTemporaryLead && !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-VENTA-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            var suffix = code["HN-VENTA-".Length..];
+            if (int.TryParse(suffix, out var n) && n > max)
+                max = n;
+        }
+        return $"HN-VENTA-{max + 1:00}";
+    }
+
+    private async Task<string> NextFormalClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !c.IsTemporaryLead && !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-") && !c.ClientCode.StartsWith("HN-VENTA-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+        return $"HN-{max + 1:0000}";
     }
 }
 

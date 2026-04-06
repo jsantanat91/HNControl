@@ -62,19 +62,37 @@
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Portal URL (opcional)</label>
-                <input class="form-control" asp-for="Input.PortalUrl" placeholder="https://portal.proveedor.com" />
+            <div class="col-md-4">
+                <label class="form-label">Monto mensual (antes de IVA)</label>
+                <input class="form-control" asp-for="Input.MonthlyAmount" type="number" min="0" step="0.01" placeholder="0.00" />
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Portal usuario (opcional)</label>
-                <input class="form-control" asp-for="Input.PortalUsername" />
+            <div class="col-md-4">
+                <label class="form-label">Recurrencia</label>
+                <select class="form-select" asp-for="Input.BillingRecurrence">
+                    <option value="Unica">Unico</option>
+                    <option value="Mensual">Mensual</option>
+                    <option value="Anual">Anual</option>
+                </select>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Portal password (opcional)</label>
-                <input class="form-control" asp-for="Input.PortalPassword" />
+            <div class="col-md-4">
+                <label class="form-label">Tiempo de contrato</label>
+                <select class="form-select" asp-for="Input.ContractTermOption">
+                    <option value="12">12 meses</option>
+                    <option value="18">18 meses</option>
+                    <option value="24">24 meses</option>
+                    <option value="36">36 meses</option>
+                    <option value="Indefinido">Indefinido</option>
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Venta relacionada (opcional)</label>
+                <select class="form-select" asp-for="Input.SalesOpportunityId" asp-items="Model.SalesOpportunityItems">
+                    <option value="">-- Sin venta relacionada --</option>
+                </select>
+                <div class="form-text">Vincula el contrato con una cotizacion/venta cerrada del cliente.</div>
             </div>
 
             <div class="col-md-4">

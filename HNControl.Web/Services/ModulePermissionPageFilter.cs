@@ -40,6 +40,10 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
 
         var viewPath = (context.ActionDescriptor as PageActionDescriptor)?.ViewEnginePath;
         var moduleKey = AppModules.FromPagePath(viewPath);
+        var isLeadsView = string.Equals(context.HttpContext.Request.Query["View"], "leads", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(viewPath, "/Clients/Index", StringComparison.OrdinalIgnoreCase) && isLeadsView)
+            moduleKey = AppModules.Sales;
+
         if (moduleKey == null)
         {
             await next();
@@ -57,7 +61,8 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
             moduleKey,
             viewPath,
             context.HttpContext.Request.Method,
-            context.HandlerMethod?.MethodInfo?.Name);
+            context.HandlerMethod?.MethodInfo?.Name,
+            isLeadsView);
 
         if (!string.IsNullOrWhiteSpace(actionKey))
         {
@@ -72,7 +77,7 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
         await next();
     }
 
-    private static string? ResolveActionKey(string moduleKey, string? viewPath, string? method, string? handlerMethodName)
+    private static string? ResolveActionKey(string moduleKey, string? viewPath, string? method, string? handlerMethodName, bool isLeadsView)
     {
         var isWrite = !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase);
         var path = viewPath ?? "";
@@ -123,6 +128,18 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
 
         if (string.Equals(moduleKey, AppModules.Sales, StringComparison.OrdinalIgnoreCase))
         {
+            if (path.StartsWith("/Clients/Index", StringComparison.OrdinalIgnoreCase)
+                && isLeadsView)
+            {
+                if (handler.Contains("ConvertLead", StringComparison.OrdinalIgnoreCase))
+                    return AppActions.SalesProspectsConvert;
+                if (handler.Contains("CreateLead", StringComparison.OrdinalIgnoreCase))
+                    return AppActions.SalesProspectsCreate;
+                if (isWrite)
+                    return AppActions.SalesProspectsEdit;
+                return AppActions.SalesProspectsView;
+            }
+
             if (path.StartsWith("/Sales/Templates", StringComparison.OrdinalIgnoreCase))
                 return AppActions.TemplatesManage;
 

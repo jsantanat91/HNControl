@@ -35,12 +35,15 @@ public class DetailsModel : PageModel
         string Provider,
         string AccountNumber,
         string ContractNumber,
+        string MonthlyAmountText,
+        string BillingRecurrence,
+        string ContractTermText,
+        string SalesReference,
         string Branch,
         string BranchAddress,
         string ContractEndDateText,
         string StatusText,
         string StatusBadgeClass,
-        bool HasPortalAccess,
         bool HasContractFile,
         string ProjectTitle
     );
@@ -124,6 +127,7 @@ public class DetailsModel : PageModel
                 }
 
                 var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "â€”";
+                var meta = ParseContractMeta(x.Notes);
 
                 var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
                     ? t
@@ -136,12 +140,15 @@ public class DetailsModel : PageModel
                     x.Provider,
                     x.AccountNumber,
                     x.ContractNumber,
+                    (x.MonthlyAmount ?? 0m).ToString("C2"),
+                    meta.Recurrence,
+                    meta.TermText,
+                    meta.SalesReference,
                     x.Branch,
                     x.BranchAddress,
                     endText,
                     status,
                     badge,
-                    !string.IsNullOrWhiteSpace(x.PortalUrl) || !string.IsNullOrWhiteSpace(x.PortalUsername),
                     !string.IsNullOrWhiteSpace(x.SignedContractStoragePath),
                     projTitle
                 );
@@ -171,7 +178,9 @@ public class DetailsModel : PageModel
                 x.Id,
                 x.Folio,
                 x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
-                x.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial",
+                x.Segment == QuoteSegment.Business ? "Empresarial"
+                    : x.Segment == QuoteSegment.Events ? "Eventos"
+                    : "Residencial",
                 x.EstimatedTotal ?? x.SubtotalAuto,
                 x.ManualItemsCount,
                 !string.IsNullOrWhiteSpace(x.PdfStoragePath)
@@ -344,6 +353,41 @@ public class DetailsModel : PageModel
         }
 
         return $"HN-{max + 1:0000}";
+    }
+
+    private static (string Recurrence, string TermText, string SalesReference) ParseContractMeta(string? notes)
+    {
+        var recurrence = "Mensual";
+        var term = "12";
+        var sale = "-";
+        foreach (var line in (notes ?? string.Empty).Split('\n'))
+        {
+            var clean = line.Trim().TrimEnd('\r');
+            if (!clean.StartsWith("[META]", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var payload = clean.Substring(6).Trim();
+            var parts = payload.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2) continue;
+            var key = parts[0];
+            var value = parts[1];
+            if (key.Equals("Recurrencia", StringComparison.OrdinalIgnoreCase))
+                recurrence = value;
+            else if (key.Equals("Plazo", StringComparison.OrdinalIgnoreCase))
+                term = value;
+            else if (key.Equals("VentaId", StringComparison.OrdinalIgnoreCase))
+                sale = value;
+        }
+
+        var termText = term switch
+        {
+            "12" => "12 meses",
+            "18" => "18 meses",
+            "24" => "24 meses",
+            "36" => "36 meses",
+            _ => "Indefinido"
+        };
+
+        return (recurrence, termText, sale);
     }
 }
 

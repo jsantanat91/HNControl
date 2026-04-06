@@ -11,12 +11,20 @@
 <div class="card border-0 shadow-soft mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center">
         <span class="text-muted small me-2">Comercial:</span>
-        <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
-        <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
-        <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
         @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
         {
+            <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
+            <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
+            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
+            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
+            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizaciones","info")">Cotizaciones</a>
             <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
+        }
+        else
+        {
+            <a href="/cotizar" class="@Btn("/cotizar","Nueva cotización","primary")">Nueva cotización</a>
+            <a href="/Ventas/Cotizaciones" class="@Btn("/ventas/cotizaciones","Cotizaciones","info")">Cotizaciones</a>
+            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
         }
     </div>
 </div>

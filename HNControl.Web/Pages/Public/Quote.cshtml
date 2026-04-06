@@ -15,9 +15,9 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
                         <h1 class="h3 mb-1">Cotizacion a la medida</h1>
-                        <div class="text-muted">Modo tienda: selecciona productos como carrito y recibe PDF por correo.</div>
+                        <div class="text-muted">Flujo interno: arma cotizacion, genera PDF y envia por correo.</div>
                     </div>
-                    <span class="badge text-bg-light border">Kiosk publico</span>
+                    <span class="badge text-bg-light border">Nueva cotizacion</span>
                 </div>
 
                 @if (Model.HasClientContext)
@@ -60,6 +60,7 @@
                                 <select class="form-select" asp-for="Input.Segment" id="segmentSelect">
                                     <option value="Residential">Residencial</option>
                                     <option value="Business">Empresarial</option>
+                                    <option value="Events">Eventos</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -339,20 +340,29 @@
             inventoryHardwareSelect.innerHTML = '<option value="">-- Selecciona hardware de inventario --</option>';
         }
         inventoryHardwareItems.forEach(x => {
+            const itemId = x.id ?? x.Id;
+            const itemName = x.name ?? x.Name ?? 'Item';
+            const itemCategory = x.category ?? x.Category ?? 'Sin categoría';
+            const itemUnit = x.unit ?? x.Unit ?? 'pza';
+            const itemQty = Number(x.quantityOnHand ?? x.QuantityOnHand ?? 0);
             const opt = document.createElement('option');
-            opt.value = String(x.id);
-            const stock = Number(x.quantityOnHand || 0);
-            opt.textContent = `${x.name} · ${x.category || 'Sin categoría'} · Stock: ${stock} ${x.unit || 'pza'}`;
+            opt.value = String(itemId);
+            opt.textContent = `${itemName} · ${itemCategory} · Stock: ${itemQty} ${itemUnit}`;
             inventoryHardwareSelect?.appendChild(opt);
         });
         if(inventoryServiceSelect){
             inventoryServiceSelect.innerHTML = '<option value="">-- Selecciona servicio --</option>';
         }
         inventoryServiceItems.forEach(x => {
+            const itemId = x.id ?? x.Id;
+            const itemName = x.name ?? x.Name ?? 'Servicio';
+            const itemCategory = x.category ?? x.Category ?? 'Servicios';
+            const itemUnitPrice = x.unitPrice ?? x.UnitPrice;
+            const itemManual = x.isManualPrice ?? x.IsManualPrice;
             const opt = document.createElement('option');
-            opt.value = String(x.id);
-            const price = x.isManualPrice || x.unitPrice == null ? 'Precio manual' : toMoney(Number(x.unitPrice || 0));
-            opt.textContent = `${x.name} · ${x.category || 'Servicios'} · ${price}`;
+            opt.value = String(itemId);
+            const price = itemManual || itemUnitPrice == null ? 'Precio manual' : toMoney(Number(itemUnitPrice || 0));
+            opt.textContent = `${itemName} · ${itemCategory} · ${price}`;
             inventoryServiceSelect?.appendChild(opt);
         });
     }
@@ -455,7 +465,14 @@
         if(!selectedSubproductId && rows[0]) selectedSubproductId = rows[0].id;
     }
 
-    function find(arr, id){ return arr.find(x => String(x.id) === String(id)); }
+    function readProp(obj, camel, pascal){
+        if(!obj) return undefined;
+        return obj[camel] ?? obj[pascal];
+    }
+
+    function find(arr, id){
+        return arr.find(x => String(readProp(x, 'id', 'Id')) === String(id));
+    }
 
     function totals(){
         const catalogBase = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
@@ -690,16 +707,19 @@
             alert('Selecciona un item de inventario.');
             return;
         }
-        const item = inventoryHardwareItems.find(x => String(x.id) === id);
+        const item = find(inventoryHardwareItems, id);
         if(!item){
             alert('No se encontró el item seleccionado.');
             return;
         }
         const qtyVal = Math.max(1, Number(inventoryHardwareQty?.value || 1));
+        const itemCategory = readProp(item, 'category', 'Category');
+        const itemName = readProp(item, 'name', 'Name');
+        const itemUnit = readProp(item, 'unit', 'Unit');
         manualLines.push({
-            categoryName: item.category || 'Inventario',
-            serviceName: item.name || 'Item inventario',
-            description: `Item inventario (${item.unit || 'pza'})`,
+            categoryName: itemCategory || 'Inventario',
+            serviceName: itemName || 'Item inventario',
+            description: `Item inventario (${itemUnit || 'pza'})`,
             quantity: qtyVal,
             unitPrice: 0,
             recurrence: 'Unica'
@@ -715,19 +735,23 @@
             alert('Selecciona un servicio.');
             return;
         }
-        const item = inventoryServiceItems.find(x => String(x.id) === id);
+        const item = find(inventoryServiceItems, id);
         if(!item){
             alert('No se encontró el servicio seleccionado.');
             return;
         }
         const qtyVal = Math.max(1, Number(inventoryServiceQty?.value || 1));
+        const itemCategory = readProp(item, 'category', 'Category');
+        const itemName = readProp(item, 'name', 'Name');
+        const itemOffer = readProp(item, 'offerType', 'OfferType');
+        const itemPrice = readProp(item, 'unitPrice', 'UnitPrice');
         manualLines.push({
-            categoryName: item.category || 'Servicios',
-            serviceName: item.name || 'Servicio',
-            description: `Servicio (${labelOffer(item.offerType || 'MonthlyRent')})`,
+            categoryName: itemCategory || 'Servicios',
+            serviceName: itemName || 'Servicio',
+            description: `Servicio (${labelOffer(itemOffer || 'MonthlyRent')})`,
             quantity: qtyVal,
-            unitPrice: Number(item.unitPrice || 0),
-            recurrence: (item.offerType || 'Sale') === 'MonthlyRent' ? 'Mensual' : 'Unica'
+            unitPrice: Number(itemPrice || 0),
+            recurrence: (itemOffer || 'Sale') === 'MonthlyRent' ? 'Mensual' : 'Unica'
         });
         if(inventoryServiceQty) inventoryServiceQty.value = '1';
         if(inventoryServiceSelect) inventoryServiceSelect.value = '';

@@ -81,7 +81,7 @@
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label">Periodicidad</label>
-                <select class="form-select" asp-for="Input.Periodicity" asp-items="Html.GetEnumSelectList<BillingPeriodicity>()"></select>
+                <select class="form-select" asp-for="Input.Periodicity" asp-items="Model.PeriodicityItems"></select>
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label">Inicio</label>

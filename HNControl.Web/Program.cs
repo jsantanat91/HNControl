@@ -188,6 +188,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Dashboard", "/Ventas");
     options.Conventions.AddPageRoute("/Sales/Workflow", "/Ventas/Workflow");
     options.Conventions.AddPageRoute("/Sales/Templates", "/Ventas/Plantillas");
+    options.Conventions.AddPageRoute("/Sales/Prospects", "/Ventas/Prospectos");
+    options.Conventions.AddPageRoute("/Sales/My", "/Ventas/Cotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
     options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
 })

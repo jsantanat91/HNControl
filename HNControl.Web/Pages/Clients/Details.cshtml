@@ -80,10 +80,8 @@
                                             {
                                                 <span class="hn-chip hn-chip-ref hn-chip-branch" title="@c.Branch">Sucursal: @c.Branch</span>
                                             }
-                                            @if (c.HasPortalAccess)
-                                            {
-                                                <span class="badge bg-info text-dark">Acceso portal</span>
-                                            }
+                                            <span class="badge text-bg-light border">Recurrencia: @c.BillingRecurrence</span>
+                                            <span class="badge text-bg-light border">Plazo: @c.ContractTermText</span>
                                         </div>
 
                                         <div class="small text-muted mb-1">
@@ -92,6 +90,10 @@
                                         </div>
                                         <div class="small mb-1">
                                             Proveedor: <b>@(string.IsNullOrWhiteSpace(c.Provider) ? "-" : c.Provider)</b>
+                                        </div>
+                                        <div class="small mb-1">
+                                            Monto mensual antes IVA: <b>@c.MonthlyAmountText</b>
+                                            &middot; Venta: <span class="text-muted">@c.SalesReference</span>
                                         </div>
                                         @if (!string.IsNullOrWhiteSpace(c.BranchAddress))
                                         {

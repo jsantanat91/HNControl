@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.SuperAdmin)]
 public class CatalogModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -394,7 +395,12 @@ public class CatalogModel : PageModel
         return true;
     }
 
-    public string LabelSegment(QuoteSegment x) => x == QuoteSegment.Business ? "Empresarial" : "Residencial";
+    public string LabelSegment(QuoteSegment x) => x switch
+    {
+        QuoteSegment.Business => "Empresarial",
+        QuoteSegment.Events => "Eventos",
+        _ => "Residencial"
+    };
 
     public string LabelType(QuoteNodeType x) => x switch
     {
@@ -411,6 +417,21 @@ public class CatalogModel : PageModel
         QuoteOfferType.Lease => "Arrendamiento",
         _ => x.ToString()
     };
+
+    public string ParentCategoryGroup(CatalogRowVm item)
+    {
+        if (item.NodeType == QuoteNodeType.Category)
+            return item.Name;
+        if (string.IsNullOrWhiteSpace(item.ParentName))
+            return "Sin categoria padre";
+
+        var parts = item.ParentName
+            .Split('·', StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .ToList();
+        if (parts.Count >= 3) return parts[2];
+        return parts.LastOrDefault() ?? item.ParentName;
+    }
 
     private string BuildNodeLabel(QuoteCatalogItem x, bool includeSegment)
     {

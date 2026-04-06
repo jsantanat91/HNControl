@@ -2,15 +2,28 @@
 @model HNControl.Web.Pages.Admin.Quotes.RequestsModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Admin - Solicitudes de cotizacion";
+    ViewData["Title"] = "Admin - Cotizaciones";
+}
+
+@{
+    var canManage = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin);
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Solicitudes de cotizacion</h1>
-        <div class="text-muted small">Leads del kiosk y PDF generado.</div>
+        <h1 class="h4 mb-0">@(canManage ? "Cotizaciones" : "Mis cotizaciones")</h1>
+        <div class="text-muted small">Cotizaciones internas de ventas y PDF generado.</div>
     </div>
-    <a class="btn btn-outline-primary" asp-page="./Catalog">Catalogo</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="button"
+                onclick="window.open('/cotizar','quote_new_window','width=1360,height=860,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');">
+            + Nueva cotizacion
+        </button>
+        @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+        {
+            <a class="btn btn-outline-primary" asp-page="./Catalog">Catalogo</a>
+        }
+    </div>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Message))
@@ -18,6 +31,8 @@
     <div class="alert alert-success">@Model.Message</div>
 }
 
+@if (canManage)
+{
 <form method="get" class="card shadow-sm mb-3">
     <div class="card-body row g-2 align-items-end">
         <div class="col-md-4">
@@ -30,6 +45,7 @@
                 <option value="">Todos</option>
                 <option value="Residential" selected="@(Model.Segment == "Residential")">Residencial</option>
                 <option value="Business" selected="@(Model.Segment == "Business")">Empresarial</option>
+                <option value="Events" selected="@(Model.Segment == "Events")">Eventos</option>
             </select>
         </div>
         <div class="col-md-2">
@@ -56,6 +72,7 @@
         </div>
     </div>
 </form>
+}
 
 <div class="vstack gap-3">
 @foreach (var r in Model.Rows)
@@ -108,7 +125,7 @@
                     {
                         <a class="btn btn-sm btn-outline-primary mt-2" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">PDF</a>
                     }
-                    @if (r.Status != "Accepted" && r.Status != "Rejected")
+                    @if (canManage && r.Status != "Accepted" && r.Status != "Rejected")
                     {
                         <div class="d-flex gap-2 justify-content-end mt-2">
                             <form method="post" asp-page-handler="Accept">
@@ -173,6 +190,6 @@
 
 @if (Model.Rows.Count == 0)
 {
-    <div class="card"><div class="card-body text-muted">Sin solicitudes en este filtro.</div></div>
+    <div class="card"><div class="card-body text-muted">Sin cotizaciones en este filtro.</div></div>
 }
 </div>

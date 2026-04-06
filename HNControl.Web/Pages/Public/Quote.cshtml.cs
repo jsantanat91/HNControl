@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Public;
 
-[AllowAnonymous]
 public class QuoteModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -37,15 +37,22 @@ public class QuoteModel : PageModel
     public bool SkipClientDataStep { get; set; }
     public string ClientName { get; set; } = string.Empty;
 
-    public async Task OnGetAsync(string? token)
+    public async Task<IActionResult> OnGetAsync(string? token)
     {
+        if (!CanUseInternalQuote())
+            return RedirectToPage("/Account/Login");
+
         Input.ClientToken = token;
         await TryLoadClientContextAsync(token);
         await LoadCatalogPayloadAsync();
+        return Page();
     }
 
     public async Task<IActionResult> OnPostPreviewAsync()
     {
+        if (!CanUseInternalQuote())
+            return RedirectToPage("/Account/Login");
+
         var build = await BuildRequestFromInputAsync(isPreview: true);
         if (build.error != null || build.request == null)
         {
@@ -60,6 +67,9 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!CanUseInternalQuote())
+            return RedirectToPage("/Account/Login");
+
         var build = await BuildRequestFromInputAsync(isPreview: false);
         if (build.error != null || build.request == null)
         {
@@ -77,6 +87,7 @@ public class QuoteModel : PageModel
 
         _db.QuoteRequests.Add(request);
         await _db.SaveChangesAsync();
+        await EnsureOpportunityForCurrentUserAsync(request);
 
         var pdfBytes = await _pdf.RenderAsync(request);
         var fileName = $"{request.Folio}.pdf";
@@ -307,7 +318,7 @@ public class QuoteModel : PageModel
             .ToListAsync();
         var inventoryItems = await _db.InventoryItems
             .AsNoTracking()
-            .Where(x => x.IsActive)
+            .Where(x => x.IsActive && x.QuantityOnHand > 0)
             .OrderBy(x => x.Name)
             .Select(x => new
             {
@@ -354,6 +365,7 @@ public class QuoteModel : PageModel
         {
             [QuoteSegment.Residential.ToString()] = Pack(QuoteSegment.Residential),
             [QuoteSegment.Business.ToString()] = Pack(QuoteSegment.Business),
+            [QuoteSegment.Events.ToString()] = Pack(QuoteSegment.Events),
             ["inventoryHardwareItems"] = inventoryItems,
             ["inventoryServiceItems"] = serviceItems
         };
@@ -396,7 +408,7 @@ public class QuoteModel : PageModel
   <p style='margin:0 0 14px'>{intro}</p>
   <p style='margin:0'><strong>Folio:</strong> {r.Folio}</p>
   <p style='margin:0'><strong>Cliente:</strong> {r.CustomerName}</p>
-  <p style='margin:0'><strong>Segmento:</strong> {(r.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial")}</p>
+  <p style='margin:0'><strong>Segmento:</strong> {LabelSegment(r.Segment)}</p>
   <p style='margin:0'><strong>Total estimado:</strong> {r.EstimatedTotal?.ToString("C2")}</p>
   <p style='margin:12px 0 0;color:#64748b'>HN Control</p>
 </div>";
@@ -454,6 +466,13 @@ public class QuoteModel : PageModel
             _ => "Unica"
         };
     }
+
+    private static string LabelSegment(QuoteSegment segment) => segment switch
+    {
+        QuoteSegment.Business => "Empresarial",
+        QuoteSegment.Events => "Eventos",
+        _ => "Residencial"
+    };
 
     private async Task<Client?> TryLoadClientContextAsync(string? token)
     {
@@ -534,5 +553,54 @@ public class QuoteModel : PageModel
                 max = n;
         }
         return $"HN-VENTA-{max + 1:00}";
+    }
+
+    private bool CanUseInternalQuote()
+    {
+        if (User?.Identity?.IsAuthenticated != true) return false;
+        return User.IsInRole(AppRoles.Employee)
+            || User.IsInRole(AppRoles.Admin)
+            || User.IsInRole(AppRoles.SuperAdmin);
+    }
+
+    private async Task EnsureOpportunityForCurrentUserAsync(QuoteRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return;
+
+        var seller = await _db.SalesSellerProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.EmployeeUserId == userId && x.IsActive);
+        if (seller == null)
+            return;
+
+        var exists = await _db.SalesOpportunities
+            .AsNoTracking()
+            .AnyAsync(x => x.QuoteRequestId == request.Id);
+        if (exists)
+            return;
+
+        var pct = Math.Clamp(seller.DefaultCommissionPercent, 0m, 1m);
+        var amount = Math.Round((request.EstimatedTotal ?? request.SubtotalAuto) * pct, 2);
+
+        _db.SalesOpportunities.Add(new SalesOpportunity
+        {
+            QuoteRequestId = request.Id,
+            SellerProfileId = seller.Id,
+            ClientId = request.ClientId,
+            Status = SalesOpportunityStatus.Prospect,
+            WorkflowStage = SalesWorkflowStage.Quotation,
+            StageChangedAt = DateTime.UtcNow,
+            StageDueAt = DateTime.UtcNow.Date.AddDays(2),
+            CommissionPercent = pct,
+            CommissionAmount = amount,
+            Notes = "Generada automaticamente desde cotizacion interna.",
+            OwnerUserId = userId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
     }
 }

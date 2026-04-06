@@ -26,7 +26,7 @@
 
 <div class="row g-3 mb-3">
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-soft h-100 border-0 bg-primary-subtle">
+        <div class="card shadow-soft h-100 border-0 sales-kpi-card sales-kpi-leads">
             <div class="card-body">
                 <div class="text-muted small">Leads abiertos</div>
                 <div class="fs-3 fw-bold">@Model.LeadsOpen</div>
@@ -34,7 +34,7 @@
         </div>
     </div>
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-soft h-100 border-0 bg-success-subtle">
+        <div class="card shadow-soft h-100 border-0 sales-kpi-card sales-kpi-close">
             <div class="card-body">
                 <div class="text-muted small">Cierre ganado</div>
                 <div class="fs-3 fw-bold">@Model.ClosedWon</div>
@@ -43,7 +43,7 @@
         </div>
     </div>
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-soft h-100 border-0 bg-warning-subtle">
+        <div class="card shadow-soft h-100 border-0 sales-kpi-card sales-kpi-ticket">
             <div class="card-body">
                 <div class="text-muted small">Ticket promedio</div>
                 <div class="fs-3 fw-bold">@Model.AvgTicket.ToString("C")</div>
@@ -51,7 +51,7 @@
         </div>
     </div>
     <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-soft h-100 border-0 bg-info-subtle">
+        <div class="card shadow-soft h-100 border-0 sales-kpi-card sales-kpi-commission">
             <div class="card-body">
                 <div class="text-muted small">Comision proyectada</div>
                 <div class="fs-3 fw-bold">@Model.CommissionProjected.ToString("C")</div>
@@ -145,6 +145,17 @@
     </div>
 </div>
 
+@section Styles {
+<style>
+    .sales-kpi-card { overflow: hidden; }
+    .sales-kpi-card .card-body { min-height: 112px; }
+    .sales-kpi-leads { background: linear-gradient(135deg,#dbeafe 0%,#eff6ff 100%); border-left: 4px solid #2563eb; }
+    .sales-kpi-close { background: linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%); border-left: 4px solid #16a34a; }
+    .sales-kpi-ticket { background: linear-gradient(135deg,#fef3c7 0%,#fffbeb 100%); border-left: 4px solid #d97706; }
+    .sales-kpi-commission { background: linear-gradient(135deg,#cffafe 0%,#ecfeff 100%); border-left: 4px solid #0891b2; }
+</style>
+}
+
 @section Scripts {
 <script>
 (() => {
@@ -164,7 +175,7 @@
                     data: funnelValues,
                     borderWidth: 0,
                     borderRadius: 8,
-                    backgroundColor: ['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#ef4444','#14b8a6','#10b981','#16a34a','#6b7280']
+                    backgroundColor: ['#2563eb','#0891b2','#7c3aed','#ea580c','#dc2626','#0d9488','#16a34a','#65a30d','#475569']
                 }]
             },
             options: { responsive: true, plugins: { legend: { display: false } } }
@@ -180,7 +191,7 @@
                 datasets: [{
                     data: sellerValues,
                     borderWidth: 1,
-                    backgroundColor: ['#2563eb','#059669','#f59e0b','#ef4444','#8b5cf6','#0ea5e9','#f43f5e','#14b8a6']
+                    backgroundColor: ['#2563eb','#16a34a','#ea580c','#dc2626','#7c3aed','#0284c7','#db2777','#0d9488']
                 }]
             },
             options: { responsive: true, plugins: { legend: { position: 'bottom' } } }

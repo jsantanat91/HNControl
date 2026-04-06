@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Policy = "EmployeeOnly")]
 public class RequestsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -49,6 +49,34 @@ public class RequestsModel : PageModel
             .Include(x => x.Lines)
             .AsQueryable();
 
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
+        if (!isGlobalAdmin)
+        {
+            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                Rows = [];
+                return;
+            }
+
+            var sellerIds = await _db.SalesSellerProfiles
+                .AsNoTracking()
+                .Where(x => x.EmployeeUserId == userId && x.IsActive)
+                .Select(x => x.Id)
+                .ToListAsync();
+
+            if (sellerIds.Count == 0)
+            {
+                Rows = [];
+                return;
+            }
+
+            query = query.Where(x => _db.SalesOpportunities.Any(o =>
+                o.QuoteRequestId == x.Id &&
+                o.SellerProfileId.HasValue &&
+                sellerIds.Contains(o.SellerProfileId.Value)));
+        }
+
         if (!string.IsNullOrWhiteSpace(Q))
         {
             var q = Q.Trim().ToLower();
@@ -81,7 +109,9 @@ public class RequestsModel : PageModel
                 CustomerEmail = x.CustomerEmail,
                 CustomerPhone = x.CustomerPhone,
                 CustomerLocation = x.CustomerLocation,
-                SegmentLabel = x.Segment == QuoteSegment.Business ? "Empresarial" : "Residencial",
+                SegmentLabel = x.Segment == QuoteSegment.Business ? "Empresarial"
+                    : x.Segment == QuoteSegment.Events ? "Eventos"
+                    : "Residencial",
                 Status = x.Status.ToString(),
                 CreatedAtLocal = x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                 CreatedAtUtc = x.CreatedAt,
@@ -146,6 +176,9 @@ public class RequestsModel : PageModel
 
     public async Task<IActionResult> OnPostAcceptAsync(Guid id)
     {
+        if (!AppRoles.IsGlobalAdmin(User))
+            return Forbid();
+
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
             return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
@@ -161,6 +194,9 @@ public class RequestsModel : PageModel
 
     public async Task<IActionResult> OnPostRejectAsync(Guid id)
     {
+        if (!AppRoles.IsGlobalAdmin(User))
+            return Forbid();
+
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
             return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });

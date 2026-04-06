@@ -86,6 +86,8 @@ public class WorkflowModel : PageModel
 
         var userId = _userMgr.GetUserId(User) ?? "";
         var opp = await ScopedOppQuery(userId, CanViewAll)
+            .Include(x => x.Client)
+            .Include(x => x.QuoteRequest)
             .FirstOrDefaultAsync(x => x.Id == OpportunityId);
         if (opp == null) return NotFound();
 
@@ -95,7 +97,26 @@ public class WorkflowModel : PageModel
         opp.StageDueAt = DateTime.UtcNow.Date.AddDays(SlaDays(NewStage));
         opp.UpdatedAt = DateTime.UtcNow;
 
-        if (NewStage == SalesWorkflowStage.ClosedWon) opp.Status = SalesOpportunityStatus.ClosedWon;
+        if (NewStage == SalesWorkflowStage.ClosedWon)
+        {
+            opp.Status = SalesOpportunityStatus.ClosedWon;
+            opp.ClosedAt = DateTime.UtcNow;
+
+            if (opp.Client != null && opp.Client.IsTemporaryLead)
+            {
+                opp.Client.IsTemporaryLead = false;
+                opp.Client.IsActive = true;
+                opp.Client.ConvertedToFormalAt = DateTime.UtcNow;
+                opp.Client.ClientCode = await NextFormalClientCodeAsync();
+            }
+
+            if (opp.QuoteRequest != null)
+            {
+                opp.QuoteRequest.Status = QuoteRequestStatus.Accepted;
+                opp.QuoteRequest.AcceptedAt = DateTime.UtcNow;
+                opp.QuoteRequest.AcceptedByUserId = User.Identity?.Name;
+            }
+        }
         if (NewStage == SalesWorkflowStage.ClosedLost) opp.Status = SalesOpportunityStatus.ClosedLost;
 
         _db.SalesAuditLogs.Add(new SalesAuditLog
@@ -264,6 +285,23 @@ public class WorkflowModel : PageModel
         if (!viewAll)
             q = q.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
         return q;
+    }
+
+    private async Task<string> NextFormalClientCodeAsync()
+    {
+        var codes = await _db.Clients
+            .AsNoTracking()
+            .Where(c => !c.IsTemporaryLead && !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-") && !c.ClientCode.StartsWith("HN-VENTA-"))
+            .Select(c => c.ClientCode)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var code in codes)
+        {
+            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
+                max = n;
+        }
+        return $"HN-{max + 1:0000}";
     }
 
     public static int SlaDays(SalesWorkflowStage stage) => stage switch

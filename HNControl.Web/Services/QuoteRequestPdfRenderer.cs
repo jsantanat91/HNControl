@@ -185,7 +185,12 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
     private static IContainer CellBody(IContainer c) =>
         c.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(5);
 
-    private static string LabelSegment(QuoteSegment s) => s == QuoteSegment.Business ? "Empresarial" : "Residencial";
+    private static string LabelSegment(QuoteSegment s) => s switch
+    {
+        QuoteSegment.Business => "Empresarial",
+        QuoteSegment.Events => "Eventos",
+        _ => "Residencial"
+    };
 
     private static string LabelStatus(QuoteRequestStatus s) => s switch
     {

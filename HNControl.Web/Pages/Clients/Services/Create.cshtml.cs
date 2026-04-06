@@ -37,6 +37,7 @@ public class CreateModel : PageModel
 
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ServicePackageItems { get; set; } = default!;
+    public SelectList SalesOpportunityItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
@@ -60,15 +61,6 @@ public class CreateModel : PageModel
         [MaxLength(120)]
         public string ContractNumber { get; set; } = "";
 
-        [MaxLength(300)]
-        public string? PortalUrl { get; set; }
-
-        [MaxLength(200)]
-        public string? PortalUsername { get; set; }
-
-        [MaxLength(300)]
-        public string? PortalPassword { get; set; }
-
         [DataType(DataType.Date)]
         public DateTime? ContractStartDate { get; set; }
 
@@ -82,6 +74,14 @@ public class CreateModel : PageModel
 
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
+
+        [MaxLength(20)]
+        public string BillingRecurrence { get; set; } = "Mensual";
+
+        [MaxLength(20)]
+        public string ContractTermOption { get; set; } = "12";
+
+        public Guid? SalesOpportunityId { get; set; }
 
         [MaxLength(140)]
         public string Branch { get; set; } = "";
@@ -107,6 +107,7 @@ public class CreateModel : PageModel
         ClientCode = client.ClientCode;
         await LoadProjectsAsync();
         await LoadServicePackagesAsync();
+        await LoadSalesOpportunitiesAsync();
 
         if (Input.ContractStartDate == null)
             Input.ContractStartDate = DateTime.Today;
@@ -136,6 +137,7 @@ public class CreateModel : PageModel
         ClientCode = client.ClientCode;
         await LoadProjectsAsync();
         await LoadServicePackagesAsync();
+        await LoadSalesOpportunitiesAsync();
 
         if (Input.ServicePackageId.HasValue && string.IsNullOrWhiteSpace(Input.Label))
         {
@@ -176,12 +178,13 @@ public class CreateModel : PageModel
             ContractNumber = string.IsNullOrWhiteSpace(Input.ContractNumber)
                 ? $"{client.ClientCode}-{await _db.ClientServiceContracts.CountAsync(c => c.ClientId == ClientId) + 1:00}"
                 : Input.ContractNumber.Trim(),
-            PortalUrl = (Input.PortalUrl ?? "").Trim(),
-            PortalUsername = (Input.PortalUsername ?? "").Trim(),
-            PortalPasswordProtected = _protector.Protect((Input.PortalPassword ?? "").Trim()),
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
-            Notes = (Input.Notes ?? "").Trim(),
+            Notes = ComposeNotesMetadata(
+                (Input.Notes ?? "").Trim(),
+                Input.BillingRecurrence,
+                Input.ContractTermOption,
+                Input.SalesOpportunityId),
             MonthlyAmount = Input.MonthlyAmount ?? selectedPackage?.UnitPrice,
             Branch = (Input.Branch ?? "").Trim(),
             BranchAddress = (Input.BranchAddress ?? "").Trim(),
@@ -265,6 +268,62 @@ public class CreateModel : PageModel
 
         ServicePackageItems = new SelectList(rows, "Id", "Label");
     }
+
+    private async Task LoadSalesOpportunitiesAsync()
+    {
+        var rows = await _db.SalesOpportunities
+            .AsNoTracking()
+            .Include(x => x.QuoteRequest)
+            .Where(x => x.ClientId == ClientId)
+            .OrderByDescending(x => x.UpdatedAt)
+            .Select(x => new
+            {
+                x.Id,
+                Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "Venta")
+                    + " · " + x.WorkflowStage
+                    + " · " + x.Status
+            })
+            .ToListAsync();
+
+        SalesOpportunityItems = new SelectList(rows, "Id", "Label");
+    }
+
+    private static string ComposeNotesMetadata(string rawNotes, string recurrence, string termOption, Guid? salesOpportunityId)
+    {
+        var notes = StripNotesMetadata(rawNotes);
+        var lines = new List<string>();
+        if (!string.IsNullOrWhiteSpace(notes))
+            lines.Add(notes);
+        lines.Add($"[META] Recurrencia={NormalizeRecurrence(recurrence)}");
+        lines.Add($"[META] Plazo={NormalizeTerm(termOption)}");
+        if (salesOpportunityId.HasValue)
+            lines.Add($"[META] VentaId={salesOpportunityId.Value}");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string StripNotesMetadata(string raw)
+    {
+        var lines = (raw ?? "").Split('\n')
+            .Select(x => x.TrimEnd('\r'))
+            .Where(x => !x.StartsWith("[META]", StringComparison.OrdinalIgnoreCase));
+        return string.Join(Environment.NewLine, lines).Trim();
+    }
+
+    private static string NormalizeRecurrence(string? recurrence) => (recurrence ?? "").Trim() switch
+    {
+        "Unica" => "Unica",
+        "Anual" => "Anual",
+        _ => "Mensual"
+    };
+
+    private static string NormalizeTerm(string? termOption) => termOption switch
+    {
+        "12" => "12",
+        "18" => "18",
+        "24" => "24",
+        "36" => "36",
+        _ => "Indefinido"
+    };
 }
 
 

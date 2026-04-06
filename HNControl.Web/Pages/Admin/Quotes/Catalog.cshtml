@@ -8,11 +8,14 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Cotizacion a la medida</h1>
-        <div class="text-muted small">Configura segmento, categorias, servicios y subproductos del kiosk publico.</div>
+        <div class="text-muted small">Configura segmento, categorias, servicios y subproductos para cotizacion interna.</div>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="/Public/Quote" target="_blank">Abrir kiosk publico</a>
-        <a class="btn btn-outline-primary" asp-page="./Requests">Solicitudes</a>
+        <button class="btn btn-primary" type="button"
+                onclick="window.open('/cotizar','quote_new_window','width=1360,height=860,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');">
+            + Nueva cotizacion
+        </button>
+        <a class="btn btn-outline-primary" asp-page="./Requests">Cotizaciones</a>
     </div>
 </div>
 
@@ -30,6 +33,7 @@
                 <select asp-for="Input.Segment" class="form-select">
                     <option value="Residential">Residencial</option>
                     <option value="Business">Empresarial</option>
+                    <option value="Events">Eventos</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -129,6 +133,13 @@
         }
         else
         {
+            @{
+                var grouped = Model.Items
+                    .GroupBy(x => new { x.Segment, Parent = Model.ParentCategoryGroup(x) })
+                    .OrderBy(g => g.Key.Segment)
+                    .ThenBy(g => g.Key.Parent)
+                    .ToList();
+            }
             <div class="table-responsive">
                 <table class="table align-middle">
                     <thead>
@@ -146,78 +157,86 @@
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach (var i in Model.Items)
+                    @foreach (var group in grouped)
                     {
-                        <tr>
-                            <td><span class="badge text-bg-light border">@Model.LabelSegment(i.Segment)</span></td>
-                            <td>@Model.LabelType(i.NodeType)</td>
-                            <td>
-                                <div class="fw-semibold">@i.Name</div>
-                                @if (!string.IsNullOrWhiteSpace(i.Description))
-                                {
-                                    <div class="small text-muted">@i.Description</div>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(i.VariantGroup) || !string.IsNullOrWhiteSpace(i.VariantValue))
-                                {
-                                    <div class="small mt-1">
-                                        <span class="badge text-bg-light border">@((i.VariantGroup ?? "Variante") + ": " + (i.VariantValue ?? "-"))</span>
-                                    </div>
-                                }
-                            </td>
-                            <td>@(string.IsNullOrWhiteSpace(i.ParentName) ? "-" : i.ParentName)</td>
-                            <td>
-                                <span class="badge text-bg-light border">@Model.LabelOfferType(i.OfferType)</span>
-                            </td>
-                            <td>
-                                @if (i.IsManualPrice)
-                                {
-                                    <span class="badge text-bg-warning">Manual</span>
-                                }
-                                else if (i.UnitPrice.HasValue)
-                                {
-                                    @i.UnitPrice.Value.ToString("C2")
-                                    <div class="small text-muted">@(i.UnitPriceIncludesVat ? "Incluye IVA" : "+ IVA 16%")</div>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrWhiteSpace(i.ImageUrl))
-                                {
-                                    <img src="@i.ImageUrl" alt="img" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #dbe3f4;" />
-                                }
-                                else
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrWhiteSpace(i.ReferenceUrl))
-                                {
-                                    <a href="@i.ReferenceUrl" target="_blank" rel="noopener">Abrir</a>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                            <td>
-                                <span class="hn-chip @(i.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(i.IsActive ? "Activo" : "Inactivo")</span>
-                            </td>
-                            <td class="text-end">
-                                <form method="post" asp-page-handler="Toggle" class="d-inline">
-                                    <input type="hidden" name="id" value="@i.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">@(i.IsActive ? "Desactivar" : "Activar")</button>
-                                </form>
-                                <a class="btn btn-sm btn-outline-primary" asp-page="./EditItem" asp-route-id="@i.Id">Editar</a>
-                                <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('Eliminar este item y sus variantes/hijos?');">
-                                    <input type="hidden" name="id" value="@i.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
-                                </form>
+                        <tr class="table-light">
+                            <td colspan="10" class="fw-semibold">
+                                @Model.LabelSegment(group.Key.Segment) · Categoria padre: @group.Key.Parent
                             </td>
                         </tr>
+                        @foreach (var i in group)
+                        {
+                            <tr>
+                                <td><span class="badge text-bg-light border">@Model.LabelSegment(i.Segment)</span></td>
+                                <td>@Model.LabelType(i.NodeType)</td>
+                                <td>
+                                    <div class="fw-semibold">@i.Name</div>
+                                    @if (!string.IsNullOrWhiteSpace(i.Description))
+                                    {
+                                        <div class="small text-muted">@i.Description</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(i.VariantGroup) || !string.IsNullOrWhiteSpace(i.VariantValue))
+                                    {
+                                        <div class="small mt-1">
+                                            <span class="badge text-bg-light border">@((i.VariantGroup ?? "Variante") + ": " + (i.VariantValue ?? "-"))</span>
+                                        </div>
+                                    }
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(i.ParentName) ? "-" : i.ParentName)</td>
+                                <td>
+                                    <span class="badge text-bg-light border">@Model.LabelOfferType(i.OfferType)</span>
+                                </td>
+                                <td>
+                                    @if (i.IsManualPrice)
+                                    {
+                                        <span class="badge text-bg-warning">Manual</span>
+                                    }
+                                    else if (i.UnitPrice.HasValue)
+                                    {
+                                        @i.UnitPrice.Value.ToString("C2")
+                                        <div class="small text-muted">@(i.UnitPriceIncludesVat ? "Incluye IVA" : "+ IVA 16%")</div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(i.ImageUrl))
+                                    {
+                                        <img src="@i.ImageUrl" alt="img" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #dbe3f4;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(i.ReferenceUrl))
+                                    {
+                                        <a href="@i.ReferenceUrl" target="_blank" rel="noopener">Abrir</a>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="hn-chip @(i.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(i.IsActive ? "Activo" : "Inactivo")</span>
+                                </td>
+                                <td class="text-end">
+                                    <form method="post" asp-page-handler="Toggle" class="d-inline">
+                                        <input type="hidden" name="id" value="@i.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@(i.IsActive ? "Desactivar" : "Activar")</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="./EditItem" asp-route-id="@i.Id">Editar</a>
+                                    <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('Eliminar este item y sus variantes/hijos?');">
+                                        <input type="hidden" name="id" value="@i.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
                     }
                     </tbody>
                 </table>

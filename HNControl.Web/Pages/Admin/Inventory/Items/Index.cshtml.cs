@@ -116,6 +116,7 @@ public class IndexModel : PageModel
         var query = _db.InventoryItems
             .AsNoTracking()
             .Include(i => i.Brand)
+            .Where(i => i.IsActive)
             .AsQueryable();
 
         // Filters

@@ -5,7 +5,8 @@ namespace HNControl.Web.Models;
 public enum QuoteSegment
 {
     Residential = 1,
-    Business = 2
+    Business = 2,
+    Events = 3
 }
 
 public enum QuoteNodeType

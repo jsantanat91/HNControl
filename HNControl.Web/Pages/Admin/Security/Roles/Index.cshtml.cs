@@ -169,6 +169,7 @@ public class IndexModel : PageModel
                 {
                     AppActions.ClientsView,
                     AppActions.SalesViewOwn, AppActions.SalesWorkflowMove, AppActions.SalesQuotesView, AppActions.SalesQuotesManage,
+                    AppActions.SalesProspectsView, AppActions.SalesProspectsCreate, AppActions.SalesProspectsEdit, AppActions.SalesProspectsConvert,
                     AppActions.ProjectsView
                 }),
             "almacen" => (

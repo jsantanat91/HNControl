@@ -9,9 +9,12 @@
     var path = Context?.Request?.Path.Value ?? "";
     string Active(string startsWith)
         => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    string ActiveExact(string exact)
+        => string.Equals(path, exact, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var isSalesPath = path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase);
+        || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase);
     var isSystemPath = path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase);
     var isSystemConfigPath = path.StartsWith("/Admin/System/Configuration", StringComparison.OrdinalIgnoreCase);
@@ -157,11 +160,17 @@
                             <span class="hn-side-text">Ventas</span>
                         </summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
+                            <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
-                            <a class="hn-side-sublink @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog">Cotizaciones</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaciones</a>
+                            <a class="hn-side-sublink @ActiveExact("/cotizar")" href="/cotizar" target="_blank">Nueva cotización</a>
+                            @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+                            {
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                            }
+                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion">
@@ -210,28 +219,15 @@
                                 <span class="hn-side-text">Ventas</span>
                             </summary>
                             <div class="hn-side-sub">
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesWorkflowMove) || CanAction(HNControl.Web.Models.AppActions.SalesWorkflowAssign))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesManage) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || User.IsInRole(HNControl.Web.Models.AppRoles.Seller))
-                                {
-                                    <a class="hn-side-sublink @Active("/Sales/My")" asp-page="/Sales/My">Cotizaciones</a>
-                                }
+                                <a class="hn-side-sublink @ActiveExact("/cotizar")" href="/cotizar" target="_blank">Nueva cotización</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizaciones</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                             </div>
                         </details>
                     }
                     @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
                     {
-                        <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My">
+                        <a class="hn-side-link @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">
                             <span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span>
                             <span class="hn-side-text">Mis cotizaciones</span>
                         </a>
@@ -456,11 +452,17 @@
                     <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
+                            <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
-                            <a class="hn-side-sublink @Active("/Admin/Quotes")" asp-page="/Admin/Quotes/Catalog">Cotizaciones</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaciones</a>
+                            <a class="hn-side-sublink @ActiveExact("/cotizar")" href="/cotizar" target="_blank">Nueva cotización</a>
+                            @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+                            {
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                            }
+                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
@@ -485,27 +487,14 @@
                         <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas")" href="/Ventas">Dashboard</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesWorkflowMove) || CanAction(HNControl.Web.Models.AppActions.SalesWorkflowAssign))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesManage) || CanAction(HNControl.Web.Models.AppActions.SalesViewAll))
-                                {
-                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
-                                }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || User.IsInRole(HNControl.Web.Models.AppRoles.Seller))
-                                {
-                                    <a class="hn-side-sublink @Active("/Sales/My")" asp-page="/Sales/My">Cotizaciones</a>
-                                }
+                                <a class="hn-side-sublink @ActiveExact("/cotizar")" href="/cotizar" target="_blank">Nueva cotización</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizaciones</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                             </div>
                         </details>
                     }
                     @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
-                    { <a class="hn-side-link @Active("/Sales/My")" asp-page="/Sales/My"><span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span><span class="hn-side-text">Mis cotizaciones</span></a> }
+                    { <a class="hn-side-link @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones"><span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span><span class="hn-side-text">Mis cotizaciones</span></a> }
                     @if (Has(AppModules.ServiceOrders))
                     { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span></a> }
                     @if (Has(AppModules.Viaticos))

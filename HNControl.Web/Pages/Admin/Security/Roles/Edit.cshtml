@@ -223,6 +223,9 @@
                 'Sales.Workflow.Move': ['Sales.ViewOwn'],
                 'Sales.Workflow.Assign': ['Sales.Workflow.Move', 'Sales.ViewOwn'],
                 'Sales.Quotes.Manage': ['Sales.Quotes.View'],
+                'Sales.Prospects.Create': ['Sales.Prospects.View'],
+                'Sales.Prospects.Edit': ['Sales.Prospects.View'],
+                'Sales.Prospects.Convert': ['Sales.Prospects.Edit', 'Sales.Prospects.View'],
                 'Billing.Manage': ['Billing.ViewOwn'],
                 'Billing.Send': ['Billing.Manage', 'Billing.ViewOwn'],
                 'Inventory.Manage': ['Inventory.View'],
@@ -259,6 +262,7 @@
                 if (has(a, 'Sales.Workflow.Move') || has(a, 'Sales.Workflow.Assign')) out.push('Ventas > Workflow');
                 if (has(a, 'Sales.Manage') || has(a, 'Sales.ViewAll')) out.push('Ventas > Gestion');
                 if (has(a, 'Sales.Quotes.View')) out.push('Ventas > Cotizaciones');
+                if (has(a, 'Sales.Prospects.View')) out.push('Ventas > Prospectos');
                 if (has(a, 'Billing.ViewOwn') || has(a, 'Billing.ViewAll')) out.push('Facturacion');
                 if (has(a, 'Inventory.View')) out.push('Inventario');
                 if (has(a, 'Tickets.View')) out.push('Tickets');

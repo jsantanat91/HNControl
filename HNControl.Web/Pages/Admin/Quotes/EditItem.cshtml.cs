@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.SuperAdmin)]
 public class EditItemModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -125,7 +126,12 @@ public class EditItemModel : PageModel
             }).ToList();
     }
 
-    private static string LabelSegment(QuoteSegment x) => x == QuoteSegment.Business ? "Empresarial" : "Residencial";
+    private static string LabelSegment(QuoteSegment x) => x switch
+    {
+        QuoteSegment.Business => "Empresarial",
+        QuoteSegment.Events => "Eventos",
+        _ => "Residencial"
+    };
     private static string LabelType(QuoteNodeType x) => x switch
     {
         QuoteNodeType.Category => "Categoria",

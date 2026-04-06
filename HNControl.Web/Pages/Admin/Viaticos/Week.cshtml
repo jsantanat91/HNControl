@@ -154,41 +154,39 @@
         }
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>Dia</th>
-                    <th>Categoria</th>
-                    <th>Descripcion</th>
-                    <th class="text-end">Monto</th>
-                    <th class="text-center">Facturable</th>
-                    <th>Comprobante</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var e in week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
-                {
-                    <tr>
-                        <td>@e.DayDate.ToString("yyyy-MM-dd")</td>
-                        <td>@e.Category</td>
-                        <td>@e.Description</td>
-                        <td class="text-end">@e.Amount.ToString("0.00")</td>
-                        <td class="text-center">@(e.IsBillable ? "Si" : "No")</td>
-                        <td>
+    <div class="card-body border-top">
+        <div class="row g-3">
+            @foreach (var e in week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
+            {
+                <div class="col-12 col-lg-6">
+                    <div class="border rounded-3 p-3 h-100 hn-hover">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div class="fw-semibold">@e.Category</div>
+                            <span class="badge text-bg-light border">@e.DayDate.ToString("yyyy-MM-dd")</span>
+                        </div>
+                        <div class="small mb-2">@e.Description</div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="badge text-bg-primary">@e.Amount.ToString("C2")</span>
+                            <span class="badge @(e.IsBillable ? "text-bg-success" : "text-bg-secondary")">
+                                @(e.IsBillable ? "Facturable" : "No facturable")
+                            </span>
                             @if (e.Attachment != null)
                             {
-                                <a asp-page="/Viaticos/Download" asp-route-attachmentId="@e.Attachment.Id">@e.Attachment.OriginalFileName</a>
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-page="/Viaticos/Download"
+                                   asp-route-attachmentId="@e.Attachment.Id">
+                                    Comprobante
+                                </a>
                             }
                             else
                             {
-                                <span class="text-muted">-</span>
+                                <span class="text-muted small">Sin comprobante</span>
                             }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(week.AdminNotes))

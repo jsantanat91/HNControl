@@ -2,35 +2,62 @@
 @model HNControl.Web.Pages.Clients.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Clientes";
+    var isLeads = string.Equals(Model.View, "leads", StringComparison.OrdinalIgnoreCase);
+    ViewData["Title"] = isLeads ? "Prospectos" : "Clientes";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 m-0">Clientes</h1>
-        <div class="text-muted small">Alta y control interno</div>
+        <h1 class="h4 m-0">@(isLeads ? "Prospectos" : "Clientes")</h1>
+        <div class="text-muted small">@(isLeads ? "Control comercial temporal (prospectos)" : "Alta y control interno")</div>
     </div>
-    @if (Model.CanEdit)
+    @if (Model.CanEdit && !isLeads)
     {
         <a class="btn btn-primary" asp-page="/Clients/Create">+ Nuevo cliente</a>
     }
 </div>
 
-<div class="card shadow-soft hn-hover mb-3">
-    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
-        <span class="text-muted me-2">Vista:</span>
-        <a class="btn btn-sm @(Model.View == "normal" ? "btn-primary" : "btn-outline-primary")"
-           asp-page="/Clients/Index"
-           asp-route-Name="@Model.Name"
-           asp-route-PageSize="@Model.PageSize"
-           asp-route-View="normal">Clientes formales</a>
-        <a class="btn btn-sm @(Model.View == "leads" ? "btn-warning" : "btn-outline-warning")"
-           asp-page="/Clients/Index"
-           asp-route-Name="@Model.Name"
-           asp-route-PageSize="@Model.PageSize"
-           asp-route-View="leads">Leads de venta</a>
+@if (isLeads && Model.CanCreateLead)
+{
+    <div class="card shadow-soft hn-hover mb-3">
+        <div class="card-body">
+            <div class="fw-semibold mb-2">Nuevo prospecto</div>
+            <form method="post" asp-page-handler="CreateLead" class="row g-2">
+                <input type="hidden" name="name" value="@Model.Name" />
+                <input type="hidden" name="view" value="leads" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                <div class="col-md-3">
+                    <label class="form-label">Contacto</label>
+                    <input class="form-control" asp-for="Lead.ContactName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Empresa (opcional)</label>
+                    <input class="form-control" asp-for="Lead.CompanyName" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Correo</label>
+                    <input class="form-control" asp-for="Lead.Email" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Teléfono</label>
+                    <input class="form-control" asp-for="Lead.Phone" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ubicación</label>
+                    <input class="form-control" asp-for="Lead.Location" />
+                </div>
+                <div class="col-md-10">
+                    <label class="form-label">Notas (opcional)</label>
+                    <input class="form-control" asp-for="Lead.Notes" />
+                </div>
+                <div class="col-md-2 d-grid align-items-end">
+                    <button class="btn btn-primary" type="submit">Agregar prospecto</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
+}
 
 <form method="get" class="card shadow-soft hn-hover mb-3">
     <div class="card-body row g-2 align-items-end">
@@ -50,7 +77,7 @@
         </div>
         <div class="col-md-4 d-flex gap-2">
             <button class="btn btn-primary" type="submit">Filtrar</button>
-            <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Limpiar</a>
+            <a class="btn btn-outline-secondary" asp-page="/Clients/Index" asp-route-View="@Model.View">Limpiar</a>
         </div>
     </div>
 </form>
@@ -76,7 +103,15 @@ else
                                     <span class="badge @(c.IsActive ? "text-bg-success" : "text-bg-secondary")">@(c.IsActive ? "Activo" : "Inactivo")</span>
                                     @if (c.IsTemporaryLead)
                                     {
-                                        <span class="badge text-bg-warning">Lead venta</span>
+                                        <span class="badge text-bg-warning">Prospecto</span>
+                                    }
+                                    else if (c.IsConvertedFromLead)
+                                    {
+                                        <span class="badge text-bg-info">Convertido de prospecto</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge text-bg-primary">Alta manual</span>
                                     }
                                 </div>
                             </div>
@@ -90,6 +125,17 @@ else
                             @if (Model.CanEdit)
                             {
                                 <a class="btn btn-sm btn-outline-secondary" asp-page="/Clients/Edit" asp-route-id="@c.Id">Editar</a>
+                                @if (c.IsTemporaryLead)
+                                {
+                                    <form method="post" asp-page-handler="ConvertLeadToFormal" class="d-inline">
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <input type="hidden" name="name" value="@Model.Name" />
+                                        <input type="hidden" name="view" value="@Model.View" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                        <button class="btn btn-sm btn-outline-info" type="submit">Convertir a cliente</button>
+                                    </form>
+                                }
                                 <form method="post" asp-page-handler="ToggleActive" class="d-inline">
                                     <input type="hidden" name="id" value="@c.Id" />
                                     <input type="hidden" name="name" value="@Model.Name" />

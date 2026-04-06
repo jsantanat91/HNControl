@@ -44,6 +44,7 @@ public class IndexModel : PageModel
     public SelectList ClientItems { get; set; } = default!;
     public SelectList OpportunityItems { get; set; } = default!;
     public SelectList QuoteItems { get; set; } = default!;
+    public SelectList PeriodicityItems { get; set; } = default!;
 
     public List<PlanVm> Plans { get; set; } = new();
     public List<RunVm> Runs { get; set; } = new();
@@ -402,6 +403,12 @@ public class IndexModel : PageModel
             .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })
             .ToListAsync();
         QuoteItems = new SelectList(quotes, "Id", "Label");
+        PeriodicityItems = new SelectList(
+            Enum.GetValues<BillingPeriodicity>()
+                .Select(x => new { Value = x, Label = LabelPeriodicity(x) }),
+            "Value",
+            "Label",
+            Input.Periodicity);
 
         Plans = await _db.BillingInvoicePlans
             .AsNoTracking()
@@ -413,7 +420,7 @@ public class IndexModel : PageModel
                 x.Client != null ? x.Client.Name : "-",
                 x.Concept,
                 x.Total,
-                x.Periodicity.ToString(),
+                LabelPeriodicity(x.Periodicity),
                 x.Status.ToString(),
                 x.NextRunDate,
                 x.SendToEmail,
@@ -576,6 +583,19 @@ public class IndexModel : PageModel
         BillingPeriodicity.Semiannual => $"Semestre {date:yyyy-MM}",
         BillingPeriodicity.Annual => $"Anual {date:yyyy}",
         _ => $"Unica {date:yyyy-MM-dd}"
+    };
+
+    private static string LabelPeriodicity(BillingPeriodicity periodicity) => periodicity switch
+    {
+        BillingPeriodicity.OneTime => "Única",
+        BillingPeriodicity.Weekly => "Semanal",
+        BillingPeriodicity.Biweekly => "Quincenal",
+        BillingPeriodicity.Monthly => "Mensual",
+        BillingPeriodicity.Bimonthly => "Bimestral",
+        BillingPeriodicity.Quarterly => "Trimestral",
+        BillingPeriodicity.Semiannual => "Semestral",
+        BillingPeriodicity.Annual => "Anual",
+        _ => periodicity.ToString()
     };
 
     private static string MapInvoiceType(BillingInvoiceType type) => type switch

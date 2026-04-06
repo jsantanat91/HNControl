@@ -109,6 +109,7 @@ public class ActionAccessService : IActionAccessService
             result.Add(AppActions.SalesViewOwn);
             result.Add(AppActions.SalesWorkflowMove);
             result.Add(AppActions.SalesQuotesView);
+            result.Add(AppActions.SalesProspectsView);
         }
 
         if (modules.Contains(AppModules.Billing))
