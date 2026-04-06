@@ -1,6 +1,7 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -52,7 +53,7 @@ public class RequestsModel : PageModel
         var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
         if (!isGlobalAdmin)
         {
-            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
             {
                 Rows = [];

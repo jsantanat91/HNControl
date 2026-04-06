@@ -133,13 +133,11 @@
         }
         else
         {
-            @{
-                var grouped = Model.Items
-                    .GroupBy(x => new { x.Segment, Parent = Model.ParentCategoryGroup(x) })
-                    .OrderBy(g => g.Key.Segment)
-                    .ThenBy(g => g.Key.Parent)
-                    .ToList();
-            }
+            var grouped = Model.Items
+                .GroupBy(x => new { x.Segment, Parent = Model.ParentCategoryGroup(x) })
+                .OrderBy(g => g.Key.Segment)
+                .ThenBy(g => g.Key.Parent)
+                .ToList();
             <div class="table-responsive">
                 <table class="table align-middle">
                     <thead>
