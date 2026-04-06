@@ -344,8 +344,8 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
         await userMgr.AddToRoleAsync(adminUser, AppRoles.Admin);
 
     // Perfil admin (1:1)
-    var profileExists = await db.EmployeeProfiles.AnyAsync(x => x.UserId == adminUser.Id);
-    if (!profileExists)
+    var adminProfile = await db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == adminUser.Id);
+    if (adminProfile == null)
     {
         db.EmployeeProfiles.Add(new EmployeeProfile
         {
@@ -355,10 +355,49 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
             Position = "Administrador",
             Phone = "",
             Nss = "",
+            Curp = "",
+            Rfc = "",
+            PostalCode = "",
+            Address = "",
+            BankName = "",
+            BankAccount = "",
+            BankClabe = "",
             Gender = "N/A",
+            EducationLevel = "",
+            EmployeeNumber = "",
+            SatContractTypeCode = "",
+            SatWorkdayTypeCode = "",
+            SatJobRiskCode = "",
             SalaryBase = 0m,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         });
+
+        await db.SaveChangesAsync();
+    }
+    else
+    {
+        // Compatibilidad con esquemas existentes que tengan columnas NOT NULL.
+        adminProfile.FullName ??= "Administrador HN";
+        adminProfile.Email ??= adminEmail;
+        adminProfile.Position ??= "Administrador";
+        adminProfile.Phone ??= "";
+        adminProfile.Nss ??= "";
+        adminProfile.Curp ??= "";
+        adminProfile.Rfc ??= "";
+        adminProfile.PostalCode ??= "";
+        adminProfile.Address ??= "";
+        adminProfile.BankName ??= "";
+        adminProfile.BankAccount ??= "";
+        adminProfile.BankClabe ??= "";
+        adminProfile.Gender ??= "N/A";
+        adminProfile.EducationLevel ??= "";
+        adminProfile.EmployeeNumber ??= "";
+        adminProfile.SatContractTypeCode ??= "";
+        adminProfile.SatWorkdayTypeCode ??= "";
+        adminProfile.SatJobRiskCode ??= "";
+        adminProfile.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
     }
