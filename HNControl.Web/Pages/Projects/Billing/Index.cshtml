@@ -1,5 +1,6 @@
 ﻿@page
 @using HNControl.Web.Models
+@using System.Text.Json
 @model HNControl.Web.Pages.Projects.Billing.IndexModel
 @{
     Layout = "_Layout";
@@ -70,6 +71,20 @@ else
                             <input type="hidden" name="planId" value="@p.Id" />
                             <button class="btn btn-sm btn-outline-secondary" type="submit">Pausar</button>
                         </form>
+                        <button class="btn btn-sm btn-outline-warning"
+                                type="button"
+                                data-edit-plan-btn
+                                data-plan-id="@p.Id"
+                                data-concept="@p.Concept"
+                                data-periodicity="@p.Periodicity"
+                                data-start="@p.StartDate.ToString("yyyy-MM-dd")"
+                                data-issue="@p.InvoiceIssueDate.ToString("yyyy-MM-dd")"
+                                data-contract-months="@p.ContractMonths"
+                                data-email="@p.SendToEmail"
+                                data-cc="@p.CcEmails"
+                                data-notes="@p.Notes"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editarPlanModal">Editar</button>
                         <form method="post" asp-page-handler="DeletePlan" onsubmit="return confirm('Eliminar plan?')">
                             <input type="hidden" name="planId" value="@p.Id" />
                             <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
@@ -83,6 +98,7 @@ else
                 </div>
             </div>
         </div>
+        <script type="application/json" id="plan-lines-@p.Id">@Html.Raw(JsonSerializer.Serialize(p.Lines.Select(x => new { category = x.Category, concept = x.Concept, quantity = x.Quantity, unitPrice = x.UnitPrice, vatRate = x.Subtotal > 0 ? (x.VatAmount / x.Subtotal) : 0.16m })))</script>
     }
 }
 </div>
@@ -205,6 +221,51 @@ else
     </div>
 </div>
 
+<div class="modal fade" id="editarPlanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar plan de facturación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="UpdatePlan" id="editPlanForm">
+                <input type="hidden" name="planId" id="edit-plan-id" />
+                <input type="hidden" name="linesJson" id="edit-lines-json" />
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-8"><label class="form-label">Concepto general</label><input class="form-control" name="concept" id="edit-concept" /></div>
+                        <div class="col-12 col-md-4"><label class="form-label">Periodicidad</label><select class="form-select" name="periodicity" id="edit-periodicity" asp-items="Model.PeriodicityItems"></select></div>
+                        <div class="col-12 col-md-4"><label class="form-label">Inicio</label><input class="form-control" name="startDate" id="edit-start" type="date" /></div>
+                        <div class="col-12 col-md-4"><label class="form-label">Fecha de factura</label><input class="form-control" name="invoiceIssueDate" id="edit-issue" type="date" /></div>
+                        <div class="col-12 col-md-4"><label class="form-label">Contrato (meses)</label><input class="form-control" name="contractMonths" id="edit-contract-months" type="number" min="1" /></div>
+                        <div class="col-12 col-md-6"><label class="form-label">Correo destino</label><input class="form-control" name="sendToEmail" id="edit-email" /></div>
+                        <div class="col-12 col-md-6"><label class="form-label">CC (separados por coma)</label><input class="form-control" name="ccEmails" id="edit-cc" /></div>
+                        <div class="col-12"><label class="form-label">Notas</label><textarea class="form-control" name="notes" id="edit-notes" rows="2"></textarea></div>
+
+                        <div class="col-12"><label class="form-label fw-semibold">Líneas del plan</label></div>
+                        <div class="col-12">
+                            <div id="edit-billing-lines"></div>
+                            <button class="btn btn-sm btn-outline-primary" type="button" id="add-edit-billing-line">+ Agregar línea</button>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-4"><div class="border rounded-3 p-2"><div class="small text-muted">Subtotal (preview)</div><div class="fw-semibold" id="edit-preview-subtotal">$0.00</div></div></div>
+                                <div class="col-12 col-md-4"><div class="border rounded-3 p-2"><div class="small text-muted">IVA (preview)</div><div class="fw-semibold" id="edit-preview-iva">$0.00</div></div></div>
+                                <div class="col-12 col-md-4"><div class="border rounded-3 p-2"><div class="small text-muted">Total (preview)</div><div class="fw-bold text-primary" id="edit-preview-total">$0.00</div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="ejecucionesModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title">Ejecuciones (historial)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -290,6 +351,12 @@ else
   const subtotalEl = document.getElementById('preview-subtotal');
   const ivaEl = document.getElementById('preview-iva');
   const totalEl = document.getElementById('preview-total');
+  const editContainer = document.getElementById('edit-billing-lines');
+  const editAddBtn = document.getElementById('add-edit-billing-line');
+  const editSubtotalEl = document.getElementById('edit-preview-subtotal');
+  const editIvaEl = document.getElementById('edit-preview-iva');
+  const editTotalEl = document.getElementById('edit-preview-total');
+  const editLinesJsonInput = document.getElementById('edit-lines-json');
 
   const currency = (v) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
   const numberOrZero = (v) => {
@@ -313,6 +380,34 @@ else
     ivaEl.textContent = currency(iva);
     totalEl.textContent = currency(subtotal + iva);
   };
+
+  const calcPreviewFor = (targetContainer, targetSubtotalEl, targetIvaEl, targetTotalEl) => {
+    if (!targetContainer || !targetSubtotalEl || !targetIvaEl || !targetTotalEl) return { subtotal: 0, iva: 0, total: 0 };
+    let subtotal = 0;
+    let iva = 0;
+    targetContainer.querySelectorAll('.billing-line').forEach((row) => {
+      const qty = Math.max(1, numberOrZero(row.querySelector('input[name*=\".Quantity\"]')?.value));
+      const unit = Math.max(0, numberOrZero(row.querySelector('input[name*=\".UnitPrice\"]')?.value));
+      const vat = Math.max(0, Math.min(1, numberOrZero(row.querySelector('input[name*=\".VatRate\"]')?.value)));
+      const lineSubtotal = qty * unit;
+      subtotal += lineSubtotal;
+      iva += lineSubtotal * vat;
+    });
+    targetSubtotalEl.textContent = currency(subtotal);
+    targetIvaEl.textContent = currency(iva);
+    targetTotalEl.textContent = currency(subtotal + iva);
+    return { subtotal, iva, total: subtotal + iva };
+  };
+
+  const makeLineHtml = (idx, line = {}) => `
+    <div class=\"row g-2 billing-line mb-2\">
+      <div class=\"col-12 col-md-2\"><input class=\"form-control\" name=\"InputLines[${idx}].Category\" placeholder=\"Categoria\" value=\"${line.category ?? 'Servicio'}\" /></div>
+      <div class=\"col-12 col-md-5\"><input class=\"form-control\" name=\"InputLines[${idx}].Concept\" placeholder=\"Concepto\" value=\"${line.concept ?? ''}\" /></div>
+      <div class=\"col-6 col-md-1\"><input class=\"form-control\" name=\"InputLines[${idx}].Quantity\" type=\"number\" min=\"1\" value=\"${line.quantity ?? 1}\" /></div>
+      <div class=\"col-6 col-md-2\"><input class=\"form-control\" name=\"InputLines[${idx}].UnitPrice\" type=\"number\" step=\"0.01\" min=\"0\" value=\"${line.unitPrice ?? 0}\" /></div>
+      <div class=\"col-6 col-md-1\"><input class=\"form-control\" name=\"InputLines[${idx}].VatRate\" type=\"number\" step=\"0.01\" min=\"0\" max=\"1\" value=\"${line.vatRate ?? 0.16}\" /></div>
+      <div class=\"col-6 col-md-1 d-grid\"><button class=\"btn btn-outline-danger\" type=\"button\" data-remove-line>×</button></div>
+    </div>`;
 
   if (container && addBtn) {
     let idx = container.querySelectorAll('.billing-line').length;
@@ -346,6 +441,84 @@ else
     calcPreview();
   }
 
+  const buildEditLinesPayload = () => {
+    if (!editContainer) return [];
+    return [...editContainer.querySelectorAll('.billing-line')].map((row) => ({
+      category: row.querySelector('input[name*=\".Category\"]')?.value || 'Servicio',
+      concept: row.querySelector('input[name*=\".Concept\"]')?.value || '',
+      quantity: Math.max(1, numberOrZero(row.querySelector('input[name*=\".Quantity\"]')?.value)),
+      unitPrice: Math.max(0, numberOrZero(row.querySelector('input[name*=\".UnitPrice\"]')?.value)),
+      vatRate: Math.max(0, Math.min(1, numberOrZero(row.querySelector('input[name*=\".VatRate\"]')?.value)))
+    })).filter(x => (x.concept || '').trim() !== '');
+  };
+
+  if (editContainer && editAddBtn) {
+    let editIdx = 0;
+    const recalcEdit = () => {
+      calcPreviewFor(editContainer, editSubtotalEl, editIvaEl, editTotalEl);
+      const payload = buildEditLinesPayload();
+      if (editLinesJsonInput) editLinesJsonInput.value = JSON.stringify(payload);
+    };
+
+    editAddBtn.addEventListener('click', () => {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = makeLineHtml(editIdx++);
+      editContainer.appendChild(wrapper.firstElementChild);
+      recalcEdit();
+    });
+
+    editContainer.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-remove-line]');
+      if (!btn) return;
+      const line = btn.closest('.billing-line');
+      if (line && editContainer.querySelectorAll('.billing-line').length > 1) line.remove();
+      recalcEdit();
+    });
+
+    editContainer.addEventListener('input', (ev) => {
+      if (ev.target.closest('.billing-line')) recalcEdit();
+    });
+
+    document.querySelectorAll('[data-edit-plan-btn]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const planId = btn.getAttribute('data-plan-id');
+        const linesScript = document.getElementById(`plan-lines-${planId}`);
+        let lines = [];
+        if (linesScript?.textContent) {
+          try { lines = JSON.parse(linesScript.textContent); } catch { lines = []; }
+        }
+        if (!Array.isArray(lines) || lines.length === 0) lines = [{ category: 'Servicio', concept: '', quantity: 1, unitPrice: 0, vatRate: 0.16 }];
+
+        document.getElementById('edit-plan-id').value = planId || '';
+        document.getElementById('edit-concept').value = btn.getAttribute('data-concept') || '';
+        document.getElementById('edit-periodicity').value = btn.getAttribute('data-periodicity') || 'Monthly';
+        document.getElementById('edit-start').value = btn.getAttribute('data-start') || '';
+        document.getElementById('edit-issue').value = btn.getAttribute('data-issue') || '';
+        document.getElementById('edit-contract-months').value = btn.getAttribute('data-contract-months') || '';
+        document.getElementById('edit-email').value = btn.getAttribute('data-email') || '';
+        document.getElementById('edit-cc').value = btn.getAttribute('data-cc') || '';
+        document.getElementById('edit-notes').value = btn.getAttribute('data-notes') || '';
+
+        editContainer.innerHTML = '';
+        editIdx = 0;
+        lines.forEach((line) => {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = makeLineHtml(editIdx++, line);
+          editContainer.appendChild(wrapper.firstElementChild);
+        });
+        recalcEdit();
+      });
+    });
+
+    const editForm = document.getElementById('editPlanForm');
+    if (editForm) {
+      editForm.addEventListener('submit', () => {
+        const payload = buildEditLinesPayload();
+        if (editLinesJsonInput) editLinesJsonInput.value = JSON.stringify(payload);
+      });
+    }
+  }
+
   if (window.bootstrap && openModal) {
     if (openModal === 'runs') {
       const modal = document.getElementById('ejecucionesModal');
@@ -361,3 +534,5 @@ else
 })();
 </script>
 }
+
+

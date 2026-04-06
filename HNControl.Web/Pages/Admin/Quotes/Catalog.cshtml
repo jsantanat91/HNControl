@@ -1,5 +1,6 @@
 ﻿@page
 @model HNControl.Web.Pages.Admin.Quotes.CatalogModel
+@using global::System.Text.Json
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Admin - Cotizaciones";
@@ -11,8 +12,8 @@
         <div class="text-muted small">Configura segmento, categorias, servicios y subproductos para cotizacion interna.</div>
     </div>
     <div class="d-flex gap-2">
-            <button class="btn btn-primary" type="button" data-quote-modal-open="true" onclick="return false;">
-                + Nueva cotizacion
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#nuevoItemCatalogoModal">
+                + Nuevo item
             </button>
         <a class="btn btn-outline-primary" asp-page="./Requests">Cotizaciones</a>
     </div>
@@ -22,6 +23,71 @@
 {
     <div class="alert alert-success">@Model.Message</div>
 }
+
+@{
+    var categories = Model.Items
+        .Where(x => x.NodeType == HNControl.Web.Models.QuoteNodeType.Category)
+        .OrderBy(x => x.Segment)
+        .ThenBy(x => x.Name)
+        .ToList();
+
+    var catalogJson = JsonSerializer.Serialize(Model.Items.Select(x => new
+    {
+        id = x.Id,
+        segment = x.Segment.ToString(),
+        nodeType = x.NodeType.ToString(),
+        name = x.Name,
+        description = x.Description,
+        parentName = x.ParentName,
+        offerType = x.OfferType.ToString(),
+        unitPrice = x.UnitPrice,
+        unitPriceIncludesVat = x.UnitPriceIncludesVat,
+        isManualPrice = x.IsManualPrice,
+        isActive = x.IsActive
+    }));
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <h2 class="h6 mb-3">Categorias padre (dashboard)</h2>
+        @if (categories.Count == 0)
+        {
+            <div class="text-muted">Aun no hay categorias padre en el catalogo.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var cat in categories)
+                {
+                    var itemsCount = Model.Items.Count(x => (x.ParentName ?? "").Contains(cat.Name, StringComparison.OrdinalIgnoreCase));
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="border rounded-3 p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge text-bg-light border">@Model.LabelSegment(cat.Segment)</span>
+                                <span class="hn-chip @(cat.IsActive ? "hn-chip-status-up" : "hn-chip-neutral")">@(cat.IsActive ? "Activo" : "Inactivo")</span>
+                            </div>
+                            <div class="fw-semibold">@cat.Name</div>
+                            <div class="small text-muted">@(!string.IsNullOrWhiteSpace(cat.Description) ? cat.Description : "Sin descripcion")</div>
+                            <div class="small text-muted mt-2">Servicios/Subservicios: @itemsCount</div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        type="button"
+                                        data-category-open="true"
+                                        data-category-id="@cat.Id"
+                                        data-category-name="@cat.Name">Abrir</button>
+                                <button class="btn btn-sm btn-primary"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#nuevoItemCatalogoModal"
+                                        data-parent-prefill="@cat.Id">Nuevo item</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
 
 <div class="card shadow-sm mb-3">
     <div class="card-body">
@@ -310,6 +376,115 @@
     </div>
 </div>
 
+<div class="modal fade" id="catalogDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="catalogDetailTitle">Detalle de categoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="catalogDetailBody">
+                <div class="text-muted">Sin datos.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cerrar</button>
+                <button class="btn btn-primary" type="button" id="catalogDetailNewItem">+ Nuevo item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="nuevoItemCatalogoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo item del catalogo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted">Captura rapida en modal. Este formulario usa el mismo guardado del catalogo.</div>
+                <form method="post" asp-page-handler="Create" class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Segmento</label>
+                        <select asp-for="Input.Segment" class="form-select" id="modalSegment">
+                            <option value="Residential">Residencial</option>
+                            <option value="Business">Empresarial</option>
+                            <option value="Events">Eventos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Nivel</label>
+                        <select asp-for="Input.NodeType" class="form-select" id="modalNodeType">
+                            <option value="Category">Categoria</option>
+                            <option value="Service">Servicio</option>
+                            <option value="Subproduct">Subproducto</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Padre (si aplica)</label>
+                        <select asp-for="Input.ParentId" class="form-select" id="modalParentSelect">
+                            <option value="">Sin padre</option>
+                            @foreach (var p in Model.ParentOptions)
+                            {
+                                <option value="@p.Id" data-segment="@p.Segment" data-type="@p.NodeType">@p.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Nombre</label>
+                        <input asp-for="Input.Name" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Descripcion</label>
+                        <input asp-for="Input.Description" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Costo unitario (opcional)</label>
+                        <input asp-for="Input.UnitPrice" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo comercial</label>
+                        <select asp-for="Input.OfferType" class="form-select">
+                            <option value="Sale">Venta</option>
+                            <option value="MonthlyRent">Renta mensual</option>
+                            <option value="Lease">Arrendamiento</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Atributo variante (opcional)</label>
+                        <input asp-for="Input.VariantGroup" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Opcion variante (opcional)</label>
+                        <input asp-for="Input.VariantValue" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Imagen (URL opcional)</label>
+                        <input asp-for="Input.ImageUrl" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Referencia (URL opcional)</label>
+                        <input asp-for="Input.ReferenceUrl" class="form-control" />
+                    </div>
+                    <div class="col-12 d-flex gap-3">
+                        <div class="form-check">
+                            <input asp-for="Input.UnitPriceIncludesVat" class="form-check-input" />
+                            <label asp-for="Input.UnitPriceIncludesVat" class="form-check-label">Costo con IVA</label>
+                        </div>
+                        <div class="form-check">
+                            <input asp-for="Input.IsManualPrice" class="form-check-input" />
+                            <label asp-for="Input.IsManualPrice" class="form-check-label">Costo manual</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" type="submit">Guardar item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 (function(){
@@ -343,6 +518,81 @@
     seg.addEventListener('change', refreshParents);
     node.addEventListener('change', refreshParents);
     refreshParents();
+})();
+
+(function(){
+    const catalog = @Html.Raw(catalogJson);
+    const detailModalEl = document.getElementById('catalogDetailModal');
+    const detailBody = document.getElementById('catalogDetailBody');
+    const detailTitle = document.getElementById('catalogDetailTitle');
+    const detailNewBtn = document.getElementById('catalogDetailNewItem');
+    const createModalEl = document.getElementById('nuevoItemCatalogoModal');
+    const createParent = document.getElementById('modalParentSelect');
+    const createNode = document.getElementById('modalNodeType');
+
+    if (!detailModalEl || !detailBody || !detailTitle || typeof bootstrap === 'undefined') return;
+    const detailModal = new bootstrap.Modal(detailModalEl);
+    const createModal = createModalEl ? new bootstrap.Modal(createModalEl) : null;
+
+    function openCreate(parentId){
+        if (!createModal || !createParent) return;
+        if (createNode) createNode.value = 'Service';
+        if (parentId) createParent.value = parentId;
+        detailModal.hide();
+        createModal.show();
+    }
+
+    function renderCategory(categoryId, categoryName){
+        const services = catalog.filter(x => x.nodeType === 'Service' && (x.parentName || '').indexOf(categoryName) >= 0);
+        const subs = catalog.filter(x => x.nodeType === 'Subproduct' && (x.parentName || '').indexOf(categoryName) >= 0);
+
+        let html = `<div class="mb-3"><div class="fw-semibold">${categoryName}</div><div class="small text-muted">Servicios: ${services.length} · Subservicios: ${subs.length}</div></div>`;
+
+        if (services.length === 0 && subs.length === 0) {
+            html += `<div class="text-muted">Sin servicios registrados en esta categoria.</div>`;
+        } else {
+            html += `<div class="row g-3">`;
+            services.forEach(s => {
+                const price = s.isManualPrice ? 'Manual' : (s.unitPrice == null ? '-' : `$${Number(s.unitPrice).toFixed(2)} ${(s.unitPriceIncludesVat ? '(IVA incl.)' : '+ IVA')}`);
+                html += `<div class="col-12 col-md-6"><div class="border rounded p-2 h-100"><div class="fw-semibold">${s.name}</div><div class="small text-muted">${s.description || 'Sin descripcion'}</div><div class="small mt-1">Tipo: ${s.offerType} · Costo: ${price}</div></div></div>`;
+            });
+            html += `</div>`;
+
+            if (subs.length > 0) {
+                html += `<hr /><div class="fw-semibold mb-2">Subservicios</div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Nombre</th><th>Padre</th><th>Costo</th><th>Estado</th></tr></thead><tbody>`;
+                subs.forEach(s => {
+                    const price = s.isManualPrice ? 'Manual' : (s.unitPrice == null ? '-' : `$${Number(s.unitPrice).toFixed(2)}`);
+                    html += `<tr><td>${s.name}</td><td>${s.parentName || '-'}</td><td>${price}</td><td>${s.isActive ? 'Activo' : 'Inactivo'}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+        }
+
+        detailBody.innerHTML = html;
+        detailTitle.textContent = `Detalle: ${categoryName}`;
+        if (detailNewBtn) detailNewBtn.setAttribute('data-parent-id', categoryId);
+    }
+
+    document.querySelectorAll('[data-category-open="true"]').forEach(btn => {
+        btn.addEventListener('click', function(){
+            const categoryId = this.getAttribute('data-category-id') || '';
+            const categoryName = this.getAttribute('data-category-name') || 'Categoria';
+            renderCategory(categoryId, categoryName);
+            detailModal.show();
+        });
+    });
+
+    if (detailNewBtn) {
+        detailNewBtn.addEventListener('click', function(){
+            openCreate(this.getAttribute('data-parent-id') || '');
+        });
+    }
+
+    document.querySelectorAll('[data-parent-prefill]').forEach(btn => {
+        btn.addEventListener('click', function(){
+            openCreate(this.getAttribute('data-parent-prefill') || '');
+        });
+    });
 })();
 </script>
 }

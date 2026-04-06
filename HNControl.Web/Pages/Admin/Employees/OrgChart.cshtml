@@ -1,10 +1,10 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Employees.OrgChartModel
 @using global::System.Text.Json
 @{
     ViewData["Title"] = "Organigrama";
-    var employeesJson = JsonSerializer.Serialize(Model.Employees);
-    var nodesJson = JsonSerializer.Serialize(Model.Nodes);
+    var employeesJson = JsonSerializer.Serialize(Model.Employees, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    var nodesJson = JsonSerializer.Serialize(Model.Nodes, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -94,7 +94,15 @@
     const root = document.getElementById('orgRoot');
     const canvas = document.getElementById('orgCanvas');
     const alertBox = document.getElementById('orgAlert');
-    const byUser = new Map(employees.map(e => [e.userId, e]));
+
+    const getUserId = (x) => x?.userId || x?.UserId || '';
+    const getReportsTo = (x) => x?.reportsToUserId || x?.ReportsToUserId || null;
+    const getSortOrder = (x) => x?.sortOrder ?? x?.SortOrder ?? 0;
+    const getFullName = (x) => x?.fullName || x?.FullName || '-';
+    const getPosition = (x) => x?.position || x?.Position || '-';
+    const getEmail = (x) => x?.email || x?.Email || '-';
+
+    const byUser = new Map(employees.map(e => [getUserId(e), e]).filter(([k]) => !!k));
     const cardByUser = new Map();
     let draggingUserId = null;
 
@@ -104,21 +112,22 @@
     }
 
     function createCard(emp) {
+        const userId = getUserId(emp);
         const card = document.createElement('div');
         card.className = 'org-card';
-        card.dataset.userId = emp.userId;
+        card.dataset.userId = userId;
         if (canEdit) card.draggable = true;
         card.innerHTML = `
             <div class="org-card-head">
                 <div>
-                    <div class="org-name">${emp.fullName}</div>
-                    <div class="org-role">${emp.position || '-'}</div>
+                    <div class="org-name">${getFullName(emp)}</div>
+                    <div class="org-role">${getPosition(emp)}</div>
                 </div>
-                <span class="badge text-bg-light">${emp.email || '-'}</span>
+                <span class="badge text-bg-light">${getEmail(emp)}</span>
             </div>
-            <div class="org-children" data-parent-id="${emp.userId}"></div>
+            <div class="org-children" data-parent-id="${userId}"></div>
         `;
-        cardByUser.set(emp.userId, card);
+        cardByUser.set(userId, card);
         return card;
     }
 
@@ -134,17 +143,18 @@
             canvasWrap.appendChild(card);
         });
 
-        const linkMap = new Map(links.map(x => [x.userId, x]));
+        const linkMap = new Map(links.map(x => [getUserId(x), x]).filter(([k]) => !!k));
         const sorted = [...employees].sort((a, b) => {
-            const sa = linkMap.get(a.userId)?.sortOrder ?? 9999;
-            const sb = linkMap.get(b.userId)?.sortOrder ?? 9999;
+            const sa = getSortOrder(linkMap.get(getUserId(a))) || 9999;
+            const sb = getSortOrder(linkMap.get(getUserId(b))) || 9999;
             if (sa !== sb) return sa - sb;
-            return (a.fullName || '').localeCompare(b.fullName || '');
+            return (getFullName(a) || '').localeCompare(getFullName(b) || '');
         });
 
         sorted.forEach(emp => {
-            const card = cardByUser.get(emp.userId);
-            const parentId = linkMap.get(emp.userId)?.reportsToUserId;
+            const userId = getUserId(emp);
+            const card = cardByUser.get(userId);
+            const parentId = getReportsTo(linkMap.get(userId));
             if (!parentId) {
                 root.appendChild(card);
                 return;

@@ -91,7 +91,11 @@
                             <input class="form-control form-control-sm" name="InputActivity.Description" placeholder="Actividad" />
                         </div>
                         <div class="col-md-2 d-flex gap-2">
-                            <input class="form-control form-control-sm" name="InputActivity.PlannedDays" type="number" min="1" max="365" value="1" />
+                            <input class="form-control form-control-sm" name="InputActivity.DurationValue" type="number" min="1" max="3650" value="8" />
+                            <select class="form-select form-select-sm" name="InputActivity.DurationUnit" style="max-width:110px;">
+                                <option value="hours" selected>Horas</option>
+                                <option value="days">Dias</option>
+                            </select>
                             <button class="btn btn-sm btn-primary" type="submit">Agregar</button>
                         </div>
                     </form>
@@ -111,7 +115,7 @@
                                     <div>
                                         <div class="fw-semibold">@a.AssignedTo</div>
                                         <div class="small">@a.Description</div>
-                                        <div class="small text-muted">Dias @a.StartDay - @a.EndDay (@a.PlannedDays dias)</div>
+                                        <div class="small text-muted">Horas @a.StartHour - @a.EndHour (@a.DurationLabel)</div>
                                     </div>
                                     @if (User.IsInRole(AppRoles.Admin))
                                     {
@@ -124,7 +128,7 @@
                                     }
                                 </div>
                                 <div class="progress mt-2" style="height:10px;">
-                                    <div class="progress-bar bg-info" style="margin-left:@a.OffsetPercent%; width:@a.WidthPercent%;"></div>
+                                    <div class="progress-bar" style="background:@a.ColorHex; margin-left:@a.OffsetPercent%; width:@a.WidthPercent%;"></div>
                                 </div>
                             </div>
                         }

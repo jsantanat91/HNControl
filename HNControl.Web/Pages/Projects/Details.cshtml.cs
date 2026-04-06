@@ -43,8 +43,8 @@ public class DetailsModel : PageModel
     public int GanttTotalDays { get; set; }
     public int GanttElapsedDays { get; set; }
     public double GanttProgressPercent { get; set; }
-    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedDays, int StartDay, int EndDay, double WidthPercent, double OffsetPercent);
-    public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Days, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
+    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, double WidthPercent, double OffsetPercent, string ColorHex);
+    public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Hours, string DurationLabel, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
     public List<ActivityRow> Activities { get; set; } = new();
 
     [BindProperty] public ActivityInput InputActivity { get; set; } = new();
@@ -56,8 +56,10 @@ public class DetailsModel : PageModel
         public string AssignedTo { get; set; } = "";
         [StringLength(1000)]
         public string Description { get; set; } = "";
-        [Range(1, 365)]
-        public int PlannedDays { get; set; } = 1;
+        [Range(1, 3650)]
+        public int DurationValue { get; set; } = 1;
+        [Required]
+        public string DurationUnit { get; set; } = "hours";
     }
 
     public record AccessRow(string Source, string Label, string HostOrUrl, string Username, bool CanViewPassword, string PasswordPlain, string Notes);
@@ -199,7 +201,7 @@ public class DetailsModel : PageModel
                 ? (p.AssignedEmployee?.FullName ?? p.AssignedUserId)
                 : InputActivity.AssignedTo.Trim(),
             Description = InputActivity.Description.Trim(),
-            PlannedDays = Math.Max(1, InputActivity.PlannedDays),
+            PlannedDays = ParseDurationToHours(InputActivity.DurationValue, InputActivity.DurationUnit),
             SortOrder = nextOrder
         });
 
@@ -252,9 +254,9 @@ public class DetailsModel : PageModel
         var totalHours = Math.Max(1, (int)Math.Ceiling((p.EstimatedEndDate - p.StartDate).TotalHours));
         var elapsedHours = Math.Max(0, Math.Min(totalHours, (int)Math.Ceiling((DateTime.UtcNow - p.StartDate).TotalHours)));
         var percent = Math.Round((elapsedHours * 100d) / totalHours, 1);
-        var totalPlanDays = Math.Max(1, projectActivities.Sum(a => Math.Max(1, a.PlannedDays)));
-        var planRows = BuildPdfGanttRows(p.StartDate.ToLocalTime().Date, projectActivities, totalPlanDays, DateTime.UtcNow.ToLocalTime());
-        const float timelineWidth = 300f;
+        var totalPlanHours = Math.Max(1, projectActivities.Sum(a => Math.Max(1, a.PlannedDays)));
+        var planRows = BuildPdfGanttRows(p.StartDate.ToLocalTime(), projectActivities, totalPlanHours, DateTime.UtcNow.ToLocalTime());
+        const float timelineWidth = 160f;
 
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
@@ -342,19 +344,19 @@ public class DetailsModel : PageModel
                         {
                             cc.Item().Row(header =>
                             {
-                                header.ConstantItem(84).Text("Inicio").SemiBold().FontSize(9);
-                                header.ConstantItem(84).Text("Fin").SemiBold().FontSize(9);
-                                header.ConstantItem(38).Text("Dias").SemiBold().FontSize(9);
-                                header.ConstantItem(54).AlignCenter().Text("Avance").SemiBold().FontSize(9);
-                                header.ConstantItem(240).Text("Tarea").SemiBold().FontSize(9);
-                                header.ConstantItem(timelineWidth).Text($"Timeline ({totalPlanDays} dias)").SemiBold().FontSize(9);
+                                header.ConstantItem(50).Text("Inicio").SemiBold().FontSize(9);
+                                header.ConstantItem(50).Text("Fin").SemiBold().FontSize(9);
+                                header.ConstantItem(44).Text("Duracion").SemiBold().FontSize(9);
+                                header.ConstantItem(40).AlignCenter().Text("Avance").SemiBold().FontSize(9);
+                                header.ConstantItem(120).Text("Tarea").SemiBold().FontSize(9);
+                                header.ConstantItem(timelineWidth).Text($"Timeline ({totalPlanHours} h)").SemiBold().FontSize(9);
                             });
 
                             cc.Item().PaddingTop(3).LineHorizontal(0.6f).LineColor(Colors.Grey.Lighten2);
                             cc.Item().PaddingTop(3).Row(axis =>
                             {
-                                axis.ConstantItem(84 + 84 + 38 + 54 + 240).Text("");
-                                axis.ConstantItem(timelineWidth).Text($"D1  ...  D{Math.Max(1, totalPlanDays / 2)}  ...  D{totalPlanDays}")
+                                axis.ConstantItem(50 + 50 + 44 + 40 + 120).Text("");
+                                axis.ConstantItem(timelineWidth).Text($"0h  ...  {Math.Max(1, totalPlanHours / 2)}h  ...  {totalPlanHours}h")
                                     .FontSize(8).FontColor(Colors.Grey.Darken1);
                             });
 
@@ -362,11 +364,11 @@ public class DetailsModel : PageModel
                             {
                                 cc.Item().PaddingTop(2).Row(r =>
                                 {
-                                    r.ConstantItem(84).Text(row.StartDate.ToString("dd/MM/yyyy")).FontSize(8.5f);
-                                    r.ConstantItem(84).Text(row.EndDate.ToString("dd/MM/yyyy")).FontSize(8.5f);
-                                    r.ConstantItem(38).Text(row.Days.ToString()).FontSize(8.5f);
-                                    r.ConstantItem(54).AlignCenter().Text($"{Math.Round(row.ProgressPercent)}%").FontSize(8.5f);
-                                    r.ConstantItem(240).Column(task =>
+                                    r.ConstantItem(50).Text(row.StartDate.ToString("dd/MM")).FontSize(8.5f);
+                                    r.ConstantItem(50).Text(row.EndDate.ToString("dd/MM")).FontSize(8.5f);
+                                    r.ConstantItem(44).Text(row.DurationLabel).FontSize(8.5f);
+                                    r.ConstantItem(40).AlignCenter().Text($"{Math.Round(row.ProgressPercent)}%").FontSize(8.5f);
+                                    r.ConstantItem(120).Column(task =>
                                     {
                                         task.Item().Text(row.Task).FontSize(8.5f);
                                         task.Item().Text(row.AssignedTo).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
@@ -554,33 +556,38 @@ public class DetailsModel : PageModel
             return;
         }
 
-        var totalDays = Math.Max(1, acts.Sum(a => Math.Max(1, a.PlannedDays)));
+        var totalHours = Math.Max(1, acts.Sum(a => Math.Max(1, a.PlannedDays)));
         var cursor = 0;
         Activities = new List<ActivityRow>();
+        var colorMap = BuildPersonColorMap(acts);
 
         foreach (var a in acts)
         {
-            var days = Math.Max(1, a.PlannedDays);
+            var hours = Math.Max(1, a.PlannedDays);
             var start = cursor + 1;
-            var end = cursor + days;
-            var offset = (cursor * 100d) / totalDays;
-            var width = (days * 100d) / totalDays;
-            cursor += days;
+            var end = cursor + hours;
+            var offset = (cursor * 100d) / totalHours;
+            var width = (hours * 100d) / totalHours;
+            cursor += hours;
+            var assigned = string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName;
+            var color = colorMap.TryGetValue(assigned, out var c) ? c : "#06B6D4";
 
             Activities.Add(new ActivityRow(
                 a.Id,
-                string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName,
+                assigned,
                 string.IsNullOrWhiteSpace(a.Description) ? "-" : a.Description,
-                days,
+                hours,
+                FormatDuration(hours),
                 start,
                 end,
                 Math.Round(width, 2),
-                Math.Round(offset, 2)
+                Math.Round(offset, 2),
+                color
             ));
         }
     }
 
-    private static List<PdfGanttRow> BuildPdfGanttRows(DateTime planStartLocal, List<ProjectActivity> activities, int totalPlanDays, DateTime nowLocal)
+    private static List<PdfGanttRow> BuildPdfGanttRows(DateTime planStartLocal, List<ProjectActivity> activities, int totalPlanHours, DateTime nowLocal)
     {
         var rows = new List<PdfGanttRow>();
         if (activities.Count == 0)
@@ -591,22 +598,23 @@ public class DetailsModel : PageModel
 
         foreach (var a in activities)
         {
-            var days = Math.Max(1, a.PlannedDays);
-            var startDay = cursor + 1;
-            var endDay = cursor + days;
-            var startDate = planStartLocal.AddDays(startDay - 1);
-            var endDate = planStartLocal.AddDays(endDay - 1);
-            var offset = (cursor * 100d) / totalPlanDays;
-            var width = (days * 100d) / totalPlanDays;
-            cursor += days;
+            var hours = Math.Max(1, a.PlannedDays);
+            var startHour = cursor;
+            var endHour = cursor + hours;
+            var startDate = planStartLocal.AddHours(startHour);
+            var endDate = planStartLocal.AddHours(endHour);
+            var offset = (cursor * 100d) / totalPlanHours;
+            var width = (hours * 100d) / totalPlanHours;
+            cursor += hours;
 
-            var progress = CalcProgress(nowLocal.Date, startDate, endDate);
+            var progress = CalcProgress(nowLocal, startDate, endDate);
             rows.Add(new PdfGanttRow(
                 string.IsNullOrWhiteSpace(a.Description) ? "-" : a.Description.Trim(),
                 string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName.Trim(),
                 startDate,
                 endDate,
-                days,
+                hours,
+                FormatDuration(hours),
                 progress,
                 Math.Round(offset, 2),
                 Math.Round(width, 2),
@@ -616,15 +624,15 @@ public class DetailsModel : PageModel
         return rows;
     }
 
-    private static double CalcProgress(DateTime nowDate, DateTime startDate, DateTime endDate)
+    private static double CalcProgress(DateTime nowDateTime, DateTime startDate, DateTime endDate)
     {
-        if (nowDate < startDate.Date)
+        if (nowDateTime < startDate)
             return 0;
-        if (nowDate >= endDate.Date)
+        if (nowDateTime >= endDate)
             return 100;
 
-        var total = Math.Max(1, (endDate.Date - startDate.Date).Days + 1);
-        var elapsed = Math.Max(0, (nowDate - startDate.Date).Days + 1);
+        var total = Math.Max(1, (endDate - startDate).TotalHours);
+        var elapsed = Math.Max(0, (nowDateTime - startDate).TotalHours);
         return Math.Round(Math.Clamp((elapsed * 100d) / total, 0, 100), 1);
     }
 
@@ -645,7 +653,7 @@ public class DetailsModel : PageModel
     private static string BuildDependencySvg(IReadOnlyList<PdfGanttRow> rows, float timelineWidth, int canvasHeight)
     {
         var sb = new StringBuilder();
-        var w = (int)Math.Max(320, Math.Ceiling(timelineWidth));
+        var w = (int)Math.Max(120, Math.Ceiling(timelineWidth));
         var h = Math.Max(60, canvasHeight);
         const int rowH = 24;
         const int top = 10;
@@ -696,6 +704,42 @@ public class DetailsModel : PageModel
 
         sb.Append("</svg>");
         return sb.ToString();
+    }
+
+    private static int ParseDurationToHours(int value, string? unit)
+    {
+        var safe = Math.Max(1, value);
+        return string.Equals(unit, "days", StringComparison.OrdinalIgnoreCase)
+            ? Math.Max(1, safe * 24)
+            : safe;
+    }
+
+    private static string FormatDuration(int hours)
+    {
+        if (hours % 24 == 0)
+        {
+            var days = hours / 24;
+            return $"{days} d";
+        }
+        return $"{hours} h";
+    }
+
+    private static Dictionary<string, string> BuildPersonColorMap(IReadOnlyList<ProjectActivity> acts)
+    {
+        var palette = new[]
+        {
+            "#3B82F6", "#22C55E", "#A855F7", "#F59E0B", "#06B6D4",
+            "#EF4444", "#84CC16", "#EC4899", "#0EA5E9", "#F97316"
+        };
+
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var index = 0;
+        foreach (var name in acts.Select(a => string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            result[name] = palette[index % palette.Length];
+            index++;
+        }
+        return result;
     }
 
     private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);

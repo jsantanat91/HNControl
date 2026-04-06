@@ -81,10 +81,13 @@ public class IndexModel : PageModel
         decimal Total,
         string Periodicity,
         string Status,
+        DateTime StartDate,
         DateTime NextRunDate,
         DateTime InvoiceIssueDate,
         string SendToEmail,
         string SatSummary,
+        string CcEmails,
+        string Notes,
         string? ContractName,
         int ContractMonths,
         int LinesCount,
@@ -502,6 +505,135 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostUpdatePlanAsync(
+        Guid planId,
+        string? concept,
+        BillingPeriodicity periodicity,
+        DateTime startDate,
+        DateTime invoiceIssueDate,
+        int? contractMonths,
+        string? sendToEmail,
+        string? ccEmails,
+        string? notes,
+        string? linesJson)
+    {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage(new { openModal = "newPlan" });
+        }
+
+        var plan = await _db.BillingInvoicePlans
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.Id == planId);
+        if (plan == null)
+        {
+            Flash = "Plan no encontrado.";
+            FlashType = "danger";
+            return RedirectToPage();
+        }
+
+        if (string.IsNullOrWhiteSpace(sendToEmail))
+        {
+            Flash = "Correo destino es obligatorio.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        if (string.IsNullOrWhiteSpace(linesJson))
+        {
+            Flash = "Debes capturar al menos una línea.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        List<LineInputModel>? incomingLines;
+        try
+        {
+            incomingLines = global::System.Text.Json.JsonSerializer.Deserialize<List<LineInputModel>>(
+                linesJson,
+                new global::System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch
+        {
+            Flash = "Formato inválido en líneas del plan.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        incomingLines ??= [];
+        var sourceLines = incomingLines
+            .Where(x => !string.IsNullOrWhiteSpace(x.Concept) && x.Quantity > 0)
+            .ToList();
+        if (sourceLines.Count == 0)
+        {
+            Flash = "Debes capturar al menos una línea válida.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var rebuiltLines = new List<BillingInvoiceLine>();
+        var sortOrder = 1;
+        foreach (var line in sourceLines)
+        {
+            var unitPrice = Math.Round(Math.Max(0m, line.UnitPrice), 2);
+            var qty = Math.Max(1, line.Quantity);
+            var lineSubtotal = Math.Round(unitPrice * qty, 2);
+            var lineVatRate = Math.Clamp(line.VatRate, 0m, 1m);
+            var lineVat = Math.Round(lineSubtotal * lineVatRate, 2);
+            var lineTotal = Math.Round(lineSubtotal + lineVat, 2);
+
+            rebuiltLines.Add(new BillingInvoiceLine
+            {
+                Category = string.IsNullOrWhiteSpace(line.Category) ? "Servicio" : line.Category.Trim(),
+                Concept = line.Concept.Trim(),
+                Quantity = qty,
+                UnitPrice = unitPrice,
+                Subtotal = lineSubtotal,
+                VatRate = lineVatRate,
+                VatAmount = lineVat,
+                Total = lineTotal,
+                SortOrder = sortOrder++,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        var subtotal = rebuiltLines.Sum(x => x.Subtotal);
+        var vat = rebuiltLines.Sum(x => x.VatAmount);
+        var total = rebuiltLines.Sum(x => x.Total);
+
+        var existingLines = plan.Lines.ToList();
+        _db.RemoveRange(existingLines);
+        plan.Lines.Clear();
+        foreach (var rebuiltLine in rebuiltLines)
+            plan.Lines.Add(rebuiltLine);
+
+        plan.Concept = string.IsNullOrWhiteSpace(concept) ? plan.Concept : concept.Trim();
+        plan.Periodicity = periodicity;
+        plan.StartDate = startDate.Date;
+        plan.InvoiceIssueDate = invoiceIssueDate.Date;
+        plan.RemainingRuns = contractMonths.HasValue && contractMonths.Value > 0 ? contractMonths.Value : null;
+        plan.SendToEmail = sendToEmail.Trim();
+        plan.CcEmails = (ccEmails ?? "").Trim();
+        plan.Notes = (notes ?? "").Trim();
+        plan.Subtotal = subtotal;
+        plan.VatAmount = vat;
+        plan.Total = total;
+        plan.VatRate = subtotal > 0 ? vat / subtotal : plan.VatRate;
+        plan.UpdatedAt = DateTime.UtcNow;
+
+        if (plan.NextRunDate < DateTime.Today)
+            plan.NextRunDate = invoiceIssueDate.Date;
+
+        await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(plan.Id, "billing.plan.update", "Plan actualizado desde dashboard.");
+
+        Flash = "Plan actualizado correctamente.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostDeletePlanAsync(Guid planId)
     {
         if (!await CheckBillingSchemaReadyAsync())
@@ -644,10 +776,13 @@ public class IndexModel : PageModel
             x.Total,
             LabelPeriodicity(x.Periodicity),
             x.Status.ToString(),
+            x.StartDate,
             x.NextRunDate,
             x.InvoiceIssueDate,
             x.SendToEmail,
             $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}",
+            x.CcEmails ?? "",
+            x.Notes ?? "",
             x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
             x.RemainingRuns ?? 0,
             x.Lines.Count,

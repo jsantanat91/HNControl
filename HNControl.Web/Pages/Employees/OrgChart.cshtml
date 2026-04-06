@@ -1,10 +1,10 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Employees.OrgChartModel
 @using global::System.Text.Json
 @{
     ViewData["Title"] = "Organigrama";
-    var employeesJson = JsonSerializer.Serialize(Model.Employees);
-    var nodesJson = JsonSerializer.Serialize(Model.Nodes);
+    var employeesJson = JsonSerializer.Serialize(Model.Employees, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    var nodesJson = JsonSerializer.Serialize(Model.Nodes, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -47,17 +47,25 @@
     const root = document.getElementById('orgReadOnly');
     const employees = @Html.Raw(employeesJson);
     const nodes = @Html.Raw(nodesJson);
-    const byUser = new Map(employees.map(e => [e.userId, e]));
-    const nodeByUser = new Map(nodes.map(n => [n.userId, n]));
+
+    const getUserId = (x) => x?.userId || x?.UserId || '';
+    const getReportsTo = (x) => x?.reportsToUserId || x?.ReportsToUserId || null;
+    const getSortOrder = (x) => x?.sortOrder ?? x?.SortOrder ?? 0;
+    const getFullName = (x) => x?.fullName || x?.FullName || '-';
+    const getPosition = (x) => x?.position || x?.Position || '-';
+    const getEmail = (x) => x?.email || x?.Email || '-';
+
+    const byUser = new Map(employees.map(e => [getUserId(e), e]).filter(([k]) => !!k));
 
     const children = new Map();
     nodes.forEach(n => {
-        const parent = n.reportsToUserId || '__ROOT__';
+        const parent = getReportsTo(n) || '__ROOT__';
         if (!children.has(parent)) children.set(parent, []);
         children.get(parent).push(n);
     });
+
     for (const [k, list] of children.entries()) {
-        list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        list.sort((a, b) => getSortOrder(a) - getSortOrder(b));
     }
 
     function buildCard(userId) {
@@ -65,13 +73,13 @@
         if (!emp) return null;
         const card = document.createElement('div');
         card.className = 'org-card';
-        card.innerHTML = `<div class="org-name">${emp.fullName}</div><div class="org-role">${emp.position || '-'} · ${emp.email || '-'}</div>`;
+        card.innerHTML = `<div class="org-name">${getFullName(emp)}</div><div class="org-role">${getPosition(emp)} · ${getEmail(emp)}</div>`;
         const kids = children.get(userId) || [];
         if (kids.length > 0) {
             const zone = document.createElement('div');
             zone.className = 'org-children';
             kids.forEach(k => {
-                const child = buildCard(k.userId);
+                const child = buildCard(getUserId(k));
                 if (child) zone.appendChild(child);
             });
             card.appendChild(zone);
@@ -82,13 +90,14 @@
     const roots = children.get('__ROOT__') || [];
     if (roots.length === 0) {
         employees.forEach(e => {
-            const c = buildCard(e.userId);
+            const c = buildCard(getUserId(e));
             if (c) root.appendChild(c);
         });
         return;
     }
+
     roots.forEach(r => {
-        const c = buildCard(r.userId);
+        const c = buildCard(getUserId(r));
         if (c) root.appendChild(c);
     });
 })();

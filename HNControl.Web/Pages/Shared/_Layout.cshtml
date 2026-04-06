@@ -20,6 +20,8 @@
     var isSystemConfigPath = path.StartsWith("/Admin/System/Configuration", StringComparison.OrdinalIgnoreCase);
     var isSystemBackupPath = path.StartsWith("/Admin/System/Backup", StringComparison.OrdinalIgnoreCase);
     var isSecurityPath = path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase);
+    var isAdminOrgChartPath = path.StartsWith("/Admin/Employees/OrgChart", StringComparison.OrdinalIgnoreCase);
+    var isAdminEmployeesPath = path.StartsWith("/Admin/Employees", StringComparison.OrdinalIgnoreCase) && !isAdminOrgChartPath;
 
     // Permisos por m&oacute;dulo (solo aplica a Employees). Admin bypass.
     var allowedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -88,11 +90,11 @@
                         <span class="hn-side-icon"><i class="bi bi-speedometer2"></i></span>
                         <span class="hn-side-text">Panel</span>
                     </a>
-                    <a class="hn-side-link @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index">
+                    <a class="hn-side-link @(isAdminEmployeesPath ? "active" : "")" asp-page="/Admin/Employees/Index">
                         <span class="hn-side-icon"><i class="bi bi-people"></i></span>
                         <span class="hn-side-text">Empleados</span>
                     </a>
-                    <a class="hn-side-link @Active("/Admin/Employees/OrgChart")" asp-page="/Admin/Employees/OrgChart">
+                    <a class="hn-side-link @(isAdminOrgChartPath ? "active" : "")" asp-page="/Admin/Employees/OrgChart">
                         <span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span>
                         <span class="hn-side-text">Organigrama</span>
                     </a>
@@ -431,8 +433,8 @@
                 @if (AppRoles.IsGlobalAdmin(User))
                 {
                     <a class="hn-side-link @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard"><span class="hn-side-icon"><i class="bi bi-speedometer2"></i></span><span class="hn-side-text">Panel</span></a>
-                    <a class="hn-side-link @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index"><span class="hn-side-icon"><i class="bi bi-people"></i></span><span class="hn-side-text">Empleados</span></a>
-                    <a class="hn-side-link @Active("/Admin/Employees/OrgChart")" asp-page="/Admin/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a>
+                    <a class="hn-side-link @(isAdminEmployeesPath ? "active" : "")" asp-page="/Admin/Employees/Index"><span class="hn-side-icon"><i class="bi bi-people"></i></span><span class="hn-side-text">Empleados</span></a>
+                    <a class="hn-side-link @(isAdminOrgChartPath ? "active" : "")" asp-page="/Admin/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a>
                     <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a>
                     <details class="hn-side-group" @(path.StartsWith("/Projects", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Projects")"><span class="hn-side-icon"><i class="bi bi-kanban"></i></span><span class="hn-side-text">Proyectos</span></summary>

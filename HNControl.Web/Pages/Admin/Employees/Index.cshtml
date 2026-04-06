@@ -7,6 +7,7 @@
     var avgSalary = total > 0 ? Model.Rows.Average(x => x.SalaryBase) : 0m;
     var view = (Request.Query["view"].ToString() ?? "").Trim().ToLowerInvariant();
     var isTable = view == "table";
+    var includeInactive = string.Equals(Request.Query["includeInactive"], "true", StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -16,13 +17,24 @@
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="./OrgChart">Organigrama</a>
+        <a class="btn btn-outline-secondary btn-sm @(includeInactive ? "active" : "")" asp-page="./Index" asp-route-view="@(isTable ? "table" : "cards")" asp-route-includeInactive="true">Ver bajas</a>
+        <a class="btn btn-outline-secondary btn-sm @(!includeInactive ? "active" : "")" asp-page="./Index" asp-route-view="@(isTable ? "table" : "cards")" asp-route-includeInactive="false">Solo activos</a>
         <div class="btn-group">
-            <a class="btn btn-outline-secondary btn-sm @(isTable ? "" : "active")" asp-page="./Index" asp-route-view="cards">Cards</a>
-            <a class="btn btn-outline-secondary btn-sm @(isTable ? "active" : "")" asp-page="./Index" asp-route-view="table">Tabla</a>
+            <a class="btn btn-outline-secondary btn-sm @(isTable ? "" : "active")" asp-page="./Index" asp-route-view="cards" asp-route-includeInactive="@includeInactive">Cards</a>
+            <a class="btn btn-outline-secondary btn-sm @(isTable ? "active" : "")" asp-page="./Index" asp-route-view="table" asp-route-includeInactive="@includeInactive">Tabla</a>
         </div>
         <a class="btn btn-primary" href="/Admin/Employees/Create">+ Nuevo</a>
     </div>
 </div>
+
+@if (!string.IsNullOrWhiteSpace(Model.FlashOk))
+{
+    <div class="alert alert-success">@Model.FlashOk</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.FlashError))
+{
+    <div class="alert alert-danger">@Model.FlashError</div>
+}
 
 <div class="row g-3 mb-3">
     <div class="col-md-6 col-xl-3">
@@ -69,11 +81,43 @@ else if (!isTable)
                             {
                                 <div class="mt-2"><span class="hn-badge hn-badge-blue">Encargado de inventario</span></div>
                             }
+                            <div class="mt-2">
+                                @if (r.IsActive)
+                                {
+                                    <span class="hn-badge hn-badge-green">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="hn-badge hn-badge-red">Baja</span>
+                                }
+                            </div>
                         </div>
 
-                        <div class="mt-auto pt-3 d-flex gap-2">
+                        <div class="mt-auto pt-3 d-flex flex-wrap gap-2">
                             <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
+                            @if (r.IsActive)
+                            {
+                                <form method="post" asp-page-handler="Deactivate" class="d-inline">
+                                    <input type="hidden" name="userId" value="@r.UserId" />
+                                    <input type="hidden" name="includeInactive" value="true" />
+                                    <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('¿Dar de baja a este empleado?');">Baja</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-page-handler="Activate" class="d-inline">
+                                    <input type="hidden" name="userId" value="@r.UserId" />
+                                    <input type="hidden" name="includeInactive" value="true" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Reactivar</button>
+                                </form>
+
+                                <form method="post" asp-page-handler="Delete" class="d-inline">
+                                    <input type="hidden" name="userId" value="@r.UserId" />
+                                    <input type="hidden" name="includeInactive" value="true" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar definitivamente. Solo aplica si no tiene historial. ¿Continuar?');">Eliminar</button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>
@@ -93,6 +137,7 @@ else
                             <th>Email</th>
                             <th>Puesto</th>
                             <th>Inventario</th>
+                            <th>Estatus</th>
                             <th class="text-end">Sueldo</th>
                             <th class="text-end"></th>
                         </tr>
@@ -114,10 +159,42 @@ else
                                         <span class="text-muted small">-</span>
                                     }
                                 </td>
+                                <td>
+                                    @if (r.IsActive)
+                                    {
+                                        <span class="hn-badge hn-badge-green">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="hn-badge hn-badge-red">Baja</span>
+                                    }
+                                </td>
                                 <td class="text-end">@r.SalaryBase.ToString("C")</td>
                                 <td class="text-end">
                                     <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
                                     <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
+                                    @if (r.IsActive)
+                                    {
+                                        <form method="post" asp-page-handler="Deactivate" class="d-inline">
+                                            <input type="hidden" name="userId" value="@r.UserId" />
+                                            <input type="hidden" name="includeInactive" value="true" />
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('¿Dar de baja a este empleado?');">Baja</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-page-handler="Activate" class="d-inline">
+                                            <input type="hidden" name="userId" value="@r.UserId" />
+                                            <input type="hidden" name="includeInactive" value="true" />
+                                            <button type="submit" class="btn btn-sm btn-outline-success">Reactivar</button>
+                                        </form>
+
+                                        <form method="post" asp-page-handler="Delete" class="d-inline">
+                                            <input type="hidden" name="userId" value="@r.UserId" />
+                                            <input type="hidden" name="includeInactive" value="true" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar definitivamente. Solo aplica si no tiene historial. ¿Continuar?');">Eliminar</button>
+                                        </form>
+                                    }
                                 </td>
                             </tr>
                         }
