@@ -1,19 +1,22 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
-[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.SuperAdmin)]
+[Microsoft.AspNetCore.Authorization.Authorize]
 public class EditItemModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    private readonly IActionAccessService _actions;
 
-    public EditItemModel(ApplicationDbContext db)
+    public EditItemModel(ApplicationDbContext db, IActionAccessService actions)
     {
         _db = db;
+        _actions = actions;
     }
 
     [BindProperty]
@@ -25,6 +28,12 @@ public class EditItemModel : PageModel
 
     public async Task OnGetAsync(Guid id)
     {
+        if (!await CanManageAsync())
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
         var item = await _db.QuoteCatalogItems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (item == null)
         {
@@ -56,6 +65,8 @@ public class EditItemModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!await CanManageAsync()) return Forbid();
+
         var item = await _db.QuoteCatalogItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (item == null)
         {
@@ -86,6 +97,8 @@ public class EditItemModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync()
     {
+        if (!await CanManageAsync()) return Forbid();
+
         var item = await _db.QuoteCatalogItems.FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (item == null) return RedirectToPage("./Catalog");
 
@@ -125,6 +138,11 @@ public class EditItemModel : PageModel
                 Label = BuildNodeLabel(x, includeSegment: true)
             }).ToList();
     }
+
+    private Task<bool> CanManageAsync()
+        => AppRoles.IsGlobalAdmin(User)
+            ? Task.FromResult(true)
+            : _actions.HasActionAsync(User, AppActions.SalesCatalogManage);
 
     private static string LabelSegment(QuoteSegment x) => x switch
     {

@@ -194,6 +194,7 @@ public class CreateModel : PageModel
             if (key.StartsWith("Carriers.", StringComparison.OrdinalIgnoreCase)) return "Carriers";
             if (key.StartsWith("Monitoring.", StringComparison.OrdinalIgnoreCase)) return "Monitoreo";
             if (key.StartsWith("Templates.", StringComparison.OrdinalIgnoreCase)) return "Plantillas";
+            if (key.StartsWith("Employees.", StringComparison.OrdinalIgnoreCase)) return "Empleados";
             return "Otros";
         }
 
@@ -219,6 +220,7 @@ public class CreateModel : PageModel
             new() { Area = "Ventas", Label = "Cotizaciones", ViewKey = AppActions.SalesQuotesView, CreateKey = AppActions.SalesQuotesManage, EditKey = AppActions.SalesQuotesManage },
             new() { Area = "Ventas", Label = "Prospectos", ViewKey = AppActions.SalesProspectsView, CreateKey = AppActions.SalesProspectsCreate, EditKey = AppActions.SalesProspectsEdit, ApproveKey = AppActions.SalesProspectsConvert },
             new() { Area = "Facturacion", Label = "Facturacion", ViewKey = AppActions.BillingViewOwn, CreateKey = AppActions.BillingManage, EditKey = AppActions.BillingManage, ApproveKey = AppActions.BillingSend },
+            new() { Area = "Capital Humano", Label = "Organigrama", ViewKey = AppActions.EmployeesOrgChartView, EditKey = AppActions.EmployeesOrgChartEdit, ApproveKey = AppActions.EmployeesOrgChartExport },
             new() { Area = "Inventario", Label = "Stock y movimientos", ViewKey = AppActions.InventoryView, CreateKey = AppActions.InventoryManage, EditKey = AppActions.InventoryManage, ApproveKey = AppActions.InventoryApprove },
             new() { Area = "Tickets", Label = "Tickets", ViewKey = AppActions.TicketsView, CreateKey = AppActions.TicketsManage, EditKey = AppActions.TicketsManage, ApproveKey = AppActions.TicketsClose },
             new() { Area = "Carriers", Label = "Carriers", ViewKey = AppActions.CarriersView, CreateKey = AppActions.CarriersManage, EditKey = AppActions.CarriersManage },

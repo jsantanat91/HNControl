@@ -37,7 +37,8 @@ public static class AppModules
         Monitoring,
         Tickets,
         Leaves,
-        Exams
+        Exams,
+        Performance
     ];
 
     public static readonly string[] AllKnown =

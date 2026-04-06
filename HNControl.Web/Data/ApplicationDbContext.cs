@@ -54,6 +54,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<PermissionRoleAction> PermissionRoleActions => Set<PermissionRoleAction>();
     public DbSet<UserPermissionRole> UserPermissionRoles => Set<UserPermissionRole>();
     public DbSet<PermissionAuditLog> PermissionAuditLogs => Set<PermissionAuditLog>();
+    public DbSet<LoginTwoFactorChallenge> LoginTwoFactorChallenges => Set<LoginTwoFactorChallenge>();
+    public DbSet<EmployeeOrgChartNode> EmployeeOrgChartNodes => Set<EmployeeOrgChartNode>();
     public DbSet<SystemConfiguration> SystemConfigurations => Set<SystemConfiguration>();
 
     // --------------------
@@ -194,6 +196,27 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
             e.HasIndex(x => new { x.UserId, x.PeriodStart, x.PeriodEnd }).IsUnique();
             e.HasIndex(x => new { x.PayrollDate, x.IsSent });
+        });
+
+        b.Entity<LoginTwoFactorChallenge>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.UserEmail).HasMaxLength(180);
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.CodeHash).HasMaxLength(120);
+            e.HasIndex(x => new { x.UserId, x.IpAddress, x.CreatedAt });
+            e.HasIndex(x => x.ExpiresAt);
+        });
+
+        b.Entity<EmployeeOrgChartNode>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.ReportsToUserId).HasMaxLength(64);
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(64);
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.HasIndex(x => new { x.ReportsToUserId, x.SortOrder });
         });
 
         b.Entity<ViaticWeek>(w =>

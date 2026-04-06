@@ -1,0 +1,229 @@
+@page
+@model HNControl.Web.Pages.Admin.Employees.OrgChartModel
+@using global::System.Text.Json
+@{
+    ViewData["Title"] = "Organigrama";
+    var employeesJson = JsonSerializer.Serialize(Model.Employees);
+    var nodesJson = JsonSerializer.Serialize(Model.Nodes);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-0">Organigrama</h1>
+        <div class="text-muted small">Arrastra tarjetas para definir jerarquía, guarda y exporta.</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (Model.CanExport)
+        {
+            <a class="btn btn-outline-success" asp-page-handler="Export">Exportar Excel</a>
+        }
+        @if (Model.CanEdit)
+        {
+            <button class="btn btn-primary" type="button" id="saveOrgBtn">Guardar organigrama</button>
+        }
+    </div>
+</div>
+
+<div id="orgAlert" class="alert d-none"></div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-4">
+        <div class="card shadow-soft h-100">
+            <div class="card-header fw-semibold">Sin jefe (nivel raíz)</div>
+            <div class="card-body">
+                <div id="orgRoot" class="org-dropzone"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-8">
+        <div class="card shadow-soft h-100">
+            <div class="card-header fw-semibold">Vista del organigrama</div>
+            <div class="card-body">
+                <div id="orgCanvas"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.CanEdit)
+{
+    <div class="mt-2 text-muted small">Modo solo lectura. Puedes visualizar, pero no editar.</div>
+}
+
+@section Styles {
+    <style>
+        #orgRoot, #orgCanvas { min-height: 420px; }
+        .org-dropzone {
+            border: 1px dashed rgba(59,130,246,.45);
+            border-radius: 16px;
+            padding: .75rem;
+            background: rgba(241,245,249,.55);
+        }
+        .org-card {
+            background: #fff;
+            border: 1px solid rgba(15,23,42,.12);
+            border-radius: 14px;
+            padding: .6rem .75rem;
+            margin-bottom: .55rem;
+            box-shadow: 0 8px 16px rgba(15,23,42,.06);
+        }
+        .org-card.dragging { opacity: .55; }
+        .org-card-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
+        .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
+        .org-role { font-size:.8rem; color:#64748b; }
+        .org-children {
+            margin-top: .55rem;
+            margin-left: 1rem;
+            border-left: 2px solid rgba(59,130,246,.25);
+            padding-left: .6rem;
+            min-height: .75rem;
+        }
+        .org-children.drop-target, #orgRoot.drop-target {
+            background: rgba(147,197,253,.25);
+            border-radius: 12px;
+        }
+    </style>
+}
+
+@section Scripts {
+<script>
+(() => {
+    const canEdit = @Model.CanEdit.ToString().ToLowerInvariant();
+    const employees = @Html.Raw(employeesJson);
+    const links = @Html.Raw(nodesJson);
+    const root = document.getElementById('orgRoot');
+    const canvas = document.getElementById('orgCanvas');
+    const alertBox = document.getElementById('orgAlert');
+    const byUser = new Map(employees.map(e => [e.userId, e]));
+    const cardByUser = new Map();
+    let draggingUserId = null;
+
+    function showAlert(msg, ok) {
+        alertBox.className = `alert ${ok ? 'alert-success' : 'alert-danger'}`;
+        alertBox.textContent = msg;
+    }
+
+    function createCard(emp) {
+        const card = document.createElement('div');
+        card.className = 'org-card';
+        card.dataset.userId = emp.userId;
+        if (canEdit) card.draggable = true;
+        card.innerHTML = `
+            <div class="org-card-head">
+                <div>
+                    <div class="org-name">${emp.fullName}</div>
+                    <div class="org-role">${emp.position || '-'}</div>
+                </div>
+                <span class="badge text-bg-light">${emp.email || '-'}</span>
+            </div>
+            <div class="org-children" data-parent-id="${emp.userId}"></div>
+        `;
+        cardByUser.set(emp.userId, card);
+        return card;
+    }
+
+    function buildBase() {
+        root.innerHTML = '';
+        canvas.innerHTML = '';
+        const canvasWrap = document.createElement('div');
+        canvasWrap.className = 'org-dropzone';
+        canvas.appendChild(canvasWrap);
+
+        employees.forEach(emp => {
+            const card = createCard(emp);
+            canvasWrap.appendChild(card);
+        });
+
+        const linkMap = new Map(links.map(x => [x.userId, x]));
+        const sorted = [...employees].sort((a, b) => {
+            const sa = linkMap.get(a.userId)?.sortOrder ?? 9999;
+            const sb = linkMap.get(b.userId)?.sortOrder ?? 9999;
+            if (sa !== sb) return sa - sb;
+            return (a.fullName || '').localeCompare(b.fullName || '');
+        });
+
+        sorted.forEach(emp => {
+            const card = cardByUser.get(emp.userId);
+            const parentId = linkMap.get(emp.userId)?.reportsToUserId;
+            if (!parentId) {
+                root.appendChild(card);
+                return;
+            }
+            const parent = cardByUser.get(parentId);
+            const zone = parent?.querySelector('.org-children');
+            (zone || root).appendChild(card);
+        });
+    }
+
+    function isDropInsideSelf(targetZone, draggedCard) {
+        const targetCard = targetZone.closest('.org-card');
+        return targetCard ? draggedCard.contains(targetCard) : false;
+    }
+
+    function enableDnD() {
+        if (!canEdit) return;
+
+        const zones = () => [root, ...document.querySelectorAll('.org-children')];
+        zones().forEach(zone => {
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                zone.classList.add('drop-target');
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drop-target'));
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('drop-target');
+                if (!draggingUserId) return;
+                const card = cardByUser.get(draggingUserId);
+                if (!card) return;
+                if (isDropInsideSelf(zone, card)) return;
+                zone.appendChild(card);
+            });
+        });
+
+        cardByUser.forEach(card => {
+            card.addEventListener('dragstart', () => {
+                draggingUserId = card.dataset.userId;
+                card.classList.add('dragging');
+            });
+            card.addEventListener('dragend', () => {
+                draggingUserId = null;
+                card.classList.remove('dragging');
+            });
+        });
+    }
+
+    function collectLayout() {
+        const out = [];
+        let order = 0;
+        function walk(zone, parentId) {
+            const cards = [...zone.children].filter(x => x.classList.contains('org-card'));
+            cards.forEach(card => {
+                const userId = card.dataset.userId;
+                order += 1;
+                out.push({ userId, reportsToUserId: parentId, sortOrder: order });
+                const childZone = card.querySelector(':scope > .org-children');
+                if (childZone) walk(childZone, userId);
+            });
+        }
+        walk(root, null);
+        return out;
+    }
+
+    async function saveLayout() {
+        const payload = collectLayout();
+        const fd = new FormData();
+        fd.append('layoutJson', JSON.stringify(payload));
+        const res = await fetch('?handler=Save', { method: 'POST', body: fd });
+        const json = await res.json();
+        showAlert(json.message || 'Sin respuesta', !!json.ok);
+    }
+
+    const saveBtn = document.getElementById('saveOrgBtn');
+    if (saveBtn) saveBtn.addEventListener('click', saveLayout);
+
+    buildBase();
+    enableDnD();
+})();
+</script>
+}

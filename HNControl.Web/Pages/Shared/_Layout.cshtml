@@ -92,6 +92,10 @@
                         <span class="hn-side-icon"><i class="bi bi-people"></i></span>
                         <span class="hn-side-text">Empleados</span>
                     </a>
+                    <a class="hn-side-link @Active("/Admin/Employees/OrgChart")" asp-page="/Admin/Employees/OrgChart">
+                        <span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span>
+                        <span class="hn-side-text">Organigrama</span>
+                    </a>
                     <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index">
                         <span class="hn-side-icon"><i class="bi bi-person-badge"></i></span>
                         <span class="hn-side-text">Clientes</span>
@@ -204,6 +208,13 @@
                         <span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span>
                         <span class="hn-side-text">Mi ficha</span>
                     </a>
+                    @if (CanAction(HNControl.Web.Models.AppActions.EmployeesOrgChartView))
+                    {
+                        <a class="hn-side-link @Active("/Employees/OrgChart")" asp-page="/Employees/OrgChart">
+                            <span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span>
+                            <span class="hn-side-text">Organigrama</span>
+                        </a>
+                    }
                     @if (Has(AppModules.Clients))
                     {
                         <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index">
@@ -421,6 +432,7 @@
                 {
                     <a class="hn-side-link @Active("/Admin/Dashboard")" asp-page="/Admin/Dashboard"><span class="hn-side-icon"><i class="bi bi-speedometer2"></i></span><span class="hn-side-text">Panel</span></a>
                     <a class="hn-side-link @Active("/Admin/Employees")" asp-page="/Admin/Employees/Index"><span class="hn-side-icon"><i class="bi bi-people"></i></span><span class="hn-side-text">Empleados</span></a>
+                    <a class="hn-side-link @Active("/Admin/Employees/OrgChart")" asp-page="/Admin/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a>
                     <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a>
                     <details class="hn-side-group" @(path.StartsWith("/Projects", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Projects")"><span class="hn-side-icon"><i class="bi bi-kanban"></i></span><span class="hn-side-text">Proyectos</span></summary>
@@ -484,6 +496,8 @@
                 else
                 {
                     <a class="hn-side-link @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile"><span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span><span class="hn-side-text">Mi ficha</span></a>
+                    @if (CanAction(HNControl.Web.Models.AppActions.EmployeesOrgChartView))
+                    { <a class="hn-side-link @Active("/Employees/OrgChart")" asp-page="/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a> }
                     @if (Has(AppModules.Clients))
                     { <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a> }
                     @if (Has(HNControl.Web.Models.AppModules.Sales))

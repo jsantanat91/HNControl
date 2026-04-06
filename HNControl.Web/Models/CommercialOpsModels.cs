@@ -126,6 +126,9 @@ public static class AppActions
     public const string SalesProspectsEdit = "Sales.Prospects.Edit";
     public const string SalesProspectsConvert = "Sales.Prospects.Convert";
     public const string TemplatesManage = "Templates.Manage";
+    public const string EmployeesOrgChartView = "Employees.OrgChart.View";
+    public const string EmployeesOrgChartEdit = "Employees.OrgChart.Edit";
+    public const string EmployeesOrgChartExport = "Employees.OrgChart.Export";
 
     public static readonly string[] AllKnown =
     [
@@ -166,7 +169,10 @@ public static class AppActions
         SalesProspectsCreate,
         SalesProspectsEdit,
         SalesProspectsConvert,
-        TemplatesManage
+        TemplatesManage,
+        EmployeesOrgChartView,
+        EmployeesOrgChartEdit,
+        EmployeesOrgChartExport
     ];
 
     public static readonly string[] EmployeeDefaults =
@@ -182,6 +188,7 @@ public static class AppActions
         SalesViewOwn,
         SalesWorkflowMove,
         BillingViewOwn
+        ,EmployeesOrgChartView
     ];
 
     private static readonly Dictionary<string, string[]> DependencyMap = new(StringComparer.OrdinalIgnoreCase)
@@ -199,6 +206,8 @@ public static class AppActions
         [SalesProspectsCreate] = [SalesProspectsView],
         [SalesProspectsEdit] = [SalesProspectsView],
         [SalesProspectsConvert] = [SalesProspectsEdit, SalesProspectsView],
+        [EmployeesOrgChartEdit] = [EmployeesOrgChartView],
+        [EmployeesOrgChartExport] = [EmployeesOrgChartView],
         [BillingManage] = [BillingViewOwn],
         [BillingSend] = [BillingManage, BillingViewOwn],
         [InventoryManage] = [InventoryView],
@@ -275,6 +284,9 @@ public static class AppActions
         SalesProspectsEdit => "Ventas/Prospectos: editar",
         SalesProspectsConvert => "Ventas/Prospectos: convertir a cliente",
         TemplatesManage => "Plantillas: administrar",
+        EmployeesOrgChartView => "Empleados/Organigrama: ver",
+        EmployeesOrgChartEdit => "Empleados/Organigrama: editar",
+        EmployeesOrgChartExport => "Empleados/Organigrama: exportar",
         _ => key
     };
 }

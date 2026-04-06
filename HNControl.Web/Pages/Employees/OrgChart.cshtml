@@ -1,0 +1,96 @@
+@page
+@model HNControl.Web.Pages.Employees.OrgChartModel
+@using global::System.Text.Json
+@{
+    ViewData["Title"] = "Organigrama";
+    var employeesJson = JsonSerializer.Serialize(Model.Employees);
+    var nodesJson = JsonSerializer.Serialize(Model.Nodes);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-0">Organigrama</h1>
+        <div class="text-muted small">Vista interna de jerarquía del equipo.</div>
+    </div>
+</div>
+
+<div class="card shadow-soft">
+    <div class="card-body">
+        <div id="orgReadOnly"></div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .org-card {
+            background: #fff;
+            border: 1px solid rgba(15,23,42,.12);
+            border-radius: 14px;
+            padding: .6rem .75rem;
+            margin-bottom: .55rem;
+            box-shadow: 0 8px 16px rgba(15,23,42,.06);
+        }
+        .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
+        .org-role { font-size:.8rem; color:#64748b; }
+        .org-children {
+            margin-top: .55rem;
+            margin-left: 1rem;
+            border-left: 2px solid rgba(59,130,246,.25);
+            padding-left: .6rem;
+        }
+    </style>
+}
+
+@section Scripts {
+<script>
+(() => {
+    const root = document.getElementById('orgReadOnly');
+    const employees = @Html.Raw(employeesJson);
+    const nodes = @Html.Raw(nodesJson);
+    const byUser = new Map(employees.map(e => [e.userId, e]));
+    const nodeByUser = new Map(nodes.map(n => [n.userId, n]));
+
+    const children = new Map();
+    nodes.forEach(n => {
+        const parent = n.reportsToUserId || '__ROOT__';
+        if (!children.has(parent)) children.set(parent, []);
+        children.get(parent).push(n);
+    });
+    for (const [k, list] of children.entries()) {
+        list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    }
+
+    function buildCard(userId) {
+        const emp = byUser.get(userId);
+        if (!emp) return null;
+        const card = document.createElement('div');
+        card.className = 'org-card';
+        card.innerHTML = `<div class="org-name">${emp.fullName}</div><div class="org-role">${emp.position || '-'} · ${emp.email || '-'}</div>`;
+        const kids = children.get(userId) || [];
+        if (kids.length > 0) {
+            const zone = document.createElement('div');
+            zone.className = 'org-children';
+            kids.forEach(k => {
+                const child = buildCard(k.userId);
+                if (child) zone.appendChild(child);
+            });
+            card.appendChild(zone);
+        }
+        return card;
+    }
+
+    const roots = children.get('__ROOT__') || [];
+    if (roots.length === 0) {
+        employees.forEach(e => {
+            const c = buildCard(e.userId);
+            if (c) root.appendChild(c);
+        });
+        return;
+    }
+    roots.forEach(r => {
+        const c = buildCard(r.userId);
+        if (c) root.appendChild(c);
+    });
+})();
+</script>
+}

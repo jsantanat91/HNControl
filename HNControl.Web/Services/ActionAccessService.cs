@@ -131,5 +131,8 @@ public class ActionAccessService : IActionAccessService
             result.Add(AppActions.ProjectsResellersView);
             result.Add(AppActions.ProjectsDeliveryView);
         }
+
+        if (modules.Contains(AppModules.Performance))
+            result.Add(AppActions.EmployeesOrgChartView);
     }
 }

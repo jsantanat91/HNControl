@@ -157,6 +157,7 @@ builder.Services.AddRazorPages(options =>
     // Importante: NO autorizar toda la carpeta /Employees como AdminOnly.
     // En Razor Pages las convenciones se acumulan y terminarías exigiendo Admin + Employee a la vez.
     options.Conventions.AuthorizePage("/Employees/MyProfile", "EmployeeOnly");
+    options.Conventions.AuthorizePage("/Employees/OrgChart", "EmployeeOnly");
 
     // Viáticos: empleados y admin
     options.Conventions.AuthorizeFolder("/Viaticos", "EmployeeOnly");
@@ -193,6 +194,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/My", "/Ventas/Cotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
     options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
+    options.Conventions.AddPageRoute("/Employees/OrgChart", "/Employees/Organigrama");
 })
 .AddMvcOptions(o => o.Filters.AddService<ModulePermissionPageFilter>());
 
@@ -248,6 +250,8 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await EnsureQuoteSchemaAsync(db);
     await EnsureBillingSchemaAsync(db);
+    await EnsureSecuritySchemaAsync(db);
+    await EnsureOrgChartSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
@@ -319,7 +323,7 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
     }
 
     // Admin seed
-    var adminEmail = config["SeedAdmin:Email"] ?? "admin@hn.local";
+    var adminEmail = config["SeedAdmin:Email"] ?? "soporte@hubnet-solutions.net";
     var adminPass = config["SeedAdmin:Password"] ?? "Admin123*Cambialo";
 
     var adminUser = await userMgr.FindByEmailAsync(adminEmail);
@@ -470,5 +474,62 @@ WHERE "InvoiceIssueDate" IS NULL;
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureBillingSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureSecuritySchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."LoginTwoFactorChallenges" (
+    "Id" uuid NOT NULL,
+    "UserId" character varying(64) NOT NULL,
+    "UserEmail" character varying(180) NOT NULL,
+    "IpAddress" character varying(64) NOT NULL,
+    "CodeHash" character varying(120) NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "ExpiresAt" timestamp with time zone NOT NULL,
+    "UsedAt" timestamp with time zone NULL,
+    "FailedAttempts" integer NOT NULL DEFAULT 0,
+    CONSTRAINT "PK_LoginTwoFactorChallenges" PRIMARY KEY ("Id")
+);
+
+CREATE INDEX IF NOT EXISTS "IX_LoginTwoFactorChallenges_UserId_IpAddress_CreatedAt"
+    ON public."LoginTwoFactorChallenges" ("UserId", "IpAddress", "CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_LoginTwoFactorChallenges_ExpiresAt"
+    ON public."LoginTwoFactorChallenges" ("ExpiresAt");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureSecuritySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureOrgChartSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."EmployeeOrgChartNodes" (
+    "Id" uuid NOT NULL,
+    "UserId" character varying(64) NOT NULL,
+    "ReportsToUserId" character varying(64) NULL,
+    "SortOrder" integer NOT NULL DEFAULT 0,
+    "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "UpdatedByUserId" character varying(64) NULL,
+    CONSTRAINT "PK_EmployeeOrgChartNodes" PRIMARY KEY ("Id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_EmployeeOrgChartNodes_UserId"
+    ON public."EmployeeOrgChartNodes" ("UserId");
+CREATE INDEX IF NOT EXISTS "IX_EmployeeOrgChartNodes_ReportsToUserId_SortOrder"
+    ON public."EmployeeOrgChartNodes" ("ReportsToUserId", "SortOrder");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureOrgChartSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
     }
 }

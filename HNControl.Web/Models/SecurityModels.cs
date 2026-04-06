@@ -74,3 +74,25 @@ public class PermissionAuditLog
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public class LoginTwoFactorChallenge
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required, MaxLength(64)]
+    public string UserId { get; set; } = "";
+
+    [Required, MaxLength(180)]
+    public string UserEmail { get; set; } = "";
+
+    [Required, MaxLength(64)]
+    public string IpAddress { get; set; } = "";
+
+    [Required, MaxLength(120)]
+    public string CodeHash { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? UsedAt { get; set; }
+    public int FailedAttempts { get; set; } = 0;
+}

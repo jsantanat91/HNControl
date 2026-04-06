@@ -62,6 +62,8 @@ public class IndexModel : PageModel
     public int ActivePlans { get; set; }
     public int PendingRuns { get; set; }
     public decimal MonthlyProjection { get; set; }
+    public bool BillingSchemaReady { get; set; } = true;
+    public string? BillingSchemaMessage { get; set; }
 
     public record PlanLineVm(
         string Category,
@@ -157,6 +159,14 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCreatePlanAsync()
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            await LoadAsync();
+            return Page();
+        }
+
         if (!ModelState.IsValid)
         {
             OpenModal = "newPlan";
@@ -289,6 +299,13 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostMarkSentAsync(Guid planId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var plan = await _db.BillingInvoicePlans
             .Include(x => x.Client)
             .FirstOrDefaultAsync(x => x.Id == planId);
@@ -371,6 +388,13 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostSyncCfdiAsync(Guid runId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var run = await _db.BillingInvoiceRuns
             .Include(x => x.Plan!)
             .ThenInclude(x => x.Client)
@@ -403,6 +427,13 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCancelCfdiAsync(Guid runId, string? reasonCode)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var run = await _db.BillingInvoiceRuns
             .Include(x => x.Plan!)
             .ThenInclude(x => x.Client)
@@ -447,6 +478,13 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostToggleStatusAsync(Guid planId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var plan = await _db.BillingInvoicePlans.FirstOrDefaultAsync(x => x.Id == planId);
         if (plan == null) return RedirectToPage();
 
@@ -466,6 +504,13 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostDeletePlanAsync(Guid planId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var plan = await _db.BillingInvoicePlans.FirstOrDefaultAsync(x => x.Id == planId);
         if (plan == null) return RedirectToPage();
 
@@ -478,6 +523,9 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid runId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+            return RedirectToPage();
+
         var run = await _db.BillingInvoiceRuns.AsNoTracking().FirstOrDefaultAsync(x => x.Id == runId);
         if (run == null || string.IsNullOrWhiteSpace(run.PdfStoragePath)) return NotFound();
         var (stream, contentType, downloadName) = await _storage.OpenAsync(run.PdfStoragePath, $"factura_{run.ScheduledFor:yyyyMMdd}.pdf");
@@ -486,6 +534,9 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetDownloadLatestPdfAsync(Guid planId)
     {
+        if (!await CheckBillingSchemaReadyAsync())
+            return RedirectToPage();
+
         var run = await _db.BillingInvoiceRuns
             .AsNoTracking()
             .Where(x => x.PlanId == planId && x.PdfStoragePath != null && x.PdfStoragePath != "")
@@ -550,6 +601,17 @@ public class IndexModel : PageModel
             "Value",
             "Label",
             Input.Periodicity);
+
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Plans = [];
+            Runs = [];
+            Audits = [];
+            ActivePlans = 0;
+            PendingRuns = 0;
+            MonthlyProjection = 0m;
+            return;
+        }
 
         var plansBase = _db.BillingInvoicePlans
             .AsNoTracking()
@@ -654,6 +716,94 @@ public class IndexModel : PageModel
         ActivePlans = totalPlans;
         PendingRuns = await _db.BillingInvoiceRuns.AsNoTracking().CountAsync(x => x.Status == BillingRunStatus.Scheduled);
         MonthlyProjection = Plans.Sum(x => x.Total);
+    }
+
+    private async Task<bool> CheckBillingSchemaReadyAsync()
+    {
+        if (!BillingSchemaReady) return false;
+
+        try
+        {
+            var conn = _db.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open)
+                await conn.OpenAsync();
+
+            var hasContractCol = await ColumnExistsAsync(conn, "public", "BillingInvoicePlans", "ClientServiceContractId");
+            var hasIssueDateCol = await ColumnExistsAsync(conn, "public", "BillingInvoicePlans", "InvoiceIssueDate");
+            var hasLinesTable = await TableExistsAsync(conn, "public", "BillingInvoiceLines");
+            BillingSchemaReady = hasContractCol && hasIssueDateCol && hasLinesTable;
+        }
+        catch
+        {
+            BillingSchemaReady = false;
+        }
+
+        if (!BillingSchemaReady)
+        {
+            BillingSchemaMessage = "Facturación necesita actualización de esquema (faltan columnas/tablas nuevas). Ejecuta el SQL de actualización con el usuario OWNER en pgAdmin.";
+            Flash ??= BillingSchemaMessage;
+            FlashType ??= "warning";
+        }
+
+        return BillingSchemaReady;
+    }
+
+    private static async Task<bool> ColumnExistsAsync(System.Data.Common.DbConnection conn, string schema, string table, string column)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = @schema
+      AND table_name = @table
+      AND column_name = @column
+);
+""";
+
+        var pSchema = cmd.CreateParameter();
+        pSchema.ParameterName = "@schema";
+        pSchema.Value = schema;
+        cmd.Parameters.Add(pSchema);
+
+        var pTable = cmd.CreateParameter();
+        pTable.ParameterName = "@table";
+        pTable.Value = table;
+        cmd.Parameters.Add(pTable);
+
+        var pColumn = cmd.CreateParameter();
+        pColumn.ParameterName = "@column";
+        pColumn.Value = column;
+        cmd.Parameters.Add(pColumn);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result is bool ok && ok;
+    }
+
+    private static async Task<bool> TableExistsAsync(System.Data.Common.DbConnection conn, string schema, string table)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = @schema
+      AND table_name = @table
+);
+""";
+
+        var pSchema = cmd.CreateParameter();
+        pSchema.ParameterName = "@schema";
+        pSchema.Value = schema;
+        cmd.Parameters.Add(pSchema);
+
+        var pTable = cmd.CreateParameter();
+        pTable.ParameterName = "@table";
+        pTable.Value = table;
+        cmd.Parameters.Add(pTable);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result is bool ok && ok;
     }
 
     private async Task PrefillFromOriginAsync()

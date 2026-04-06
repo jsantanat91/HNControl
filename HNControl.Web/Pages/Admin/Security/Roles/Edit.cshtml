@@ -227,6 +227,8 @@
                 'Sales.Prospects.Create': ['Sales.Prospects.View'],
                 'Sales.Prospects.Edit': ['Sales.Prospects.View'],
                 'Sales.Prospects.Convert': ['Sales.Prospects.Edit', 'Sales.Prospects.View'],
+                'Employees.OrgChart.Edit': ['Employees.OrgChart.View'],
+                'Employees.OrgChart.Export': ['Employees.OrgChart.View'],
                 'Billing.Manage': ['Billing.ViewOwn'],
                 'Billing.Send': ['Billing.Manage', 'Billing.ViewOwn'],
                 'Inventory.Manage': ['Inventory.View'],
@@ -266,6 +268,7 @@
                 if (has(a, 'Sales.Catalog.View')) out.push('Ventas > Catálogo');
                 if (has(a, 'Sales.Prospects.View')) out.push('Ventas > Prospectos');
                 if (has(a, 'Billing.ViewOwn') || has(a, 'Billing.ViewAll')) out.push('Facturacion');
+                if (has(a, 'Employees.OrgChart.View')) out.push('Empleados > Organigrama');
                 if (has(a, 'Inventory.View')) out.push('Inventario');
                 if (has(a, 'Tickets.View')) out.push('Tickets');
                 if (has(a, 'Carriers.View')) out.push('Carriers');
