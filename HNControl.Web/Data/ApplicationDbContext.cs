@@ -30,6 +30,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<SalesOpportunity> SalesOpportunities => Set<SalesOpportunity>();
     public DbSet<SalesAuditLog> SalesAuditLogs => Set<SalesAuditLog>();
     public DbSet<BillingInvoicePlan> BillingInvoicePlans => Set<BillingInvoicePlan>();
+    public DbSet<BillingInvoiceLine> BillingInvoiceLines => Set<BillingInvoiceLine>();
     public DbSet<BillingInvoiceRun> BillingInvoiceRuns => Set<BillingInvoiceRun>();
     public DbSet<BillingAuditLog> BillingAuditLogs => Set<BillingAuditLog>();
     public DbSet<EventEmailTemplate> EventEmailTemplates => Set<EventEmailTemplate>();
@@ -487,6 +488,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.PaymentFormCode).HasMaxLength(4);
             e.Property(x => x.StartDate).HasColumnType("date");
             e.Property(x => x.NextRunDate).HasColumnType("date");
+            e.Property(x => x.InvoiceIssueDate).HasColumnType("date");
             e.Property(x => x.EndDate).HasColumnType("date");
             e.Property(x => x.SendToEmail).HasMaxLength(256);
             e.Property(x => x.CcEmails).HasMaxLength(600);
@@ -497,6 +499,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasIndex(x => x.ClientId);
             e.HasIndex(x => x.QuoteRequestId);
             e.HasIndex(x => x.SalesOpportunityId);
+            e.HasIndex(x => x.ClientServiceContractId);
 
             e.HasOne(x => x.Client)
                 .WithMany()
@@ -513,10 +516,33 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .HasForeignKey(x => x.SalesOpportunityId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            e.HasOne(x => x.ClientServiceContract)
+                .WithMany()
+                .HasForeignKey(x => x.ClientServiceContractId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             e.HasMany(x => x.Runs)
                 .WithOne(x => x.Plan!)
                 .HasForeignKey(x => x.PlanId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Lines)
+                .WithOne(x => x.Plan!)
+                .HasForeignKey(x => x.BillingInvoicePlanId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<BillingInvoiceLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Concept).HasMaxLength(220);
+            e.Property(x => x.Category).HasMaxLength(80);
+            e.Property(x => x.UnitPrice).HasColumnType("numeric(12,2)");
+            e.Property(x => x.Subtotal).HasColumnType("numeric(12,2)");
+            e.Property(x => x.VatRate).HasColumnType("numeric(7,5)");
+            e.Property(x => x.VatAmount).HasColumnType("numeric(12,2)");
+            e.Property(x => x.Total).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.BillingInvoicePlanId, x.SortOrder });
         });
 
         b.Entity<BillingInvoiceRun>(e =>

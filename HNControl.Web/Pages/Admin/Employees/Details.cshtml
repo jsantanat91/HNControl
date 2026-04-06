@@ -218,13 +218,6 @@
     </div>
 </div>
 
-@section Styles {
-    <style>
-        .emp-kpi-card .card-body { min-height: 128px; }
-        .emp-chart-card .card-body { min-height: 320px; }
-    </style>
-}
-
 @section Scripts {
     <script>
         const kpiLabels = @Html.Raw(Model.KpiMonthLabelsJson);
@@ -275,6 +268,9 @@
 
 @section Styles {
     <style>
+        .emp-kpi-card .card-body { min-height: 128px; }
+        .emp-chart-card .card-body { min-height: 320px; }
+
         .hn-emp-detail-avatar {
             width: 74px;
             height: 74px;

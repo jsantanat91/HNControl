@@ -1,19 +1,22 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Admin.Quotes;
 
-[Microsoft.AspNetCore.Authorization.Authorize(Roles = AppRoles.SuperAdmin)]
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "EmployeeOnly")]
 public class CatalogModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    private readonly IActionAccessService _actions;
 
-    public CatalogModel(ApplicationDbContext db)
+    public CatalogModel(ApplicationDbContext db, IActionAccessService actions)
     {
         _db = db;
+        _actions = actions;
     }
 
     [BindProperty]
@@ -30,11 +33,17 @@ public class CatalogModel : PageModel
 
     public async Task OnGetAsync()
     {
+        if (!await CanViewAsync())
+        {
+            Response.StatusCode = 403;
+            return;
+        }
         await LoadAsync();
     }
 
     public async Task<IActionResult> OnPostCreateAsync()
     {
+        if (!await CanManageAsync()) return Forbid();
         if (string.IsNullOrWhiteSpace(Input.Name))
         {
             ModelState.AddModelError(string.Empty, "Nombre requerido.");
@@ -85,6 +94,7 @@ public class CatalogModel : PageModel
 
     public async Task<IActionResult> OnPostToggleAsync(Guid id)
     {
+        if (!await CanManageAsync()) return Forbid();
         var item = await _db.QuoteCatalogItems.FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return RedirectToPage();
 
@@ -97,6 +107,7 @@ public class CatalogModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
+        if (!await CanManageAsync()) return Forbid();
         var exists = await _db.QuoteCatalogItems.AnyAsync(x => x.Id == id);
         if (!exists) return RedirectToPage();
 
@@ -134,6 +145,7 @@ public class CatalogModel : PageModel
 
     public async Task<IActionResult> OnPostCreateRuleAsync()
     {
+        if (!await CanManageAsync()) return Forbid();
         if (Rule.TargetItemId == Guid.Empty || Rule.RequiredItemId == Guid.Empty)
         {
             Message = "Selecciona item objetivo y item requerido.";
@@ -183,6 +195,7 @@ public class CatalogModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteRuleAsync(Guid id)
     {
+        if (!await CanManageAsync()) return Forbid();
         var rule = await _db.QuoteCatalogRules.FirstOrDefaultAsync(x => x.Id == id);
         if (rule == null) return RedirectToPage();
         _db.QuoteCatalogRules.Remove(rule);
@@ -193,6 +206,7 @@ public class CatalogModel : PageModel
 
     public async Task<IActionResult> OnPostSeedDemoAsync()
     {
+        if (!await CanManageAsync()) return Forbid();
         if (await _db.QuoteCatalogItems.AnyAsync())
         {
             Message = "Ya existe catalogo. No se cargo demo.";
@@ -507,4 +521,18 @@ public class CatalogModel : PageModel
         public string RequiredName { get; set; } = string.Empty;
         public bool IsActive { get; set; }
     }
+    private async Task<bool> CanViewAsync()
+    {
+        return AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesCatalogView)
+            || await _actions.HasActionAsync(User, AppActions.SalesCatalogManage);
+    }
+
+    private async Task<bool> CanManageAsync()
+    {
+        return AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesCatalogManage);
+    }
 }
+
+

@@ -59,6 +59,8 @@ public class BillingInvoicePlan
 
     public Guid? SalesOpportunityId { get; set; }
     public SalesOpportunity? SalesOpportunity { get; set; }
+    public Guid? ClientServiceContractId { get; set; }
+    public ClientServiceContract? ClientServiceContract { get; set; }
 
     [MaxLength(220)]
     public string Concept { get; set; } = "";
@@ -89,6 +91,7 @@ public class BillingInvoicePlan
 
     public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
     public DateTime NextRunDate { get; set; } = DateTime.UtcNow.Date;
+    public DateTime InvoiceIssueDate { get; set; } = DateTime.UtcNow.Date;
     public DateTime? EndDate { get; set; }
     public int? RemainingRuns { get; set; }
 
@@ -111,6 +114,30 @@ public class BillingInvoicePlan
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public List<BillingInvoiceRun> Runs { get; set; } = new();
+    public List<BillingInvoiceLine> Lines { get; set; } = new();
+}
+
+public class BillingInvoiceLine
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid BillingInvoicePlanId { get; set; }
+    public BillingInvoicePlan? Plan { get; set; }
+
+    [MaxLength(220)]
+    public string Concept { get; set; } = "";
+
+    [MaxLength(80)]
+    public string Category { get; set; } = "";
+
+    public int Quantity { get; set; } = 1;
+    public decimal UnitPrice { get; set; }
+    public decimal Subtotal { get; set; }
+    public decimal VatRate { get; set; } = 0.16m;
+    public decimal VatAmount { get; set; }
+    public decimal Total { get; set; }
+
+    public int SortOrder { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class BillingInvoiceRun

@@ -35,11 +35,14 @@ public class RequestsModel : PageModel
 
     [BindProperty(SupportsGet = true, Name = "to")]
     public string? To { get; set; }
+    [BindProperty(SupportsGet = true, Name = "page")]
+    public int PageNumber { get; set; } = 1;
 
     [TempData]
     public string? Message { get; set; }
 
     public List<RowVm> Rows { get; set; } = [];
+    public int TotalPages { get; set; } = 1;
 
     public async Task OnGetAsync()
     {
@@ -99,9 +102,16 @@ public class RequestsModel : PageModel
         if (DateOnly.TryParse(To, out var toDate))
             query = query.Where(x => x.CreatedAt < toDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
 
+        const int pageSize = 20;
+        PageNumber = Math.Max(1, PageNumber);
+        var total = await query.CountAsync();
+        TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+        if (PageNumber > TotalPages) PageNumber = TotalPages;
+
         Rows = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Take(200)
+            .Skip((PageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new RowVm
             {
                 Id = x.Id,
@@ -182,7 +192,7 @@ public class RequestsModel : PageModel
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
+            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Accepted;
         req.AcceptedAt = DateTime.UtcNow;
@@ -190,7 +200,7 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Aceptada.";
-        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
+        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnPostRejectAsync(Guid id)
@@ -200,7 +210,7 @@ public class RequestsModel : PageModel
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
+            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Rejected;
         req.AcceptedAt = DateTime.UtcNow;
@@ -208,7 +218,7 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Rechazada.";
-        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To });
+        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)

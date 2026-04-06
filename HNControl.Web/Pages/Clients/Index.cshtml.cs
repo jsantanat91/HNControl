@@ -134,10 +134,10 @@ public class IndexModel : PageModel
         if (!canEdit) return Forbid();
 
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
-        if (client == null) return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+        if (client == null) return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
         client.IsActive = !client.IsActive;
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+        return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
     }
 
     public async Task<IActionResult> OnPostCreateLeadAsync(string? name, string? view, int page = 1, int pageSize = 20)
@@ -147,7 +147,7 @@ public class IndexModel : PageModel
 
         var contactName = (Lead.ContactName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(contactName))
-            return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+            return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
 
         var email = (Lead.Email ?? "").Trim().ToLowerInvariant();
         var phone = (Lead.Phone ?? "").Trim();
@@ -184,7 +184,7 @@ public class IndexModel : PageModel
         }
 
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+        return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
     }
 
     public async Task<IActionResult> OnPostConvertLeadToFormalAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
@@ -194,9 +194,9 @@ public class IndexModel : PageModel
 
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
         if (lead == null)
-            return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
         if (!lead.IsTemporaryLead)
-            return RedirectToPage(new { Name = name, View = view, Page = page, PageSize = pageSize });
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
 
         lead.IsTemporaryLead = false;
         lead.IsActive = true;
@@ -204,7 +204,7 @@ public class IndexModel : PageModel
         lead.ClientCode = await NextFormalClientCodeAsync();
 
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+        return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
     }
 
     private async Task EnsureClientCodesAsync()

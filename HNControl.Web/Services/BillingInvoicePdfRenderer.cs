@@ -28,6 +28,7 @@ public class BillingInvoicePdfRenderer : IBillingInvoicePdfRenderer
             .AsNoTracking()
             .Include(x => x.Client)
             .Include(x => x.QuoteRequest)
+            .Include(x => x.Lines)
             .FirstAsync(x => x.Id == plan.Id);
 
         var sys = await _db.SystemConfigurations
@@ -110,14 +111,6 @@ public class BillingInvoicePdfRenderer : IBillingInvoicePdfRenderer
                         col.Item().Text($"Forma de pago: {item.PaymentFormCode}");
                     });
 
-                    c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(col =>
-                    {
-                        col.Item().Text("Concepto").SemiBold();
-                        col.Item().Text(item.Concept);
-                        col.Item().Text($"Periodo: {run.PeriodLabel}");
-                        col.Item().Text($"Cliente: {item.Client?.Name ?? "-"}");
-                    });
-
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Table(t =>
                     {
                         t.ColumnsDefinition(def =>
@@ -138,11 +131,28 @@ public class BillingInvoicePdfRenderer : IBillingInvoicePdfRenderer
                             h.Cell().Element(CellHeader).AlignRight().Text("Total");
                         });
 
-                        t.Cell().Element(CellBody).Text(item.Concept);
-                        t.Cell().Element(CellBody).AlignCenter().Text("1");
-                        t.Cell().Element(CellBody).AlignRight().Text(Money(item.Subtotal));
-                        t.Cell().Element(CellBody).AlignRight().Text(Money(item.VatAmount));
-                        t.Cell().Element(CellBody).AlignRight().Text(Money(item.Total)).SemiBold();
+                        var lines = item.Lines.Any()
+                            ? item.Lines.OrderBy(x => x.SortOrder).ToList()
+                            : new List<BillingInvoiceLine>
+                            {
+                                new()
+                                {
+                                    Concept = item.Concept,
+                                    Quantity = 1,
+                                    Subtotal = item.Subtotal,
+                                    VatAmount = item.VatAmount,
+                                    Total = item.Total
+                                }
+                            };
+
+                        foreach (var line in lines)
+                        {
+                            t.Cell().Element(CellBody).Text(line.Concept);
+                            t.Cell().Element(CellBody).AlignCenter().Text(line.Quantity.ToString());
+                            t.Cell().Element(CellBody).AlignRight().Text(Money(line.Subtotal));
+                            t.Cell().Element(CellBody).AlignRight().Text(Money(line.VatAmount));
+                            t.Cell().Element(CellBody).AlignRight().Text(Money(line.Total));
+                        }
                     });
 
                     c.Item().Row(r =>

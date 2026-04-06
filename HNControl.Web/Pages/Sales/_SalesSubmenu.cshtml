@@ -1,5 +1,10 @@
-﻿@{
+﻿@inject HNControl.Web.Services.IActionAccessService ActionAccess
+@{
     var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
+    var canCatalog = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)
+        || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogView)
+        || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogManage);
+
     string Btn(string href, string text, string cls)
     {
         var active = path.StartsWith(href.ToLowerInvariant()) ? "text-white" : "";
@@ -18,12 +23,19 @@
             <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
             <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
             <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizaciones","info")">Cotizaciones</a>
+            @if (canCatalog)
+            {
+                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catálogo","dark")">Catálogo</a>
+            }
             <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
         }
         else
         {
-            <a href="/cotizar" class="@Btn("/cotizar","Nueva cotización","primary")">Nueva cotización</a>
             <a href="/Ventas/Cotizaciones" class="@Btn("/ventas/cotizaciones","Cotizaciones","info")">Cotizaciones</a>
+            @if (canCatalog)
+            {
+                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catálogo","dark")">Catálogo</a>
+            }
             <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
         }
     </div>

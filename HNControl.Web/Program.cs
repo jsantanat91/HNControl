@@ -246,6 +246,7 @@ using (var scope = app.Services.CreateScope())
     var db = services.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
     await EnsureQuoteSchemaAsync(db);
+    await EnsureBillingSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
@@ -382,5 +383,45 @@ ALTER TABLE IF EXISTS public."QuoteRequestLines"
     ADD COLUMN IF NOT EXISTS "Recurrence" character varying(30);
 ALTER TABLE IF EXISTS public.quoterequestlines
     ADD COLUMN IF NOT EXISTS "Recurrence" character varying(30);
+""");
+}
+
+static async Task EnsureBillingSchemaAsync(ApplicationDbContext db)
+{
+    await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."BillingInvoicePlans"
+    ADD COLUMN IF NOT EXISTS "ClientServiceContractId" uuid;
+ALTER TABLE IF EXISTS public."BillingInvoicePlans"
+    ADD COLUMN IF NOT EXISTS "InvoiceIssueDate" date;
+
+ALTER TABLE IF EXISTS public.billinginvoiceplans
+    ADD COLUMN IF NOT EXISTS "ClientServiceContractId" uuid;
+ALTER TABLE IF EXISTS public.billinginvoiceplans
+    ADD COLUMN IF NOT EXISTS "InvoiceIssueDate" date;
+
+CREATE TABLE IF NOT EXISTS public."BillingInvoiceLines" (
+    "Id" uuid NOT NULL,
+    "BillingInvoicePlanId" uuid NOT NULL,
+    "Concept" character varying(220) NOT NULL DEFAULT '',
+    "Category" character varying(80) NOT NULL DEFAULT '',
+    "Quantity" integer NOT NULL DEFAULT 1,
+    "UnitPrice" numeric(12,2) NOT NULL DEFAULT 0,
+    "Subtotal" numeric(12,2) NOT NULL DEFAULT 0,
+    "VatRate" numeric(7,5) NOT NULL DEFAULT 0.16,
+    "VatAmount" numeric(12,2) NOT NULL DEFAULT 0,
+    "Total" numeric(12,2) NOT NULL DEFAULT 0,
+    "SortOrder" integer NOT NULL DEFAULT 0,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_BillingInvoiceLines" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_BillingInvoiceLines_BillingInvoicePlans_BillingInvoicePlanId"
+        FOREIGN KEY ("BillingInvoicePlanId") REFERENCES public."BillingInvoicePlans" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_BillingInvoiceLines_BillingInvoicePlanId_SortOrder"
+    ON public."BillingInvoiceLines" ("BillingInvoicePlanId", "SortOrder");
+
+UPDATE public."BillingInvoicePlans"
+SET "InvoiceIssueDate" = COALESCE("InvoiceIssueDate", "NextRunDate", "StartDate", CURRENT_DATE)
+WHERE "InvoiceIssueDate" IS NULL;
 """);
 }

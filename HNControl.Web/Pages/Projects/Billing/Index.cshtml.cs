@@ -40,10 +40,18 @@ public class IndexModel : PageModel
     [TempData] public string? FlashType { get; set; }
 
     [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty] public List<LineInputModel> InputLines { get; set; } = [new()];
+    [BindProperty(SupportsGet = true)] public int PlansPage { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int RunsPage { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int AuditPage { get; set; } = 1;
+    public int PlansTotalPages { get; set; } = 1;
+    public int RunsTotalPages { get; set; } = 1;
+    public int AuditsTotalPages { get; set; } = 1;
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList OpportunityItems { get; set; } = default!;
     public SelectList QuoteItems { get; set; } = default!;
+    public SelectList ContractItems { get; set; } = default!;
     public SelectList PeriodicityItems { get; set; } = default!;
 
     public List<PlanVm> Plans { get; set; } = new();
@@ -62,8 +70,13 @@ public class IndexModel : PageModel
         string Periodicity,
         string Status,
         DateTime NextRunDate,
+        DateTime InvoiceIssueDate,
         string SendToEmail,
-        string SatSummary);
+        string SatSummary,
+        string? ContractName,
+        int ContractMonths,
+        int LinesCount,
+        Guid? LatestPdfRunId);
 
     public record RunVm(
         Guid Id,
@@ -86,16 +99,18 @@ public class IndexModel : PageModel
         [Required] public Guid ClientId { get; set; }
         public Guid? SalesOpportunityId { get; set; }
         public Guid? QuoteRequestId { get; set; }
+        public Guid? ContractId { get; set; }
 
         [Required, MaxLength(220)]
         public string Concept { get; set; } = "Servicio mensual";
 
-        [Range(0.01, 999999999)] public decimal Subtotal { get; set; } = 0m;
+        [Range(0, 999999999)] public decimal Subtotal { get; set; } = 0m;
         [Range(0, 1)] public decimal VatRate { get; set; } = 0.16m;
 
         [Required] public BillingPeriodicity Periodicity { get; set; } = BillingPeriodicity.Monthly;
         [Required] public DateTime StartDate { get; set; } = DateTime.Today;
-        public int? NumberOfRuns { get; set; } = null;
+        [Required] public DateTime InvoiceIssueDate { get; set; } = DateTime.Today;
+        [Range(1, 120)] public int? ContractMonths { get; set; } = 12;
 
         [Required, EmailAddress, MaxLength(256)]
         public string SendToEmail { get; set; } = "";
@@ -111,10 +126,20 @@ public class IndexModel : PageModel
         [Required, MaxLength(4)] public string PaymentFormCode { get; set; } = "03";
     }
 
-    public async Task OnGetAsync(Guid? opportunityId = null, Guid? quoteId = null)
+    public class LineInputModel
+    {
+        [MaxLength(80)] public string Category { get; set; } = "";
+        [Required, MaxLength(220)] public string Concept { get; set; } = "";
+        [Range(1, 9999)] public int Quantity { get; set; } = 1;
+        [Range(0, 99999999)] public decimal UnitPrice { get; set; } = 0;
+        [Range(0, 1)] public decimal VatRate { get; set; } = 0.16m;
+    }
+
+    public async Task OnGetAsync(Guid? opportunityId = null, Guid? quoteId = null, Guid? contractId = null)
     {
         if (opportunityId.HasValue) Input.SalesOpportunityId = opportunityId;
         if (quoteId.HasValue) Input.QuoteRequestId = quoteId;
+        if (contractId.HasValue) Input.ContractId = contractId;
         await PrefillFromOriginAsync();
         await LoadAsync();
     }
@@ -127,6 +152,21 @@ public class IndexModel : PageModel
             return Page();
         }
 
+        ClientServiceContract? contract = null;
+        if (Input.ContractId.HasValue)
+        {
+            contract = await _db.ClientServiceContracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Input.ContractId.Value);
+            if (contract == null)
+            {
+                Flash = "Contrato no encontrado.";
+                FlashType = "danger";
+                await LoadAsync();
+                return Page();
+            }
+
+            Input.ClientId = contract.ClientId;
+        }
+
         var client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Input.ClientId);
         if (client == null)
         {
@@ -136,19 +176,62 @@ public class IndexModel : PageModel
             return Page();
         }
 
-        var subtotal = Math.Round(Math.Max(0.01m, Input.Subtotal), 2);
-        var vat = Math.Round(subtotal * Math.Clamp(Input.VatRate, 0m, 1m), 2);
-        var total = Math.Round(subtotal + vat, 2);
+        var sourceLines = (InputLines ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x.Concept) && x.Quantity > 0)
+            .ToList();
+
+        if (sourceLines.Count == 0)
+        {
+            sourceLines.Add(new LineInputModel
+            {
+                Category = "Servicio",
+                Concept = string.IsNullOrWhiteSpace(Input.Concept) ? "Servicio mensual" : Input.Concept.Trim(),
+                Quantity = 1,
+                UnitPrice = Math.Max(0.01m, Input.Subtotal),
+                VatRate = Math.Clamp(Input.VatRate, 0m, 1m)
+            });
+        }
+
+        var billingLines = new List<BillingInvoiceLine>();
+        var sortOrder = 1;
+        foreach (var line in sourceLines)
+        {
+            var unitPrice = Math.Round(Math.Max(0m, line.UnitPrice), 2);
+            var qty = Math.Max(1, line.Quantity);
+            var lineSubtotal = Math.Round(unitPrice * qty, 2);
+            var lineVatRate = Math.Clamp(line.VatRate, 0m, 1m);
+            var lineVat = Math.Round(lineSubtotal * lineVatRate, 2);
+            var lineTotal = Math.Round(lineSubtotal + lineVat, 2);
+
+            billingLines.Add(new BillingInvoiceLine
+            {
+                Category = string.IsNullOrWhiteSpace(line.Category) ? "Servicio" : line.Category.Trim(),
+                Concept = line.Concept.Trim(),
+                Quantity = qty,
+                UnitPrice = unitPrice,
+                Subtotal = lineSubtotal,
+                VatRate = lineVatRate,
+                VatAmount = lineVat,
+                Total = lineTotal,
+                SortOrder = sortOrder++,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        var subtotal = billingLines.Sum(x => x.Subtotal);
+        var vat = billingLines.Sum(x => x.VatAmount);
+        var total = billingLines.Sum(x => x.Total);
 
         var plan = new BillingInvoicePlan
         {
             ClientId = client.Id,
             QuoteRequestId = Input.QuoteRequestId,
             SalesOpportunityId = Input.SalesOpportunityId,
+            ClientServiceContractId = Input.ContractId,
             Concept = (Input.Concept ?? "").Trim(),
             Currency = "MXN",
             Subtotal = subtotal,
-            VatRate = Math.Clamp(Input.VatRate, 0m, 1m),
+            VatRate = subtotal > 0 ? vat / subtotal : Math.Clamp(Input.VatRate, 0m, 1m),
             VatAmount = vat,
             Total = total,
             InvoiceType = Input.InvoiceType,
@@ -158,15 +241,17 @@ public class IndexModel : PageModel
             PaymentFormCode = (Input.PaymentFormCode ?? "03").Trim().ToUpperInvariant(),
             Periodicity = Input.Periodicity,
             StartDate = Input.StartDate.Date,
-            NextRunDate = Input.StartDate.Date,
-            RemainingRuns = Input.NumberOfRuns.HasValue && Input.NumberOfRuns.Value > 0 ? Input.NumberOfRuns.Value : null,
+            InvoiceIssueDate = Input.InvoiceIssueDate.Date,
+            NextRunDate = Input.InvoiceIssueDate.Date,
+            RemainingRuns = Input.ContractMonths.HasValue && Input.ContractMonths.Value > 0 ? Input.ContractMonths.Value : null,
             SendToEmail = (Input.SendToEmail ?? "").Trim(),
             CcEmails = (Input.CcEmails ?? "").Trim(),
             Notes = (Input.Notes ?? "").Trim(),
             Status = BillingPlanStatus.Active,
             CreatedByUserId = User.Identity?.Name,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            Lines = billingLines
         };
 
         _db.BillingInvoicePlans.Add(plan);
@@ -367,6 +452,18 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostDeletePlanAsync(Guid planId)
+    {
+        var plan = await _db.BillingInvoicePlans.FirstOrDefaultAsync(x => x.Id == planId);
+        if (plan == null) return RedirectToPage();
+
+        _db.BillingInvoicePlans.Remove(plan);
+        await _db.SaveChangesAsync();
+        Flash = "Plan eliminado.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid runId)
     {
         var run = await _db.BillingInvoiceRuns.AsNoTracking().FirstOrDefaultAsync(x => x.Id == runId);
@@ -375,15 +472,34 @@ public class IndexModel : PageModel
         return File(stream, contentType, downloadName);
     }
 
+    public async Task<IActionResult> OnGetDownloadLatestPdfAsync(Guid planId)
+    {
+        var run = await _db.BillingInvoiceRuns
+            .AsNoTracking()
+            .Where(x => x.PlanId == planId && x.PdfStoragePath != null && x.PdfStoragePath != "")
+            .OrderByDescending(x => x.ScheduledFor)
+            .FirstOrDefaultAsync();
+
+        if (run == null || string.IsNullOrWhiteSpace(run.PdfStoragePath)) return NotFound();
+        var (stream, contentType, downloadName) = await _storage.OpenAsync(run.PdfStoragePath, $"factura_{run.ScheduledFor:yyyyMMdd}.pdf");
+        return File(stream, contentType, downloadName);
+    }
+
     private async Task LoadAsync()
     {
+        const int cardPageSize = 12;
+        const int historyPageSize = 20;
+        PlansPage = Math.Max(1, PlansPage);
+        RunsPage = Math.Max(1, RunsPage);
+        AuditPage = Math.Max(1, AuditPage);
+
         var clients = await _db.Clients
             .AsNoTracking()
             .Where(x => x.IsActive && !x.IsTemporaryLead)
             .OrderBy(x => x.Name)
             .Select(x => new { x.Id, Label = x.ClientCode + " · " + x.Name })
             .ToListAsync();
-        ClientItems = new SelectList(clients, "Id", "Label");
+        ClientItems = new SelectList(clients, "Id", "Label", Input.ClientId);
 
         var opportunities = await _db.SalesOpportunities
             .AsNoTracking()
@@ -393,7 +509,7 @@ public class IndexModel : PageModel
             .Take(200)
             .Select(x => new { x.Id, Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "-") + " · " + (x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-") })
             .ToListAsync();
-        OpportunityItems = new SelectList(opportunities, "Id", "Label");
+        OpportunityItems = new SelectList(opportunities, "Id", "Label", Input.SalesOpportunityId);
 
         var quotes = await _db.QuoteRequests
             .AsNoTracking()
@@ -402,7 +518,20 @@ public class IndexModel : PageModel
             .Take(300)
             .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })
             .ToListAsync();
-        QuoteItems = new SelectList(quotes, "Id", "Label");
+        QuoteItems = new SelectList(quotes, "Id", "Label", Input.QuoteRequestId);
+
+        var contracts = await _db.ClientServiceContracts
+            .AsNoTracking()
+            .Include(x => x.Client)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(300)
+            .Select(x => new
+            {
+                x.Id,
+                Label = (x.Client != null ? x.Client.Name : "-") + " · " + (string.IsNullOrWhiteSpace(x.Label) ? x.ContractNumber : x.Label)
+            })
+            .ToListAsync();
+        ContractItems = new SelectList(contracts, "Id", "Label", Input.ContractId);
         PeriodicityItems = new SelectList(
             Enum.GetValues<BillingPeriodicity>()
                 .Select(x => new { Value = x, Label = LabelPeriodicity(x) }),
@@ -410,11 +539,22 @@ public class IndexModel : PageModel
             "Label",
             Input.Periodicity);
 
-        Plans = await _db.BillingInvoicePlans
+        var plansBase = _db.BillingInvoicePlans
             .AsNoTracking()
             .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
+            .Include(x => x.Lines)
+            .Where(x => x.Status == BillingPlanStatus.Active)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(300)
+            .AsQueryable();
+
+        var totalPlans = await plansBase.CountAsync();
+        PlansTotalPages = Math.Max(1, (int)Math.Ceiling(totalPlans / (double)cardPageSize));
+        if (PlansPage > PlansTotalPages) PlansPage = PlansTotalPages;
+
+        var planItems = await plansBase
+            .Skip((PlansPage - 1) * cardPageSize)
+            .Take(cardPageSize)
             .Select(x => new PlanVm(
                 x.Id,
                 x.Client != null ? x.Client.Name : "-",
@@ -423,15 +563,35 @@ public class IndexModel : PageModel
                 LabelPeriodicity(x.Periodicity),
                 x.Status.ToString(),
                 x.NextRunDate,
+                x.InvoiceIssueDate,
                 x.SendToEmail,
-                $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}"))
+                $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}",
+                x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
+                x.RemainingRuns ?? 0,
+                x.Lines.Count,
+                null))
             .ToListAsync();
+        var planIds = planItems.Select(x => x.Id).ToList();
+        var latestRunByPlan = await _db.BillingInvoiceRuns.AsNoTracking()
+            .Where(x => planIds.Contains(x.PlanId) && x.PdfStoragePath != null && x.PdfStoragePath != "")
+            .GroupBy(x => x.PlanId)
+            .Select(g => new { PlanId = g.Key, RunId = g.OrderByDescending(r => r.ScheduledFor).Select(r => r.Id).FirstOrDefault() })
+            .ToListAsync();
+        var latestRunMap = latestRunByPlan.ToDictionary(x => x.PlanId, x => (Guid?)x.RunId);
+        Plans = planItems.Select(x => x with { LatestPdfRunId = latestRunMap.GetValueOrDefault(x.Id) }).ToList();
 
-        Runs = await _db.BillingInvoiceRuns
+        var runsBase = _db.BillingInvoiceRuns
             .AsNoTracking()
             .Include(x => x.Plan!).ThenInclude(x => x.Client)
             .OrderByDescending(x => x.ScheduledFor)
-            .Take(300)
+            .AsQueryable();
+
+        var totalRuns = await runsBase.CountAsync();
+        RunsTotalPages = Math.Max(1, (int)Math.Ceiling(totalRuns / (double)historyPageSize));
+        if (RunsPage > RunsTotalPages) RunsPage = RunsTotalPages;
+        Runs = await runsBase
+            .Skip((RunsPage - 1) * historyPageSize)
+            .Take(historyPageSize)
             .Select(x => new RunVm(
                 x.Id,
                 x.PlanId,
@@ -447,11 +607,18 @@ public class IndexModel : PageModel
                 x.SatStatusMessage))
             .ToListAsync();
 
-        Audits = await _db.BillingAuditLogs
+        var auditsBase = _db.BillingAuditLogs
             .AsNoTracking()
             .Include(x => x.BillingPlan!).ThenInclude(x => x.Client)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(50)
+            .AsQueryable();
+
+        var totalAudits = await auditsBase.CountAsync();
+        AuditsTotalPages = Math.Max(1, (int)Math.Ceiling(totalAudits / (double)historyPageSize));
+        if (AuditPage > AuditsTotalPages) AuditPage = AuditsTotalPages;
+        Audits = await auditsBase
+            .Skip((AuditPage - 1) * historyPageSize)
+            .Take(historyPageSize)
             .Select(x => new AuditVm(
                 x.CreatedAt,
                 x.BillingPlan != null && x.BillingPlan.Client != null ? x.BillingPlan.Client.Name : "-",
@@ -460,9 +627,9 @@ public class IndexModel : PageModel
                 x.UserName))
             .ToListAsync();
 
-        ActivePlans = Plans.Count(x => x.Status == nameof(BillingPlanStatus.Active));
-        PendingRuns = Runs.Count(x => x.Status == nameof(BillingRunStatus.Scheduled));
-        MonthlyProjection = Plans.Where(x => x.Status == nameof(BillingPlanStatus.Active)).Sum(x => x.Total);
+        ActivePlans = totalPlans;
+        PendingRuns = await _db.BillingInvoiceRuns.AsNoTracking().CountAsync(x => x.Status == BillingRunStatus.Scheduled);
+        MonthlyProjection = Plans.Sum(x => x.Total);
     }
 
     private async Task PrefillFromOriginAsync()
@@ -478,6 +645,25 @@ public class IndexModel : PageModel
                 Input.FiscalRegimeCode = string.IsNullOrWhiteSpace(sys.CompanyFiscalRegimeCode) ? Input.FiscalRegimeCode : sys.CompanyFiscalRegimeCode;
             if (string.IsNullOrWhiteSpace(Input.SendToEmail))
                 Input.SendToEmail = sys.BillingEmail ?? "";
+        }
+
+        if (Input.ContractId.HasValue)
+        {
+            var contract = await _db.ClientServiceContracts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == Input.ContractId.Value);
+            if (contract != null)
+            {
+                Input.ClientId = contract.ClientId;
+                Input.Concept = string.IsNullOrWhiteSpace(contract.Label) ? Input.Concept : contract.Label;
+                if (contract.MonthlyAmount.HasValue && contract.MonthlyAmount.Value > 0)
+                    Input.Subtotal = contract.MonthlyAmount.Value;
+                if (contract.ContractStartDate.HasValue)
+                {
+                    Input.StartDate = contract.ContractStartDate.Value.Date;
+                    Input.InvoiceIssueDate = contract.ContractStartDate.Value.Date;
+                }
+            }
         }
 
         if (Input.SalesOpportunityId.HasValue)
@@ -505,6 +691,7 @@ public class IndexModel : PageModel
                 if (Input.ClientId == Guid.Empty && q.ClientId.HasValue) Input.ClientId = q.ClientId.Value;
                 Input.Subtotal = q.EstimatedTotal ?? q.SubtotalAuto;
                 Input.Concept = $"Servicio {q.Folio}";
+                Input.ContractMonths = q.ContractTermMonths ?? Input.ContractMonths;
             }
         }
 
@@ -630,6 +817,7 @@ public class IndexModel : PageModel
         await _db.SaveChangesAsync();
     }
 }
+
 
 
 

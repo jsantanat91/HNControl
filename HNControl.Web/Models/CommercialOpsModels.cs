@@ -119,6 +119,8 @@ public static class AppActions
     public const string BillingSend = "Billing.Send";
     public const string SalesQuotesView = "Sales.Quotes.View";
     public const string SalesQuotesManage = "Sales.Quotes.Manage";
+    public const string SalesCatalogView = "Sales.Catalog.View";
+    public const string SalesCatalogManage = "Sales.Catalog.Manage";
     public const string SalesProspectsView = "Sales.Prospects.View";
     public const string SalesProspectsCreate = "Sales.Prospects.Create";
     public const string SalesProspectsEdit = "Sales.Prospects.Edit";
@@ -158,6 +160,8 @@ public static class AppActions
         BillingSend,
         SalesQuotesView,
         SalesQuotesManage,
+        SalesCatalogView,
+        SalesCatalogManage,
         SalesProspectsView,
         SalesProspectsCreate,
         SalesProspectsEdit,
@@ -191,6 +195,7 @@ public static class AppActions
         [SalesWorkflowMove] = [SalesViewOwn],
         [SalesWorkflowAssign] = [SalesWorkflowMove, SalesViewOwn],
         [SalesQuotesManage] = [SalesQuotesView],
+        [SalesCatalogManage] = [SalesCatalogView],
         [SalesProspectsCreate] = [SalesProspectsView],
         [SalesProspectsEdit] = [SalesProspectsView],
         [SalesProspectsConvert] = [SalesProspectsEdit, SalesProspectsView],
@@ -263,6 +268,8 @@ public static class AppActions
         BillingSend => "Facturacion: enviar comprobantes",
         SalesQuotesView => "Ventas/Cotizaciones: ver",
         SalesQuotesManage => "Ventas/Cotizaciones: gestionar",
+        SalesCatalogView => "Ventas/Catálogo: ver",
+        SalesCatalogManage => "Ventas/Catálogo: gestionar",
         SalesProspectsView => "Ventas/Prospectos: ver",
         SalesProspectsCreate => "Ventas/Prospectos: crear",
         SalesProspectsEdit => "Ventas/Prospectos: editar",

@@ -11,10 +11,9 @@
         <div class="text-muted small">Configura segmento, categorias, servicios y subproductos para cotizacion interna.</div>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="button"
-                onclick="window.open('/cotizar','quote_new_window','width=1360,height=860,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes');">
-            + Nueva cotizacion
-        </button>
+            <button class="btn btn-primary" type="button" data-quote-modal-open="true" onclick="return false;">
+                + Nueva cotizacion
+            </button>
         <a class="btn btn-outline-primary" asp-page="./Requests">Cotizaciones</a>
     </div>
 </div>
