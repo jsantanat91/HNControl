@@ -12,6 +12,7 @@ using QuestPDF.Infrastructure;
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
 using System.Text;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -388,7 +389,9 @@ ALTER TABLE IF EXISTS public.quoterequestlines
 
 static async Task EnsureBillingSchemaAsync(ApplicationDbContext db)
 {
-    await db.Database.ExecuteSqlRawAsync("""
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
 ALTER TABLE IF EXISTS public."BillingInvoicePlans"
     ADD COLUMN IF NOT EXISTS "ClientServiceContractId" uuid;
 ALTER TABLE IF EXISTS public."BillingInvoicePlans"
@@ -424,4 +427,9 @@ UPDATE public."BillingInvoicePlans"
 SET "InvoiceIssueDate" = COALESCE("InvoiceIssueDate", "NextRunDate", "StartDate", CURRENT_DATE)
 WHERE "InvoiceIssueDate" IS NULL;
 """);
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureBillingSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
 }

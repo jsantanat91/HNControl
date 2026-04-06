@@ -44,6 +44,7 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public int PlansPage { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int RunsPage { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int AuditPage { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public string? OpenModal { get; set; }
     public int PlansTotalPages { get; set; } = 1;
     public int RunsTotalPages { get; set; } = 1;
     public int AuditsTotalPages { get; set; } = 1;
@@ -62,6 +63,15 @@ public class IndexModel : PageModel
     public int PendingRuns { get; set; }
     public decimal MonthlyProjection { get; set; }
 
+    public record PlanLineVm(
+        string Category,
+        string Concept,
+        int Quantity,
+        decimal UnitPrice,
+        decimal Subtotal,
+        decimal VatAmount,
+        decimal Total);
+
     public record PlanVm(
         Guid Id,
         string Client,
@@ -76,7 +86,8 @@ public class IndexModel : PageModel
         string? ContractName,
         int ContractMonths,
         int LinesCount,
-        Guid? LatestPdfRunId);
+        Guid? LatestPdfRunId,
+        IReadOnlyList<PlanLineVm> Lines);
 
     public record RunVm(
         Guid Id,
@@ -148,6 +159,7 @@ public class IndexModel : PageModel
     {
         if (!ModelState.IsValid)
         {
+            OpenModal = "newPlan";
             await LoadAsync();
             return Page();
         }
@@ -552,33 +564,45 @@ public class IndexModel : PageModel
         PlansTotalPages = Math.Max(1, (int)Math.Ceiling(totalPlans / (double)cardPageSize));
         if (PlansPage > PlansTotalPages) PlansPage = PlansTotalPages;
 
-        var planItems = await plansBase
+        var planEntities = await plansBase
             .Skip((PlansPage - 1) * cardPageSize)
             .Take(cardPageSize)
-            .Select(x => new PlanVm(
-                x.Id,
-                x.Client != null ? x.Client.Name : "-",
-                x.Concept,
-                x.Total,
-                LabelPeriodicity(x.Periodicity),
-                x.Status.ToString(),
-                x.NextRunDate,
-                x.InvoiceIssueDate,
-                x.SendToEmail,
-                $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}",
-                x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
-                x.RemainingRuns ?? 0,
-                x.Lines.Count,
-                null))
             .ToListAsync();
-        var planIds = planItems.Select(x => x.Id).ToList();
+        var planIds = planEntities.Select(x => x.Id).ToList();
         var latestRunByPlan = await _db.BillingInvoiceRuns.AsNoTracking()
             .Where(x => planIds.Contains(x.PlanId) && x.PdfStoragePath != null && x.PdfStoragePath != "")
             .GroupBy(x => x.PlanId)
             .Select(g => new { PlanId = g.Key, RunId = g.OrderByDescending(r => r.ScheduledFor).Select(r => r.Id).FirstOrDefault() })
             .ToListAsync();
         var latestRunMap = latestRunByPlan.ToDictionary(x => x.PlanId, x => (Guid?)x.RunId);
-        Plans = planItems.Select(x => x with { LatestPdfRunId = latestRunMap.GetValueOrDefault(x.Id) }).ToList();
+        Plans = planEntities.Select(x => new PlanVm(
+            x.Id,
+            x.Client != null ? x.Client.Name : "-",
+            x.Concept,
+            x.Total,
+            LabelPeriodicity(x.Periodicity),
+            x.Status.ToString(),
+            x.NextRunDate,
+            x.InvoiceIssueDate,
+            x.SendToEmail,
+            $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}",
+            x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
+            x.RemainingRuns ?? 0,
+            x.Lines.Count,
+            latestRunMap.GetValueOrDefault(x.Id),
+            x.Lines
+                .OrderBy(l => l.SortOrder)
+                .ThenBy(l => l.CreatedAt)
+                .Select(l => new PlanLineVm(
+                    l.Category,
+                    l.Concept,
+                    l.Quantity,
+                    l.UnitPrice,
+                    l.Subtotal,
+                    l.VatAmount,
+                    l.Total))
+                .ToList()
+        )).ToList();
 
         var runsBase = _db.BillingInvoiceRuns
             .AsNoTracking()
