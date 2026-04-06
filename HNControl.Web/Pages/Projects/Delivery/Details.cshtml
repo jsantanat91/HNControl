@@ -1,4 +1,4 @@
-@page "{id:guid}"
+﻿@page "{id:guid}"
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Delivery.DetailsModel
 @{
@@ -29,7 +29,7 @@
         <div class="card shadow-soft hn-hover h-100">
             <div class="card-header fw-semibold">Resumen del acta</div>
             <div class="card-body">
-                <div class="small text-muted mb-2">Entrega: @Model.Item.DeliveryDate.ToString("yyyy-MM-dd") · Ubicación: @Model.Item.DeliveryLocation</div>
+                <div class="small text-muted mb-2">Entrega: @Model.Item.DeliveryDate.ToString("yyyy-MM-dd") · Ubicacion: @Model.Item.DeliveryLocation</div>
                 <h6>Servicios entregados</h6>
                 <pre class="mb-3" style="white-space:pre-wrap;font-family:inherit;">@Model.Item.ServiceSummary</pre>
                 <h6>Equipamiento entregado</h6>
@@ -51,7 +51,7 @@
                 <div class="small"><b>Correo:</b> @Model.Item.ReceiverEmail</div>
                 <div class="small"><b>Tel:</b> @Model.Item.ReceiverPhone</div>
                 <hr />
-                <div class="small text-muted">Liga pública de firma</div>
+                <div class="small text-muted">Liga publica de firma</div>
                 <div class="input-group input-group-sm mb-2">
                     <input id="publicSignUrl" class="form-control" value="@Model.PublicSignUrl" readonly />
                     <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('publicSignUrl').value)">Copiar</button>
@@ -66,9 +66,11 @@
                     <form method="post" asp-page-handler="DownloadPdf">
                         <button class="btn btn-outline-dark w-100" type="submit" @(string.IsNullOrWhiteSpace(Model.Item.PdfStoragePath) ? "disabled" : "")>Descargar PDF</button>
                     </form>
+                    <form method="post" asp-page-handler="DownloadWord">
+                        <button class="btn btn-outline-secondary w-100" type="submit">Descargar Word</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-

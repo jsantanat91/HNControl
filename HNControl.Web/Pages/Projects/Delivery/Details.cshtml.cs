@@ -16,19 +16,22 @@ public class DetailsModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
+    private readonly ITemplateDocxService _docxTemplates;
 
     public DetailsModel(
         ApplicationDbContext db,
         IProjectDeliveryPdfRenderer pdf,
         IFileStorage storage,
         IEmailSender email,
-        IConfiguration cfg)
+        IConfiguration cfg,
+        ITemplateDocxService docxTemplates)
     {
         _db = db;
         _pdf = pdf;
         _storage = storage;
         _email = email;
         _cfg = cfg;
+        _docxTemplates = docxTemplates;
     }
 
     public ProjectDeliveryFormat? Item { get; set; }
@@ -97,12 +100,12 @@ public class DetailsModel : PageModel
 
         await _email.SendAsync(
             item.ReceiverEmail,
-            $"Firma requerida Â· {item.Title}",
+            $"Firma requerida · {item.Title}",
             $"""
             <p>Hola {System.Net.WebUtility.HtmlEncode(item.ReceiverName)},</p>
-            <p>Se generÃ³ un formato de entrega para tu firma digital:</p>
+            <p>Se genero un formato de entrega para tu firma digital:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al finalizar, recibirÃ¡s el acta firmada en PDF.</p>
+            <p>Al finalizar, recibiras el acta firmada en PDF.</p>
             """,
             attachment,
             $"acta_entrega_{item.Id:N}.pdf",
@@ -121,6 +124,18 @@ public class DetailsModel : PageModel
 
         var (stream, contentType, _) = await _storage.OpenAsync(item.PdfStoragePath, $"acta_entrega_{id:N}.pdf");
         return File(stream, contentType, $"acta_entrega_{id:N}.pdf");
+    }
+
+    public async Task<IActionResult> OnPostDownloadWordAsync(Guid id)
+    {
+        var item = await _db.ProjectDeliveryFormats
+            .Include(x => x.Client)
+            .Include(x => x.Project)
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (item?.Client == null) return NotFound();
+
+        var bytes = _docxTemplates.BuildDeliveryDocx(item, item.Client, item.Project);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"acta_entrega_{id:N}.docx");
     }
 
     private async Task LoadAsync(Guid id)

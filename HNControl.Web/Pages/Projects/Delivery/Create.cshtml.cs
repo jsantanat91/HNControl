@@ -17,7 +17,9 @@ public class CreateModel : PageModel
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public SelectList ClientItems { get; set; } = default!;
-    public SelectList ProjectItems { get; set; } = default!;
+    public List<ProjectOption> ProjectItems { get; set; } = [];
+
+    public record ProjectOption(Guid Id, Guid ClientId, string Name);
 
     public class InputModel
     {
@@ -45,6 +47,18 @@ public class CreateModel : PageModel
     {
         await LoadCatalogsAsync();
         if (!ModelState.IsValid) return Page();
+
+        if (Input.ProjectId.HasValue)
+        {
+            var projectBelongsToClient = await _db.Projects
+                .AsNoTracking()
+                .AnyAsync(x => x.Id == Input.ProjectId.Value && x.ClientId == Input.ClientId);
+            if (!projectBelongsToClient)
+            {
+                ModelState.AddModelError("Input.ProjectId", "El proyecto no pertenece al cliente seleccionado.");
+                return Page();
+            }
+        }
 
         var entity = new ProjectDeliveryFormat
         {
@@ -81,9 +95,9 @@ public class CreateModel : PageModel
         var projects = await _db.Projects
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new { x.Id, Name = x.Title })
+            .Select(x => new ProjectOption(x.Id, x.ClientId, x.Title))
             .ToListAsync();
-        ProjectItems = new SelectList(projects, "Id", "Name");
+        ProjectItems = projects;
     }
 }
 

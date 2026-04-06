@@ -36,6 +36,9 @@ public class QuoteModel : PageModel
     public bool HasClientContext { get; set; }
     public bool SkipClientDataStep { get; set; }
     public string ClientName { get; set; } = string.Empty;
+    public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
+
+    public record ProspectOptionVm(Guid Id, string Name, string Email, string Phone, string Location, string? CompanyName);
 
     public async Task<IActionResult> OnGetAsync(string? token)
     {
@@ -369,6 +372,20 @@ public class QuoteModel : PageModel
             ["inventoryHardwareItems"] = inventoryItems,
             ["inventoryServiceItems"] = serviceItems
         };
+
+        ProspectOptions = await _db.Clients
+            .AsNoTracking()
+            .Where(x => x.IsTemporaryLead && x.IsActive)
+            .OrderBy(x => x.Name)
+            .Take(400)
+            .Select(x => new ProspectOptionVm(
+                x.Id,
+                string.IsNullOrWhiteSpace(x.ContactName) ? x.Name : x.ContactName!,
+                x.Email ?? "",
+                x.Phone ?? "",
+                x.Address ?? "",
+                x.Name))
+            .ToListAsync();
     }
 
     private static object ToNode(QuoteCatalogItem x) => new

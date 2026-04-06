@@ -109,6 +109,12 @@ public class IndexModel : PageModel
     {
         var quote = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == QuoteId);
         if (quote == null) return RedirectToPage();
+        if (quote.Status == QuoteRequestStatus.Rejected)
+        {
+            Flash = "Solo se permiten cotizaciones activas (no rechazadas).";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
 
         var existing = await _db.SalesOpportunities.FirstOrDefaultAsync(x => x.QuoteRequestId == QuoteId);
         if (existing != null)
@@ -261,6 +267,7 @@ public class IndexModel : PageModel
 
         var quotes = await _db.QuoteRequests
             .AsNoTracking()
+            .Where(x => x.Status != QuoteRequestStatus.Rejected)
             .OrderByDescending(x => x.CreatedAt)
             .Take(300)
             .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })

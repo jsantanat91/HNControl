@@ -6,6 +6,7 @@
     ViewData["Title"] = "Cotizacion a la medida";
 
     var catalogJson = JsonSerializer.Serialize(Model.CatalogPayload);
+    var prospectsJson = JsonSerializer.Serialize(Model.ProspectOptions);
 }
 
 <div class="row justify-content-center">
@@ -198,6 +199,17 @@
                         else
                         {
                             <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Prospecto</label>
+                                    <select class="form-select" id="prospectSelect">
+                                        <option value="">Nuevo cliente</option>
+                                        @foreach (var p in Model.ProspectOptions)
+                                        {
+                                            <option value="@p.Id">@p.Name · @p.Email</option>
+                                        }
+                                    </select>
+                                    <div class="small text-muted">Selecciona un prospecto existente o usa "Nuevo cliente".</div>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre</label>
                                     <input class="form-control" asp-for="Input.CustomerName" />
@@ -275,6 +287,7 @@
 <script>
 (() => {
     const payload = @Html.Raw(catalogJson);
+    const prospects = @Html.Raw(prospectsJson);
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
     const inventoryHardwareItems = payload.inventoryHardwareItems || [];
@@ -303,6 +316,12 @@
     const inventoryServiceSelect = document.getElementById('inventoryServiceSelect');
     const inventoryServiceQty = document.getElementById('inventoryServiceQty');
     const addServiceBtn = document.getElementById('addServiceBtn');
+    const prospectSelect = document.getElementById('prospectSelect');
+    const inputCustomerName = document.getElementById('Input_CustomerName');
+    const inputCustomerEmail = document.getElementById('Input_CustomerEmail');
+    const inputCustomerPhone = document.getElementById('Input_CustomerPhone');
+    const inputCustomerLocation = document.getElementById('Input_CustomerLocation');
+    const inputCompanyName = document.getElementById('Input_CompanyName');
     const categoryCards = document.getElementById('categoryCards');
     const serviceCards = document.getElementById('serviceCards');
     const subproductCards = document.getElementById('subproductCards');
@@ -329,6 +348,39 @@
             });
         const pill3 = document.querySelector('[data-step-pill="3"]');
         if(pill3) pill3.classList.add('is-skipped');
+    }
+
+    function lockCustomerFields(lock){
+        [inputCustomerName, inputCustomerEmail, inputCustomerPhone, inputCustomerLocation, inputCompanyName]
+            .forEach(el => {
+                if(!el) return;
+                el.readOnly = !!lock;
+                el.classList.toggle('bg-light', !!lock);
+            });
+    }
+
+    function onProspectChange(){
+        if(!prospectSelect || skipClientDataStep) return;
+        const selectedId = prospectSelect.value;
+        if(!selectedId){
+            lockCustomerFields(false);
+            return;
+        }
+        const p = (prospects || []).find(x => String(x.id || x.Id) === String(selectedId));
+        if(!p){
+            lockCustomerFields(false);
+            return;
+        }
+        if(inputCustomerName) inputCustomerName.value = p.name || p.Name || '';
+        if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
+        if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
+        if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
+        if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
+        lockCustomerFields(true);
+    }
+
+    if(prospectSelect && !skipClientDataStep){
+        prospectSelect.addEventListener('change', onProspectChange);
     }
 
     function toMoney(v){
@@ -777,6 +829,7 @@
     renderServices();
     renderSubproducts();
     renderCart();
+    onProspectChange();
     showStep(navSteps[0]);
 })();
 </script>

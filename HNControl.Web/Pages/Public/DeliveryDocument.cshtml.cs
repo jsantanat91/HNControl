@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +38,7 @@ public class DeliveryDocumentModel : PageModel
     {
         var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.PublicToken == token);
         if (item == null) return NotFound();
-        if (string.IsNullOrWhiteSpace(item.PdfStoragePath)) return BadRequest("Aún no hay PDF.");
+        if (string.IsNullOrWhiteSpace(item.PdfStoragePath)) return BadRequest("Aun no hay PDF.");
         var (stream, contentType, _) = await _storage.OpenAsync(item.PdfStoragePath, $"acta_entrega_{item.Id:N}.pdf");
         return File(stream, contentType, $"acta_entrega_{item.Id:N}.pdf");
     }
@@ -63,7 +63,7 @@ public class DeliveryDocumentModel : PageModel
         if (bytes == null || bytes.Length < 200)
         {
             Item = item;
-            Error = "Firma inválida.";
+            Error = "Firma invalida.";
             return Page();
         }
 
@@ -89,7 +89,7 @@ public class DeliveryDocumentModel : PageModel
                 $"Acta firmada: {item.Title}",
                 $"""
                 <p>Gracias {System.Net.WebUtility.HtmlEncode(signerName)},</p>
-                <p>Tu firma digital quedó registrada correctamente.</p>
+                <p>Tu firma digital quedo registrada correctamente.</p>
                 <p>Adjuntamos el acta firmada en PDF.</p>
                 """,
                 pdfBytes,

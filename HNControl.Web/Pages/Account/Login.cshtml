@@ -84,4 +84,13 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const remembered = '@(Model.Input?.Email?.Replace("'", "\\'") ?? "")';
+            if (!remembered) return;
+            const emailInput = document.getElementById('Input_Email');
+            if (!emailInput) return;
+            emailInput.value = remembered;
+        })();
+    </script>
 }

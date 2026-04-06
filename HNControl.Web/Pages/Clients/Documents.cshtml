@@ -137,6 +137,11 @@
                                             <input type="hidden" name="docId" value="@d.Id" />
                                             <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar</button>
                                         </form>
+                                        <form method="post" asp-page-handler="DownloadWord">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-outline-dark" type="submit">Word</button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

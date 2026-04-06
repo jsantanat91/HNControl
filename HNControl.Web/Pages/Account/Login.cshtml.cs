@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +21,7 @@ public class LoginModel : PageModel
     private readonly IEmailSender _email;
     private readonly IDataProtector _protector;
     private const string TrustedCookieName = "HNControl.Trusted2FA";
+    private const string RememberedEmailCookieName = "HNControl.LoginEmail";
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -58,7 +59,10 @@ public class LoginModel : PageModel
         public bool AwaitingTwoFactor { get; set; }
     }
 
-    public void OnGet() { }
+    public void OnGet()
+    {
+        Input.Email = GetRememberedEmail();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
@@ -67,7 +71,8 @@ public class LoginModel : PageModel
 
         if (!ModelState.IsValid) return Page();
 
-        var user = await _userManager.FindByEmailAsync((Input.Email ?? "").Trim());
+        Input.Email = (Input.Email ?? "").Trim();
+        var user = await _userManager.FindByEmailAsync(Input.Email);
         if (user == null)
         {
             Error = "Credenciales inválidas.";
@@ -82,6 +87,8 @@ public class LoginModel : PageModel
                 : "Credenciales inválidas.";
             return Page();
         }
+
+        PersistRememberedEmail(Input.Email, Input.RememberMe);
 
         var ip = GetClientIp();
         if (IsTrustedDevice(user.Id, ip))
@@ -115,10 +122,20 @@ public class LoginModel : PageModel
         _db.LoginTwoFactorChallenges.Add(challenge);
         await _db.SaveChangesAsync();
 
-        await _email.SendAsync(
-            challenge.UserEmail,
-            "Código de seguridad HN Control",
-            $"<p>Tu código de acceso es:</p><h2 style=\"letter-spacing:2px\">{code}</h2><p>Válido por 10 minutos.</p>");
+        try
+        {
+            await _email.SendAsync(
+                challenge.UserEmail,
+                "Código de seguridad HN Control",
+                $"<p>Tu código de acceso es:</p><h2 style=\"letter-spacing:2px\">{code}</h2><p>Válido por 10 minutos.</p>");
+        }
+        catch (Exception ex)
+        {
+            _db.LoginTwoFactorChallenges.Remove(challenge);
+            await _db.SaveChangesAsync();
+            Error = $"No se pudo enviar el código de acceso por correo. Revisa la configuración SMTP. Detalle: {ex.Message}";
+            return Page();
+        }
 
         Input.AwaitingTwoFactor = true;
         Input.ChallengeId = challenge.Id;
@@ -259,10 +276,35 @@ public class LoginModel : PageModel
         });
     }
 
-    private class TrustPayload
+    private void PersistRememberedEmail(string email, bool remember)
     {
-        public string UserId { get; set; } = "";
-        public string Ip { get; set; } = "";
+        if (!remember || string.IsNullOrWhiteSpace(email))
+        {
+            Response.Cookies.Delete(RememberedEmailCookieName);
+            return;
+        }
+
+        Response.Cookies.Append(RememberedEmailCookieName, email.Trim(), new CookieOptions
+        {
+            HttpOnly = true,
+            IsEssential = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(30)
+        });
+    }
+
+    private string GetRememberedEmail()
+    {
+        if (!Request.Cookies.TryGetValue(RememberedEmailCookieName, out var email))
+            return string.Empty;
+        return (email ?? string.Empty).Trim();
+    }
+
+    private sealed class TrustPayload
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string Ip { get; set; } = string.Empty;
         public DateTime ExpiresAtUtc { get; set; }
     }
 }

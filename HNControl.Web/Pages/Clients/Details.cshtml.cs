@@ -126,12 +126,12 @@ public class DetailsModel : PageModel
                     badge = "text-bg-warning";
                 }
 
-                var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "â€”";
+                var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "-";
                 var meta = ParseContractMeta(x.Notes);
 
                 var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
                     ? t
-                    : "â€”";
+                    : "-";
 
                 return new ContractRow(
                     x.Id,

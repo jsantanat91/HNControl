@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Projects.Delivery.CreateModel
 @{
     Layout = "_Layout";
@@ -21,12 +21,16 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label">Proyecto (opcional)</label>
-                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
+                <select class="form-select" asp-for="Input.ProjectId" id="projectSelect">
                     <option value="">-- Sin proyecto --</option>
+                    @foreach (var p in Model.ProjectItems)
+                    {
+                        <option value="@p.Id" data-client-id="@p.ClientId">@p.Name</option>
+                    }
                 </select>
             </div>
             <div class="col-12">
-                <label class="form-label">Título</label>
+                <label class="form-label">Titulo</label>
                 <input class="form-control" asp-for="Input.Title" placeholder="Ej: Acta entrega de servicios - Sucursal Norte" />
             </div>
             <div class="col-12">
@@ -38,7 +42,7 @@
                 <textarea class="form-control" asp-for="Input.EquipmentSummary" rows="4" placeholder="Modelo, serie, cantidad, observaciones..."></textarea>
             </div>
             <div class="col-md-6">
-                <label class="form-label">Ubicación de entrega</label>
+                <label class="form-label">Ubicacion de entrega</label>
                 <input class="form-control" asp-for="Input.DeliveryLocation" />
             </div>
             <div class="col-md-6">
@@ -54,7 +58,7 @@
                 <input class="form-control" asp-for="Input.ReceiverEmail" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Recibe (teléfono)</label>
+                <label class="form-label">Recibe (telefono)</label>
                 <input class="form-control" asp-for="Input.ReceiverPhone" />
             </div>
         </div>
@@ -66,5 +70,30 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-}
+    <script>
+        (function () {
+            const clientSelect = document.getElementById('Input_ClientId');
+            const projectSelect = document.getElementById('projectSelect');
+            if (!clientSelect || !projectSelect) return;
 
+            const filterProjects = () => {
+                const clientId = clientSelect.value;
+                const current = projectSelect.value;
+                let currentStillVisible = false;
+                Array.from(projectSelect.options).forEach((opt, idx) => {
+                    if (idx === 0) {
+                        opt.hidden = false;
+                        return;
+                    }
+                    const belongs = !clientId || opt.dataset.clientId === clientId;
+                    opt.hidden = !belongs;
+                    if (belongs && opt.value === current) currentStillVisible = true;
+                });
+                if (!currentStillVisible) projectSelect.value = '';
+            };
+
+            clientSelect.addEventListener('change', filterProjects);
+            filterProjects();
+        })();
+    </script>
+}

@@ -16,19 +16,22 @@ public class DocumentsModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
+    private readonly ITemplateDocxService _docxTemplates;
 
     public DocumentsModel(
         ApplicationDbContext db,
         IClientLegalPdfRenderer pdf,
         IFileStorage storage,
         IEmailSender email,
-        IConfiguration cfg)
+        IConfiguration cfg,
+        ITemplateDocxService docxTemplates)
     {
         _db = db;
         _pdf = pdf;
         _storage = storage;
         _email = email;
         _cfg = cfg;
+        _docxTemplates = docxTemplates;
     }
 
     public Client? Client { get; set; }
@@ -167,6 +170,19 @@ public class DocumentsModel : PageModel
         var safeName = $"{(doc.DocumentType == ClientLegalDocumentType.NDA ? "nda" : "contrato")}_{doc.Id:N}.pdf";
         var (stream, contentType, _) = await _storage.OpenAsync(doc.PdfStoragePath, safeName);
         return File(stream, contentType, safeName);
+    }
+
+    public async Task<IActionResult> OnPostDownloadWordAsync(Guid clientId, Guid docId)
+    {
+        var doc = await _db.ClientLegalDocuments
+            .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
+            .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
+        if (doc?.Client == null) return NotFound();
+
+        var bytes = _docxTemplates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
+        var safeName = $"{(doc.DocumentType == ClientLegalDocumentType.NDA ? "nda" : "contrato")}_{doc.Id:N}.docx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", safeName);
     }
 
     public async Task<IActionResult> OnPostRegeneratePdfAsync(Guid clientId, Guid docId)
