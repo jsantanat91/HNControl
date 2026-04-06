@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
+using System.Globalization;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
@@ -388,6 +389,11 @@ public class DetailsModel : PageModel
                                     });
                                 });
                             }
+
+                            cc.Item().PaddingTop(10).Text("Dependencias entre tareas (secuencial)").FontSize(9).SemiBold().FontColor(Colors.Grey.Darken2);
+                            var depHeight = Math.Max(60, 26 + (planRows.Count * 24));
+                            var depSvg = BuildDependencySvg(planRows, timelineWidth, depHeight);
+                            cc.Item().PaddingTop(4).Height(depHeight).Svg(depSvg);
                         }
                     });
 
@@ -633,6 +639,77 @@ public class DetailsModel : PageModel
             Colors.Cyan.Darken2
         };
 
+        return colors[Math.Abs(index) % colors.Length];
+    }
+
+    private static string BuildDependencySvg(IReadOnlyList<PdfGanttRow> rows, float timelineWidth, int canvasHeight)
+    {
+        var sb = new StringBuilder();
+        var w = (int)Math.Max(320, Math.Ceiling(timelineWidth));
+        var h = Math.Max(60, canvasHeight);
+        const int rowH = 24;
+        const int top = 10;
+
+        sb.Append($"<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}' viewBox='0 0 {w} {h}'>");
+        sb.Append("<defs>");
+        sb.Append("<marker id='arrowHead' markerWidth='7' markerHeight='7' refX='6' refY='3.5' orient='auto'>");
+        sb.Append("<polygon points='0 0, 7 3.5, 0 7' fill='#6B7280'/>");
+        sb.Append("</marker>");
+        sb.Append("</defs>");
+        sb.Append($"<rect x='0' y='0' width='{w}' height='{h}' fill='#F8FAFC' stroke='#E5E7EB'/>");
+
+        // Guías verticales para lectura temporal
+        for (var i = 0; i <= 10; i++)
+        {
+            var gx = (w * i) / 10.0;
+            sb.Append($"<line x1='{F(gx)}' y1='0' x2='{F(gx)}' y2='{h}' stroke='#E5E7EB' stroke-width='0.8'/>");
+        }
+
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var row = rows[i];
+            var y = top + (i * rowH);
+            var barY = y + 5;
+            var barH = 12;
+            var x = Math.Max(1d, (w * row.OffsetPercent / 100d));
+            var barW = Math.Max(6d, (w * row.WidthPercent / 100d));
+            var color = GetGanttHexColor(row.ColorIndex);
+            var progressW = Math.Max(2d, barW * Math.Clamp(row.ProgressPercent, 0, 100) / 100d);
+
+            sb.Append($"<rect x='{F(x)}' y='{F(barY)}' rx='5' ry='5' width='{F(barW)}' height='{barH}' fill='{color}' opacity='0.85'/>");
+            sb.Append($"<rect x='{F(x)}' y='{F(barY)}' rx='5' ry='5' width='{F(progressW)}' height='{barH}' fill='rgba(17,24,39,0.22)'/>");
+
+            if (i > 0)
+            {
+                var prev = rows[i - 1];
+                var prevY = top + ((i - 1) * rowH) + 11;
+                var prevEndX = Math.Max(1d, (w * (prev.OffsetPercent + prev.WidthPercent) / 100d));
+                var currentStartX = Math.Max(1d, x);
+                var midX = Math.Max(2d, prevEndX + 8d);
+
+                // Conector tipo "finish-to-start" con flecha
+                sb.Append(
+                    $"<polyline points='{F(prevEndX)},{F(prevY)} {F(midX)},{F(prevY)} {F(midX)},{F(barY + barH / 2d)} {F(currentStartX - 3d)},{F(barY + barH / 2d)}' " +
+                    "fill='none' stroke='#6B7280' stroke-width='1.2' marker-end='url(#arrowHead)'/>");
+            }
+        }
+
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string GetGanttHexColor(int index)
+    {
+        var colors = new[]
+        {
+            "#3B82F6", // blue
+            "#22C55E", // green
+            "#A855F7", // purple
+            "#F59E0B", // amber
+            "#06B6D4"  // cyan
+        };
         return colors[Math.Abs(index) % colors.Length];
     }
 }

@@ -1,33 +1,18 @@
 using System.Net;
 using HNControl.Web.Data;
+using HNControl.Web.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 
 namespace HNControl.Web.Services;
 
 /// <summary>
-/// Envío SMTP usando MailKit.
-/// Soporta configuraciones típicas de cPanel/Exim.
-///
-/// Config (acepta nombres nuevos y legacy):
-///   Smtp:Host
-///   Smtp:Port
-///   Smtp:User  (o Smtp:Username)
-///   Smtp:Password
-///   Smtp:FromEmail
-///   Smtp:FromName
-///   Smtp:Security = StartTls | SslOnConnect | None | Auto
-///   Smtp:UseSsl (legacy bool)
-///   Smtp:UseStartTls (legacy bool)
-///   Smtp:TimeoutMs (default 15000)
-///   Smtp:HeloDomain (recomendado p/ Exim: FQDN sin guiones raros)
-///
-/// Nota: Algunos Exim rechazan HELO si no es un FQDN válido.
-///       Por default, si el hostname local NO tiene punto, usamos el dominio de FromEmail.
+/// Envio SMTP usando MailKit.
+/// Soporta configuraciones tipicas de cPanel/Exim.
 /// </summary>
 public class SmtpEmailSender : IEmailSender
 {
@@ -61,40 +46,99 @@ public class SmtpEmailSender : IEmailSender
             .OrderByDescending(x => x.UpdatedAt)
             .FirstOrDefaultAsync();
 
-        var host = FirstNonEmpty(dbCfg?.SmtpHost, _cfg["Smtp:Host"]);
-        if (string.IsNullOrWhiteSpace(host))
-            throw new InvalidOperationException("SMTP no configurado: falta Smtp:Host");
-
-        var port = dbCfg?.SmtpPort > 0
-            ? dbCfg.SmtpPort
-            : (int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587);
-
-        // Compatibilidad: User vs Username
-        var user = FirstNonEmpty(dbCfg?.SmtpUser, _cfg["Smtp:User"], _cfg["Smtp:Username"]);
-        var pass = !string.IsNullOrWhiteSpace(dbCfg?.SmtpPasswordProtected)
-            ? _protector.Unprotect(dbCfg!.SmtpPasswordProtected)
-            : (_cfg["Smtp:Password"] ?? "");
-
-        var fromEmail = FirstNonEmpty(dbCfg?.SmtpFromEmail, _cfg["Smtp:FromEmail"]);
-        if (string.IsNullOrWhiteSpace(fromEmail))
-            throw new InvalidOperationException("SMTP no configurado: falta Smtp:FromEmail");
-
-        var fromName = FirstNonEmpty(dbCfg?.SmtpFromName, _cfg["Smtp:FromName"], "HN Control");
-
-        var timeoutMs = dbCfg?.SmtpTimeoutMs > 0
-            ? dbCfg.SmtpTimeoutMs
-            : (int.TryParse(_cfg["Smtp:TimeoutMs"], out var t) ? t : 15000);
-
-        // Nuevos vs legacy
-        var security = FirstNonEmpty(dbCfg?.SmtpSecurity, _cfg["Smtp:Security"]);
         var legacyUseSsl = bool.TryParse(_cfg["Smtp:UseSsl"], out var ussl) && ussl;
         var legacyStartTls = bool.TryParse(_cfg["Smtp:UseStartTls"], out var st) ? st : true;
 
-        var options = ParseSecurity(security, port, legacyUseSsl, legacyStartTls);
+        var appProfile = BuildAppProfile(legacyUseSsl, legacyStartTls);
+        var dbProfile = BuildDbProfile(dbCfg, legacyUseSsl, legacyStartTls, appProfile);
 
-        // HELO/EHLO: Exim puede rechazar hostnames sin FQDN
-        var heloDomain = BuildHeloDomain(fromEmail, dbCfg?.SmtpHeloDomain);
+        var preferDb = bool.TryParse(_cfg["Smtp:PreferDbConfig"], out var preferDbParsed) && preferDbParsed;
+        var profiles = new List<SmtpProfile>();
 
+        if (preferDb)
+        {
+            AddIfValid(profiles, dbProfile);
+            AddIfValid(profiles, appProfile);
+        }
+        else
+        {
+            // Por defecto priorizamos appsettings/codigo para evitar bloqueos por SMTP parcial en DB.
+            AddIfValid(profiles, appProfile);
+            AddIfValid(profiles, dbProfile);
+        }
+
+        if (profiles.Count == 0)
+            throw new InvalidOperationException("SMTP no configurado: falta Smtp:Host/Smtp:FromEmail en codigo o configuracion.");
+
+        Exception? lastError = null;
+
+        foreach (var profile in profiles)
+        {
+            var message = BuildMessage(profile.FromName, profile.FromEmail, toEmail, subject, htmlBody, attachmentBytes, attachmentName, attachmentContentType);
+
+            try
+            {
+                await SendWithRetryAsync(profile, message, toEmail);
+                return;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                _log.LogWarning(ex,
+                    "SMTP perfil fallo para {To} via {Host}:{Port} ({Options}). Intentando siguiente perfil...",
+                    toEmail, profile.Host, profile.Port, profile.Options);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "No se pudo enviar correo SMTP con los perfiles configurados (codigo y DB). Revisa conectividad de red/DNS y puerto SMTP.",
+            lastError);
+    }
+
+    private SmtpProfile BuildAppProfile(bool legacyUseSsl, bool legacyStartTls)
+    {
+        var host = FirstNonEmpty(_cfg["Smtp:Host"]);
+        var port = int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587;
+        var user = FirstNonEmpty(_cfg["Smtp:User"], _cfg["Smtp:Username"]);
+        var pass = FirstNonEmpty(_cfg["Smtp:Password"]);
+        var fromEmail = FirstNonEmpty(_cfg["Smtp:FromEmail"]);
+        var fromName = FirstNonEmpty(_cfg["Smtp:FromName"], "HN Control");
+        var timeout = Math.Clamp(int.TryParse(_cfg["Smtp:TimeoutMs"], out var t) ? t : 15000, 15000, 120000);
+        var securityRaw = FirstNonEmpty(_cfg["Smtp:Security"]);
+        var options = NormalizeSecurityForPort(ParseSecurity(securityRaw, port, legacyUseSsl, legacyStartTls), port);
+        var helo = BuildHeloDomain(fromEmail, _cfg["Smtp:HeloDomain"]);
+
+        return new SmtpProfile(host, port, options, timeout, helo, user, pass, fromEmail, fromName);
+    }
+
+    private SmtpProfile BuildDbProfile(SystemConfiguration? dbCfg, bool legacyUseSsl, bool legacyStartTls, SmtpProfile appProfile)
+    {
+        var host = FirstNonEmpty(dbCfg?.SmtpHost);
+        var port = dbCfg?.SmtpPort > 0 ? dbCfg.SmtpPort : appProfile.Port;
+        var user = FirstNonEmpty(dbCfg?.SmtpUser);
+        var pass = !string.IsNullOrWhiteSpace(dbCfg?.SmtpPasswordProtected)
+            ? _protector.Unprotect(dbCfg!.SmtpPasswordProtected)
+            : string.Empty;
+        var fromEmail = FirstNonEmpty(dbCfg?.SmtpFromEmail);
+        var fromName = FirstNonEmpty(dbCfg?.SmtpFromName, "HN Control");
+        var timeout = Math.Clamp(dbCfg?.SmtpTimeoutMs > 0 ? dbCfg.SmtpTimeoutMs : 15000, 15000, 120000);
+        var securityRaw = FirstNonEmpty(dbCfg?.SmtpSecurity);
+        var options = NormalizeSecurityForPort(ParseSecurity(securityRaw, port, legacyUseSsl, legacyStartTls), port);
+        var helo = BuildHeloDomain(FirstNonEmpty(fromEmail, appProfile.FromEmail), dbCfg?.SmtpHeloDomain);
+
+        return new SmtpProfile(host, port, options, timeout, helo, user, pass, fromEmail, fromName);
+    }
+
+    private static MimeMessage BuildMessage(
+        string fromName,
+        string fromEmail,
+        string toEmail,
+        string subject,
+        string htmlBody,
+        byte[]? attachmentBytes,
+        string? attachmentName,
+        string? attachmentContentType)
+    {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromEmail));
         message.To.Add(MailboxAddress.Parse(toEmail));
@@ -108,34 +152,62 @@ public class SmtpEmailSender : IEmailSender
                 attachmentBytes,
                 ContentType.Parse(attachmentContentType ?? "application/octet-stream"));
         }
-        message.Body = builder.ToMessageBody();
 
+        message.Body = builder.ToMessageBody();
+        return message;
+    }
+
+    private async Task SendWithRetryAsync(SmtpProfile profile, MimeMessage message, string toEmail)
+    {
+        try
+        {
+            await SendOnceAsync(profile.Host, profile.Port, profile.Options, profile.TimeoutMs, profile.HeloDomain, profile.User, profile.Pass, message);
+        }
+        catch (OperationCanceledException ex)
+        {
+            var fallbackOptions = NormalizeSecurityForPort(SecureSocketOptions.Auto, profile.Port);
+            var fallbackTimeout = Math.Max(profile.TimeoutMs, 60000);
+            try
+            {
+                await SendOnceAsync(profile.Host, profile.Port, fallbackOptions, fallbackTimeout, profile.HeloDomain, profile.User, profile.Pass, message);
+            }
+            catch (Exception retryEx)
+            {
+                _log.LogError(retryEx,
+                    "Error SMTP (retry) a {To} via {Host}:{Port} ({Options}). HELO={Helo}",
+                    toEmail, profile.Host, profile.Port, fallbackOptions, profile.HeloDomain);
+                throw new InvalidOperationException("No se pudo conectar al servidor SMTP (timeout/reintento). Revisa Host/Puerto/Seguridad.", ex);
+            }
+        }
+    }
+
+    private static async Task SendOnceAsync(
+        string host,
+        int port,
+        SecureSocketOptions options,
+        int timeoutMs,
+        string heloDomain,
+        string user,
+        string pass,
+        MimeMessage message)
+    {
         using var client = new SmtpClient();
         client.Timeout = timeoutMs;
         client.LocalDomain = heloDomain;
-
         using var cts = new CancellationTokenSource(timeoutMs);
 
         try
         {
             await client.ConnectAsync(host, port, options, cts.Token);
 
-            // Si hay user, autentica; si no, intenta sin auth (algunos SMTP internos).
             if (!string.IsNullOrWhiteSpace(user))
                 await client.AuthenticateAsync(user, pass, cts.Token);
 
             await client.SendAsync(message, cts.Token);
         }
-        catch (Exception ex)
-        {
-            _log.LogError(ex,
-                "Error SMTP a {To} via {Host}:{Port} ({Options}). HELO={Helo}",
-                toEmail, host, port, options, heloDomain);
-            throw;
-        }
         finally
         {
-            try { await client.DisconnectAsync(true); } catch { /* ignore */ }
+            try { await client.DisconnectAsync(true); } catch { }
         }
     }
 
@@ -149,12 +221,10 @@ public class SmtpEmailSender : IEmailSender
         if (!string.IsNullOrWhiteSpace(hostName) && hostName.Contains('.'))
             return SanitizeFqdn(hostName);
 
-        // Si el hostname no es FQDN, usa el dominio del remitente.
         var fromDomain = fromEmail.Split('@').LastOrDefault()?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(fromDomain))
             return "hncontrol.localdomain";
 
-        // Asegura FQDN (con punto). Si el fromDomain ya lo tiene, úsalo.
         var fqdn = fromDomain.Contains('.') ? fromDomain : $"hncontrol.{fromDomain}";
         return SanitizeFqdn(fqdn);
     }
@@ -165,7 +235,6 @@ public class SmtpEmailSender : IEmailSender
         if (string.IsNullOrWhiteSpace(value))
             return "hncontrol.localdomain";
 
-        // Exim suele ser estricto: letras, números, guion y puntos.
         var chars = value.Select(ch =>
         {
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '.')
@@ -174,8 +243,6 @@ public class SmtpEmailSender : IEmailSender
         }).ToArray();
 
         var cleaned = new string(chars);
-
-        // No permitir doble punto ni guion al inicio/fin de label.
         cleaned = string.Join('.', cleaned
             .Split('.', StringSplitOptions.RemoveEmptyEntries)
             .Select(label => label.Trim('-'))
@@ -194,7 +261,6 @@ public class SmtpEmailSender : IEmailSender
             if (!string.IsNullOrWhiteSpace(v))
                 return v.Trim();
         }
-
         return string.Empty;
     }
 
@@ -213,10 +279,8 @@ public class SmtpEmailSender : IEmailSender
             };
         }
 
-        // Legacy: UseSsl
         if (legacyUseSsl)
         {
-            // 465 suele ser SSL on connect, 587 suele ser StartTLS
             if (port == 465) return SecureSocketOptions.SslOnConnect;
             return SecureSocketOptions.StartTls;
         }
@@ -224,4 +288,42 @@ public class SmtpEmailSender : IEmailSender
         if (port == 465) return SecureSocketOptions.SslOnConnect;
         return legacyStartTls ? SecureSocketOptions.StartTlsWhenAvailable : SecureSocketOptions.Auto;
     }
+
+    private static SecureSocketOptions NormalizeSecurityForPort(SecureSocketOptions selected, int port)
+    {
+        if (port == 465 && (selected == SecureSocketOptions.StartTls || selected == SecureSocketOptions.StartTlsWhenAvailable))
+            return SecureSocketOptions.SslOnConnect;
+
+        if ((port == 587 || port == 25) && selected == SecureSocketOptions.SslOnConnect)
+            return SecureSocketOptions.StartTlsWhenAvailable;
+
+        return selected;
+    }
+
+    private static void AddIfValid(List<SmtpProfile> profiles, SmtpProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.Host) || string.IsNullOrWhiteSpace(profile.FromEmail))
+            return;
+
+        if (profiles.Any(p =>
+            string.Equals(p.Host, profile.Host, StringComparison.OrdinalIgnoreCase)
+            && p.Port == profile.Port
+            && p.Options == profile.Options
+            && string.Equals(p.FromEmail, profile.FromEmail, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        profiles.Add(profile);
+    }
+
+    private sealed record SmtpProfile(
+        string Host,
+        int Port,
+        SecureSocketOptions Options,
+        int TimeoutMs,
+        string HeloDomain,
+        string User,
+        string Pass,
+        string FromEmail,
+        string FromName);
 }
+
