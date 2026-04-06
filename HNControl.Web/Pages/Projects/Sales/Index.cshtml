@@ -182,7 +182,18 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Vendedor</label>
-                            <select class="form-select" asp-for="SellerProfileId" asp-items="Model.SellerItems"></select>
+                            @if (Model.CanViewAll)
+                            {
+                                <select class="form-select" asp-for="SellerProfileId" asp-items="Model.SellerItems"></select>
+                            }
+                            else
+                            {
+                                <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.CurrentSellerName) ? "Mi perfil de vendedor" : Model.CurrentSellerName)" readonly />
+                                @if (Model.CurrentSellerProfileId.HasValue)
+                                {
+                                    <input type="hidden" name="SellerProfileId" value="@Model.CurrentSellerProfileId.Value" />
+                                }
+                            }
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">% comisión</label>

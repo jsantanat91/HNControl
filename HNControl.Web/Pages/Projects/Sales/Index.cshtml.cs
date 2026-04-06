@@ -70,6 +70,7 @@ public class IndexModel : PageModel
     public bool CanManage { get; set; }
     public bool CanAssign { get; set; }
     public Guid? CurrentSellerProfileId { get; set; }
+    public string CurrentSellerName { get; set; } = "";
 
     public async Task OnGetAsync(Guid? quoteId = null)
     {
@@ -140,6 +141,28 @@ public class IndexModel : PageModel
             return RedirectToPage();
         }
 
+        var currentUserId = _userMgr.GetUserId(User) ?? string.Empty;
+        Guid? resolvedSellerProfileId = SellerProfileId;
+        if (!CanViewAll)
+        {
+            resolvedSellerProfileId = await _db.SalesSellerProfiles
+                .Where(x => x.IsActive && x.EmployeeUserId == currentUserId)
+                .Select(x => (Guid?)x.Id)
+                .FirstOrDefaultAsync();
+            if (!resolvedSellerProfileId.HasValue)
+            {
+                Flash = "Tu usuario no tiene perfil de vendedor activo.";
+                FlashType = "warning";
+                return RedirectToPage();
+            }
+        }
+        else if (!resolvedSellerProfileId.HasValue || resolvedSellerProfileId == Guid.Empty)
+        {
+            Flash = "Selecciona vendedor para crear la oportunidad.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var existing = await _db.SalesOpportunities.FirstOrDefaultAsync(x => x.QuoteRequestId == QuoteId);
         if (existing != null)
         {
@@ -154,7 +177,7 @@ public class IndexModel : PageModel
         var opp = new SalesOpportunity
         {
             QuoteRequestId = QuoteId,
-            SellerProfileId = SellerProfileId,
+            SellerProfileId = resolvedSellerProfileId,
             ClientId = quote.ClientId,
             Status = SalesOpportunityStatus.Prospect,
             WorkflowStage = SalesWorkflowStage.Lead,
@@ -164,7 +187,7 @@ public class IndexModel : PageModel
             CommissionAmount = amount,
             Notes = (OpportunityNotes ?? "").Trim(),
             OwnerUserId = await _db.SalesSellerProfiles
-                .Where(x => x.Id == SellerProfileId)
+                .Where(x => x.Id == resolvedSellerProfileId)
                 .Select(x => x.EmployeeUserId)
                 .FirstOrDefaultAsync(),
             CreatedAt = DateTime.UtcNow,
@@ -316,6 +339,14 @@ public class IndexModel : PageModel
                 .Where(x => x.IsActive && x.EmployeeUserId == userId)
                 .Select(x => (Guid?)x.Id)
                 .FirstOrDefaultAsync();
+            if (CurrentSellerProfileId.HasValue)
+            {
+                CurrentSellerName = await _db.SalesSellerProfiles
+                    .AsNoTracking()
+                    .Where(x => x.Id == CurrentSellerProfileId.Value)
+                    .Select(x => x.Employee != null ? x.Employee.FullName : x.EmployeeUserId)
+                    .FirstOrDefaultAsync() ?? "";
+            }
         }
         SellerItems = new SelectList(Sellers, "Id", "EmployeeName");
 
@@ -372,7 +403,7 @@ public class IndexModel : PageModel
 
     private async Task EnsurePermissionsAsync()
     {
-        CanViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        CanViewAll = AppRoles.IsGlobalAdmin(User);
         var canViewOwn = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!canViewOwn)
         {

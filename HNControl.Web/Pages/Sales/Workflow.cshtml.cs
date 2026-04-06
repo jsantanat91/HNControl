@@ -159,52 +159,17 @@ public class WorkflowModel : PageModel
 
     public async Task<IActionResult> OnPostAssignAsync()
     {
-        if (!await EnsurePermissionsAsync()) return Forbid();
-        if (!CanAssign)
-        {
-            Flash = "No tienes permiso para asignar.";
-            FlashType = "warning";
-            return RedirectToPage();
-        }
-
-        var userId = _userMgr.GetUserId(User) ?? "";
-        var opp = await ScopedOppQuery(userId, CanViewAll)
-            .FirstOrDefaultAsync(x => x.Id == OpportunityId);
-        if (opp == null) return NotFound();
-
-        var beforeOwner = opp.OwnerUserId;
-        var beforeSeller = opp.SellerProfileId;
-
-        if (!string.IsNullOrWhiteSpace(AssignOwnerUserId))
-            opp.OwnerUserId = AssignOwnerUserId.Trim();
-        if (AssignSellerProfileId.HasValue)
-            opp.SellerProfileId = AssignSellerProfileId;
-
-        opp.UpdatedAt = DateTime.UtcNow;
-
-        _db.SalesAuditLogs.Add(new SalesAuditLog
-        {
-            SalesOpportunityId = opp.Id,
-            EventType = "workflow.assign",
-            UserId = userId,
-            UserName = User.Identity?.Name ?? "-",
-            Details = $"Owner: {beforeOwner ?? "-"} -> {opp.OwnerUserId ?? "-"}; Seller: {(beforeSeller?.ToString() ?? "-")} -> {(opp.SellerProfileId?.ToString() ?? "-")}",
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await _db.SaveChangesAsync();
-
-        Flash = "Asignacion actualizada.";
-        FlashType = "success";
+        Flash = "La asignación de owner/vendedor se define al crear la oportunidad.";
+        FlashType = "info";
         return RedirectToPage();
     }
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        var hasViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        var hasViewAll = AppRoles.IsGlobalAdmin(User);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         CanMove = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
-        CanAssign = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
+        CanAssign = false;
 
         CanViewAll = hasViewAll;
         return hasViewOwn;

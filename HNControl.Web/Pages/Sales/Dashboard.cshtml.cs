@@ -52,7 +52,7 @@ public class DashboardModel : PageModel
         var userId = _userMgr.GetUserId(User);
         if (string.IsNullOrWhiteSpace(userId)) return Forbid();
 
-        var hasViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        var hasViewAll = AppRoles.IsGlobalAdmin(User);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!hasViewOwn) return Forbid();
 

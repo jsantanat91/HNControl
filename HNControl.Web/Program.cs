@@ -324,11 +324,32 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
             await roleMgr.CreateAsync(new IdentityRole(r));
     }
 
-    // Admin seed
-    var adminEmail = config["SeedAdmin:Email"] ?? "soporte@hubnet-solutions.net";
+    // Admin seed (forzamos correo canonical para evitar recrear legacy admin@hn.local en despliegues).
+    var configuredAdminEmail = (config["SeedAdmin:Email"] ?? "").Trim();
+    var adminEmail = string.IsNullOrWhiteSpace(configuredAdminEmail)
+        || configuredAdminEmail.Equals("admin@hn.local", StringComparison.OrdinalIgnoreCase)
+            ? "soporte@hubnet-solutions.net"
+            : configuredAdminEmail;
     var adminPass = config["SeedAdmin:Password"] ?? "Admin123*Cambialo";
 
     var adminUser = await userMgr.FindByEmailAsync(adminEmail);
+    var legacyAdminUser = await userMgr.FindByEmailAsync("admin@hn.local");
+    if (adminUser == null
+        && legacyAdminUser != null
+        && !adminEmail.Equals("admin@hn.local", StringComparison.OrdinalIgnoreCase))
+    {
+        legacyAdminUser.UserName = adminEmail;
+        legacyAdminUser.Email = adminEmail;
+        legacyAdminUser.EmailConfirmed = true;
+        var migrated = await userMgr.UpdateAsync(legacyAdminUser);
+        if (!migrated.Succeeded)
+        {
+            var msg = string.Join("; ", migrated.Errors.Select(e => e.Description));
+            throw new Exception("No se pudo migrar admin legacy a correo soporte: " + msg);
+        }
+        adminUser = legacyAdminUser;
+    }
+
     if (adminUser == null)
     {
         adminUser = new ApplicationUser
@@ -343,6 +364,19 @@ static async Task SeedRolesAndAdminAsync(IServiceProvider services, IConfigurati
         {
             var msg = string.Join("; ", created.Errors.Select(e => e.Description));
             throw new Exception("No se pudo crear admin: " + msg);
+        }
+    }
+    else if (!string.Equals(adminUser.Email, adminEmail, StringComparison.OrdinalIgnoreCase)
+             || !string.Equals(adminUser.UserName, adminEmail, StringComparison.OrdinalIgnoreCase))
+    {
+        adminUser.Email = adminEmail;
+        adminUser.UserName = adminEmail;
+        adminUser.EmailConfirmed = true;
+        var normalized = await userMgr.UpdateAsync(adminUser);
+        if (!normalized.Succeeded)
+        {
+            var msg = string.Join("; ", normalized.Errors.Select(e => e.Description));
+            throw new Exception("No se pudo normalizar admin seed: " + msg);
         }
     }
 
