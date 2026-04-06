@@ -43,6 +43,7 @@ public class DetailsModel : PageModel
     public int GanttElapsedDays { get; set; }
     public double GanttProgressPercent { get; set; }
     public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedDays, int StartDay, int EndDay, double WidthPercent, double OffsetPercent);
+    public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Days, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
     public List<ActivityRow> Activities { get; set; } = new();
 
     [BindProperty] public ActivityInput InputActivity { get; set; } = new();
@@ -250,6 +251,9 @@ public class DetailsModel : PageModel
         var totalHours = Math.Max(1, (int)Math.Ceiling((p.EstimatedEndDate - p.StartDate).TotalHours));
         var elapsedHours = Math.Max(0, Math.Min(totalHours, (int)Math.Ceiling((DateTime.UtcNow - p.StartDate).TotalHours)));
         var percent = Math.Round((elapsedHours * 100d) / totalHours, 1);
+        var totalPlanDays = Math.Max(1, projectActivities.Sum(a => Math.Max(1, a.PlannedDays)));
+        var planRows = BuildPdfGanttRows(p.StartDate.ToLocalTime().Date, projectActivities, totalPlanDays, DateTime.UtcNow.ToLocalTime());
+        const float timelineWidth = 300f;
 
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var footer = (_cfg["Branding:ReportFooter"] ?? "HN Control").Trim();
@@ -328,31 +332,60 @@ public class DetailsModel : PageModel
                     col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
                         cc.Item().Text("Plan de actividades").SemiBold();
-                        cc.Item().PaddingTop(6);
-                        if (projectActivities.Count == 0)
+                        cc.Item().PaddingTop(8);
+                        if (planRows.Count == 0)
                         {
                             cc.Item().Text("Sin actividades capturadas.").FontColor(Colors.Grey.Darken2);
                         }
                         else
                         {
-                            var totalPlanDays = Math.Max(1, projectActivities.Sum(a => Math.Max(1, a.PlannedDays)));
-                            var current = 0;
-                            foreach (var a in projectActivities)
+                            cc.Item().Row(header =>
                             {
-                                var days = Math.Max(1, a.PlannedDays);
-                                var offset = Math.Round((current * 100d) / totalPlanDays, 1);
-                                var width = Math.Round((days * 100d) / totalPlanDays, 1);
-                                var start = current + 1;
-                                var end = current + days;
-                                current += days;
+                                header.ConstantItem(84).Text("Inicio").SemiBold().FontSize(9);
+                                header.ConstantItem(84).Text("Fin").SemiBold().FontSize(9);
+                                header.ConstantItem(38).Text("Dias").SemiBold().FontSize(9);
+                                header.ConstantItem(54).AlignCenter().Text("Avance").SemiBold().FontSize(9);
+                                header.ConstantItem(240).Text("Tarea").SemiBold().FontSize(9);
+                                header.ConstantItem(timelineWidth).Text($"Timeline ({totalPlanDays} dias)").SemiBold().FontSize(9);
+                            });
 
-                                cc.Item().PaddingBottom(4).Column(row =>
+                            cc.Item().PaddingTop(3).LineHorizontal(0.6f).LineColor(Colors.Grey.Lighten2);
+                            cc.Item().PaddingTop(3).Row(axis =>
+                            {
+                                axis.ConstantItem(84 + 84 + 38 + 54 + 240).Text("");
+                                axis.ConstantItem(timelineWidth).Text($"D1  ...  D{Math.Max(1, totalPlanDays / 2)}  ...  D{totalPlanDays}")
+                                    .FontSize(8).FontColor(Colors.Grey.Darken1);
+                            });
+
+                            foreach (var row in planRows)
+                            {
+                                cc.Item().PaddingTop(2).Row(r =>
                                 {
-                                    var blocks = Math.Max(1, (int)Math.Round((days * 30d) / totalPlanDays));
-                                    var timeline = new string('·', Math.Max(0, start - 1)) + new string('█', blocks);
-                                    row.Item().Text($"{a.AssignedToName}: {a.Description} ({days} dias)").FontColor(Colors.Grey.Darken2);
-                                    row.Item().Text(timeline).FontSize(9).FontColor(Colors.Blue.Medium);
-                                    row.Item().Text($"Dias {start}-{end}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                                    r.ConstantItem(84).Text(row.StartDate.ToString("dd/MM/yyyy")).FontSize(8.5f);
+                                    r.ConstantItem(84).Text(row.EndDate.ToString("dd/MM/yyyy")).FontSize(8.5f);
+                                    r.ConstantItem(38).Text(row.Days.ToString()).FontSize(8.5f);
+                                    r.ConstantItem(54).AlignCenter().Text($"{Math.Round(row.ProgressPercent)}%").FontSize(8.5f);
+                                    r.ConstantItem(240).Column(task =>
+                                    {
+                                        task.Item().Text(row.Task).FontSize(8.5f);
+                                        task.Item().Text(row.AssignedTo).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                                    });
+
+                                    r.ConstantItem(timelineWidth).Height(16).Border(0.6f).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Layers(l =>
+                                    {
+                                        l.Layer().Background(Colors.Grey.Lighten5);
+                                        l.PrimaryLayer().PaddingLeft((float)(timelineWidth * row.OffsetPercent / 100d)).Element(bar =>
+                                        {
+                                            bar.Width((float)Math.Max(2d, timelineWidth * row.WidthPercent / 100d))
+                                                .Height(16)
+                                                .Background(GetGanttColor(row.ColorIndex))
+                                                .AlignMiddle()
+                                                .AlignCenter()
+                                                .Text($"{Math.Round(row.ProgressPercent)}%")
+                                                .FontSize(7)
+                                                .FontColor(Colors.White);
+                                        });
+                                    });
                                 });
                             }
                         }
@@ -539,5 +572,67 @@ public class DetailsModel : PageModel
                 Math.Round(offset, 2)
             ));
         }
+    }
+
+    private static List<PdfGanttRow> BuildPdfGanttRows(DateTime planStartLocal, List<ProjectActivity> activities, int totalPlanDays, DateTime nowLocal)
+    {
+        var rows = new List<PdfGanttRow>();
+        if (activities.Count == 0)
+            return rows;
+
+        var cursor = 0;
+        var colorIndex = 0;
+
+        foreach (var a in activities)
+        {
+            var days = Math.Max(1, a.PlannedDays);
+            var startDay = cursor + 1;
+            var endDay = cursor + days;
+            var startDate = planStartLocal.AddDays(startDay - 1);
+            var endDate = planStartLocal.AddDays(endDay - 1);
+            var offset = (cursor * 100d) / totalPlanDays;
+            var width = (days * 100d) / totalPlanDays;
+            cursor += days;
+
+            var progress = CalcProgress(nowLocal.Date, startDate, endDate);
+            rows.Add(new PdfGanttRow(
+                string.IsNullOrWhiteSpace(a.Description) ? "-" : a.Description.Trim(),
+                string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName.Trim(),
+                startDate,
+                endDate,
+                days,
+                progress,
+                Math.Round(offset, 2),
+                Math.Round(width, 2),
+                colorIndex++));
+        }
+
+        return rows;
+    }
+
+    private static double CalcProgress(DateTime nowDate, DateTime startDate, DateTime endDate)
+    {
+        if (nowDate < startDate.Date)
+            return 0;
+        if (nowDate >= endDate.Date)
+            return 100;
+
+        var total = Math.Max(1, (endDate.Date - startDate.Date).Days + 1);
+        var elapsed = Math.Max(0, (nowDate - startDate.Date).Days + 1);
+        return Math.Round(Math.Clamp((elapsed * 100d) / total, 0, 100), 1);
+    }
+
+    private static string GetGanttColor(int index)
+    {
+        var colors = new[]
+        {
+            Colors.Blue.Medium,
+            Colors.Green.Medium,
+            Colors.Purple.Medium,
+            Colors.Orange.Medium,
+            Colors.Cyan.Darken2
+        };
+
+        return colors[Math.Abs(index) % colors.Length];
     }
 }

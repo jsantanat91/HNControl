@@ -61,7 +61,7 @@ public class SmtpEmailSender : IEmailSender
             .OrderByDescending(x => x.UpdatedAt)
             .FirstOrDefaultAsync();
 
-        var host = (dbCfg?.SmtpHost ?? _cfg["Smtp:Host"] ?? "").Trim();
+        var host = FirstNonEmpty(dbCfg?.SmtpHost, _cfg["Smtp:Host"]);
         if (string.IsNullOrWhiteSpace(host))
             throw new InvalidOperationException("SMTP no configurado: falta Smtp:Host");
 
@@ -70,23 +70,23 @@ public class SmtpEmailSender : IEmailSender
             : (int.TryParse(_cfg["Smtp:Port"], out var p) ? p : 587);
 
         // Compatibilidad: User vs Username
-        var user = (dbCfg?.SmtpUser ?? _cfg["Smtp:User"] ?? _cfg["Smtp:Username"] ?? "").Trim();
+        var user = FirstNonEmpty(dbCfg?.SmtpUser, _cfg["Smtp:User"], _cfg["Smtp:Username"]);
         var pass = !string.IsNullOrWhiteSpace(dbCfg?.SmtpPasswordProtected)
             ? _protector.Unprotect(dbCfg!.SmtpPasswordProtected)
             : (_cfg["Smtp:Password"] ?? "");
 
-        var fromEmail = (dbCfg?.SmtpFromEmail ?? _cfg["Smtp:FromEmail"] ?? "").Trim();
+        var fromEmail = FirstNonEmpty(dbCfg?.SmtpFromEmail, _cfg["Smtp:FromEmail"]);
         if (string.IsNullOrWhiteSpace(fromEmail))
             throw new InvalidOperationException("SMTP no configurado: falta Smtp:FromEmail");
 
-        var fromName = (dbCfg?.SmtpFromName ?? _cfg["Smtp:FromName"] ?? "HN Control").Trim();
+        var fromName = FirstNonEmpty(dbCfg?.SmtpFromName, _cfg["Smtp:FromName"], "HN Control");
 
         var timeoutMs = dbCfg?.SmtpTimeoutMs > 0
             ? dbCfg.SmtpTimeoutMs
             : (int.TryParse(_cfg["Smtp:TimeoutMs"], out var t) ? t : 15000);
 
         // Nuevos vs legacy
-        var security = (dbCfg?.SmtpSecurity ?? _cfg["Smtp:Security"] ?? "").Trim();
+        var security = FirstNonEmpty(dbCfg?.SmtpSecurity, _cfg["Smtp:Security"]);
         var legacyUseSsl = bool.TryParse(_cfg["Smtp:UseSsl"], out var ussl) && ussl;
         var legacyStartTls = bool.TryParse(_cfg["Smtp:UseStartTls"], out var st) ? st : true;
 
@@ -185,6 +185,17 @@ public class SmtpEmailSender : IEmailSender
             cleaned = $"hncontrol.{cleaned}";
 
         return cleaned;
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (var v in values)
+        {
+            if (!string.IsNullOrWhiteSpace(v))
+                return v.Trim();
+        }
+
+        return string.Empty;
     }
 
     private static SecureSocketOptions ParseSecurity(string security, int port, bool legacyUseSsl, bool legacyStartTls)
