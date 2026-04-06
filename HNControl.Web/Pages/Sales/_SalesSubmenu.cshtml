@@ -19,24 +19,24 @@
         @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
         {
             <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
+            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
+            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizacion","info")">Cotizacion</a>
             <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
-            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion ventas</a>
-            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
-            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizaciones","info")">Cotizaciones</a>
+            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion</a>
+            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
             @if (canCatalog)
             {
-                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catálogo","dark")">Catálogo</a>
+                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
             }
-            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
         }
         else
         {
-            <a href="/Ventas/Cotizaciones" class="@Btn("/ventas/cotizaciones","Cotizaciones","info")">Cotizaciones</a>
+            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
+            <a href="/Ventas/Cotizaciones" class="@Btn("/ventas/cotizaciones","Cotizacion","info")">Cotizacion</a>
             @if (canCatalog)
             {
-                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catálogo","dark")">Catálogo</a>
+                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
             }
-            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospectos","warning")">Prospectos</a>
         }
     </div>
 </div>

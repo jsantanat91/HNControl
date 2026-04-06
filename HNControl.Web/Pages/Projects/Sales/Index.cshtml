@@ -1,83 +1,218 @@
-﻿@page
+@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Sales.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Ventas";
+    ViewData["Title"] = "Ventas · Gestión";
 }
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3 flex-wrap">
     <div>
-        <h1 class="h4 m-0">Ventas</h1>
-        <div class="text-muted small">Flujo comercial: vendedor -> cotización -> cierre -> contrato -> comision y facturación.</div>
+        <h1 class="h4 m-0">Ventas · Gestión</h1>
+        <div class="text-muted small">Alta de vendedor, creación de oportunidades y seguimiento comercial.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        @if (Model.CanManage)
+        {
+            <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAltaVendedor">+ Alta de vendedor</button>
+            <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalCrearOportunidad">+ Crear oportunidad</button>
+        }
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalVendedoresActivos">Vendedores activos</button>
     </div>
 </div>
+
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
 }
 
-<div class="row g-3">
-    <div class="col-12 col-xl-5">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Alta vendedor</div>
-            <form method="post" asp-page-handler="AddSeller">
-                <div class="card-body row g-2">
-                    <div class="col-12">
-                        <label class="form-label">Empleado</label>
-                        <select class="form-select" asp-for="EmployeeUserId" asp-items="Model.EmployeeItems"></select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">% comision por defecto</label>
-                        <input class="form-control" asp-for="DefaultCommissionPercent" type="number" min="0" max="1" step="0.01" />
-                        <div class="text-muted small">0.10 = 10%</div>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-primary" type="submit">Guardar vendedor</button>
-                </div>
-            </form>
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft border-0 h-100 bg-primary-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Vendedores activos</div>
+                <div class="fs-3 fw-bold">@Model.Sellers.Count</div>
+            </div>
         </div>
     </div>
-
-    <div class="col-12 col-xl-7">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Crear oportunidad (desde cotización)</div>
-            <form method="post" asp-page-handler="CreateOpportunity">
-                <div class="card-body row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Cotización</label>
-                        <select class="form-select" asp-for="QuoteId" asp-items="Model.QuoteItems"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Vendedor</label>
-                        <select class="form-select" asp-for="SellerProfileId" asp-items="Model.SellerItems"></select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">% comision</label>
-                        <input class="form-control" asp-for="CommissionPercent" type="number" min="0" max="1" step="0.01" />
-                    </div>
-                    <div class="col-md-8">
-                        <label class="form-label">Notas</label>
-                        <input class="form-control" asp-for="OpportunityNotes" />
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-outline-primary" type="submit">Crear oportunidad</button>
-                </div>
-            </form>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft border-0 h-100 bg-info-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Oportunidades visibles</div>
+                <div class="fs-3 fw-bold">@Model.Opportunities.Count</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card shadow-soft border-0 h-100 bg-success-subtle">
+            <div class="card-body">
+                <div class="text-muted small">Alcance</div>
+                <div class="fw-semibold">@(Model.CanViewAll ? "Global" : "Solo lo mio")</div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mt-1">
-    <div class="col-12 col-xl-4">
-        <div class="card shadow-soft hn-hover h-100">
-            <div class="card-header fw-semibold">Vendedores activos</div>
-            <div class="card-body">
+<div class="card shadow-soft border-0 mb-3">
+    <div class="card-header fw-semibold">Vendedores activos</div>
+    <div class="card-body">
+        @if (!Model.Sellers.Any())
+        {
+            <div class="text-muted small">Sin vendedores activos.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var s in Model.Sellers)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="border rounded-3 p-3 h-100">
+                            <div class="fw-semibold">@s.EmployeeName</div>
+                            <div class="small text-muted">@s.Email</div>
+                            <span class="badge text-bg-info mt-2">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-soft border-0">
+    <div class="card-header fw-semibold">Oportunidades</div>
+    <div class="card-body">
+        @if (!Model.Opportunities.Any())
+        {
+            <div class="text-muted">Sin oportunidades visibles.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var o in Model.Opportunities)
+                {
+                    var badge = o.Status == nameof(SalesOpportunityStatus.CommissionApplied) ? "text-bg-success"
+                        : o.Status == nameof(SalesOpportunityStatus.ContractSigned) ? "text-bg-primary"
+                        : o.Status == nameof(SalesOpportunityStatus.ClosedWon) ? "text-bg-warning"
+                        : "text-bg-secondary";
+                    <div class="col-12 col-lg-6">
+                        <article class="border rounded-3 p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div>
+                                    <div class="fw-semibold">@o.Folio</div>
+                                    <div class="small text-muted">@o.Customer</div>
+                                </div>
+                                <span class="badge @badge">@o.Status</span>
+                            </div>
+                            <div class="small mt-2">Vendedor: <b>@o.Seller</b></div>
+                            <div class="small">Total: <b>@o.Total.ToString("C")</b></div>
+                            <div class="small">Comisión: <b>@o.CommissionAmount.ToString("C")</b> (@((o.CommissionPercent * 100m).ToString("0.##"))%)</div>
+                            @if (o.ClientTemporaryLead)
+                            {
+                                <span class="badge text-bg-warning mt-2">Lead temporal</span>
+                            }
+                            <div class="d-flex gap-2 flex-wrap mt-3">
+                                @if (Model.CanManage && o.Status == nameof(SalesOpportunityStatus.Prospect))
+                                {
+                                    <form method="post" asp-page-handler="CloseWon">
+                                        <input type="hidden" name="id" value="@o.Id" />
+                                        <button class="btn btn-sm btn-outline-warning" type="submit">Cerrar venta</button>
+                                    </form>
+                                }
+                                @if (Model.CanAssign && (o.Status == nameof(SalesOpportunityStatus.ClosedWon) || o.Status == nameof(SalesOpportunityStatus.ContractSigned)))
+                                {
+                                    <form method="post" asp-page-handler="MarkContractSigned">
+                                        <input type="hidden" name="id" value="@o.Id" />
+                                        <button class="btn btn-sm btn-outline-success" type="submit">Contrato firmado + Comisión</button>
+                                    </form>
+                                }
+                                @if (o.Status == nameof(SalesOpportunityStatus.ContractSigned) || o.Status == nameof(SalesOpportunityStatus.CommissionApplied))
+                                {
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Billing/Index" asp-route-opportunityId="@o.Id">Facturación</a>
+                                }
+                            </div>
+                        </article>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.CanManage)
+{
+    <div class="modal fade" id="modalAltaVendedor" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alta de vendedor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form method="post" asp-page-handler="AddSeller">
+                    <div class="modal-body row g-2">
+                        <div class="col-12">
+                            <label class="form-label">Empleado</label>
+                            <select class="form-select" asp-for="EmployeeUserId" asp-items="Model.EmployeeItems"></select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">% comisión por defecto</label>
+                            <input class="form-control" asp-for="DefaultCommissionPercent" type="number" min="0" max="1" step="0.01" />
+                            <div class="text-muted small">0.10 = 10%</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" type="submit">Guardar vendedor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCrearOportunidad" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear oportunidad (desde cotización)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form method="post" asp-page-handler="CreateOpportunity">
+                    <div class="modal-body row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Cotización</label>
+                            <select class="form-select" asp-for="QuoteId" asp-items="Model.QuoteItems"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vendedor</label>
+                            <select class="form-select" asp-for="SellerProfileId" asp-items="Model.SellerItems"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">% comisión</label>
+                            <input class="form-control" asp-for="CommissionPercent" type="number" min="0" max="1" step="0.01" />
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Notas</label>
+                            <input class="form-control" asp-for="OpportunityNotes" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-primary" type="submit">Crear oportunidad</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="modal fade" id="modalVendedoresActivos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Vendedores activos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
                 @if (!Model.Sellers.Any())
                 {
-                    <div class="text-muted small">Sin vendedores.</div>
+                    <div class="text-muted small">Sin vendedores activos.</div>
                 }
                 else
                 {
@@ -95,81 +230,4 @@
             </div>
         </div>
     </div>
-
-    <div class="col-12 col-xl-8">
-        <div class="card shadow-soft hn-hover h-100">
-            <div class="card-header fw-semibold">Oportunidades</div>
-            <div class="card-body">
-                @if (!Model.Opportunities.Any())
-                {
-                    <div class="text-muted">Sin oportunidades.</div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Folio</th>
-                                    <th>Cliente</th>
-                                    <th>Vendedor</th>
-                                    <th>Estatus</th>
-                                    <th>Total</th>
-                                    <th>Comisión</th>
-                                    <th class="text-end">Accion</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var o in Model.Opportunities)
-                                {
-                                    var badge = o.Status == nameof(SalesOpportunityStatus.CommissionApplied) ? "text-bg-success"
-                                        : o.Status == nameof(SalesOpportunityStatus.ContractSigned) ? "text-bg-primary"
-                                        : o.Status == nameof(SalesOpportunityStatus.ClosedWon) ? "text-bg-warning"
-                                        : "text-bg-secondary";
-                                    <tr>
-                                        <td>@o.Folio</td>
-                                        <td>
-                                            @o.Customer
-                                            @if (o.ClientTemporaryLead)
-                                            {
-                                                <span class="badge text-bg-warning ms-1">Lead temporal</span>
-                                            }
-                                        </td>
-                                        <td>@o.Seller</td>
-                                        <td><span class="badge @badge">@o.Status</span></td>
-                                        <td>@o.Total.ToString("C")</td>
-                                        <td>@o.CommissionAmount.ToString("C") (@((o.CommissionPercent * 100m).ToString("0.##"))%)</td>
-                                        <td class="text-end">
-                                            <div class="d-flex gap-2 justify-content-end">
-                                                @if (o.Status == nameof(SalesOpportunityStatus.Prospect))
-                                                {
-                                                    <form method="post" asp-page-handler="CloseWon">
-                                                        <input type="hidden" name="id" value="@o.Id" />
-                                                        <button class="btn btn-sm btn-outline-warning" type="submit">Cerrar venta</button>
-                                                    </form>
-                                                }
-                                                @if (o.Status == nameof(SalesOpportunityStatus.ClosedWon) || o.Status == nameof(SalesOpportunityStatus.ContractSigned))
-                                                {
-                                                    <form method="post" asp-page-handler="MarkContractSigned">
-                                                        <input type="hidden" name="id" value="@o.Id" />
-                                                        <button class="btn btn-sm btn-outline-success" type="submit">Contrato firmado + Comisión</button>
-                                                    </form>
-                                                }
-                                                @if (o.Status == nameof(SalesOpportunityStatus.ContractSigned) || o.Status == nameof(SalesOpportunityStatus.CommissionApplied))
-                                                {
-                                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Billing/Index" asp-route-opportunityId="@o.Id">Facturación</a>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
 </div>
-
-

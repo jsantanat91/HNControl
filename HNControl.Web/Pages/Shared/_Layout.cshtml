@@ -167,16 +167,16 @@
                         </summary>
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
+                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizacion</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
-                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaciones</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                 || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                             {
-                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catalogo</a>
                             }
-                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion">
@@ -232,13 +232,13 @@
                                 <span class="hn-side-text">Ventas</span>
                             </summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizaciones</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizacion</a>
                                 @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                     || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catalogo</a>
                                 }
-                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                             </div>
                         </details>
                     }
@@ -471,16 +471,16 @@
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
+                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizacion</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
-                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaciones</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                 || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                             {
-                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catalogo</a>
                             }
-                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
@@ -507,13 +507,13 @@
                         <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizaciones</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                                <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizacion</a>
                                 @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                     || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
+                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catalogo</a>
                                 }
-                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospectos</a>
                             </div>
                         </details>
                     }

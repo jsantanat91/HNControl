@@ -13,6 +13,15 @@ namespace HNControl.Web.Pages.Sales;
 [Authorize(Policy = "EmployeeOnly")]
 public class WorkflowModel : PageModel
 {
+    private static readonly SalesWorkflowStage[] WorkflowStages =
+    [
+        SalesWorkflowStage.Lead,
+        SalesWorkflowStage.Quotation,
+        SalesWorkflowStage.Closing,
+        SalesWorkflowStage.ClosedWon,
+        SalesWorkflowStage.ClosedLost
+    ];
+
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly IActionAccessService _actions;
@@ -91,6 +100,13 @@ public class WorkflowModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == OpportunityId);
         if (opp == null) return NotFound();
 
+        if (!WorkflowStages.Contains(NewStage))
+        {
+            Flash = "Etapa no valida para el workflow comercial.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var old = opp.WorkflowStage;
         opp.WorkflowStage = NewStage;
         opp.StageChangedAt = DateTime.UtcNow;
@@ -117,7 +133,10 @@ public class WorkflowModel : PageModel
                 opp.QuoteRequest.AcceptedByUserId = User.Identity?.Name;
             }
         }
-        if (NewStage == SalesWorkflowStage.ClosedLost) opp.Status = SalesOpportunityStatus.ClosedLost;
+        if (NewStage == SalesWorkflowStage.ClosedLost)
+            opp.Status = SalesOpportunityStatus.ClosedLost;
+        if (NewStage == SalesWorkflowStage.Lead || NewStage == SalesWorkflowStage.Quotation || NewStage == SalesWorkflowStage.Closing)
+            opp.Status = SalesOpportunityStatus.Prospect;
 
         _db.SalesAuditLogs.Add(new SalesAuditLog
         {
@@ -201,11 +220,11 @@ public class WorkflowModel : PageModel
 
         var rows = await query.ToListAsync();
 
-        StageItems = new SelectList(Enum.GetValues<SalesWorkflowStage>()
+        StageItems = new SelectList(WorkflowStages
             .Select(x => new { Value = x, Label = StageLabel(x) }), "Value", "Label");
         StageFilterItems = new SelectList(
             new[] { new { Value = "all", Label = "Todas las etapas" } }
-                .Concat(Enum.GetValues<SalesWorkflowStage>()
+                .Concat(WorkflowStages
                     .Select(x => new { Value = x.ToString(), Label = StageLabel(x) })),
             "Value",
             "Label",
@@ -248,7 +267,7 @@ public class WorkflowModel : PageModel
                 x.OwnerUserId,
                 !string.IsNullOrWhiteSpace(x.OwnerUserId) && byUser.TryGetValue(x.OwnerUserId, out var ownerName) ? ownerName : "Sin owner",
                 x.QuoteRequest?.EstimatedTotal ?? x.QuoteRequest?.SubtotalAuto ?? 0m,
-                x.WorkflowStage,
+                NormalizeStage(x.WorkflowStage),
                 x.UpdatedAt,
                 x.StageDueAt,
                 overdue,
@@ -274,9 +293,7 @@ public class WorkflowModel : PageModel
         OverdueDeals = data.Count(d => d.IsOverdue);
         DueSoonDeals = data.Count(d => d.IsSoon || d.IsToday);
         WonDeals = data.Count(d => d.Stage == SalesWorkflowStage.ClosedWon);
-
-        var stages = Enum.GetValues<SalesWorkflowStage>();
-        Board = stages.ToDictionary(s => s, s => data.Where(d => d.Stage == s).ToList());
+        Board = WorkflowStages.ToDictionary(s => s, s => data.Where(d => d.Stage == s).ToList());
     }
 
     private IQueryable<SalesOpportunity> ScopedOppQuery(string userId, bool viewAll)
@@ -309,10 +326,8 @@ public class WorkflowModel : PageModel
         SalesWorkflowStage.Lead => 2,
         SalesWorkflowStage.Quotation => 3,
         SalesWorkflowStage.Closing => 4,
-        SalesWorkflowStage.Contract => 3,
-        SalesWorkflowStage.Signature => 2,
-        SalesWorkflowStage.Billing => 2,
-        SalesWorkflowStage.Commission => 2,
+        SalesWorkflowStage.ClosedWon => 0,
+        SalesWorkflowStage.ClosedLost => 0,
         _ => 0
     };
 
@@ -321,12 +336,17 @@ public class WorkflowModel : PageModel
         SalesWorkflowStage.Lead => "Lead",
         SalesWorkflowStage.Quotation => "Cotizacion",
         SalesWorkflowStage.Closing => "Cierre",
-        SalesWorkflowStage.Contract => "Contrato",
-        SalesWorkflowStage.Signature => "Firma",
-        SalesWorkflowStage.Billing => "Facturacion",
-        SalesWorkflowStage.Commission => "Comision",
         SalesWorkflowStage.ClosedWon => "Ganado",
         SalesWorkflowStage.ClosedLost => "Perdido",
         _ => stage.ToString()
+    };
+
+    private static SalesWorkflowStage NormalizeStage(SalesWorkflowStage current) => current switch
+    {
+        SalesWorkflowStage.Contract => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Signature => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Billing => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Commission => SalesWorkflowStage.Closing,
+        _ => current
     };
 }

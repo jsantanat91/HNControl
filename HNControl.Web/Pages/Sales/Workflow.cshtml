@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Workflow comercial</h1>
-        <div class="text-muted small">Lead > Cotizacion > Cierre > Contrato > Firma > Facturacion > Comision</div>
+        <div class="text-muted small">Lead > Cotizacion > Cierre > Ganado > Perdido</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
@@ -24,6 +24,7 @@
 
 <div class="alert alert-light border mb-3">
     <b>Alcance:</b> @(Model.CanViewAll ? "Global" : "Solo tus tratos")
+    <span class="ms-2 small text-muted">Arrastra cada oportunidad entre columnas para mover etapa.</span>
     <span class="ms-2 badge text-bg-success">Hoy</span>
     <span class="ms-1 badge text-bg-warning">Proximo</span>
     <span class="ms-1 badge text-bg-danger">Atrasado</span>
@@ -82,15 +83,15 @@
 </div>
 
 <div class="workflow-board pb-2">
-    @foreach (var stage in Enum.GetValues<SalesWorkflowStage>())
+    @foreach (var stage in new[] { SalesWorkflowStage.Lead, SalesWorkflowStage.Quotation, SalesWorkflowStage.Closing, SalesWorkflowStage.ClosedWon, SalesWorkflowStage.ClosedLost })
     {
         var items = Model.Board.ContainsKey(stage) ? Model.Board[stage] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
-        <section class="wf-col card shadow-soft border-0">
+        <section class="wf-col card shadow-soft border-0" data-stage-col="@stage">
             <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
                 <span>@HNControl.Web.Pages.Sales.WorkflowModel.StageLabel(stage)</span>
                 <span class="badge text-bg-primary">@items.Count</span>
             </div>
-            <div class="card-body wf-col-body">
+            <div class="card-body wf-col-body" data-stage-drop="@stage">
                 @if (!items.Any())
                 {
                     <div class="text-muted small">Sin tratos</div>
@@ -100,7 +101,10 @@
                     foreach (var d in items)
                     {
                         var slaClass = d.IsOverdue ? "text-bg-danger" : d.IsToday ? "text-bg-success" : d.IsSoon ? "text-bg-warning" : "text-bg-secondary";
-                        <article class="border rounded-3 p-2 mb-2 wf-card">
+                        <article class="border rounded-3 p-2 mb-2 wf-card"
+                                 draggable="@(Model.CanMove ? "true" : "false")"
+                                 data-opportunity-id="@d.Id"
+                                 data-current-stage="@d.Stage">
                             <div class="fw-semibold">@d.Folio</div>
                             <div class="small">@d.Customer</div>
                             <div class="small text-muted">Vendedor: @d.Seller</div>
@@ -114,17 +118,6 @@
                                 }
                                 <span class="badge text-bg-light">@d.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")</span>
                             </div>
-
-                            @if (Model.CanMove)
-                            {
-                                <form method="post" asp-page-handler="MoveStage" class="mt-2">
-                                    <input type="hidden" name="OpportunityId" value="@d.Id" />
-                                    <div class="input-group input-group-sm">
-                                        <select class="form-select" name="NewStage" asp-items="Model.StageItems"></select>
-                                        <button class="btn btn-outline-primary" type="submit">Mover</button>
-                                    </div>
-                                </form>
-                            }
 
                             @if (Model.CanAssign)
                             {
@@ -156,6 +149,15 @@
     }
 </div>
 
+@if (Model.CanMove)
+{
+    <form method="post" asp-page-handler="MoveStage" id="dragMoveForm" class="d-none">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="OpportunityId" id="dragMoveOpportunityId" />
+        <input type="hidden" name="NewStage" id="dragMoveNewStage" />
+    </form>
+}
+
 <style>
     .workflow-board {
         display: grid;
@@ -175,6 +177,60 @@
 
     .wf-card {
         background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        cursor: grab;
+    }
+    .wf-card:active {
+        cursor: grabbing;
+    }
+    .wf-col-body.drag-over {
+        outline: 2px dashed #2563eb;
+        outline-offset: -4px;
+        background: #eff6ff;
     }
 </style>
+
+@if (Model.CanMove)
+{
+    <script>
+        (() => {
+            const moveForm = document.getElementById('dragMoveForm');
+            const idInput = document.getElementById('dragMoveOpportunityId');
+            const stageInput = document.getElementById('dragMoveNewStage');
+            let draggedId = null;
+            let draggedStage = null;
+
+            document.querySelectorAll('.wf-card[draggable="true"]').forEach(card => {
+                card.addEventListener('dragstart', () => {
+                    draggedId = card.getAttribute('data-opportunity-id');
+                    draggedStage = card.getAttribute('data-current-stage');
+                    card.classList.add('opacity-50');
+                });
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('opacity-50');
+                    draggedId = null;
+                    draggedStage = null;
+                    document.querySelectorAll('.wf-col-body.drag-over').forEach(x => x.classList.remove('drag-over'));
+                });
+            });
+
+            document.querySelectorAll('[data-stage-drop]').forEach(zone => {
+                zone.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+                zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const newStage = zone.getAttribute('data-stage-drop');
+                    if (!draggedId || !newStage || !moveForm) return;
+                    if (draggedStage === newStage) return;
+                    idInput.value = draggedId;
+                    stageInput.value = newStage;
+                    moveForm.submit();
+                });
+            });
+        })();
+    </script>
+}
 

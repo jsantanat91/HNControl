@@ -17,17 +17,20 @@ public class IndexModel : PageModel
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly IEmailSender _email;
     private readonly IEventEmailTemplateService _templates;
+    private readonly IActionAccessService _actions;
 
     public IndexModel(
         ApplicationDbContext db,
         UserManager<ApplicationUser> userMgr,
         IEmailSender email,
-        IEventEmailTemplateService templates)
+        IEventEmailTemplateService templates,
+        IActionAccessService actions)
     {
         _db = db;
         _userMgr = userMgr;
         _email = email;
         _templates = templates;
+        _actions = actions;
     }
 
     [TempData] public string? Flash { get; set; }
@@ -63,15 +66,28 @@ public class IndexModel : PageModel
         Guid QuoteRequestId,
         Guid? BonusDeductionId);
     public List<OpportunityRow> Opportunities { get; set; } = new();
+    public bool CanViewAll { get; set; }
+    public bool CanManage { get; set; }
+    public bool CanAssign { get; set; }
+    public Guid? CurrentSellerProfileId { get; set; }
 
     public async Task OnGetAsync(Guid? quoteId = null)
     {
+        await EnsurePermissionsAsync();
         if (quoteId.HasValue) QuoteId = quoteId.Value;
         await LoadAsync();
     }
 
     public async Task<IActionResult> OnPostAddSellerAsync()
     {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para alta de vendedores.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         if (string.IsNullOrWhiteSpace(EmployeeUserId))
         {
             Flash = "Selecciona empleado.";
@@ -107,6 +123,14 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCreateOpportunityAsync()
     {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para crear oportunidades.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var quote = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == QuoteId);
         if (quote == null) return RedirectToPage();
         if (quote.Status == QuoteRequestStatus.Rejected)
@@ -157,6 +181,14 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostCloseWonAsync(Guid id)
     {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para cerrar oportunidades.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var opp = await _db.SalesOpportunities
             .Include(x => x.QuoteRequest)
             .Include(x => x.Client)
@@ -194,6 +226,14 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostMarkContractSignedAsync(Guid id)
     {
+        await EnsurePermissionsAsync();
+        if (!CanAssign)
+        {
+            Flash = "No tienes permiso para aplicar comisión.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         var opp = await _db.SalesOpportunities
             .Include(x => x.SellerProfile!)
             .ThenInclude(x => x.Employee)
@@ -244,6 +284,7 @@ public class IndexModel : PageModel
 
     private async Task LoadAsync()
     {
+        var userId = _userMgr.GetUserId(User) ?? string.Empty;
         var employees = await _db.EmployeeProfiles
             .AsNoTracking()
             .OrderBy(x => x.FullName)
@@ -251,9 +292,14 @@ public class IndexModel : PageModel
             .ToListAsync();
         EmployeeItems = new SelectList(employees, "UserId", "Label");
 
-        Sellers = await _db.SalesSellerProfiles
+        var sellerQuery = _db.SalesSellerProfiles
             .AsNoTracking()
             .Include(x => x.Employee)
+            .Where(x => x.IsActive);
+        if (!CanViewAll && !string.IsNullOrWhiteSpace(userId))
+            sellerQuery = sellerQuery.Where(x => x.EmployeeUserId == userId);
+
+        Sellers = await sellerQuery
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new SellerRow(
                 x.Id,
@@ -263,22 +309,47 @@ public class IndexModel : PageModel
                 x.IsActive
             ))
             .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            CurrentSellerProfileId = await _db.SalesSellerProfiles
+                .AsNoTracking()
+                .Where(x => x.IsActive && x.EmployeeUserId == userId)
+                .Select(x => (Guid?)x.Id)
+                .FirstOrDefaultAsync();
+        }
         SellerItems = new SelectList(Sellers, "Id", "EmployeeName");
 
-        var quotes = await _db.QuoteRequests
+        var quotesQuery = _db.QuoteRequests
             .AsNoTracking()
             .Where(x => x.Status != QuoteRequestStatus.Rejected)
             .OrderByDescending(x => x.CreatedAt)
+            .AsQueryable();
+
+        if (!CanViewAll)
+        {
+            var allowedQuoteIds = _db.SalesOpportunities
+                .Where(o => o.OwnerUserId == userId || (o.SellerProfile != null && o.SellerProfile.EmployeeUserId == userId))
+                .Select(o => o.QuoteRequestId);
+            quotesQuery = quotesQuery.Where(x => allowedQuoteIds.Contains(x.Id));
+        }
+
+        var quotes = await quotesQuery
             .Take(300)
             .Select(x => new { x.Id, Label = x.Folio + " · " + x.CustomerName })
             .ToListAsync();
         QuoteItems = new SelectList(quotes, "Id", "Label");
 
-        Opportunities = await _db.SalesOpportunities
+        var oppQuery = _db.SalesOpportunities
             .AsNoTracking()
             .Include(x => x.QuoteRequest)
             .Include(x => x.SellerProfile!).ThenInclude(x => x.Employee)
             .Include(x => x.Client)
+            .AsQueryable();
+
+        if (!CanViewAll)
+            oppQuery = oppQuery.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
+
+        Opportunities = await oppQuery
             .OrderByDescending(x => x.CreatedAt)
             .Take(400)
             .Select(x => new OpportunityRow(
@@ -297,6 +368,21 @@ public class IndexModel : PageModel
                 x.BonusDeductionId
             ))
             .ToListAsync();
+    }
+
+    private async Task EnsurePermissionsAsync()
+    {
+        CanViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        var canViewOwn = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
+        if (!canViewOwn)
+        {
+            CanManage = false;
+            CanAssign = false;
+            return;
+        }
+
+        CanManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesManage);
+        CanAssign = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
     }
 
     private static (DateTime Start, DateTime End) NextBiweeklyPeriod(DateTime today)
