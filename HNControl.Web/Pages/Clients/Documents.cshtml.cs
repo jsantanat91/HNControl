@@ -104,7 +104,16 @@ public class DocumentsModel : PageModel
 
         await _db.SaveChangesAsync();
 
-        await RegeneratePdfAsync(doc);
+        try
+        {
+            await RegeneratePdfAsync(doc);
+        }
+        catch (Exception ex)
+        {
+            Flash = $"Documento guardado, pero no se pudo convertir la plantilla Word a PDF: {ex.Message}";
+            FlashType = "warning";
+            return RedirectToPage(new { clientId });
+        }
 
         Flash = $"{(type == ClientLegalDocumentType.NDA ? "NDA" : "Contrato")} generado correctamente.";
         FlashType = "success";
@@ -119,7 +128,18 @@ public class DocumentsModel : PageModel
         if (doc == null) return NotFound();
 
         if (string.IsNullOrWhiteSpace(doc.PdfStoragePath))
-            await RegeneratePdfAsync(doc);
+        {
+            try
+            {
+                await RegeneratePdfAsync(doc);
+            }
+            catch (Exception ex)
+            {
+                Flash = $"No se pudo generar el PDF desde la plantilla Word: {ex.Message}";
+                FlashType = "danger";
+                return RedirectToPage(new { clientId });
+            }
+        }
 
         var recipient = FirstNonEmpty(doc.Client?.BillingEmail, doc.Client?.Email);
         if (string.IsNullOrWhiteSpace(recipient))
@@ -191,9 +211,17 @@ public class DocumentsModel : PageModel
         var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
         if (doc == null) return NotFound();
 
-        await RegeneratePdfAsync(doc);
-        Flash = "PDF regenerado.";
-        FlashType = "success";
+        try
+        {
+            await RegeneratePdfAsync(doc);
+            Flash = "PDF regenerado desde plantilla Word.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            Flash = $"No se pudo convertir la plantilla Word a PDF: {ex.Message}";
+            FlashType = "danger";
+        }
         return RedirectToPage(new { clientId });
     }
 
@@ -242,7 +270,9 @@ public class DocumentsModel : PageModel
             pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{dbDoc.DocumentType}_{dbDoc.Id:N}");
         }
 
-        pdfBytes ??= await _pdf.RenderAsync(doc);
+        if (pdfBytes == null || pdfBytes.Length == 0)
+            throw new InvalidOperationException("No fue posible convertir DOCX a PDF. Verifica que LibreOffice/soffice esté instalado y disponible en PATH.");
+
         var fileName = $"legal_{doc.DocumentType}_{doc.Id:N}.pdf";
         var (path, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"clients/{doc.ClientId}/legal", fileName, "application/pdf");
         doc.PdfStoragePath = path;

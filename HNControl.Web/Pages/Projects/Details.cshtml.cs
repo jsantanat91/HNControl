@@ -45,7 +45,7 @@ public class DetailsModel : PageModel
     public int GanttTotalDays { get; set; }
     public int GanttElapsedDays { get; set; }
     public double GanttProgressPercent { get; set; }
-    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, string StartText, string EndText, double WidthPercent, double OffsetPercent, string ColorHex);
+    public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, string StartText, string EndText, double WidthPercent, double OffsetPercent, string ColorHex, bool IsCompleted, string CompletedText);
     public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Hours, string DurationLabel, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
     public List<ActivityRow> Activities { get; set; } = new();
     public List<EmployeeOptionVm> EmployeeOptions { get; set; } = new();
@@ -113,11 +113,10 @@ public class DetailsModel : PageModel
             SlaCss = "bg-warning text-dark";
         }
 
-        var nowUtc = DateTime.UtcNow;
-        GanttTotalDays = Math.Max(1, (int)Math.Ceiling((Project.EstimatedEndDate - Project.StartDate).TotalHours));
-        GanttElapsedDays = Math.Max(0, Math.Min(GanttTotalDays, (int)Math.Ceiling((nowUtc - Project.StartDate).TotalHours)));
-        GanttProgressPercent = Math.Round((GanttElapsedDays * 100d) / GanttTotalDays, 1);
         Project.Activities = await LoadProjectActivitiesSafeAsync(Project.Id);
+        GanttTotalDays = Math.Max(1, Project.Activities.Sum(a => Math.Max(1, a.PlannedDays)));
+        GanttElapsedDays = Math.Max(0, Project.Activities.Where(a => a.IsCompleted).Sum(a => Math.Max(1, a.PlannedDays)));
+        GanttProgressPercent = Math.Round((GanttElapsedDays * 100d) / GanttTotalDays, 1);
         BuildActivityGantt(Project);
 
         EmployeeOptions = await _db.EmployeeProfiles
@@ -229,6 +228,16 @@ public class DetailsModel : PageModel
 
         await DeleteProjectActivitySafeAsync(id, activityId);
 
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostToggleActivityDoneAsync(Guid id, Guid activityId, bool done)
+    {
+        if (!AppRoles.IsGlobalAdmin(User))
+            return Forbid();
+
+        await EnsureProjectActivityColumnsAsync();
+        await UpdateProjectActivityDoneSafeAsync(id, activityId, done);
         return RedirectToPage(new { id });
     }
 
@@ -402,20 +411,20 @@ public class DetailsModel : PageModel
                                 });
                             }
 
-                            cc.Item().PaddingTop(10).Text("Dependencias entre tareas (secuencial)").FontSize(9).SemiBold().FontColor(Colors.Grey.Darken2);
-                            var depHeight = Math.Max(60, 26 + (planRows.Count * 24));
-                            var depSvg = BuildDependencySvg(planRows, timelineWidth, depHeight);
-                            cc.Item().PaddingTop(4).Height(depHeight).Svg(depSvg);
                         }
                     });
 
                     col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
                     {
-                        cc.Item().Text("Resumen tecnico").SemiBold();
-                        cc.Item().PaddingTop(6).Text($"Objetivo: {Safe(p.Objective)}");
-                        cc.Item().Text($"Alcance: {Safe(p.Scope)}");
-                        cc.Item().Text($"Descripcion: {Safe(p.ActivityDescription)}");
-                        cc.Item().Text($"Comentarios: {Safe(p.AdditionalComments)}");
+                        cc.Item().Text("Resumen técnico").SemiBold();
+                        cc.Item().PaddingTop(6).Column(s =>
+                        {
+                            s.Spacing(5);
+                            s.Item().Text(t => { t.Span("Objetivo: ").SemiBold(); t.Span(Safe(p.Objective)); });
+                            s.Item().Text(t => { t.Span("Alcance: ").SemiBold(); t.Span(Safe(p.Scope)); });
+                            s.Item().Text(t => { t.Span("Descripción: ").SemiBold(); t.Span(Safe(p.ActivityDescription)); });
+                            s.Item().Text(t => { t.Span("Comentarios: ").SemiBold(); t.Span(Safe(p.AdditionalComments)); });
+                        });
                     });
 
                     col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(cc =>
@@ -484,7 +493,9 @@ public class DetailsModel : PageModel
         bool HasDurationValue,
         bool HasStartAtUtc,
         bool HasEndAtUtc,
-        bool HasColorHex);
+        bool HasColorHex,
+        bool HasIsCompleted,
+        bool HasCompletedAtUtc);
 
     private async Task EnsureProjectActivityColumnsAsync()
     {
@@ -515,12 +526,16 @@ public class DetailsModel : PageModel
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "IsCompleted" boolean NOT NULL DEFAULT FALSE;
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "CompletedAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16);
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "DurationValue" integer;
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "IsCompleted" boolean NOT NULL DEFAULT FALSE;
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "CompletedAtUtc" timestamp with time zone;
             """;
         try
         {
@@ -571,7 +586,9 @@ public class DetailsModel : PageModel
             HasDurationValue: cols.Contains("DurationValue"),
             HasStartAtUtc: cols.Contains("StartAtUtc"),
             HasEndAtUtc: cols.Contains("EndAtUtc"),
-            HasColorHex: cols.Contains("ColorHex"));
+            HasColorHex: cols.Contains("ColorHex"),
+            HasIsCompleted: cols.Contains("IsCompleted"),
+            HasCompletedAtUtc: cols.Contains("CompletedAtUtc"));
     }
 
     private async Task<List<ProjectActivity>> LoadProjectActivitiesSafeAsync(Guid projectId)
@@ -600,6 +617,8 @@ public class DetailsModel : PageModel
                     {(schema.HasStartAtUtc ? "p.\"StartAtUtc\"" : "NULL::timestamp with time zone")} AS "StartAtUtc",
                     {(schema.HasEndAtUtc ? "p.\"EndAtUtc\"" : "NULL::timestamp with time zone")} AS "EndAtUtc",
                     {(schema.HasColorHex ? "p.\"ColorHex\"" : "NULL::character varying(16)")} AS "ColorHex",
+                    {(schema.HasIsCompleted ? "COALESCE(p.\"IsCompleted\", FALSE)" : "FALSE")} AS "IsCompleted",
+                    {(schema.HasCompletedAtUtc ? "p.\"CompletedAtUtc\"" : "NULL::timestamp with time zone")} AS "CompletedAtUtc",
                     COALESCE(p."SortOrder",0) AS "SortOrder",
                     COALESCE(p."CreatedAt", NOW()) AS "CreatedAt"
                 FROM public."ProjectActivities" p
@@ -614,21 +633,26 @@ public class DetailsModel : PageModel
             using var rd = await cmd.ExecuteReaderAsync();
             while (await rd.ReadAsync())
             {
+                var rawDescription = rd.IsDBNull(4) ? "" : rd.GetString(4);
+                var fallbackDone = !schema.HasIsCompleted && rawDescription.StartsWith("[DONE] ", StringComparison.OrdinalIgnoreCase);
+                var normalizedDescription = fallbackDone ? rawDescription[7..].Trim() : rawDescription;
                 result.Add(new ProjectActivity
                 {
                     Id = rd.GetGuid(0),
                     ProjectId = rd.GetGuid(1),
                     AssignedToName = rd.IsDBNull(2) ? "" : rd.GetString(2),
                     AssignedToUserId = rd.IsDBNull(3) ? null : rd.GetString(3),
-                    Description = rd.IsDBNull(4) ? "" : rd.GetString(4),
+                    Description = normalizedDescription,
                     PlannedDays = rd.IsDBNull(5) ? 1 : rd.GetInt32(5),
                     DurationUnit = rd.IsDBNull(6) ? "hours" : rd.GetString(6),
                     DurationValue = rd.IsDBNull(7) ? Math.Max(1, rd.IsDBNull(5) ? 1 : rd.GetInt32(5)) : Math.Max(1, rd.GetInt32(7)),
                     StartAtUtc = rd.IsDBNull(8) ? null : rd.GetDateTime(8),
                     EndAtUtc = rd.IsDBNull(9) ? null : rd.GetDateTime(9),
                     ColorHex = rd.IsDBNull(10) ? null : rd.GetString(10),
-                    SortOrder = rd.IsDBNull(11) ? 0 : rd.GetInt32(11),
-                    CreatedAt = rd.IsDBNull(12) ? DateTime.UtcNow : rd.GetDateTime(12)
+                    IsCompleted = schema.HasIsCompleted ? (!rd.IsDBNull(11) && rd.GetBoolean(11)) : fallbackDone,
+                    CompletedAtUtc = schema.HasCompletedAtUtc ? (rd.IsDBNull(12) ? null : rd.GetDateTime(12)) : null,
+                    SortOrder = rd.IsDBNull(13) ? 0 : rd.GetInt32(13),
+                    CreatedAt = rd.IsDBNull(14) ? DateTime.UtcNow : rd.GetDateTime(14)
                 });
             }
         }
@@ -699,6 +723,8 @@ public class DetailsModel : PageModel
             if (schema.HasStartAtUtc) { columns.Add("\"StartAtUtc\""); values.Add("@startAtUtc"); }
             if (schema.HasEndAtUtc) { columns.Add("\"EndAtUtc\""); values.Add("@endAtUtc"); }
             if (schema.HasColorHex) { columns.Add("\"ColorHex\""); values.Add("@colorHex"); }
+            if (schema.HasIsCompleted) { columns.Add("\"IsCompleted\""); values.Add("@isCompleted"); }
+            if (schema.HasCompletedAtUtc) { columns.Add("\"CompletedAtUtc\""); values.Add("@completedAtUtc"); }
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = $"""
@@ -719,6 +745,8 @@ public class DetailsModel : PageModel
             if (schema.HasStartAtUtc) AddParam(cmd, "startAtUtc", (object?)startAtUtc ?? DBNull.Value);
             if (schema.HasEndAtUtc) AddParam(cmd, "endAtUtc", (object?)endAtUtc ?? DBNull.Value);
             if (schema.HasColorHex) AddParam(cmd, "colorHex", DBNull.Value);
+            if (schema.HasIsCompleted) AddParam(cmd, "isCompleted", false);
+            if (schema.HasCompletedAtUtc) AddParam(cmd, "completedAtUtc", DBNull.Value);
 
             await cmd.ExecuteNonQueryAsync();
         }
@@ -742,6 +770,50 @@ public class DetailsModel : PageModel
                 DELETE FROM public."ProjectActivities"
                 WHERE "Id" = @activityId AND "ProjectId" = @projectId;
                 """;
+            AddParam(cmd, "activityId", activityId);
+            AddParam(cmd, "projectId", projectId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+    }
+
+    private async Task UpdateProjectActivityDoneSafeAsync(Guid projectId, Guid activityId, bool done)
+    {
+        var schema = await GetProjectActivitySchemaAsync();
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = !schema.HasIsCompleted
+                ? """
+                UPDATE public."ProjectActivities"
+                SET "Description" = CASE
+                    WHEN @done THEN CONCAT('[DONE] ', regexp_replace(COALESCE("Description", ''), '^\[DONE\]\s*', ''))
+                    ELSE regexp_replace(COALESCE("Description", ''), '^\[DONE\]\s*', '')
+                END
+                WHERE "Id" = @activityId AND "ProjectId" = @projectId;
+                """
+                : schema.HasCompletedAtUtc
+                ? """
+                UPDATE public."ProjectActivities"
+                SET "IsCompleted" = @done,
+                    "CompletedAtUtc" = CASE WHEN @done THEN @nowUtc ELSE NULL END
+                WHERE "Id" = @activityId AND "ProjectId" = @projectId;
+                """
+                : """
+                UPDATE public."ProjectActivities"
+                SET "IsCompleted" = @done
+                WHERE "Id" = @activityId AND "ProjectId" = @projectId;
+                """;
+            AddParam(cmd, "done", done);
+            AddParam(cmd, "nowUtc", DateTime.UtcNow);
             AddParam(cmd, "activityId", activityId);
             AddParam(cmd, "projectId", projectId);
             await cmd.ExecuteNonQueryAsync();
@@ -873,11 +945,13 @@ public class DetailsModel : PageModel
                 FormatDuration(hours),
                 start,
                 end,
-                a.StartAtUtc.HasValue ? a.StartAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd") : "-",
-                a.EndAtUtc.HasValue ? a.EndAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd") : "-",
+                a.StartAtUtc.HasValue ? a.StartAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-",
+                a.EndAtUtc.HasValue ? a.EndAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-",
                 Math.Round(width, 2),
                 Math.Round(offset, 2),
-                color
+                color,
+                a.IsCompleted,
+                a.CompletedAtUtc.HasValue ? a.CompletedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-"
             ));
         }
     }
@@ -948,63 +1022,6 @@ public class DetailsModel : PageModel
         return colors[Math.Abs(index) % colors.Length];
     }
 
-    private static string BuildDependencySvg(IReadOnlyList<PdfGanttRow> rows, float timelineWidth, int canvasHeight)
-    {
-        var sb = new StringBuilder();
-        var w = (int)Math.Max(120, Math.Ceiling(timelineWidth));
-        var h = Math.Max(60, canvasHeight);
-        const int rowH = 24;
-        const int top = 10;
-
-        sb.Append($"<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}' viewBox='0 0 {w} {h}'>");
-        sb.Append("<defs>");
-        sb.Append("<marker id='arrowHead' markerWidth='7' markerHeight='7' refX='6' refY='3.5' orient='auto'>");
-        sb.Append("<polygon points='0 0, 7 3.5, 0 7' fill='#6B7280'/>");
-        sb.Append("</marker>");
-        sb.Append("</defs>");
-        sb.Append($"<rect x='0' y='0' width='{w}' height='{h}' fill='#F8FAFC' stroke='#E5E7EB'/>");
-
-        // Guías verticales para lectura temporal
-        for (var i = 0; i <= 10; i++)
-        {
-            var gx = (w * i) / 10.0;
-            sb.Append($"<line x1='{F(gx)}' y1='0' x2='{F(gx)}' y2='{h}' stroke='#E5E7EB' stroke-width='0.8'/>");
-        }
-
-        for (var i = 0; i < rows.Count; i++)
-        {
-            var row = rows[i];
-            var y = top + (i * rowH);
-            var barY = y + 5;
-            var barH = 12;
-            var x = Math.Clamp((w * row.OffsetPercent / 100d), 1d, w - 7d);
-            var barW = Math.Max(6d, (w * row.WidthPercent / 100d));
-            barW = Math.Min(barW, Math.Max(2d, (w - 1d) - x));
-            var color = GetGanttHexColor(row.ColorIndex);
-            var progressW = Math.Max(2d, barW * Math.Clamp(row.ProgressPercent, 0, 100) / 100d);
-
-            sb.Append($"<rect x='{F(x)}' y='{F(barY)}' rx='5' ry='5' width='{F(barW)}' height='{barH}' fill='{color}' opacity='0.85'/>");
-            sb.Append($"<rect x='{F(x)}' y='{F(barY)}' rx='5' ry='5' width='{F(progressW)}' height='{barH}' fill='rgba(17,24,39,0.22)'/>");
-
-            if (i > 0)
-            {
-                var prev = rows[i - 1];
-                var prevY = top + ((i - 1) * rowH) + 11;
-                var prevEndX = Math.Max(1d, (w * (prev.OffsetPercent + prev.WidthPercent) / 100d));
-                var currentStartX = Math.Max(1d, x);
-                var midX = Math.Max(2d, prevEndX + 8d);
-
-                // Conector tipo "finish-to-start" con flecha
-                sb.Append(
-                    $"<polyline points='{F(prevEndX)},{F(prevY)} {F(midX)},{F(prevY)} {F(midX)},{F(barY + barH / 2d)} {F(currentStartX - 3d)},{F(barY + barH / 2d)}' " +
-                    "fill='none' stroke='#6B7280' stroke-width='1.2' marker-end='url(#arrowHead)'/>");
-            }
-        }
-
-        sb.Append("</svg>");
-        return sb.ToString();
-    }
-
     private static int ParseDurationToHours(int value, string? unit)
     {
         var safe = Math.Max(1, value);
@@ -1047,8 +1064,6 @@ public class DetailsModel : PageModel
         }
         return result;
     }
-
-    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     private static string GetGanttHexColor(int index)
     {

@@ -132,26 +132,16 @@ public class CreateModel : PageModel
         {
             try
             {
-                // En despliegues legacy puede faltar AssignedToUserId.
-                // Si no existe, omitimos alta inicial para evitar que truene la creacion del proyecto.
-                if (await HasProjectActivityColumnAsync("AssignedToUserId"))
-                {
-                    _db.ProjectActivities.Add(new ProjectActivity
-                    {
-                        ProjectId = p.Id,
-                        AssignedToName = string.IsNullOrWhiteSpace(Input.InitialActivityAssignedTo)
-                            ? (await _db.EmployeeProfiles.AsNoTracking().Where(x => x.UserId == Input.ResponsibleUserId).Select(x => x.FullName).FirstOrDefaultAsync() ?? Input.ResponsibleUserId)
-                            : Input.InitialActivityAssignedTo.Trim(),
-                        Description = Input.InitialActivityDescription.Trim(),
-                        PlannedDays = Math.Max(1, Input.InitialActivityDays ?? 1),
-                        SortOrder = 1
-                    });
-                    await _db.SaveChangesAsync();
-                }
-                else
-                {
-                    Info = "Proyecto creado. La actividad inicial se omitio porque la base no tiene la columna nueva de actividades.";
-                }
+                var assignedTo = string.IsNullOrWhiteSpace(Input.InitialActivityAssignedTo)
+                    ? (await _db.EmployeeProfiles.AsNoTracking().Where(x => x.UserId == Input.ResponsibleUserId).Select(x => x.FullName).FirstOrDefaultAsync() ?? Input.ResponsibleUserId)
+                    : Input.InitialActivityAssignedTo.Trim();
+
+                await InsertInitialActivityCompatAsync(
+                    p.Id,
+                    assignedTo,
+                    Input.ResponsibleUserId,
+                    Input.InitialActivityDescription.Trim(),
+                    Math.Max(1, Input.InitialActivityDays ?? 1));
             }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == "42703")
             {
@@ -237,6 +227,68 @@ public class CreateModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private async Task InsertInitialActivityCompatAsync(Guid projectId, string assignedToName, string assignedToUserId, string description, int plannedHours)
+    {
+        await using var conn = _db.Database.GetDbConnection();
+        if (conn.State != System.Data.ConnectionState.Open)
+            await conn.OpenAsync();
+
+        var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var colsCmd = conn.CreateCommand())
+        {
+            colsCmd.CommandText = """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name IN ('ProjectActivities','projectactivities');
+                """;
+            await using var rd = await colsCmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync())
+            {
+                if (!rd.IsDBNull(0))
+                    cols.Add(rd.GetString(0));
+            }
+        }
+
+        var insertCols = new List<string> { "\"Id\"", "\"ProjectId\"", "\"AssignedToName\"", "\"Description\"", "\"PlannedDays\"", "\"SortOrder\"", "\"CreatedAt\"" };
+        var insertVals = new List<string> { "@id", "@projectId", "@assignedToName", "@description", "@plannedDays", "@sortOrder", "@createdAt" };
+
+        if (cols.Contains("AssignedToUserId")) { insertCols.Add("\"AssignedToUserId\""); insertVals.Add("@assignedToUserId"); }
+        if (cols.Contains("DurationUnit")) { insertCols.Add("\"DurationUnit\""); insertVals.Add("@durationUnit"); }
+        if (cols.Contains("DurationValue")) { insertCols.Add("\"DurationValue\""); insertVals.Add("@durationValue"); }
+        if (cols.Contains("IsCompleted")) { insertCols.Add("\"IsCompleted\""); insertVals.Add("@isCompleted"); }
+        if (cols.Contains("CompletedAtUtc")) { insertCols.Add("\"CompletedAtUtc\""); insertVals.Add("@completedAtUtc"); }
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"""
+            INSERT INTO public."ProjectActivities" ({string.Join(", ", insertCols)})
+            VALUES ({string.Join(", ", insertVals)});
+            """;
+
+        AddParam(cmd, "id", Guid.NewGuid());
+        AddParam(cmd, "projectId", projectId);
+        AddParam(cmd, "assignedToName", assignedToName);
+        AddParam(cmd, "description", description);
+        AddParam(cmd, "plannedDays", plannedHours);
+        AddParam(cmd, "sortOrder", 1);
+        AddParam(cmd, "createdAt", DateTime.UtcNow);
+        if (cols.Contains("AssignedToUserId")) AddParam(cmd, "assignedToUserId", assignedToUserId);
+        if (cols.Contains("DurationUnit")) AddParam(cmd, "durationUnit", "hours");
+        if (cols.Contains("DurationValue")) AddParam(cmd, "durationValue", plannedHours);
+        if (cols.Contains("IsCompleted")) AddParam(cmd, "isCompleted", false);
+        if (cols.Contains("CompletedAtUtc")) AddParam(cmd, "completedAtUtc", DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private static void AddParam(DbCommand cmd, string name, object? value)
+    {
+        var p = cmd.CreateParameter();
+        p.ParameterName = name;
+        p.Value = value ?? DBNull.Value;
+        cmd.Parameters.Add(p);
     }
 
     private async Task<bool> HasProjectActivityColumnAsync(string column)

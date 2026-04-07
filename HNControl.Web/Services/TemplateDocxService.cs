@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using HNControl.Web.Models;
@@ -40,7 +41,7 @@ public class TemplateDocxService : ITemplateDocxService
     {
         var path = Path.Combine(_env.ContentRootPath, "assets", "legal-templates", fileName);
         if (!File.Exists(path))
-            throw new FileNotFoundException($"No se encontró la plantilla {fileName} en assets/legal-templates.");
+            throw new FileNotFoundException($"No se encontrÃ³ la plantilla {fileName} en assets/legal-templates.");
         return File.ReadAllBytes(path);
     }
 
@@ -88,9 +89,7 @@ public class TemplateDocxService : ITemplateDocxService
         var legalAddress = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address, "Domicilio por confirmar");
         var signer = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName, "Representante legal");
         var periodo = Safe(tpl.PERIODOC, BuildContractPeriod(doc, doc.ClientServiceContract));
-        var firma = doc.Status == ClientLegalDocumentStatus.Signed
-            ? Safe(doc.SignedByName, signer)
-            : Safe(tpl.FIRMACLIENTE, "PENDIENTE DE FIRMA");
+        var firma = BuildDigitalSignatureText(doc, signer);
 
         return new Dictionary<string, string>
         {
@@ -99,7 +98,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["RFCC"] = Safe(client.Rfc, "XAXX010101000"),
             ["FECHAHOY"] = cityDate,
             ["DIRECCIONC"] = legalAddress,
-            ["ESTADOC"] = Safe(tpl.ESTADOC, client.State, "México"),
+            ["ESTADOC"] = Safe(tpl.ESTADOC, client.State, "MÃ©xico"),
             ["CPC"] = Safe(client.FiscalZipCode, "00000"),
             ["EMAILC"] = Safe(client.BillingEmail, client.Email, "-"),
             ["CONTRATOC"] = Safe(tpl.CONTRATOC, doc.Title, "NDA"),
@@ -126,9 +125,7 @@ public class TemplateDocxService : ITemplateDocxService
         var period = BuildContractPeriod(doc, contract);
         var serviceName = Safe(tpl.CONTRATOC, contract?.Label, "Servicio de telecomunicaciones");
         var monthly = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? contract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")));
-        var firma = doc.Status == ClientLegalDocumentStatus.Signed
-            ? Safe(doc.SignedByName, client.LegalRepresentative, client.ContactName)
-            : Safe(tpl.FIRMACLIENTE, "PENDIENTE DE FIRMA");
+        var firma = BuildDigitalSignatureText(doc, Safe(client.LegalRepresentative, client.ContactName));
 
         var replacements = new Dictionary<string, string>
         {
@@ -137,7 +134,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["RFCC"] = Safe(client.Rfc, "XAXX010101000"),
             ["FECHAHOY"] = nowText,
             ["DIRECCIONC"] = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address, "Por definir"),
-            ["ESTADOC"] = Safe(tpl.ESTADOC, client.State, "México"),
+            ["ESTADOC"] = Safe(tpl.ESTADOC, client.State, "MÃ©xico"),
             ["CPC"] = Safe(client.FiscalZipCode, "00000"),
             ["EMAILC"] = Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com"),
             ["CONTRATOC"] = Safe(tpl.CONTRATOC, doc.Title, serviceName),
@@ -148,24 +145,24 @@ public class TemplateDocxService : ITemplateDocxService
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, contract?.Label, doc.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-"),
 
-            ["Nombre o Razón Social:"] = $"Nombre o Razón Social: {Safe(client.Name)}",
-            ["Nombre o RazÃ³n Social:"] = $"Nombre o Razón Social: {Safe(client.Name)}",
+            ["Nombre o RazÃ³n Social:"] = $"Nombre o RazÃ³n Social: {Safe(client.Name)}",
+            ["Nombre o RazÃƒÂ³n Social:"] = $"Nombre o RazÃ³n Social: {Safe(client.Name)}",
             ["Fecha Contrato:"] = $"Fecha Contrato: {nowText}",
             ["RFC:"] = $"RFC: {Safe(client.Rfc, "XAXX010101000")}",
             ["Nombre Comercial:"] = $"Nombre Comercial: {Safe(client.Name)}",
-            ["Correo Electrónico:"] = $"Correo Electrónico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
-            ["Correo ElectrÃ³nico:"] = $"Correo Electrónico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
+            ["Correo ElectrÃ³nico:"] = $"Correo ElectrÃ³nico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
+            ["Correo ElectrÃƒÂ³nico:"] = $"Correo ElectrÃ³nico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
             ["Calle o Avenida:"] = $"Calle o Avenida: {Safe(client.Address, client.FiscalAddress, "Por definir")}",
-            ["Ciudad:"] = $"Ciudad: {Safe(client.Municipality, client.Address, "Ciudad de México")}",
-            ["Estado:"] = $"Estado: {Safe(client.State, "México")}",
-            ["Código Postal:"] = $"Código Postal: {Safe(client.FiscalZipCode, "00000")}",
-            ["CÃ³digo Postal:"] = $"Código Postal: {Safe(client.FiscalZipCode, "00000")}",
+            ["Ciudad:"] = $"Ciudad: {Safe(client.Municipality, client.Address, "Ciudad de MÃ©xico")}",
+            ["Estado:"] = $"Estado: {Safe(client.State, "MÃ©xico")}",
+            ["CÃ³digo Postal:"] = $"CÃ³digo Postal: {Safe(client.FiscalZipCode, "00000")}",
+            ["CÃƒÂ³digo Postal:"] = $"CÃ³digo Postal: {Safe(client.FiscalZipCode, "00000")}",
             ["Servici"] = "Servicio(s) Contratados: " + serviceName,
-            ["Periodo de Contratación:"] = $"Periodo de Contratación: {period}",
-            ["Periodo de ContrataciÃ³n:"] = $"Periodo de Contratación: {period}",
+            ["Periodo de ContrataciÃ³n:"] = $"Periodo de ContrataciÃ³n: {period}",
+            ["Periodo de ContrataciÃƒÂ³n:"] = $"Periodo de ContrataciÃ³n: {period}",
             ["$"] = "$" + monthly,
-            ["Ubicación del Servicio"] = "Ubicación del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir"),
-            ["UbicaciÃ³n del Servicio"] = "Ubicación del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir")
+            ["UbicaciÃ³n del Servicio"] = "UbicaciÃ³n del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir"),
+            ["UbicaciÃƒÂ³n del Servicio"] = "UbicaciÃ³n del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir")
         };
 
         return replacements;
@@ -181,7 +178,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["FECHAHOY"] = dt,
             ["DIRECCIONC"] = Safe(client.FiscalAddress, client.Address, delivery.DeliveryLocation, "-"),
             ["NOMBREPROYECTO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, delivery.Title, "-"),
-            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.SignedByName, "Técnico asignado"),
+            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.SignedByName, "TÃ©cnico asignado"),
             ["FIRMACLIENTE"] = delivery.Status == ProjectDeliveryFormatStatus.Signed
                 ? Safe(delivery.SignedByName, delivery.ReceiverName, "-")
                 : "PENDIENTE DE FIRMA",
@@ -190,15 +187,15 @@ public class TemplateDocxService : ITemplateDocxService
             ["Naturasol S.A. de C.V."] = Safe(client.Name),
             ["Sistema BioTime PRO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, "Servicio contratado"),
             ["Jorge Alberto Santana Torres"] = Safe(delivery.SignedByName, tpl.NOMBRETECNICO, "Responsable HN"),
-            ["Ramsés Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
+            ["RamsÃ©s Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Ramses Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Oficinas Corporativas"] = Safe(delivery.DeliveryLocation),
             ["15 de julio 2025"] = dt,
             ["Cliente:"] = $"Cliente: {Safe(client.Name)}",
             ["Proyecto"] = $"Proyecto: {Safe(project?.Title, tpl.NOMBREPROYECTO, "Sin proyecto")}",
             ["Recibe"] = $"Recibe: {Safe(delivery.ReceiverName)}",
-            ["Teléfono:"] = $"Teléfono: {Safe(delivery.ReceiverPhone)}",
-            ["TelÃ©fono:"] = $"Teléfono: {Safe(delivery.ReceiverPhone)}"
+            ["TelÃ©fono:"] = $"TelÃ©fono: {Safe(delivery.ReceiverPhone)}",
+            ["TelÃƒÂ©fono:"] = $"TelÃ©fono: {Safe(delivery.ReceiverPhone)}"
         };
 
         for (var i = 1; i <= 5; i++)
@@ -245,7 +242,19 @@ public class TemplateDocxService : ITemplateDocxService
         return "-";
     }
 
-    private static ContractTemplateData ParseContractTemplateData(string? raw)
+    
+    private static string BuildDigitalSignatureText(ClientLegalDocument doc, string fallbackName)
+    {
+        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+            return "PENDIENTE DE FIRMA";
+
+        var signer = Safe(doc.SignedByName, fallbackName);
+        var email = Safe(doc.SignedByEmail, "-");
+        var date = doc.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+        var payload = $"{doc.Id}|{signer}|{email}|{doc.SignedAt:O}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
+        return $"Firmado digitalmente por {signer} ({email}) el {date}. Hash: {hash}";
+    }private static ContractTemplateData ParseContractTemplateData(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw) || !raw.StartsWith("__TPLJSON__", StringComparison.Ordinal))
             return new ContractTemplateData();

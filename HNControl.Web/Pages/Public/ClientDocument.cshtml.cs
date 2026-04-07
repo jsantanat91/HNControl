@@ -11,15 +11,22 @@ public class ClientDocumentModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
-    private readonly IClientLegalPdfRenderer _pdf;
     private readonly IEmailSender _email;
+    private readonly ITemplateDocxService _docxTemplates;
+    private readonly IOfficePdfConverter _officePdfConverter;
 
-    public ClientDocumentModel(ApplicationDbContext db, IFileStorage storage, IClientLegalPdfRenderer pdf, IEmailSender email)
+    public ClientDocumentModel(
+        ApplicationDbContext db,
+        IFileStorage storage,
+        IEmailSender email,
+        ITemplateDocxService docxTemplates,
+        IOfficePdfConverter officePdfConverter)
     {
         _db = db;
         _storage = storage;
-        _pdf = pdf;
         _email = email;
+        _docxTemplates = docxTemplates;
+        _officePdfConverter = officePdfConverter;
     }
 
     public ClientLegalDocument? DocumentRef { get; set; }
@@ -48,6 +55,7 @@ public class ClientDocumentModel : PageModel
     {
         var doc = await _db.ClientLegalDocuments
             .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
             .FirstOrDefaultAsync(x => x.PublicToken == token);
         if (doc == null) return NotFound();
 
@@ -78,7 +86,22 @@ public class ClientDocumentModel : PageModel
         doc.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var pdfBytes = await _pdf.RenderAsync(doc);
+        if (doc.Client == null)
+        {
+            DocumentRef = doc;
+            Error = "No se encontró la información del cliente para regenerar el PDF.";
+            return Page();
+        }
+
+        var docxBytes = _docxTemplates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
+        var pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{doc.DocumentType}_{doc.Id:N}");
+        if (pdfBytes == null || pdfBytes.Length == 0)
+        {
+            DocumentRef = doc;
+            Error = "No se pudo convertir la plantilla Word a PDF. Verifica LibreOffice/soffice en el servidor.";
+            return Page();
+        }
+
         var (pdfPath, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"clients/{doc.ClientId}/legal", $"legal_{doc.DocumentType}_{doc.Id:N}.pdf", "application/pdf");
         doc.PdfStoragePath = pdfPath;
         doc.PdfGeneratedAt = DateTime.UtcNow;

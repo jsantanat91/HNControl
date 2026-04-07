@@ -125,6 +125,81 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostUpdateSellerAsync(Guid sellerId, decimal commissionPercent)
+    {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para editar vendedores.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var seller = await _db.SalesSellerProfiles.FirstOrDefaultAsync(x => x.Id == sellerId);
+        if (seller == null)
+        {
+            Flash = "Vendedor no encontrado.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        seller.DefaultCommissionPercent = Math.Clamp(commissionPercent, 0m, 1m);
+        await _db.SaveChangesAsync();
+        Flash = "Comisión actualizada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSuspendSellerAsync(Guid sellerId)
+    {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para suspender vendedores.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var seller = await _db.SalesSellerProfiles.FirstOrDefaultAsync(x => x.Id == sellerId);
+        if (seller == null)
+        {
+            Flash = "Vendedor no encontrado.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        seller.IsActive = false;
+        await _db.SaveChangesAsync();
+        Flash = "Vendedor suspendido.";
+        FlashType = "info";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostActivateSellerAsync(Guid sellerId)
+    {
+        await EnsurePermissionsAsync();
+        if (!CanManage)
+        {
+            Flash = "No tienes permiso para activar vendedores.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var seller = await _db.SalesSellerProfiles.FirstOrDefaultAsync(x => x.Id == sellerId);
+        if (seller == null)
+        {
+            Flash = "Vendedor no encontrado.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        seller.IsActive = true;
+        await _db.SaveChangesAsync();
+        Flash = "Vendedor activado.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostCreateOpportunityAsync()
     {
         await EnsurePermissionsAsync();

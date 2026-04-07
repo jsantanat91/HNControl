@@ -140,6 +140,8 @@ public class ProjectActivity
     
     public DateTime? StartAtUtc { get; set; }
     public DateTime? EndAtUtc { get; set; }
+    public bool IsCompleted { get; set; } = false;
+    public DateTime? CompletedAtUtc { get; set; }
     
     [MaxLength(16)]
     public string? ColorHex { get; set; }

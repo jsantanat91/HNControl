@@ -73,6 +73,30 @@
                                 <span class="badge text-bg-info">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
                                 <span class="badge @(s.IsActive ? "text-bg-success" : "text-bg-secondary")">@(s.IsActive ? "Activo" : "Inactivo")</span>
                             </div>
+                            @if (Model.CanManage)
+                            {
+                                <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+                                    <form method="post" asp-page-handler="UpdateSeller" class="d-flex gap-2 align-items-center">
+                                        <input type="hidden" name="sellerId" value="@s.Id" />
+                                        <input class="form-control form-control-sm" style="max-width:120px" type="number" name="commissionPercent" min="0" max="1" step="0.01" value="@s.DefaultCommissionPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                        <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                                    </form>
+                                    @if (s.IsActive)
+                                    {
+                                        <form method="post" asp-page-handler="SuspendSeller">
+                                            <input type="hidden" name="sellerId" value="@s.Id" />
+                                            <button class="btn btn-sm btn-outline-warning" type="submit">Suspender</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-page-handler="ActivateSeller">
+                                            <input type="hidden" name="sellerId" value="@s.Id" />
+                                            <button class="btn btn-sm btn-outline-success" type="submit">Activar</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -234,6 +258,7 @@
                                 <div class="fw-semibold">@s.EmployeeName</div>
                                 <div class="small text-muted">@s.Email</div>
                                 <span class="badge text-bg-info">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
+                                <span class="badge @(s.IsActive ? "text-bg-success" : "text-bg-secondary") ms-1">@(s.IsActive ? "Activo" : "Inactivo")</span>
                             </div>
                         }
                     </div>

@@ -13,8 +13,8 @@ public class IndexModel : PageModel
     private readonly ApplicationDbContext _db;
     public IndexModel(ApplicationDbContext db) => _db = db;
 
-    [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
-    [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public DateOnly? DateFrom { get; set; }
+    [BindProperty(SupportsGet = true)] public DateOnly? DateTo { get; set; }
     [BindProperty(SupportsGet = true)] public ServiceOrderType? Type { get; set; }
     [BindProperty(SupportsGet = true)] public ServiceOrderStatus? Status { get; set; }
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
@@ -63,8 +63,8 @@ public class IndexModel : PageModel
 
         if (!DateFrom.HasValue && !DateTo.HasValue)
         {
-            var now = DateTime.Now.Date;
-            DateFrom = new DateTime(now.Year, now.Month, 1);
+            var now = DateOnly.FromDateTime(DateTime.Today);
+            DateFrom = new DateOnly(now.Year, now.Month, 1);
             DateTo = DateFrom.Value.AddMonths(1).AddDays(-1);
         }
 
@@ -78,14 +78,14 @@ public class IndexModel : PageModel
 
         if (DateFrom.HasValue)
         {
-            var from = DateFrom.Value.Date;
-            q = q.Where(o => o.CreatedAt.Date >= from);
+            var fromUtc = DateTime.SpecifyKind(DateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            q = q.Where(o => o.CreatedAt >= fromUtc);
         }
 
         if (DateTo.HasValue)
         {
-            var to = DateTo.Value.Date;
-            q = q.Where(o => o.CreatedAt.Date <= to);
+            var toExclusiveUtc = DateTime.SpecifyKind(DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            q = q.Where(o => o.CreatedAt < toExclusiveUtc);
         }
 
         if (Status.HasValue)
