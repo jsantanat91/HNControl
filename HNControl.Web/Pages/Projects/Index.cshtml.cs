@@ -17,8 +17,8 @@ public class IndexModel : PageModel
         _actions = actions;
     }
 
-    [BindProperty(SupportsGet = true)] public DateTime? DateFrom { get; set; }
-    [BindProperty(SupportsGet = true)] public DateTime? DateTo { get; set; }
+    [BindProperty(SupportsGet = true)] public DateOnly? DateFrom { get; set; }
+    [BindProperty(SupportsGet = true)] public DateOnly? DateTo { get; set; }
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
 
@@ -37,25 +37,25 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
-        var isAdmin = User.IsInRole(AppRoles.SuperAdmin);
+        var canViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ProjectsEdit);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         var q = _db.Projects
             .AsNoTracking()
             .AsQueryable();
 
-        if (!isAdmin && userId != null)
+        if (!canViewAll && userId != null)
             q = q.Where(p => p.AssignedUserId == userId);
 
         if (DateFrom.HasValue)
         {
-            var fromUtc = DateTime.SpecifyKind(DateFrom.Value.Date, DateTimeKind.Utc);
+            var fromUtc = DateTime.SpecifyKind(DateFrom.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             q = q.Where(p => p.StartDate >= fromUtc);
         }
 
         if (DateTo.HasValue)
         {
-            var toUtcExclusive = DateTime.SpecifyKind(DateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            var toUtcExclusive = DateTime.SpecifyKind(DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             q = q.Where(p => p.StartDate < toUtcExclusive);
         }
 

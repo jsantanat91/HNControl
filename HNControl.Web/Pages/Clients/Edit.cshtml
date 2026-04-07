@@ -75,18 +75,21 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Representante legal</label>
+                <label class="form-label">Estado</label>
+                <select class="form-select" asp-for="Input.State" asp-items="Model.StateItems">
+                    <option value="">Selecciona estado...</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Municipio / Alcaldia</label>
+                <input class="form-control" asp-for="Input.Municipality" list="municipalityOptions" />
+                <datalist id="municipalityOptions"></datalist>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Representante legal (opcional)</label>
                 <input class="form-control" asp-for="Input.LegalRepresentative" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Correo legal</label>
-                <input class="form-control" asp-for="Input.LegalEmail" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Puesto representante</label>
-                <input class="form-control" asp-for="Input.LegalPosition" />
             </div>
 
             <div class="col-md-6">
@@ -139,4 +142,32 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const stateSelect = document.getElementById('Input_State');
+            const municipalityInput = document.getElementById('Input_Municipality');
+            const municipalityOptions = document.getElementById('municipalityOptions');
+            const map = @Html.Raw(Model.MunicipalitiesByStateJson);
+
+            function fillMunicipalities() {
+                if (!stateSelect || !municipalityOptions) return;
+                const selected = stateSelect.value || '';
+                const items = (map && map[selected]) ? map[selected] : [];
+                municipalityOptions.innerHTML = '';
+                items.forEach(function (name) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    municipalityOptions.appendChild(option);
+                });
+                if (municipalityInput && (!municipalityInput.value || !items.includes(municipalityInput.value))) {
+                    municipalityInput.value = '';
+                }
+            }
+
+            if (stateSelect) {
+                stateSelect.addEventListener('change', fillMunicipalities);
+                fillMunicipalities();
+            }
+        })();
+    </script>
 }

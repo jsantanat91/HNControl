@@ -99,7 +99,7 @@ public class DetailsModel : PageModel
             var pdf = await BuildStatementPdfAsync(payment.PlanId);
             await _emailSender.SendAsync(
                 investor.Email,
-                $"Estado de cuenta actualizado Â· {payment.Plan!.Name}",
+                $"Estado de cuenta actualizado · {payment.Plan!.Name}",
                 BuildStatementEmailBody(investor.FullName, payment.Plan.Name, payment.TotalAmount),
                 pdf,
                 $"estado_cuenta_inversion_{payment.Plan.Name.Replace(' ', '_')}_{DateTime.Now:yyyyMMdd}.pdf",
@@ -170,7 +170,7 @@ public class DetailsModel : PageModel
                 {
                     h.Item().Text(company).FontSize(15).SemiBold();
                     h.Item().Text("Estado de cuenta de inversiÃ³n").FontSize(12).FontColor(Colors.Grey.Darken2);
-                    h.Item().Text($"{plan.Investor.FullName} Â· {plan.Investor.Email}");
+                    h.Item().Text($"{plan.Investor.FullName} · {plan.Investor.Email}");
                 });
 
                 page.Content().PaddingTop(10).Column(c =>

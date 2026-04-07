@@ -484,6 +484,28 @@ ALTER TABLE IF EXISTS public.billinginvoiceplans
 ALTER TABLE IF EXISTS public.billinginvoiceplans
     ADD COLUMN IF NOT EXISTS "InvoiceIssueDate" date;
 
+ALTER TABLE IF EXISTS public."BillingInvoiceRuns"
+    ADD COLUMN IF NOT EXISTS "IsPaid" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public."BillingInvoiceRuns"
+    ADD COLUMN IF NOT EXISTS "PaidAt" date;
+ALTER TABLE IF EXISTS public."BillingInvoiceRuns"
+    ADD COLUMN IF NOT EXISTS "PaymentFormCode" character varying(4) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."BillingInvoiceRuns"
+    ADD COLUMN IF NOT EXISTS "PaymentMethodCode" character varying(4) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."BillingInvoiceRuns"
+    ADD COLUMN IF NOT EXISTS "PaymentNotes" character varying(1200) NOT NULL DEFAULT '';
+
+ALTER TABLE IF EXISTS public.billinginvoiceruns
+    ADD COLUMN IF NOT EXISTS "IsPaid" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.billinginvoiceruns
+    ADD COLUMN IF NOT EXISTS "PaidAt" date;
+ALTER TABLE IF EXISTS public.billinginvoiceruns
+    ADD COLUMN IF NOT EXISTS "PaymentFormCode" character varying(4) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.billinginvoiceruns
+    ADD COLUMN IF NOT EXISTS "PaymentMethodCode" character varying(4) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.billinginvoiceruns
+    ADD COLUMN IF NOT EXISTS "PaymentNotes" character varying(1200) NOT NULL DEFAULT '';
+
 CREATE TABLE IF NOT EXISTS public."BillingInvoiceLines" (
     "Id" uuid NOT NULL,
     "BillingInvoicePlanId" uuid NOT NULL,
@@ -585,6 +607,32 @@ static async Task EnsureProjectActivitySchemaAsync(ApplicationDbContext db)
     try
     {
         await db.Database.ExecuteSqlRawAsync("""
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'ProjectActivities'
+          AND column_name = 'assignedtouserid'
+    ) THEN
+        EXECUTE 'ALTER TABLE public."ProjectActivities" RENAME COLUMN assignedtouserid TO "AssignedToUserId"';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'projectactivities'
+          AND column_name = 'assignedtouserid'
+    ) THEN
+        EXECUTE 'ALTER TABLE public.projectactivities RENAME COLUMN assignedtouserid TO "AssignedToUserId"';
+    END IF;
+END $$;
+
 ALTER TABLE IF EXISTS public."ProjectActivities"
     ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
 ALTER TABLE IF EXISTS public."ProjectActivities"
@@ -634,8 +682,16 @@ static async Task EnsureClientProspectsSchemaAsync(ApplicationDbContext db)
         await db.Database.ExecuteSqlRawAsync("""
 ALTER TABLE IF EXISTS public."Clients"
     ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
+ALTER TABLE IF EXISTS public."Clients"
+    ADD COLUMN IF NOT EXISTS "State" character varying(80);
+ALTER TABLE IF EXISTS public."Clients"
+    ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
+ALTER TABLE IF EXISTS public.clients
+    ADD COLUMN IF NOT EXISTS "State" character varying(80);
+ALTER TABLE IF EXISTS public.clients
+    ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
 
 CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_CreatedByUserId_CreatedAt"
     ON public."Clients" ("IsTemporaryLead", "CreatedByUserId", "CreatedAt");

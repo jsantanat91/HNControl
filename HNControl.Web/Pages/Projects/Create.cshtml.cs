@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.Data.Common;
 
 namespace HNControl.Web.Pages.Projects;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Roles = AppRoles.Admin + "," + AppRoles.SuperAdmin)]
 public class CreateModel : PageModel
 {
     public record ContractOption(Guid Id, string Name);
@@ -83,8 +85,8 @@ public class CreateModel : PageModel
 
         if (!ModelState.IsValid)
         {
-            // Diagnóstico útil para que NO adivines: te dice qué campo falló.
-            Error = "Validación falló: " + string.Join(" | ",
+            // Diagnostico util para saber exactamente que campo fallo.
+            Error = "Validacion fallo: " + string.Join(" | ",
                 ModelState.Where(x => x.Value?.Errors.Count > 0)
                           .Select(x => $"{x.Key} => {string.Join(", ", x.Value!.Errors.Select(e => e.ErrorMessage))}")
             );
@@ -128,17 +130,37 @@ public class CreateModel : PageModel
 
         if (!string.IsNullOrWhiteSpace(Input.InitialActivityDescription))
         {
-            _db.ProjectActivities.Add(new ProjectActivity
+            try
             {
-                ProjectId = p.Id,
-                AssignedToName = string.IsNullOrWhiteSpace(Input.InitialActivityAssignedTo)
-                    ? (await _db.EmployeeProfiles.AsNoTracking().Where(x => x.UserId == Input.ResponsibleUserId).Select(x => x.FullName).FirstOrDefaultAsync() ?? Input.ResponsibleUserId)
-                    : Input.InitialActivityAssignedTo.Trim(),
-                Description = Input.InitialActivityDescription.Trim(),
-                PlannedDays = Math.Max(1, Input.InitialActivityDays ?? 1),
-                SortOrder = 1
-            });
-            await _db.SaveChangesAsync();
+                // En despliegues legacy puede faltar AssignedToUserId.
+                // Si no existe, omitimos alta inicial para evitar que truene la creacion del proyecto.
+                if (await HasProjectActivityColumnAsync("AssignedToUserId"))
+                {
+                    _db.ProjectActivities.Add(new ProjectActivity
+                    {
+                        ProjectId = p.Id,
+                        AssignedToName = string.IsNullOrWhiteSpace(Input.InitialActivityAssignedTo)
+                            ? (await _db.EmployeeProfiles.AsNoTracking().Where(x => x.UserId == Input.ResponsibleUserId).Select(x => x.FullName).FirstOrDefaultAsync() ?? Input.ResponsibleUserId)
+                            : Input.InitialActivityAssignedTo.Trim(),
+                        Description = Input.InitialActivityDescription.Trim(),
+                        PlannedDays = Math.Max(1, Input.InitialActivityDays ?? 1),
+                        SortOrder = 1
+                    });
+                    await _db.SaveChangesAsync();
+                }
+                else
+                {
+                    Info = "Proyecto creado. La actividad inicial se omitio porque la base no tiene la columna nueva de actividades.";
+                }
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == "42703")
+            {
+                Error = "Proyecto creado, pero la actividad inicial no se guardo por columna faltante en ProjectActivities.";
+            }
+            catch
+            {
+                Error = "Proyecto creado, pero la actividad inicial no se guardo por incompatibilidad de esquema en ProjectActivities.";
+            }
         }
 
         await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
@@ -216,4 +238,31 @@ public class CreateModel : PageModel
 
         await _db.SaveChangesAsync();
     }
+
+    private async Task<bool> HasProjectActivityColumnAsync(string column)
+    {
+        await using var conn = _db.Database.GetDbConnection();
+        if (conn.State != System.Data.ConnectionState.Open)
+            await conn.OpenAsync();
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'ProjectActivities'
+                  AND column_name = @column
+            );
+            """;
+        var p = cmd.CreateParameter();
+        p.ParameterName = "@column";
+        p.Value = column;
+        cmd.Parameters.Add(p);
+
+        var result = await cmd.ExecuteScalarAsync();
+        return result is bool b && b;
+    }
 }
+
+

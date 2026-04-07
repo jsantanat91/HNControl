@@ -431,7 +431,8 @@ public class IndexModel : PageModel
 
     private async Task EnsurePermissionsAsync()
     {
-        CanViewAll = User.IsInRole(AppRoles.SuperAdmin);
+        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesManage);
+        CanViewAll = canManage || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
         var canViewOwn = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!canViewOwn)
         {
@@ -440,7 +441,7 @@ public class IndexModel : PageModel
             return;
         }
 
-        CanManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesManage);
+        CanManage = canManage;
         CanAssign = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
     }
 

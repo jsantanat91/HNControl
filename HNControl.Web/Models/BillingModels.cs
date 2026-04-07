@@ -181,6 +181,17 @@ public class BillingInvoiceRun
     public DateTime? LastSyncAt { get; set; }
     public DateTime? CancellationRequestedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public bool IsPaid { get; set; }
+    public DateTime? PaidAt { get; set; }
+
+    [MaxLength(4)]
+    public string PaymentFormCode { get; set; } = "";
+
+    [MaxLength(4)]
+    public string PaymentMethodCode { get; set; } = "";
+
+    [MaxLength(1200)]
+    public string PaymentNotes { get; set; } = "";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

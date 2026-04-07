@@ -56,6 +56,14 @@ public class Client
     [Display(Name = "Puesto representante")]
     public string? LegalPosition { get; set; }
 
+    [MaxLength(80)]
+    [Display(Name = "Estado")]
+    public string? State { get; set; }
+
+    [MaxLength(120)]
+    [Display(Name = "Municipio")]
+    public string? Municipality { get; set; }
+
     [MaxLength(180)]
     [Display(Name = "Giro / actividad")]
     public string? BusinessLine { get; set; }

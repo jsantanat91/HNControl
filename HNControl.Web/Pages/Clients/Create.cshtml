@@ -55,19 +55,22 @@
                 <input class="form-control" asp-for="Input.Address" />
             </div>
 
-            <div class="col-md-6">
-                <label class="form-label">Representante legal</label>
+            <div class="col-md-4">
+                <label class="form-label">Estado</label>
+                <select class="form-select" asp-for="Input.State" asp-items="Model.StateItems" id="clientStateSelect">
+                    <option value="">Selecciona estado</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Municipio</label>
+                <input class="form-control" asp-for="Input.Municipality" id="clientMunicipalityInput" list="municipalityOptions" placeholder="Selecciona o escribe municipio" />
+                <datalist id="municipalityOptions"></datalist>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Representante legal (opcional)</label>
                 <input class="form-control" asp-for="Input.LegalRepresentative" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Correo legal</label>
-                <input class="form-control" asp-for="Input.LegalEmail" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Puesto representante</label>
-                <input class="form-control" asp-for="Input.LegalPosition" placeholder="Ej: Director General" />
             </div>
 
             <div class="col-md-6">
@@ -120,4 +123,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const map = @Html.Raw(Model.MunicipalitiesByStateJson);
+            const state = document.getElementById('clientStateSelect');
+            const municipality = document.getElementById('clientMunicipalityInput');
+            const list = document.getElementById('municipalityOptions');
+            if (!state || !municipality || !list) return;
+
+            const render = () => {
+                list.innerHTML = '';
+                const key = state.value || '';
+                const entries = map[key] || [];
+                entries.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    list.appendChild(opt);
+                });
+                if (entries.length === 0) {
+                    municipality.placeholder = 'Escribe municipio';
+                } else {
+                    municipality.placeholder = 'Selecciona o escribe municipio';
+                }
+            };
+
+            state.addEventListener('change', () => {
+                municipality.value = '';
+                render();
+            });
+            render();
+        })();
+    </script>
 }

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,11 @@ public class CreateModel : PageModel
 
     public SelectList KindItems =>
         new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
+
+    public SelectList StateItems =>
+        new(MexicoGeoCatalog.States.Select(x => new { Id = x, Name = x }), "Id", "Name");
+
+    public string MunicipalitiesByStateJson => JsonSerializer.Serialize(MexicoGeoCatalog.MunicipalitiesByState);
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public string? Error { get; set; }
@@ -43,14 +49,14 @@ public class CreateModel : PageModel
         [MaxLength(400)]
         public string Address { get; set; } = "";
 
-        [Required, MaxLength(160)]
+        [MaxLength(160)]
         public string LegalRepresentative { get; set; } = "";
 
-        [Required, EmailAddress, MaxLength(256)]
-        public string LegalEmail { get; set; } = "";
+        [Required, MaxLength(80)]
+        public string State { get; set; } = "";
 
-        [MaxLength(120)]
-        public string LegalPosition { get; set; } = "";
+        [Required, MaxLength(120)]
+        public string Municipality { get; set; } = "";
 
         [Required, MaxLength(180)]
         public string BusinessLine { get; set; } = "";
@@ -88,8 +94,8 @@ public class CreateModel : PageModel
             ContactName = (Input.ContactName ?? "").Trim(),
             Address = (Input.Address ?? "").Trim(),
             LegalRepresentative = (Input.LegalRepresentative ?? "").Trim(),
-            LegalEmail = (Input.LegalEmail ?? "").Trim(),
-            LegalPosition = (Input.LegalPosition ?? "").Trim(),
+            State = (Input.State ?? "").Trim(),
+            Municipality = (Input.Municipality ?? "").Trim(),
             BusinessLine = (Input.BusinessLine ?? "").Trim(),
             BillingEmail = (Input.BillingEmail ?? "").Trim(),
             FiscalAddress = (Input.FiscalAddress ?? "").Trim(),
@@ -123,5 +129,3 @@ public class CreateModel : PageModel
         return $"HN-{max + 1:0000}";
     }
 }
-
-

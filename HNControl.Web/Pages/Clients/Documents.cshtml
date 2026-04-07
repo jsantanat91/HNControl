@@ -42,22 +42,9 @@
                         <option value="@c.Id">@c.Label - @c.Provider - @c.MonthlyAmount?.ToString("C")</option>
                     }
                 </select>
-
-                <div class="row g-2">
-                    <div class="col-md-6"><label class="form-label small">RSCLIENTE</label><input class="form-control" name="Tpl.RSCLIENTE" /></div>
-                    <div class="col-md-6"><label class="form-label small">RLCLIENTE</label><input class="form-control" name="Tpl.RLCLIENTE" /></div>
-                    <div class="col-md-6"><label class="form-label small">RFCC</label><input class="form-control" name="Tpl.RFCC" /></div>
-                    <div class="col-md-6"><label class="form-label small">EMAILC</label><input class="form-control" name="Tpl.EMAILC" /></div>
-                    <div class="col-md-8"><label class="form-label small">DIRECCIONC</label><input class="form-control" name="Tpl.DIRECCIONC" /></div>
-                    <div class="col-md-4"><label class="form-label small">ESTADOC</label><input class="form-control" name="Tpl.ESTADOC" /></div>
-                    <div class="col-md-4"><label class="form-label small">CPC</label><input class="form-control" name="Tpl.CPC" /></div>
-                    <div class="col-md-8"><label class="form-label small">CONTRATOC</label><input class="form-control" name="Tpl.CONTRATOC" /></div>
-                    <div class="col-md-6"><label class="form-label small">PERIODOC</label><input class="form-control" name="Tpl.PERIODOC" /></div>
-                    <div class="col-md-6"><label class="form-label small">SUCURSALC</label><input class="form-control" name="Tpl.SUCURSALC" /></div>
-                    <div class="col-md-6"><label class="form-label small">COSTOCLIENTE</label><input class="form-control" name="Tpl.COSTOCLIENTE" /></div>
-                    <div class="col-md-6"><label class="form-label small">NOMBREPROYECTO</label><input class="form-control" name="Tpl.NOMBREPROYECTO" /></div>
-                    <div class="col-md-6"><label class="form-label small">NOMBRETECNICO</label><input class="form-control" name="Tpl.NOMBRETECNICO" /></div>
-                    <div class="col-md-6"><label class="form-label small">FIRMACLIENTE</label><input class="form-control" name="Tpl.FIRMACLIENTE" placeholder="PENDIENTE DE FIRMA" /></div>
+                <div class="small text-muted">
+                    Los datos del cliente se llenan autom&aacute;ticamente desde su ficha (raz&oacute;n social, RFC, estado, municipio, correo de facturaci&oacute;n y datos del contrato).
+                    Si ya existe un PDF previo para este contrato, se reemplaza por el nuevo.
                 </div>
             </div>
             <div class="card-footer">
@@ -80,15 +67,8 @@
                         <option value="@c.Id">@c.Label - @c.Provider</option>
                     }
                 </select>
-
-                <div class="row g-2">
-                    <div class="col-md-6"><label class="form-label small">RSCLIENTE</label><input class="form-control" name="Tpl.RSCLIENTE" /></div>
-                    <div class="col-md-6"><label class="form-label small">RLCLIENTE</label><input class="form-control" name="Tpl.RLCLIENTE" /></div>
-                    <div class="col-md-6"><label class="form-label small">DIRECCIONC</label><input class="form-control" name="Tpl.DIRECCIONC" /></div>
-                    <div class="col-md-6"><label class="form-label small">PERIODOC</label><input class="form-control" name="Tpl.PERIODOC" /></div>
-                    <div class="col-md-6"><label class="form-label small">NOMBREPROYECTO</label><input class="form-control" name="Tpl.NOMBREPROYECTO" /></div>
-                    <div class="col-md-6"><label class="form-label small">NOMBRETECNICO</label><input class="form-control" name="Tpl.NOMBRETECNICO" /></div>
-                    <div class="col-md-6"><label class="form-label small">FIRMACLIENTE</label><input class="form-control" name="Tpl.FIRMACLIENTE" placeholder="PENDIENTE DE FIRMA" /></div>
+                <div class="small text-muted">
+                    NDA autocompletado con datos del cliente y contrato ligado. Siempre genera/reemplaza el PDF final.
                 </div>
             </div>
             <div class="card-footer">

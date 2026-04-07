@@ -58,7 +58,9 @@ public class DashboardModel : PageModel
         var userId = _userMgr.GetUserId(User);
         if (string.IsNullOrWhiteSpace(userId)) return Forbid();
 
-        var hasViewAll = User.IsInRole(AppRoles.SuperAdmin);
+        var hasViewAll = AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesViewAll)
+            || await _actions.HasActionAsync(User, AppActions.SalesManage);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!hasViewOwn) return Forbid();
 
@@ -175,9 +177,14 @@ public class DashboardModel : PageModel
 
     private (DateTime fromUtc, DateTime toUtc) ResolveMonthRange()
     {
-        if (!DateTime.TryParse($"{Month}-01", out var monthStart))
-            monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        monthStart = DateTime.SpecifyKind(monthStart, DateTimeKind.Utc);
-        return (monthStart, monthStart.AddMonths(1));
+        if (DateOnly.TryParse($"{Month}-01", out var monthDate))
+        {
+            var from = DateTime.SpecifyKind(monthDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            return (from, from.AddMonths(1));
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var fallback = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return (fallback, fallback.AddMonths(1));
     }
 }

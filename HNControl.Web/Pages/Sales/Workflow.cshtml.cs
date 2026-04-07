@@ -217,10 +217,12 @@ public class WorkflowModel : PageModel
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        var hasViewAll = User.IsInRole(AppRoles.SuperAdmin);
+        var hasViewAll = AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesViewAll)
+            || await _actions.HasActionAsync(User, AppActions.SalesManage);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
-        CanMove = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
-        CanAssign = false;
+        CanMove = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
+        CanAssign = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
 
         CanViewAll = hasViewAll;
         return hasViewOwn;

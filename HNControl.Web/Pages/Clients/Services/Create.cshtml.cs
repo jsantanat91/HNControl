@@ -262,7 +262,7 @@ public class CreateModel : PageModel
             .Select(x => new
             {
                 x.Id,
-                Label = x.Name + (x.UnitPrice.HasValue ? $" Â· {x.UnitPrice.Value.ToString("C2")}" : " Â· Precio manual")
+                Label = x.Name + (x.UnitPrice.HasValue ? $" · {x.UnitPrice.Value.ToString("C2")}" : " · Precio manual")
             })
             .ToListAsync();
 

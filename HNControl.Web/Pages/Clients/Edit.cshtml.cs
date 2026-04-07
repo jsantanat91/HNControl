@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,11 @@ public class EditModel : PageModel
 
     public SelectList KindItems =>
         new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
+
+    public SelectList StateItems =>
+        new(MexicoGeoCatalog.States.Select(x => new { Id = x, Name = x }), "Id", "Name");
+
+    public string MunicipalitiesByStateJson => JsonSerializer.Serialize(MexicoGeoCatalog.MunicipalitiesByState);
 
     [BindProperty] public InputModel? Input { get; set; }
     public string? Error { get; set; }
@@ -46,14 +52,14 @@ public class EditModel : PageModel
         [MaxLength(400)]
         public string Address { get; set; } = "";
 
-        [Required, MaxLength(160)]
+        [MaxLength(160)]
         public string LegalRepresentative { get; set; } = "";
 
-        [Required, EmailAddress, MaxLength(256)]
-        public string LegalEmail { get; set; } = "";
+        [Required, MaxLength(80)]
+        public string State { get; set; } = "";
 
-        [MaxLength(120)]
-        public string LegalPosition { get; set; } = "";
+        [Required, MaxLength(120)]
+        public string Municipality { get; set; } = "";
 
         [Required, MaxLength(180)]
         public string BusinessLine { get; set; } = "";
@@ -91,8 +97,8 @@ public class EditModel : PageModel
             ContactName = client.ContactName ?? "",
             Address = client.Address ?? "",
             LegalRepresentative = client.LegalRepresentative ?? "",
-            LegalEmail = client.LegalEmail ?? "",
-            LegalPosition = client.LegalPosition ?? "",
+            State = client.State ?? "",
+            Municipality = client.Municipality ?? "",
             BusinessLine = client.BusinessLine ?? "",
             BillingEmail = client.BillingEmail ?? "",
             FiscalAddress = client.FiscalAddress ?? "",
@@ -120,8 +126,8 @@ public class EditModel : PageModel
         client.ContactName = (Input.ContactName ?? "").Trim();
         client.Address = (Input.Address ?? "").Trim();
         client.LegalRepresentative = (Input.LegalRepresentative ?? "").Trim();
-        client.LegalEmail = (Input.LegalEmail ?? "").Trim();
-        client.LegalPosition = (Input.LegalPosition ?? "").Trim();
+        client.State = (Input.State ?? "").Trim();
+        client.Municipality = (Input.Municipality ?? "").Trim();
         client.BusinessLine = (Input.BusinessLine ?? "").Trim();
         client.BillingEmail = (Input.BillingEmail ?? "").Trim();
         client.FiscalAddress = (Input.FiscalAddress ?? "").Trim();
@@ -133,5 +139,3 @@ public class EditModel : PageModel
         return RedirectToPage("/Clients/Details", new { id = client.Id });
     }
 }
-
-

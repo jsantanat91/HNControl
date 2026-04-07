@@ -57,6 +57,7 @@ public class IndexModel : PageModel
 
     public List<PlanVm> Plans { get; set; } = new();
     public List<RunVm> Runs { get; set; } = new();
+    public List<RunVm> EmittedRuns { get; set; } = new();
     public List<AuditVm> Audits { get; set; } = new();
 
     public int ActivePlans { get; set; }
@@ -106,7 +107,11 @@ public class IndexModel : PageModel
         bool HasPdf,
         string CfdiUuid,
         string CfdiStatus,
-        string SatStatusMessage);
+        string SatStatusMessage,
+        bool IsPaid,
+        DateTime? PaidAt,
+        string PaymentFormCode,
+        string PaymentMethodCode);
 
     public record AuditVm(DateTime CreatedAt, string Client, string EventType, string Details, string UserName);
 
@@ -150,6 +155,17 @@ public class IndexModel : PageModel
         [Range(0, 99999999)] public decimal UnitPrice { get; set; } = 0;
         [Range(0, 1)] public decimal VatRate { get; set; } = 0.16m;
     }
+
+    public class PaymentInputModel
+    {
+        [Required] public Guid RunId { get; set; }
+        [Required] public DateTime PaidAt { get; set; } = DateTime.Today;
+        [Required, MaxLength(4)] public string PaymentFormCode { get; set; } = "03";
+        [Required, MaxLength(4)] public string PaymentMethodCode { get; set; } = "PUE";
+        [MaxLength(1200)] public string Notes { get; set; } = "";
+    }
+
+    [BindProperty] public PaymentInputModel PaymentInput { get; set; } = new();
 
     public async Task OnGetAsync(Guid? opportunityId = null, Guid? quoteId = null, Guid? contractId = null)
     {
@@ -479,6 +495,44 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostMarkPaidAsync()
+    {
+        if (!await CheckBillingSchemaReadyAsync())
+        {
+            Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
+            FlashType = "warning";
+            return RedirectToPage(new { openModal = "emitted" });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            Flash = "Datos de pago incompletos.";
+            FlashType = "danger";
+            return RedirectToPage(new { openModal = "emitted" });
+        }
+
+        var run = await _db.BillingInvoiceRuns
+            .Include(x => x.Plan)
+            .FirstOrDefaultAsync(x => x.Id == PaymentInput.RunId);
+
+        if (run == null || run.Plan == null)
+            return RedirectToPage(new { openModal = "emitted" });
+
+        run.IsPaid = true;
+        run.PaidAt = PaymentInput.PaidAt.Date;
+        run.PaymentFormCode = (PaymentInput.PaymentFormCode ?? "03").Trim().ToUpperInvariant();
+        run.PaymentMethodCode = (PaymentInput.PaymentMethodCode ?? "PUE").Trim().ToUpperInvariant();
+        run.PaymentNotes = (PaymentInput.Notes ?? "").Trim();
+
+        await _db.SaveChangesAsync();
+        await AddBillingAuditAsync(run.PlanId, "billing.run.paid",
+            $"Factura {run.PeriodLabel} pagada {run.PaidAt:yyyy-MM-dd} · forma {run.PaymentFormCode} · método {run.PaymentMethodCode}.");
+
+        Flash = "Factura marcada como pagada.";
+        FlashType = "success";
+        return RedirectToPage(new { openModal = "emitted" });
+    }
+
     public async Task<IActionResult> OnPostToggleStatusAsync(Guid planId)
     {
         if (!await CheckBillingSchemaReadyAsync())
@@ -738,6 +792,7 @@ public class IndexModel : PageModel
         {
             Plans = [];
             Runs = [];
+            EmittedRuns = [];
             Audits = [];
             ActivePlans = 0;
             PendingRuns = 0;
@@ -825,7 +880,36 @@ public class IndexModel : PageModel
                 !string.IsNullOrWhiteSpace(x.PdfStoragePath),
                 x.CfdiUuid,
                 x.CfdiStatus.ToString(),
-                x.SatStatusMessage))
+                x.SatStatusMessage,
+                x.IsPaid,
+                x.PaidAt,
+                x.PaymentFormCode,
+                x.PaymentMethodCode))
+            .ToListAsync();
+
+        EmittedRuns = await _db.BillingInvoiceRuns
+            .AsNoTracking()
+            .Include(x => x.Plan!).ThenInclude(x => x.Client)
+            .Where(x => x.Status == BillingRunStatus.Sent)
+            .OrderByDescending(x => x.ScheduledFor)
+            .Take(80)
+            .Select(x => new RunVm(
+                x.Id,
+                x.PlanId,
+                x.Plan != null && x.Plan.Client != null ? x.Plan.Client.Name : "-",
+                x.Plan != null ? x.Plan.Concept : "-",
+                x.PeriodLabel,
+                x.ScheduledFor,
+                x.Status.ToString(),
+                x.SentToEmail,
+                !string.IsNullOrWhiteSpace(x.PdfStoragePath),
+                x.CfdiUuid,
+                x.CfdiStatus.ToString(),
+                x.SatStatusMessage,
+                x.IsPaid,
+                x.PaidAt,
+                x.PaymentFormCode,
+                x.PaymentMethodCode))
             .ToListAsync();
 
         var auditsBase = _db.BillingAuditLogs
@@ -866,7 +950,12 @@ public class IndexModel : PageModel
             var hasContractCol = await ColumnExistsAsync(conn, "public", "BillingInvoicePlans", "ClientServiceContractId");
             var hasIssueDateCol = await ColumnExistsAsync(conn, "public", "BillingInvoicePlans", "InvoiceIssueDate");
             var hasLinesTable = await TableExistsAsync(conn, "public", "BillingInvoiceLines");
-            BillingSchemaReady = hasContractCol && hasIssueDateCol && hasLinesTable;
+            var hasPaidCols =
+                await ColumnExistsAsync(conn, "public", "BillingInvoiceRuns", "IsPaid")
+                && await ColumnExistsAsync(conn, "public", "BillingInvoiceRuns", "PaidAt")
+                && await ColumnExistsAsync(conn, "public", "BillingInvoiceRuns", "PaymentFormCode")
+                && await ColumnExistsAsync(conn, "public", "BillingInvoiceRuns", "PaymentMethodCode");
+            BillingSchemaReady = hasContractCol && hasIssueDateCol && hasLinesTable && hasPaidCols;
         }
         catch
         {

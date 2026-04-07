@@ -294,6 +294,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.LegalRepresentative).HasMaxLength(160);
             e.Property(x => x.LegalEmail).HasMaxLength(256);
             e.Property(x => x.LegalPosition).HasMaxLength(120);
+            e.Property(x => x.State).HasMaxLength(80);
+            e.Property(x => x.Municipality).HasMaxLength(120);
             e.Property(x => x.BusinessLine).HasMaxLength(180);
             e.Property(x => x.BillingEmail).HasMaxLength(256);
             e.Property(x => x.FiscalAddress).HasMaxLength(400);
@@ -592,6 +594,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.CancelReasonCode).HasMaxLength(40);
             e.Property(x => x.SatStatusMessage).HasMaxLength(1200);
             e.Property(x => x.PacTrackingId).HasMaxLength(120);
+            e.Property(x => x.PaidAt).HasColumnType("date");
+            e.Property(x => x.PaymentFormCode).HasMaxLength(4);
+            e.Property(x => x.PaymentMethodCode).HasMaxLength(4);
+            e.Property(x => x.PaymentNotes).HasMaxLength(1200);
             e.HasIndex(x => new { x.PlanId, x.ScheduledFor }).IsUnique();
             e.HasIndex(x => new { x.Status, x.ScheduledFor });
             e.HasIndex(x => x.CfdiUuid);

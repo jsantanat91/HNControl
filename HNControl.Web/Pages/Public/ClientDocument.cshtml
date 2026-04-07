@@ -53,7 +53,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Correo de quien firma</label>
-                        <input class="form-control" name="signerEmail" value="@Model.DocumentRef.Client?.LegalEmail" required />
+                        <input class="form-control" name="signerEmail" value="@(Model.DocumentRef.Client?.BillingEmail ?? Model.DocumentRef.Client?.Email)" required />
                     </div>
                     <div class="col-12">
                         <label class="form-label">Dibuja tu firma</label>

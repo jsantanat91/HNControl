@@ -28,6 +28,7 @@
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
+    <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#emitidasModal">Facturas emitidas</button>
     <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#ejecucionesModal">Ejecuciones</button>
     <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#bitacoraModal">Bitacora</button>
 </div>
@@ -304,6 +305,101 @@ else
     </div></div>
 </div>
 
+<div class="modal fade" id="emitidasModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Facturas emitidas</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            @if (!Model.EmittedRuns.Any())
+            {
+                <div class="text-muted small">No hay facturas emitidas.</div>
+            }
+            else
+            {
+                <div class="row g-2">
+                    @foreach (var r in Model.EmittedRuns)
+                    {
+                        <div class="col-12 col-lg-6">
+                            <div class="card border h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div>
+                                            <div class="fw-semibold">@r.Client</div>
+                                            <div class="small text-muted">@r.Concept</div>
+                                        </div>
+                                        <span class="badge @(r.IsPaid ? "text-bg-success" : "text-bg-warning")">@(r.IsPaid ? "Pagada" : "Pendiente pago")</span>
+                                    </div>
+                                    <div class="small mt-2">Periodo: @r.PeriodLabel · Fecha: @r.ScheduledFor.ToString("yyyy-MM-dd")</div>
+                                    <div class="small text-muted">CFDI: @r.CfdiStatus @(string.IsNullOrWhiteSpace(r.CfdiUuid) ? "" : $"· {r.CfdiUuid}")</div>
+                                    @if (r.IsPaid && r.PaidAt.HasValue)
+                                    {
+                                        <div class="small text-success">Pagada: @r.PaidAt.Value.ToString("yyyy-MM-dd") · Forma @r.PaymentFormCode · Método @r.PaymentMethodCode</div>
+                                    }
+                                    <div class="d-flex flex-wrap gap-2 mt-3">
+                                        @if (r.HasPdf)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" asp-page="./Index" asp-page-handler="DownloadPdf" asp-route-runId="@r.Id">PDF</a>
+                                        }
+                                        @if (!r.IsPaid)
+                                        {
+                                            <button class="btn btn-sm btn-outline-success"
+                                                    type="button"
+                                                    data-mark-paid-btn
+                                                    data-run-id="@r.Id"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#marcarPagadaModal">Pagada</button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div></div>
+</div>
+
+<div class="modal fade" id="marcarPagadaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Registrar pago</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <form method="post" asp-page-handler="MarkPaid">
+            <div class="modal-body">
+                <input type="hidden" asp-for="PaymentInput.RunId" id="payment-run-id" />
+                <div class="mb-2">
+                    <label class="form-label">Fecha de pago</label>
+                    <input class="form-control" asp-for="PaymentInput.PaidAt" type="date" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Forma de pago (SAT)</label>
+                    <select class="form-select" asp-for="PaymentInput.PaymentFormCode">
+                        @foreach (var it in SatCatalogs.FormaPago)
+                        {
+                            <option value="@it.Code">@it.Code - @it.Label</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Método de pago (SAT)</label>
+                    <select class="form-select" asp-for="PaymentInput.PaymentMethodCode">
+                        @foreach (var it in SatCatalogs.MetodoPago)
+                        {
+                            <option value="@it.Code">@it.Code - @it.Label</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Notas (opcional)</label>
+                    <textarea class="form-control" asp-for="PaymentInput.Notes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" type="submit">Guardar pago</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+
 <div class="modal fade" id="bitacoraModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title">Bitacora de facturacion</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -523,6 +619,9 @@ else
     if (openModal === 'runs') {
       const modal = document.getElementById('ejecucionesModal');
       if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
+    } else if (openModal === 'emitted') {
+      const modal = document.getElementById('emitidasModal');
+      if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
     } else if (openModal === 'audit') {
       const modal = document.getElementById('bitacoraModal');
       if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
@@ -531,6 +630,14 @@ else
       if (modal) bootstrap.Modal.getOrCreateInstance(modal).show();
     }
   }
+
+  document.querySelectorAll('[data-mark-paid-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const runId = btn.getAttribute('data-run-id') || '';
+      const input = document.getElementById('payment-run-id');
+      if (input) input.value = runId;
+    });
+  });
 })();
 </script>
 }

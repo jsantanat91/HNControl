@@ -42,7 +42,6 @@ public class DocumentsModel : PageModel
     public List<ClientServiceContract> Contracts { get; set; } = new();
     public List<LegalDocRow> Docs { get; set; } = new();
 
-    [BindProperty] public ContractTemplateInput Tpl { get; set; } = new();
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
 
@@ -57,24 +56,6 @@ public class DocumentsModel : PageModel
         string? SignedAt,
         string? SignedBy,
         Guid? ContractId);
-
-    public sealed class ContractTemplateInput
-    {
-        public string? RSCLIENTE { get; set; }
-        public string? RLCLIENTE { get; set; }
-        public string? RFCC { get; set; }
-        public string? DIRECCIONC { get; set; }
-        public string? ESTADOC { get; set; }
-        public string? CPC { get; set; }
-        public string? EMAILC { get; set; }
-        public string? CONTRATOC { get; set; }
-        public string? PERIODOC { get; set; }
-        public string? SUCURSALC { get; set; }
-        public string? COSTOCLIENTE { get; set; }
-        public string? FIRMACLIENTE { get; set; }
-        public string? NOMBREPROYECTO { get; set; }
-        public string? NOMBRETECNICO { get; set; }
-    }
 
     public async Task<IActionResult> OnGetAsync(Guid clientId)
     {
@@ -91,26 +72,36 @@ public class DocumentsModel : PageModel
             ? await _db.ClientServiceContracts.FirstOrDefaultAsync(x => x.Id == contractId.Value && x.ClientId == clientId)
             : null;
 
-        var doc = new ClientLegalDocument
-        {
-            ClientId = clientId,
-            ClientServiceContractId = contract?.Id,
-            DocumentType = type,
-            Status = ClientLegalDocumentStatus.Draft,
-            Title = type == ClientLegalDocumentType.NDA
-                ? $"NDA - {client.Name}"
-                : $"Contrato de servicios - {client.Name}",
-            TermsBody = BuildTemplateTerms(type, client, contract, Tpl),
-            MonthlyAmount = contract?.MonthlyAmount,
-            ContractStartDate = contract?.ContractStartDate,
-            ContractEndDate = contract?.ContractEndDate,
-            PublicToken = Guid.NewGuid().ToString("N"),
-            TokenExpiresAt = DateTime.UtcNow.AddMonths(2),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var doc = await _db.ClientLegalDocuments
+            .FirstOrDefaultAsync(x =>
+                x.ClientId == clientId
+                && x.DocumentType == type
+                && x.ClientServiceContractId == contractId);
 
-        _db.ClientLegalDocuments.Add(doc);
+        if (doc == null)
+        {
+            doc = new ClientLegalDocument
+            {
+                ClientId = clientId,
+                DocumentType = type,
+                ClientServiceContractId = contractId,
+                PublicToken = Guid.NewGuid().ToString("N"),
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.ClientLegalDocuments.Add(doc);
+        }
+
+        doc.Status = ClientLegalDocumentStatus.Draft;
+        doc.Title = type == ClientLegalDocumentType.NDA
+            ? $"NDA - {client.Name}"
+            : $"Contrato de servicios - {client.Name}";
+        doc.TermsBody = BuildTemplateTerms(type, client, contract);
+        doc.MonthlyAmount = contract?.MonthlyAmount;
+        doc.ContractStartDate = contract?.ContractStartDate;
+        doc.ContractEndDate = contract?.ContractEndDate;
+        doc.TokenExpiresAt = DateTime.UtcNow.AddMonths(2);
+        doc.UpdatedAt = DateTime.UtcNow;
+
         await _db.SaveChangesAsync();
 
         await RegeneratePdfAsync(doc);
@@ -130,10 +121,10 @@ public class DocumentsModel : PageModel
         if (string.IsNullOrWhiteSpace(doc.PdfStoragePath))
             await RegeneratePdfAsync(doc);
 
-        var recipient = (doc.Client?.LegalEmail ?? doc.Client?.Email ?? "").Trim();
+        var recipient = FirstNonEmpty(doc.Client?.BillingEmail, doc.Client?.Email);
         if (string.IsNullOrWhiteSpace(recipient))
         {
-            Flash = "El cliente no tiene correo legal/correo principal para enviar firma.";
+            Flash = "El cliente no tiene correo de facturación o principal para enviar firma.";
             FlashType = "danger";
             return RedirectToPage(new { clientId });
         }
@@ -260,24 +251,24 @@ public class DocumentsModel : PageModel
         await _db.SaveChangesAsync();
     }
 
-    private static string BuildTemplateTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract, ContractTemplateInput tpl)
+    private static string BuildTemplateTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract)
     {
-        var payload = new ContractTemplateInput
+        var payload = new ContractTemplatePayload
         {
-            RSCLIENTE = Safe(tpl.RSCLIENTE, client.Name),
-            RLCLIENTE = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName),
-            RFCC = Safe(tpl.RFCC, client.Rfc),
-            DIRECCIONC = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address),
-            ESTADOC = Safe(tpl.ESTADOC, "México"),
-            CPC = Safe(tpl.CPC, client.FiscalZipCode),
-            EMAILC = Safe(tpl.EMAILC, client.BillingEmail, client.Email, client.LegalEmail),
-            CONTRATOC = Safe(tpl.CONTRATOC, type == ClientLegalDocumentType.NDA ? "NDA" : contract?.Label),
-            PERIODOC = Safe(tpl.PERIODOC, BuildPeriod(contract)),
-            SUCURSALC = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label),
-            COSTOCLIENTE = Safe(tpl.COSTOCLIENTE, (contract?.MonthlyAmount ?? 0m).ToString("N2")),
-            FIRMACLIENTE = Safe(tpl.FIRMACLIENTE, "PENDIENTE DE FIRMA"),
-            NOMBREPROYECTO = Safe(tpl.NOMBREPROYECTO, contract?.Label),
-            NOMBRETECNICO = Safe(tpl.NOMBRETECNICO, "-")
+            RSCLIENTE = Safe(client.Name),
+            RLCLIENTE = Safe(client.LegalRepresentative, client.ContactName),
+            RFCC = Safe(client.Rfc),
+            DIRECCIONC = Safe(client.FiscalAddress, client.Address),
+            ESTADOC = Safe(client.State, "México"),
+            CPC = Safe(client.FiscalZipCode),
+            EMAILC = Safe(client.BillingEmail, client.Email),
+            CONTRATOC = Safe(type == ClientLegalDocumentType.NDA ? "NDA" : contract?.Label, "Contrato de servicios"),
+            PERIODOC = BuildPeriod(contract),
+            SUCURSALC = Safe(contract?.Branch, contract?.Label),
+            COSTOCLIENTE = (contract?.MonthlyAmount ?? 0m).ToString("N2"),
+            FIRMACLIENTE = "PENDIENTE DE FIRMA",
+            NOMBREPROYECTO = Safe(contract?.Label),
+            NOMBRETECNICO = "-"
         };
 
         return "__TPLJSON__" + JsonSerializer.Serialize(payload);
@@ -304,5 +295,34 @@ public class DocumentsModel : PageModel
         }
 
         return "-";
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                return value.Trim();
+        }
+
+        return string.Empty;
+    }
+
+    private sealed class ContractTemplatePayload
+    {
+        public string? RSCLIENTE { get; set; }
+        public string? RLCLIENTE { get; set; }
+        public string? RFCC { get; set; }
+        public string? DIRECCIONC { get; set; }
+        public string? ESTADOC { get; set; }
+        public string? CPC { get; set; }
+        public string? EMAILC { get; set; }
+        public string? CONTRATOC { get; set; }
+        public string? PERIODOC { get; set; }
+        public string? SUCURSALC { get; set; }
+        public string? COSTOCLIENTE { get; set; }
+        public string? FIRMACLIENTE { get; set; }
+        public string? NOMBREPROYECTO { get; set; }
+        public string? NOMBRETECNICO { get; set; }
     }
 }

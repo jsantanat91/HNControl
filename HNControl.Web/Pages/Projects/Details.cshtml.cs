@@ -78,7 +78,7 @@ public class DetailsModel : PageModel
     {
         await EnsureProjectActivityColumnsAsync();
 
-        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         Project = await _db.Projects
@@ -173,7 +173,7 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostAddActivityAsync()
     {
-        if (!User.IsInRole(AppRoles.Admin))
+        if (!AppRoles.IsGlobalAdmin(User))
             return Forbid();
 
         await EnsureProjectActivityColumnsAsync();
@@ -224,7 +224,7 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteActivityAsync(Guid id, Guid activityId)
     {
-        if (!User.IsInRole(AppRoles.Admin))
+        if (!AppRoles.IsGlobalAdmin(User))
             return Forbid();
 
         await DeleteProjectActivitySafeAsync(id, activityId);
@@ -236,7 +236,7 @@ public class DetailsModel : PageModel
     {
         await EnsureProjectActivityColumnsAsync();
 
-        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var isAdmin = AppRoles.IsGlobalAdmin(User);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         var p = await _db.Projects
@@ -489,12 +489,38 @@ public class DetailsModel : PageModel
     private async Task EnsureProjectActivityColumnsAsync()
     {
         const string sql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='ProjectActivities' AND column_name='assignedtouserid'
+                ) THEN
+                    EXECUTE 'ALTER TABLE public."ProjectActivities" RENAME COLUMN assignedtouserid TO "AssignedToUserId"';
+                END IF;
+            END $$;
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='projectactivities' AND column_name='assignedtouserid'
+                ) THEN
+                    EXECUTE 'ALTER TABLE public.projectactivities RENAME COLUMN assignedtouserid TO "AssignedToUserId"';
+                END IF;
+            END $$;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16);
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "DurationValue" integer;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
             ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16);
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "DurationValue" integer;
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
+            ALTER TABLE IF EXISTS public.projectactivities ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
             """;
         try
         {
