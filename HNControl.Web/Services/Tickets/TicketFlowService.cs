@@ -746,8 +746,8 @@ public class TicketFlowService : ITicketFlowService
 
     private static void SetSla(Ticket t, DateTime now)
     {
-        const int responseHours = 8;
-        const int resolutionHours = 8;
+        const int responseHours = 24;
+        const int resolutionHours = 24;
 
         t.SlaResponseDueAt = now.AddHours(responseHours);
         t.SlaResolutionDueAt = now.AddHours(resolutionHours);

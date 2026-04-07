@@ -389,8 +389,8 @@ public class WorkflowModel : PageModel
 
     public static string StageLabel(SalesWorkflowStage stage) => stage switch
     {
-        SalesWorkflowStage.Lead => "Lead",
-        SalesWorkflowStage.Quotation => "Cotizacion",
+        SalesWorkflowStage.Lead => "Oportunidad",
+        SalesWorkflowStage.Quotation => "Cotización",
         SalesWorkflowStage.Closing => "Cierre",
         SalesWorkflowStage.ClosedWon => "Ganado",
         SalesWorkflowStage.ClosedLost => "Perdido",

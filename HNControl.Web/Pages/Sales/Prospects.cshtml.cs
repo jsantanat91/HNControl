@@ -61,7 +61,7 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var contactName = (Lead.ContactName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(contactName))
-            return RedirectToPage(new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
 
         var email = (Lead.Email ?? "").Trim().ToLowerInvariant();
         var phone = (Lead.Phone ?? "").Trim();
@@ -103,7 +103,7 @@ public class ProspectsModel : PageModel
         }
 
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
     }
 
     public async Task<IActionResult> OnPostToggleAsync(Guid id)
@@ -114,13 +114,13 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id && x.IsTemporaryLead);
         if (lead == null)
-            return RedirectToPage(new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
 
         lead.IsActive = !lead.IsActive;
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
     }
 
     public async Task<IActionResult> OnPostConvertAsync(Guid id)
@@ -131,7 +131,7 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id && x.IsTemporaryLead);
         if (lead == null)
-            return RedirectToPage(new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
 
@@ -141,12 +141,12 @@ public class ProspectsModel : PageModel
         lead.ClientCode = await NextFormalClientCodeAsync();
 
         await _db.SaveChangesAsync();
-        return RedirectToPage(new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
     }
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        CanViewAll = User.IsInRole(AppRoles.SuperAdmin);
+        CanViewAll = AppRoles.IsGlobalAdmin(User);
         var canView = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesProspectsView);
         if (!canView)
             return false;

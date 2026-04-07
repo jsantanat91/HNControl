@@ -1,5 +1,6 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,7 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
             .FirstOrDefaultAsync();
 
         var logoBytes = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
+        ParseDeliveryRows(d.ServiceSummary, d.EquipmentSummary, out var servicesText, out var equipmentText);
 
         byte[]? sigBytes = null;
         if (!string.IsNullOrWhiteSpace(d.SignatureStoragePath))
@@ -95,13 +97,13 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                     {
                         x.Item().Text("Servicios entregados").SemiBold();
-                        x.Item().PaddingTop(5).Text(string.IsNullOrWhiteSpace(d.ServiceSummary) ? "-" : d.ServiceSummary);
+                        x.Item().PaddingTop(5).Text(servicesText);
                     });
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
                     {
                         x.Item().Text("Equipamiento entregado").SemiBold();
-                        x.Item().PaddingTop(5).Text(string.IsNullOrWhiteSpace(d.EquipmentSummary) ? "-" : d.EquipmentSummary);
+                        x.Item().PaddingTop(5).Text(equipmentText);
                     });
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
@@ -131,6 +133,42 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         }).GeneratePdf();
     }
 
+    private static void ParseDeliveryRows(string? serviceSummary, string? equipmentSummary, out string servicesText, out string equipmentText)
+    {
+        if (string.IsNullOrWhiteSpace(serviceSummary) || !serviceSummary.StartsWith("__DELIVERYJSON__", StringComparison.Ordinal))
+        {
+            servicesText = string.IsNullOrWhiteSpace(serviceSummary) ? "-" : serviceSummary;
+            equipmentText = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
+            return;
+        }
+
+        try
+        {
+            var json = serviceSummary["__DELIVERYJSON__".Length..];
+            var root = JsonSerializer.Deserialize<DeliveryTemplateData>(json) ?? new DeliveryTemplateData();
+
+            var serviceLines = root.Services
+                .Where(x => !string.IsNullOrWhiteSpace(x.Servicio) || !string.IsNullOrWhiteSpace(x.Modalidad) || !string.IsNullOrWhiteSpace(x.Plazo))
+                .Select(x => $"{Safe(x.Servicio)} | {Safe(x.Modalidad)} | {Safe(x.Plazo)}")
+                .ToList();
+
+            var equipmentLines = root.Equipment
+                .Where(x => !string.IsNullOrWhiteSpace(x.Equipo) || !string.IsNullOrWhiteSpace(x.Cantidad))
+                .Select(x => $"{Safe(x.Equipo)} ({Safe(x.Cantidad)})")
+                .ToList();
+
+            servicesText = serviceLines.Count == 0 ? "-" : string.Join("\n", serviceLines);
+            equipmentText = equipmentLines.Count == 0 ? "-" : string.Join("\n", equipmentLines);
+        }
+        catch
+        {
+            servicesText = "-";
+            equipmentText = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
+        }
+    }
+
+    private static string Safe(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+
     private static string BuildHash(ProjectDeliveryFormat d)
     {
         var payload = $"{d.Id}|{d.ClientId}|{d.ProjectId}|{d.Title}|{d.SignedByName}|{d.SignedByEmail}|{d.SignedAt:O}";
@@ -155,5 +193,24 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         {
             return null;
         }
+    }
+
+    private sealed class DeliveryTemplateData
+    {
+        public List<DeliveryServiceRow> Services { get; set; } = [];
+        public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
+    }
+
+    private sealed class DeliveryServiceRow
+    {
+        public string? Servicio { get; set; }
+        public string? Modalidad { get; set; }
+        public string? Plazo { get; set; }
+    }
+
+    private sealed class DeliveryEquipmentRow
+    {
+        public string? Equipo { get; set; }
+        public string? Cantidad { get; set; }
     }
 }

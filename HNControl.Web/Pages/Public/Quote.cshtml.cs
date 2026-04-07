@@ -298,11 +298,28 @@ public class QuoteModel : PageModel
         if (request.Lines.Count == 0)
             return (null, "Agrega al menos un concepto para cotizar.");
 
-        request.SubtotalBeforeVat = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.BaseAmount ?? 0m);
-        request.VatAmount = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.VatAmount ?? 0m);
-        request.SubtotalAuto = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.LineTotal ?? 0m);
+        var subtotalCatalogNoVat = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.BaseAmount ?? 0m);
+        var vatCatalog = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.VatAmount ?? 0m);
+        var totalCatalog = request.Lines.Where(x => !x.IsManualPrice).Sum(x => x.LineTotal ?? 0m);
+        var totalManual = request.Lines.Where(x => x.IsManualPrice).Sum(x => (x.UnitPrice ?? 0m) * x.Quantity);
+        var totalBeforeDiscount = totalCatalog + totalManual;
+        var discount = ComputeGlobalDiscount(Input.GlobalDiscountType, Input.GlobalDiscountValue, totalBeforeDiscount);
+
+        request.SubtotalBeforeVat = Math.Round(subtotalCatalogNoVat + totalManual - discount, 2);
+        request.VatAmount = Math.Round(vatCatalog, 2);
+        request.SubtotalAuto = Math.Round(totalBeforeDiscount - discount, 2);
         request.ManualItemsCount = request.Lines.Count(x => x.IsManualPrice);
         request.EstimatedTotal = request.SubtotalAuto;
+
+        if (discount > 0m)
+        {
+            var discountLabel = string.Equals(Input.GlobalDiscountType, "percent", StringComparison.OrdinalIgnoreCase)
+                ? $"{Input.GlobalDiscountValue:0.##}%"
+                : $"{discount:C2}";
+            request.Notes = string.IsNullOrWhiteSpace(request.Notes)
+                ? $"Descuento global aplicado: {discountLabel}"
+                : $"{request.Notes}\nDescuento global aplicado: {discountLabel}";
+        }
 
         return (request, null);
     }
@@ -414,6 +431,8 @@ public class QuoteModel : PageModel
         public string? Notes { get; set; }
         public string? GeneralTerms { get; set; }
         public int? ContractTermMonths { get; set; }
+        public string? GlobalDiscountType { get; set; } = "none";
+        public decimal? GlobalDiscountValue { get; set; }
     }
 
     public class LinePickVm
@@ -451,6 +470,21 @@ public class QuoteModel : PageModel
             "otro" => "Otro",
             _ => "Unica"
         };
+    }
+
+    private static decimal ComputeGlobalDiscount(string? discountType, decimal? discountValue, decimal baseTotal)
+    {
+        if (baseTotal <= 0m || !discountValue.HasValue || discountValue.Value <= 0m)
+            return 0m;
+
+        var value = discountValue.Value;
+        if (string.Equals(discountType, "percent", StringComparison.OrdinalIgnoreCase))
+            return Math.Round(Math.Clamp(baseTotal * (value / 100m), 0m, baseTotal), 2);
+
+        if (string.Equals(discountType, "amount", StringComparison.OrdinalIgnoreCase))
+            return Math.Round(Math.Clamp(value, 0m, baseTotal), 2);
+
+        return 0m;
     }
 
     private static string LabelSegment(QuoteSegment segment) => segment switch

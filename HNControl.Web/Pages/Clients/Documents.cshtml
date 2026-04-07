@@ -1,4 +1,4 @@
-@page "{clientId:guid}"
+﻿@page "{clientId:guid}"
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Clients.DocumentsModel
 @{
@@ -15,7 +15,7 @@
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">Documentos legales</h1>
-        <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
+        <div class="text-muted small">@Model.Client.Name - @Model.Client.ClientCode</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.Client.Id">Volver cliente</a>
@@ -28,46 +28,71 @@
 }
 
 <div class="row g-3 mb-3">
-    <div class="col-12 col-lg-6">
+    <div class="col-12 col-xl-6">
         <form method="post" asp-page-handler="Generate" class="card shadow-soft hn-hover h-100">
             <div class="card-header fw-semibold">Generar contrato</div>
             <div class="card-body">
                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                 <input type="hidden" name="type" value="@ClientLegalDocumentType.Contract" />
                 <label class="form-label">Contrato base (opcional)</label>
-                <select class="form-select" name="contractId">
+                <select class="form-select mb-3" name="contractId">
                     <option value="">-- Sin contrato ligado --</option>
                     @foreach (var c in Model.Contracts)
                     {
-                        <option value="@c.Id">@c.Label · @c.Provider · @c.MonthlyAmount?.ToString("C")</option>
+                        <option value="@c.Id">@c.Label - @c.Provider - @c.MonthlyAmount?.ToString("C")</option>
                     }
                 </select>
-                <div class="text-muted small mt-2">Se precargan costo mensual y periodo si eliges contrato.</div>
+
+                <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label small">RSCLIENTE</label><input class="form-control" name="Tpl.RSCLIENTE" /></div>
+                    <div class="col-md-6"><label class="form-label small">RLCLIENTE</label><input class="form-control" name="Tpl.RLCLIENTE" /></div>
+                    <div class="col-md-6"><label class="form-label small">RFCC</label><input class="form-control" name="Tpl.RFCC" /></div>
+                    <div class="col-md-6"><label class="form-label small">EMAILC</label><input class="form-control" name="Tpl.EMAILC" /></div>
+                    <div class="col-md-8"><label class="form-label small">DIRECCIONC</label><input class="form-control" name="Tpl.DIRECCIONC" /></div>
+                    <div class="col-md-4"><label class="form-label small">ESTADOC</label><input class="form-control" name="Tpl.ESTADOC" /></div>
+                    <div class="col-md-4"><label class="form-label small">CPC</label><input class="form-control" name="Tpl.CPC" /></div>
+                    <div class="col-md-8"><label class="form-label small">CONTRATOC</label><input class="form-control" name="Tpl.CONTRATOC" /></div>
+                    <div class="col-md-6"><label class="form-label small">PERIODOC</label><input class="form-control" name="Tpl.PERIODOC" /></div>
+                    <div class="col-md-6"><label class="form-label small">SUCURSALC</label><input class="form-control" name="Tpl.SUCURSALC" /></div>
+                    <div class="col-md-6"><label class="form-label small">COSTOCLIENTE</label><input class="form-control" name="Tpl.COSTOCLIENTE" /></div>
+                    <div class="col-md-6"><label class="form-label small">NOMBREPROYECTO</label><input class="form-control" name="Tpl.NOMBREPROYECTO" /></div>
+                    <div class="col-md-6"><label class="form-label small">NOMBRETECNICO</label><input class="form-control" name="Tpl.NOMBRETECNICO" /></div>
+                    <div class="col-md-6"><label class="form-label small">FIRMACLIENTE</label><input class="form-control" name="Tpl.FIRMACLIENTE" placeholder="PENDIENTE DE FIRMA" /></div>
+                </div>
             </div>
             <div class="card-footer">
-                <button class="btn btn-primary" type="submit">Generar contrato</button>
+                <button class="btn btn-primary" type="submit">Generar contrato (PDF)</button>
             </div>
         </form>
     </div>
 
-    <div class="col-12 col-lg-6">
+    <div class="col-12 col-xl-6">
         <form method="post" asp-page-handler="Generate" class="card shadow-soft hn-hover h-100">
             <div class="card-header fw-semibold">Generar NDA</div>
             <div class="card-body">
                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                 <input type="hidden" name="type" value="@ClientLegalDocumentType.NDA" />
                 <label class="form-label">Contrato base (opcional)</label>
-                <select class="form-select" name="contractId">
+                <select class="form-select mb-3" name="contractId">
                     <option value="">-- Sin contrato ligado --</option>
                     @foreach (var c in Model.Contracts)
                     {
-                        <option value="@c.Id">@c.Label · @c.Provider</option>
+                        <option value="@c.Id">@c.Label - @c.Provider</option>
                     }
                 </select>
-                <div class="text-muted small mt-2">Incluye clausulas de confidencialidad y firma digital.</div>
+
+                <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label small">RSCLIENTE</label><input class="form-control" name="Tpl.RSCLIENTE" /></div>
+                    <div class="col-md-6"><label class="form-label small">RLCLIENTE</label><input class="form-control" name="Tpl.RLCLIENTE" /></div>
+                    <div class="col-md-6"><label class="form-label small">DIRECCIONC</label><input class="form-control" name="Tpl.DIRECCIONC" /></div>
+                    <div class="col-md-6"><label class="form-label small">PERIODOC</label><input class="form-control" name="Tpl.PERIODOC" /></div>
+                    <div class="col-md-6"><label class="form-label small">NOMBREPROYECTO</label><input class="form-control" name="Tpl.NOMBREPROYECTO" /></div>
+                    <div class="col-md-6"><label class="form-label small">NOMBRETECNICO</label><input class="form-control" name="Tpl.NOMBRETECNICO" /></div>
+                    <div class="col-md-6"><label class="form-label small">FIRMACLIENTE</label><input class="form-control" name="Tpl.FIRMACLIENTE" placeholder="PENDIENTE DE FIRMA" /></div>
+                </div>
             </div>
             <div class="card-footer">
-                <button class="btn btn-outline-primary" type="submit">Generar NDA</button>
+                <button class="btn btn-outline-primary" type="submit">Generar NDA (PDF)</button>
             </div>
         </form>
     </div>
@@ -78,7 +103,7 @@
     <div class="card-body">
         @if (!Model.Docs.Any())
         {
-            <div class="text-muted">Aún no hay documentos generados.</div>
+            <div class="text-muted">Aun no hay documentos generados.</div>
         }
         else
         {
@@ -87,7 +112,7 @@
                     <thead>
                         <tr>
                             <th>Tipo</th>
-                            <th>Título</th>
+                            <th>Titulo</th>
                             <th>Estatus</th>
                             <th>Firmado</th>
                             <th>Creado</th>
@@ -135,12 +160,7 @@
                                         <form method="post" asp-page-handler="Download">
                                             <input type="hidden" name="clientId" value="@Model.Client.Id" />
                                             <input type="hidden" name="docId" value="@d.Id" />
-                                            <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar</button>
-                                        </form>
-                                        <form method="post" asp-page-handler="DownloadWord">
-                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
-                                            <input type="hidden" name="docId" value="@d.Id" />
-                                            <button class="btn btn-sm btn-outline-dark" type="submit">Word</button>
+                                            <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar PDF</button>
                                         </form>
                                     </div>
                                 </td>

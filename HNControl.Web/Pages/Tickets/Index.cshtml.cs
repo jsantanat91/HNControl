@@ -54,6 +54,8 @@ public class IndexModel : PageModel
 
     [BindProperty]
     public CreateManualInput CreateInput { get; set; } = new();
+    [BindProperty]
+    public CreateOrderInput CreateOrder { get; set; } = new();
 
     public async Task OnGetAsync(string? status = null, string? q = null)
     {
@@ -160,6 +162,58 @@ public class IndexModel : PageModel
         UiMessage = "Ticket manual creado correctamente.";
         UiMessageType = "success";
         return RedirectToPage(new { status = "open" });
+    }
+
+    public async Task<IActionResult> OnPostCreateOrderAsync()
+    {
+        if (CreateOrder.TicketId == Guid.Empty)
+        {
+            UiMessage = "Ticket invalido para generar orden.";
+            UiMessageType = "danger";
+            return RedirectToPage(new { status = StatusFilter, q = Search });
+        }
+
+        var ticket = await _db.Tickets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == CreateOrder.TicketId);
+        if (ticket == null)
+        {
+            UiMessage = "No se encontro el ticket.";
+            UiMessageType = "danger";
+            return RedirectToPage(new { status = StatusFilter, q = Search });
+        }
+
+        var orderType = Enum.IsDefined(typeof(ServiceOrderType), CreateOrder.OrderType)
+            ? (ServiceOrderType)CreateOrder.OrderType
+            : ServiceOrderType.Correctivo;
+
+        var due = CreateOrder.EstimatedEndDate?.Date ?? ticket.SlaResolutionDueAt.Date;
+        var title = string.IsNullOrWhiteSpace(CreateOrder.Title)
+            ? $"OS {ticket.TicketNumber}: {ticket.Title}"
+            : CreateOrder.Title.Trim();
+        var description = string.IsNullOrWhiteSpace(CreateOrder.Description)
+            ? ticket.Description
+            : CreateOrder.Description.Trim();
+
+        var order = new ServiceOrder
+        {
+            ClientId = ticket.ClientId,
+            ClientServiceContractId = ticket.ClientServiceContractId,
+            Type = orderType,
+            CurrentArea = ServiceOrderWorkflowArea.Levantamiento,
+            Status = ServiceOrderStatus.Created,
+            Title = title,
+            Description = $"Ticket origen: {ticket.TicketNumber}\n\n{description}",
+            EstimatedEndDate = due,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.ServiceOrders.Add(order);
+        await _db.SaveChangesAsync();
+
+        UiMessage = $"Orden de servicio creada: {order.Title}";
+        UiMessageType = "success";
+        return RedirectToPage("/ServiceOrders/Work", new { id = order.Id });
     }
 
     public async Task<IActionResult> OnPostNoteAsync(Guid id, string? noteText, IFormFile? noteFile)
@@ -387,6 +441,7 @@ public class IndexModel : PageModel
                 ? (string.IsNullOrWhiteSpace(t.ClientServiceContract.Branch) ? "-" : t.ClientServiceContract.Branch)
                 : "-",
             Title = t.Title,
+            Description = t.Description,
             Status = t.Status,
             StatusLabel = ToStatusLabel(t.Status),
             Source = t.Source,
@@ -541,6 +596,7 @@ public class IndexModel : PageModel
         public string Contract { get; set; } = "";
         public string Branch { get; set; } = "";
         public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
         public TicketStatus Status { get; set; }
         public string StatusLabel { get; set; } = "";
         public TicketSource Source { get; set; }
@@ -625,5 +681,14 @@ public class IndexModel : PageModel
         public string EventType { get; set; } = "";
         public string User { get; set; } = "";
         public string Message { get; set; } = "";
+    }
+
+    public class CreateOrderInput
+    {
+        public Guid TicketId { get; set; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int OrderType { get; set; } = (int)ServiceOrderType.Correctivo;
+        public DateTime? EstimatedEndDate { get; set; }
     }
 }

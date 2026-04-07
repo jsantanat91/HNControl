@@ -16,11 +16,6 @@
             <button class="btn btn-sm btn-outline-primary" type="submit">Aplicar</button>
         </form>
         <a class="btn btn-outline-primary" href="/Ventas/Workflow">Workflow</a>
-        <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
-        @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
-        {
-            <a class="btn btn-outline-dark" href="/Ventas/Plantillas">Plantillas</a>
-        }
     </div>
 </div>
 <div class="alert alert-info py-2 mb-3">
@@ -93,38 +88,12 @@
 
     <div class="col-12 col-xl-6">
         <div class="card shadow-soft hn-hover h-100">
-            <div class="card-header fw-semibold">Detalle por vendedor</div>
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>Detalle por vendedor</span>
+                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#sellerDetailModal">Ver detalle</button>
+            </div>
             <div class="card-body">
-                @if (!Model.Sellers.Any())
-                {
-                    <div class="text-muted small">Sin datos.</div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Vendedor</th>
-                                    <th>Tratos</th>
-                                    <th>Monto</th>
-                                    <th>Comision</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var s in Model.Sellers)
-                            {
-                                <tr>
-                                    <td>@s.Seller</td>
-                                    <td>@s.Deals</td>
-                                    <td>@s.Amount.ToString("C")</td>
-                                    <td>@s.Commission.ToString("C")</td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                }
+                <div class="text-muted small">Resumen rapido. Usa "Ver detalle" para abrir el modal completo por vendedor.</div>
             </div>
         </div>
     </div>
@@ -154,6 +123,49 @@
                                 <div class="small text-muted">Por: @a.UserName</div>
                             </div>
                         }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sellerDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalle por vendedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if (!Model.Sellers.Any())
+                {
+                    <div class="text-muted small">Sin datos.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Vendedor</th>
+                                    <th>Tratos</th>
+                                    <th>Monto</th>
+                                    <th>Comision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.Sellers)
+                                {
+                                    <tr>
+                                        <td>@s.Seller</td>
+                                        <td>@s.Deals</td>
+                                        <td>@s.Amount.ToString("C")</td>
+                                        <td>@s.Commission.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 }
             </div>

@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 mb-0">Tickets ITIL</h1>
-        <div class="text-muted small">Flujo operativo con SLA de 8 horas. Todos ven tickets, cualquier empleado puede cerrarlos.</div>
+        <div class="text-muted small">Flujo operativo con SLA maximo de 24 horas. Tickets de cliente se pueden convertir a orden de servicio.</div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-primary" href="/ticket-publico" target="_blank" rel="noopener">Portal público</a>
@@ -141,6 +141,7 @@ else
                                                 data-id="@t.Id"
                                                 data-num="@t.TicketNumber"
                                                 data-title="@t.Title"
+                                                data-desc="@t.Description"
                                                 data-branch="@t.Branch"
                                                 data-status="@t.StatusLabel"
                                                 data-priority="@t.PriorityLabel"
@@ -384,6 +385,9 @@ else
                                 <input type="hidden" name="q" value="@Model.Search" />
                                 <button class="btn btn-dark">Cerrar ticket</button>
                             </form>
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createOrderModal">
+                                Generar orden
+                            </button>
                         </div>
 
                         <form method="post" asp-page-handler="Resolve" class="row g-2 mb-3">
@@ -419,6 +423,51 @@ else
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar ventana</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createOrderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="CreateOrder">
+                <div class="modal-header">
+                    <h5 class="modal-title">Generar orden de servicio desde ticket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" asp-for="CreateOrder.TicketId" id="createOrderTicketId" />
+                    <div class="row g-2">
+                        <div class="col-md-7">
+                            <label class="form-label">Titulo orden</label>
+                            <input asp-for="CreateOrder.Title" id="createOrderTitle" class="form-control" required />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Tipo</label>
+                            <select asp-for="CreateOrder.OrderType" id="createOrderType" class="form-select">
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.Correctivo)">Correctivo</option>
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.Preventivo)">Preventivo</option>
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.NuevaInstalacion)">Nueva instalacion</option>
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.LevantamientoTecnico)">Levantamiento tecnico</option>
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.Eventos)">Eventos</option>
+                                <option value="@((int)HNControl.Web.Models.ServiceOrderType.Global)">Global</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha estimada de entrega</label>
+                            <input asp-for="CreateOrder.EstimatedEndDate" id="createOrderDue" type="date" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripcion</label>
+                            <textarea asp-for="CreateOrder.Description" id="createOrderDescription" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear orden</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -536,6 +585,19 @@ else
                     document.getElementById('resolveId').value = id;
                     document.getElementById('closeId').value = id;
                     document.getElementById('noteId').value = id;
+
+                    const orderTicketId = document.getElementById('createOrderTicketId');
+                    const orderTitle = document.getElementById('createOrderTitle');
+                    const orderDesc = document.getElementById('createOrderDescription');
+                    const orderDue = document.getElementById('createOrderDue');
+                    if (orderTicketId) orderTicketId.value = id;
+                    if (orderTitle) orderTitle.value = `OS ${btn.getAttribute('data-num') || ''}: ${btn.getAttribute('data-title') || ''}`.trim();
+                    if (orderDesc) orderDesc.value = btn.getAttribute('data-desc') || '';
+                    if (orderDue) {
+                        const sla = btn.getAttribute('data-sla') || '';
+                        const dueDate = sla.length >= 10 ? sla.substring(0, 10) : '';
+                        orderDue.value = dueDate;
+                    }
 
                     const timeline = document.getElementById('mTimeline');
                     if (timeline) timeline.innerHTML = 'Cargando...';

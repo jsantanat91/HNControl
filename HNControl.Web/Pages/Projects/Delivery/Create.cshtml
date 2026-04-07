@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">Nuevo formato de entrega</h1>
-        <div class="text-muted small">Selecciona cliente/proyecto y captura servicios o equipo entregado.</div>
+        <div class="text-muted small">Selecciona cliente/proyecto y captura servicios y hardware (hasta 5 renglones por area).</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
 </div>
@@ -33,14 +33,63 @@
                 <label class="form-label">Titulo</label>
                 <input class="form-control" asp-for="Input.Title" placeholder="Ej: Acta entrega de servicios - Sucursal Norte" />
             </div>
-            <div class="col-12">
-                <label class="form-label">Servicios entregados</label>
-                <textarea class="form-control" asp-for="Input.ServiceSummary" rows="4" placeholder="Describe actividades, alcance y entregables..."></textarea>
+            <div class="col-md-6">
+                <label class="form-label">NOMBREPROYECTO</label>
+                <input class="form-control" asp-for="Input.ProjectTemplateName" placeholder="Nombre para el documento" />
             </div>
-            <div class="col-12">
-                <label class="form-label">Equipamiento entregado</label>
-                <textarea class="form-control" asp-for="Input.EquipmentSummary" rows="4" placeholder="Modelo, serie, cantidad, observaciones..."></textarea>
+            <div class="col-md-6">
+                <label class="form-label">NOMBRETECNICO</label>
+                <input class="form-control" asp-for="Input.AssignedTechnicianName" placeholder="Tecnico asignado" />
             </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold">Area de Servicios</label>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 34%;">SERVICIO01-05</th>
+                                <th style="width: 33%;">SMODAL01-05</th>
+                                <th style="width: 33%;">SPLAZO01-05</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < 5; i++)
+                            {
+                                <tr>
+                                    <td><input class="form-control form-control-sm" asp-for="Input.ServiceNames[i]" /></td>
+                                    <td><input class="form-control form-control-sm" asp-for="Input.ServiceModes[i]" /></td>
+                                    <td><input class="form-control form-control-sm" asp-for="Input.ServiceTerms[i]" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label fw-semibold">Area de Hardware</label>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 65%;">EQUIPO01-05</th>
+                                <th style="width: 35%;">ECANTIDAD01-05</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < 5; i++)
+                            {
+                                <tr>
+                                    <td><input class="form-control form-control-sm" asp-for="Input.EquipmentNames[i]" /></td>
+                                    <td><input class="form-control form-control-sm" asp-for="Input.EquipmentQty[i]" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="col-md-6">
                 <label class="form-label">Ubicacion de entrega</label>
                 <input class="form-control" asp-for="Input.DeliveryLocation" />

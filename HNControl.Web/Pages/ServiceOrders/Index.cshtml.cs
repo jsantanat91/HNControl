@@ -76,6 +76,13 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
+        if (!DateFrom.HasValue && !DateTo.HasValue)
+        {
+            var nowLocal = DateTime.Now;
+            DateFrom = new DateTime(nowLocal.Year, nowLocal.Month, 1);
+            DateTo = nowLocal.Date;
+        }
+
         var q = _db.ServiceOrders
             .AsNoTracking()
             .Include(o => o.Client)

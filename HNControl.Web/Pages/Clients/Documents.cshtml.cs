@@ -1,4 +1,5 @@
-﻿using HNControl.Web.Data;
+﻿using System.Text.Json;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,7 @@ public class DocumentsModel : PageModel
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
     private readonly ITemplateDocxService _docxTemplates;
+    private readonly IOfficePdfConverter _officePdfConverter;
 
     public DocumentsModel(
         ApplicationDbContext db,
@@ -24,7 +26,8 @@ public class DocumentsModel : PageModel
         IFileStorage storage,
         IEmailSender email,
         IConfiguration cfg,
-        ITemplateDocxService docxTemplates)
+        ITemplateDocxService docxTemplates,
+        IOfficePdfConverter officePdfConverter)
     {
         _db = db;
         _pdf = pdf;
@@ -32,12 +35,14 @@ public class DocumentsModel : PageModel
         _email = email;
         _cfg = cfg;
         _docxTemplates = docxTemplates;
+        _officePdfConverter = officePdfConverter;
     }
 
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
     public List<LegalDocRow> Docs { get; set; } = new();
 
+    [BindProperty] public ContractTemplateInput Tpl { get; set; } = new();
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
 
@@ -52,6 +57,24 @@ public class DocumentsModel : PageModel
         string? SignedAt,
         string? SignedBy,
         Guid? ContractId);
+
+    public sealed class ContractTemplateInput
+    {
+        public string? RSCLIENTE { get; set; }
+        public string? RLCLIENTE { get; set; }
+        public string? RFCC { get; set; }
+        public string? DIRECCIONC { get; set; }
+        public string? ESTADOC { get; set; }
+        public string? CPC { get; set; }
+        public string? EMAILC { get; set; }
+        public string? CONTRATOC { get; set; }
+        public string? PERIODOC { get; set; }
+        public string? SUCURSALC { get; set; }
+        public string? COSTOCLIENTE { get; set; }
+        public string? FIRMACLIENTE { get; set; }
+        public string? NOMBREPROYECTO { get; set; }
+        public string? NOMBRETECNICO { get; set; }
+    }
 
     public async Task<IActionResult> OnGetAsync(Guid clientId)
     {
@@ -77,7 +100,7 @@ public class DocumentsModel : PageModel
             Title = type == ClientLegalDocumentType.NDA
                 ? $"NDA - {client.Name}"
                 : $"Contrato de servicios - {client.Name}",
-            TermsBody = BuildDefaultTerms(type, client, contract),
+            TermsBody = BuildTemplateTerms(type, client, contract, Tpl),
             MonthlyAmount = contract?.MonthlyAmount,
             ContractStartDate = contract?.ContractStartDate,
             ContractEndDate = contract?.ContractEndDate,
@@ -130,7 +153,7 @@ public class DocumentsModel : PageModel
             : $"{baseUrl}/Public/ClientDocument/{doc.PublicToken}";
 
         byte[]? attachment = null;
-        string attachmentName = $"documento_{doc.Id:N}.pdf";
+        var attachmentName = $"documento_{doc.Id:N}.pdf";
         if (!string.IsNullOrWhiteSpace(doc.PdfStoragePath))
         {
             var (stream, _, _) = await _storage.OpenAsync(doc.PdfStoragePath, attachmentName);
@@ -149,7 +172,7 @@ public class DocumentsModel : PageModel
             <p>Hola {System.Net.WebUtility.HtmlEncode(doc.Client?.LegalRepresentative ?? doc.Client?.Name ?? "cliente")},</p>
             <p>Ya puedes revisar y firmar digitalmente el siguiente documento:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al firmarlo, recibirÃ¡s el PDF actualizado con la firma digital.</p>
+            <p>Al firmarlo, recibirás el PDF actualizado con la firma digital.</p>
             <p>Saludos,<br/>HN Control</p>
             """,
             attachment,
@@ -170,19 +193,6 @@ public class DocumentsModel : PageModel
         var safeName = $"{(doc.DocumentType == ClientLegalDocumentType.NDA ? "nda" : "contrato")}_{doc.Id:N}.pdf";
         var (stream, contentType, _) = await _storage.OpenAsync(doc.PdfStoragePath, safeName);
         return File(stream, contentType, safeName);
-    }
-
-    public async Task<IActionResult> OnPostDownloadWordAsync(Guid clientId, Guid docId)
-    {
-        var doc = await _db.ClientLegalDocuments
-            .Include(x => x.Client)
-            .Include(x => x.ClientServiceContract)
-            .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
-        if (doc?.Client == null) return NotFound();
-
-        var bytes = _docxTemplates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
-        var safeName = $"{(doc.DocumentType == ClientLegalDocumentType.NDA ? "nda" : "contrato")}_{doc.Id:N}.docx";
-        return File(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", safeName);
     }
 
     public async Task<IActionResult> OnPostRegeneratePdfAsync(Guid clientId, Guid docId)
@@ -229,7 +239,19 @@ public class DocumentsModel : PageModel
 
     private async Task RegeneratePdfAsync(ClientLegalDocument doc)
     {
-        var pdfBytes = await _pdf.RenderAsync(doc);
+        var dbDoc = await _db.ClientLegalDocuments
+            .Include(x => x.Client)
+            .Include(x => x.ClientServiceContract)
+            .FirstAsync(x => x.Id == doc.Id);
+
+        byte[]? pdfBytes = null;
+        if (dbDoc.Client != null)
+        {
+            var docxBytes = _docxTemplates.BuildClientLegalDocx(dbDoc, dbDoc.Client, dbDoc.ClientServiceContract);
+            pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{dbDoc.DocumentType}_{dbDoc.Id:N}");
+        }
+
+        pdfBytes ??= await _pdf.RenderAsync(doc);
         var fileName = $"legal_{doc.DocumentType}_{doc.Id:N}.pdf";
         var (path, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"clients/{doc.ClientId}/legal", fileName, "application/pdf");
         doc.PdfStoragePath = path;
@@ -238,21 +260,49 @@ public class DocumentsModel : PageModel
         await _db.SaveChangesAsync();
     }
 
-    private static string BuildDefaultTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract)
+    private static string BuildTemplateTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract, ContractTemplateInput tpl)
     {
-        if (type == ClientLegalDocumentType.NDA)
+        var payload = new ContractTemplateInput
         {
-            return
-                $"Las partes, HN Solutions y {client.Name}, acuerdan mantener confidencial toda informacion tecnica, comercial y operativa compartida durante la relacion de servicio. " +
-                "La informacion no podra ser divulgada a terceros sin autorizacion escrita. Este acuerdo permanece vigente durante la relacion comercial y por 24 meses posteriores a su terminacion.";
+            RSCLIENTE = Safe(tpl.RSCLIENTE, client.Name),
+            RLCLIENTE = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName),
+            RFCC = Safe(tpl.RFCC, client.Rfc),
+            DIRECCIONC = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address),
+            ESTADOC = Safe(tpl.ESTADOC, "México"),
+            CPC = Safe(tpl.CPC, client.FiscalZipCode),
+            EMAILC = Safe(tpl.EMAILC, client.BillingEmail, client.Email, client.LegalEmail),
+            CONTRATOC = Safe(tpl.CONTRATOC, type == ClientLegalDocumentType.NDA ? "NDA" : contract?.Label),
+            PERIODOC = Safe(tpl.PERIODOC, BuildPeriod(contract)),
+            SUCURSALC = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label),
+            COSTOCLIENTE = Safe(tpl.COSTOCLIENTE, (contract?.MonthlyAmount ?? 0m).ToString("N2")),
+            FIRMACLIENTE = Safe(tpl.FIRMACLIENTE, "PENDIENTE DE FIRMA"),
+            NOMBREPROYECTO = Safe(tpl.NOMBREPROYECTO, contract?.Label),
+            NOMBRETECNICO = Safe(tpl.NOMBRETECNICO, "-")
+        };
+
+        return "__TPLJSON__" + JsonSerializer.Serialize(payload);
+    }
+
+    private static string BuildPeriod(ClientServiceContract? contract)
+    {
+        if (contract?.ContractStartDate.HasValue == true || contract?.ContractEndDate.HasValue == true)
+        {
+            var start = contract.ContractStartDate?.ToString("dd/MM/yyyy") ?? "-";
+            var end = contract.ContractEndDate?.ToString("dd/MM/yyyy") ?? "-";
+            return $"{start} al {end}";
         }
 
-        var serviceName = contract?.Label ?? "servicios de tecnologia";
-        return
-            $"HN Solutions prestara a {client.Name} el servicio '{serviceName}' bajo los alcances establecidos por ambas partes. " +
-            "El cliente se compromete a proporcionar accesos y facilidades operativas para la correcta ejecucion. " +
-            "Los pagos, vigencia y condiciones de renovacion se regiran por los datos comerciales capturados en este documento.";
+        return "12 meses";
+    }
+
+    private static string Safe(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                return value.Trim();
+        }
+
+        return "-";
     }
 }
-
-

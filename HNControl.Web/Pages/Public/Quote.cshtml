@@ -52,6 +52,8 @@
                     <input type="hidden" asp-for="Input.ClientToken" />
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
                     <input type="hidden" asp-for="Input.ManualLinesJson" id="manualLinesJson" />
+                    <input type="hidden" asp-for="Input.GlobalDiscountType" id="globalDiscountTypeHidden" />
+                    <input type="hidden" asp-for="Input.GlobalDiscountValue" id="globalDiscountValueHidden" />
                     <input type="hidden" id="skipClientDataStep" value="@(Model.SkipClientDataStep ? "1" : "0")" />
 
                     <section class="quote-step-panel" data-step="1">
@@ -154,8 +156,23 @@
                                         <div id="cartLines" class="vstack gap-2"></div>
                                         <div id="emptyCart" class="text-muted">Aun no agregas conceptos.</div>
                                         <hr />
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label mb-1 small">Descuento global</label>
+                                                <select class="form-select form-select-sm" id="discountType">
+                                                    <option value="none">Sin descuento</option>
+                                                    <option value="percent">Porcentaje (%)</option>
+                                                    <option value="amount">Monto ($)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label mb-1 small">Valor</label>
+                                                <input class="form-control form-control-sm" type="number" id="discountValue" min="0" step="0.01" value="0" />
+                                            </div>
+                                        </div>
                                         <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><strong id="sumBase">$0.00</strong></div>
                                         <div class="d-flex justify-content-between small"><span class="text-muted">IVA 16%</span><strong id="sumVat">$0.00</strong></div>
+                                        <div class="d-flex justify-content-between small"><span class="text-muted">Descuento global</span><strong id="sumDiscount">-$0.00</strong></div>
                                         <div class="d-flex justify-content-between mt-1 pt-1 border-top"><span class="fw-semibold">Total</span><strong class="text-primary" id="sumTotal">$0.00</strong></div>
                                         <div class="mt-2"><span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span></div>
                                     </div>
@@ -296,7 +313,12 @@
     const manualBadge = document.getElementById('manualBadge');
     const sumBase = document.getElementById('sumBase');
     const sumVat = document.getElementById('sumVat');
+    const sumDiscount = document.getElementById('sumDiscount');
     const sumTotal = document.getElementById('sumTotal');
+    const discountType = document.getElementById('discountType');
+    const discountValue = document.getElementById('discountValue');
+    const globalDiscountTypeHidden = document.getElementById('globalDiscountTypeHidden');
+    const globalDiscountValueHidden = document.getElementById('globalDiscountValueHidden');
     const prevStepBtn = document.getElementById('prevStepBtn');
     const nextStepBtn = document.getElementById('nextStepBtn');
     const submitBtn = document.getElementById('submitBtn');
@@ -346,6 +368,12 @@
 
     if(prospectSelect && !skipClientDataStep){
         prospectSelect.addEventListener('change', onProspectChange);
+    }
+    if(discountType){
+        discountType.addEventListener('change', recalc);
+    }
+    if(discountValue){
+        discountValue.addEventListener('input', recalc);
     }
 
     function toMoney(v){
@@ -465,15 +493,35 @@
         const catalogTotal = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
         const manualTotal = manualLines.reduce((a, b) => a + (Number(b.unitPrice || 0) * Number(b.quantity || 0)), 0);
         const manual = lines.filter(x => x.isManual).length + manualLines.length;
-        return { base: catalogBase + manualTotal, vat: catalogVat, total: catalogTotal + manualTotal, manual };
+        const preDiscountTotal = catalogTotal + manualTotal;
+        const mode = String(discountType?.value || 'none').toLowerCase();
+        const value = Number(discountValue?.value || 0);
+        let discount = 0;
+        if (mode === 'percent' && value > 0) {
+            discount = Math.min(preDiscountTotal, preDiscountTotal * (value / 100));
+        } else if (mode === 'amount' && value > 0) {
+            discount = Math.min(preDiscountTotal, value);
+        }
+        return {
+            base: (catalogBase + manualTotal) - discount,
+            vat: catalogVat,
+            total: preDiscountTotal - discount,
+            manual,
+            discount,
+            discountMode: mode,
+            discountValue: value
+        };
     }
 
     function recalc(){
         const t = totals();
         if(sumBase) sumBase.textContent = toMoney(t.base);
         if(sumVat) sumVat.textContent = toMoney(t.vat);
+        if(sumDiscount) sumDiscount.textContent = '-' + toMoney(t.discount || 0);
         if(sumTotal) sumTotal.textContent = toMoney(t.total);
         manualBadge.textContent = 'Manuales: ' + t.manual;
+        if(globalDiscountTypeHidden) globalDiscountTypeHidden.value = t.discountMode || 'none';
+        if(globalDiscountValueHidden) globalDiscountValueHidden.value = String(t.discountValue || 0);
         linesJson.value = JSON.stringify(lines.map(x => ({
             categoryId: x.categoryId,
             serviceId: x.serviceId,

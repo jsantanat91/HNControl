@@ -1,4 +1,4 @@
-@page
+﻿@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Sales.IndexModel
 @{
@@ -17,7 +17,7 @@
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAltaVendedor">+ Alta de vendedor</button>
             <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalCrearOportunidad">+ Crear oportunidad</button>
         }
-        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalVendedoresActivos">Vendedores activos</button>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalVendedoresActivos">Vendedores</button>
     </div>
 </div>
 
@@ -30,7 +30,7 @@
     <div class="col-12 col-md-4">
         <div class="card shadow-soft border-0 h-100 bg-primary-subtle">
             <div class="card-body">
-                <div class="text-muted small">Vendedores activos</div>
+                <div class="text-muted small">Vendedores</div>
                 <div class="fs-3 fw-bold">@Model.Sellers.Count</div>
             </div>
         </div>
@@ -54,11 +54,11 @@
 </div>
 
 <div class="card shadow-soft border-0 mb-3">
-    <div class="card-header fw-semibold">Vendedores activos</div>
+    <div class="card-header fw-semibold">Vendedores</div>
     <div class="card-body">
         @if (!Model.Sellers.Any())
         {
-            <div class="text-muted small">Sin vendedores activos.</div>
+            <div class="text-muted small">Sin vendedores disponibles.</div>
         }
         else
         {
@@ -69,7 +69,10 @@
                         <div class="border rounded-3 p-3 h-100">
                             <div class="fw-semibold">@s.EmployeeName</div>
                             <div class="small text-muted">@s.Email</div>
-                            <span class="badge text-bg-info mt-2">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
+                            <div class="d-flex gap-2 flex-wrap mt-2">
+                                <span class="badge text-bg-info">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
+                                <span class="badge @(s.IsActive ? "text-bg-success" : "text-bg-secondary")">@(s.IsActive ? "Activo" : "Inactivo")</span>
+                            </div>
                         </div>
                     </div>
                 }
@@ -195,13 +198,10 @@
                                 }
                             }
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">% comisión</label>
-                            <input class="form-control" asp-for="CommissionPercent" type="number" min="0" max="1" step="0.01" />
-                        </div>
-                        <div class="col-md-8">
+                        <div class="col-md-12">
                             <label class="form-label">Notas</label>
                             <input class="form-control" asp-for="OpportunityNotes" />
+                            <div class="text-muted small mt-1">La comisión se toma automáticamente del perfil del vendedor.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -217,13 +217,13 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Vendedores activos</h5>
+                <h5 class="modal-title">Vendedores</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 @if (!Model.Sellers.Any())
                 {
-                    <div class="text-muted small">Sin vendedores activos.</div>
+                    <div class="text-muted small">Sin vendedores disponibles.</div>
                 }
                 else
                 {
@@ -242,3 +242,4 @@
         </div>
     </div>
 </div>
+

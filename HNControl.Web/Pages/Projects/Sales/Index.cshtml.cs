@@ -41,7 +41,6 @@ public class IndexModel : PageModel
 
     [BindProperty] public Guid QuoteId { get; set; }
     [BindProperty] public Guid SellerProfileId { get; set; }
-    [BindProperty] public decimal CommissionPercent { get; set; } = 0.05m;
     [BindProperty] public string OpportunityNotes { get; set; } = "";
 
     public SelectList EmployeeItems { get; set; } = default!;
@@ -96,11 +95,15 @@ public class IndexModel : PageModel
             return RedirectToPage();
         }
 
-        var exists = await _db.SalesSellerProfiles.AnyAsync(x => x.EmployeeUserId == EmployeeUserId);
-        if (exists)
+        var existingSeller = await _db.SalesSellerProfiles.FirstOrDefaultAsync(x => x.EmployeeUserId == EmployeeUserId);
+        if (existingSeller != null)
         {
-            Flash = "Ese empleado ya está dado de alta como vendedor.";
-            FlashType = "warning";
+            existingSeller.IsActive = true;
+            existingSeller.DefaultCommissionPercent = Math.Clamp(DefaultCommissionPercent, 0m, 1m);
+            await _db.SaveChangesAsync();
+
+            Flash = "Vendedor reactivado y comisión actualizada.";
+            FlashType = "success";
             return RedirectToPage();
         }
 
@@ -171,7 +174,17 @@ public class IndexModel : PageModel
             return RedirectToPage();
         }
 
-        var pct = Math.Clamp(CommissionPercent, 0m, 1m);
+        var sellerProfile = await _db.SalesSellerProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == resolvedSellerProfileId.Value && x.IsActive);
+        if (sellerProfile == null)
+        {
+            Flash = "El vendedor seleccionado no está activo.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        var pct = Math.Clamp(sellerProfile.DefaultCommissionPercent, 0m, 1m);
         var amount = Math.Round((quote.EstimatedTotal ?? quote.SubtotalAuto) * pct, 2);
 
         var opp = new SalesOpportunity
@@ -315,10 +328,11 @@ public class IndexModel : PageModel
             .ToListAsync();
         EmployeeItems = new SelectList(employees, "UserId", "Label");
 
-        var sellerQuery = _db.SalesSellerProfiles
+        IQueryable<SalesSellerProfile> sellerQuery = _db.SalesSellerProfiles
             .AsNoTracking()
-            .Include(x => x.Employee)
-            .Where(x => x.IsActive);
+            .Include(x => x.Employee);
+        if (!CanViewAll)
+            sellerQuery = sellerQuery.Where(x => x.IsActive);
         if (!CanViewAll && !string.IsNullOrWhiteSpace(userId))
             sellerQuery = sellerQuery.Where(x => x.EmployeeUserId == userId);
 
@@ -348,7 +362,21 @@ public class IndexModel : PageModel
                     .FirstOrDefaultAsync() ?? "";
             }
         }
-        SellerItems = new SelectList(Sellers, "Id", "EmployeeName");
+        IQueryable<SalesSellerProfile> sellerSelectQuery = _db.SalesSellerProfiles
+            .AsNoTracking()
+            .Include(x => x.Employee)
+            .Where(x => x.IsActive);
+        if (!CanViewAll)
+            sellerSelectQuery = sellerSelectQuery.Where(x => x.EmployeeUserId == userId);
+        var sellerSelect = await sellerSelectQuery
+            .OrderBy(x => x.Employee != null ? x.Employee.FullName : x.EmployeeUserId)
+            .Select(x => new
+            {
+                x.Id,
+                EmployeeName = x.Employee != null ? x.Employee.FullName : x.EmployeeUserId
+            })
+            .ToListAsync();
+        SellerItems = new SelectList(sellerSelect, "Id", "EmployeeName");
 
         var quotesQuery = _db.QuoteRequests
             .AsNoTracking()

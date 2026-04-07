@@ -1,4 +1,4 @@
-@page
+﻿@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Sales.WorkflowModel
 @{
@@ -9,12 +9,11 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Workflow comercial</h1>
-        <div class="text-muted small">Lead > Cotizacion > Cierre > Ganado > Perdido</div>
+        <div class="text-muted small">Oportunidad > Cotización > Cierre</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
-        <a class="btn btn-outline-secondary" href="/Ventas/Gestion">Gestion</a>
-        <a class="btn btn-success" href="/Ventas/Gestion">Nuevo trato</a>
+        <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#newDealModal">Nuevo trato</button>
     </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
@@ -87,7 +86,7 @@
 </div>
 
 <div class="workflow-board pb-2">
-    @foreach (var stage in new[] { SalesWorkflowStage.Lead, SalesWorkflowStage.Quotation, SalesWorkflowStage.Closing, SalesWorkflowStage.ClosedWon, SalesWorkflowStage.ClosedLost })
+    @foreach (var stage in new[] { SalesWorkflowStage.Lead, SalesWorkflowStage.Quotation, SalesWorkflowStage.Closing })
     {
         var items = Model.Board.ContainsKey(stage) ? Model.Board[stage] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
         <section class="wf-col card shadow-soft border-0" data-stage-col="@stage">
@@ -104,30 +103,39 @@
                 {
                     foreach (var d in items)
                     {
-                        var slaClass = d.IsOverdue ? "text-bg-danger" : d.IsToday ? "text-bg-success" : d.IsSoon ? "text-bg-warning" : "text-bg-secondary";
                         <article class="border rounded-3 p-2 mb-2 wf-card"
                                  draggable="@(Model.CanMove ? "true" : "false")"
                                  data-opportunity-id="@d.Id"
                                  data-current-stage="@d.Stage">
                             <div class="fw-semibold">@d.Folio</div>
                             <div class="small">Monto: <b>@d.Total.ToString("C")</b></div>
-
-                            <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
-                                @if (d.StageDueAt.HasValue)
-                                {
-                                    <span class="badge @slaClass">SLA @d.StageDueAt.Value.ToString("yyyy-MM-dd")</span>
-                                }
-                                <span class="badge text-bg-light">@d.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")</span>
-                            </div>
-
-                            <div class="mt-2">
+                            <div class="mt-2 d-flex gap-2 flex-wrap">
                                 <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
+                                @if ((User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)) && d.ClientId.HasValue)
+                                {
+                                    <a class="btn btn-sm btn-outline-success" asp-page="/Projects/Create" asp-route-clientId="@d.ClientId">Nuevo proyecto</a>
+                                }
                             </div>
 
-                            @if ((User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)) && d.ClientId.HasValue)
+                            @if (stage == SalesWorkflowStage.Closing)
                             {
-                                <div class="mt-2">
-                                    <a class="btn btn-sm btn-outline-success" asp-page="/Projects/Create" asp-route-clientId="@d.ClientId">Nuevo proyecto</a>
+                                <div class="border-top mt-2 pt-2 d-flex gap-2">
+                                    <form method="post" asp-page-handler="MoveStage">
+                                        <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                        <input type="hidden" name="NewStage" value="@SalesWorkflowStage.ClosedWon" />
+                                        <input type="hidden" asp-for="StageFilter" />
+                                        <input type="hidden" asp-for="OwnerFilterUserId" />
+                                        <input type="hidden" asp-for="Month" />
+                                        <button class="btn btn-sm btn-success" type="submit">Ganado</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="MoveStage">
+                                        <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                        <input type="hidden" name="NewStage" value="@SalesWorkflowStage.ClosedLost" />
+                                        <input type="hidden" asp-for="StageFilter" />
+                                        <input type="hidden" asp-for="OwnerFilterUserId" />
+                                        <input type="hidden" asp-for="Month" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Perdido</button>
+                                    </form>
                                 </div>
                             }
                         </article>
@@ -136,6 +144,73 @@
             </div>
         </section>
     }
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft border-0">
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>Ganados</span>
+                <span class="badge text-bg-success">@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedWon) ? Model.Board[SalesWorkflowStage.ClosedWon].Count : 0))</span>
+            </div>
+            <div class="card-body">
+                @{
+                    var wonItems = Model.Board.ContainsKey(SalesWorkflowStage.ClosedWon) ? Model.Board[SalesWorkflowStage.ClosedWon] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
+                }
+                @if (!wonItems.Any())
+                {
+                    <div class="text-muted small">Sin tratos ganados.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var d in wonItems)
+                        {
+                            <div class="border rounded-3 p-2 d-flex justify-content-between align-items-center">
+                                <div><span class="fw-semibold">@d.Folio</span> · <span>@d.Total.ToString("C")</span></div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-success" disabled>Ganado</button>
+                                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-6">
+        <div class="card shadow-soft border-0">
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>Perdidos</span>
+                <span class="badge text-bg-danger">@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost].Count : 0))</span>
+            </div>
+            <div class="card-body">
+                @{
+                    var lostItems = Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
+                }
+                @if (!lostItems.Any())
+                {
+                    <div class="text-muted small">Sin tratos perdidos.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var d in lostItems)
+                        {
+                            <div class="border rounded-3 p-2 d-flex justify-content-between align-items-center">
+                                <div><span class="fw-semibold">@d.Folio</span> · <span>@d.Total.ToString("C")</span></div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-danger" disabled>Perdido</button>
+                                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @foreach (var kv in Model.DetailsByOpportunityId)
@@ -193,10 +268,24 @@
     </form>
 }
 
+<div class="modal fade" id="newDealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo trato</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="height:82vh;">
+                <iframe id="newDealFrame" src="/Ventas/Gestion?openCreateOpportunity=1" style="width:100%;height:100%;border:0;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .workflow-board {
         display: grid;
-        grid-template-columns: repeat(9, minmax(260px, 1fr));
+        grid-template-columns: repeat(3, minmax(260px, 1fr));
         gap: .75rem;
         overflow-x: auto;
     }
@@ -268,4 +357,5 @@
         })();
     </script>
 }
+
 

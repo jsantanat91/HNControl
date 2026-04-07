@@ -41,8 +41,7 @@ public class IndexModel : PageModel
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         var q = _db.Projects
-            .Include(p => p.Client)
-            .Include(p => p.AssignedEmployee)
+            .AsNoTracking()
             .AsQueryable();
 
         if (!isAdmin && userId != null)
@@ -66,6 +65,17 @@ public class IndexModel : PageModel
             .OrderByDescending(p => p.StartDate)
             .Skip((Page - 1) * PageSize)
             .Take(PageSize)
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.AssignedUserId,
+                p.StartDate,
+                p.EstimatedEndDate,
+                p.Status,
+                ClientName = p.Client != null ? p.Client.Name : "",
+                ResponsibleName = p.AssignedEmployee != null ? p.AssignedEmployee.FullName : null
+            })
             .ToListAsync();
 
         Rows = list.Select(p =>
@@ -74,8 +84,8 @@ public class IndexModel : PageModel
             return new Row(
                 p.Id,
                 p.Title,
-                p.Client?.Name ?? "",
-                p.AssignedEmployee?.FullName ?? p.AssignedUserId,
+                p.ClientName ?? "",
+                p.ResponsibleName ?? p.AssignedUserId,
                 p.StartDate,
                 p.EstimatedEndDate,
                 p.Status,

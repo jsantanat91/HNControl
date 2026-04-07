@@ -1,5 +1,6 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,7 @@ public class ClientLegalPdfRenderer : IClientLegalPdfRenderer
 
         var company = (_cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var title = doc.DocumentType == ClientLegalDocumentType.NDA ? "NDA (Confidencialidad)" : "Contrato de servicios";
+        var termsPreview = BuildTermsPreview(doc.TermsBody);
 
         return Document.Create(container =>
         {
@@ -95,10 +97,8 @@ public class ClientLegalPdfRenderer : IClientLegalPdfRenderer
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
                     {
-                        x.Item().Text("Clausulas").SemiBold();
-                        x.Item().PaddingTop(5).Text(string.IsNullOrWhiteSpace(doc.TermsBody)
-                            ? "Documento generado por HN Control."
-                            : doc.TermsBody);
+                        x.Item().Text("Variables de plantilla").SemiBold();
+                        x.Item().PaddingTop(5).Text(termsPreview);
                     });
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
@@ -128,10 +128,62 @@ public class ClientLegalPdfRenderer : IClientLegalPdfRenderer
         }).GeneratePdf();
     }
 
+    private static string BuildTermsPreview(string? termsBody)
+    {
+        if (string.IsNullOrWhiteSpace(termsBody) || !termsBody.StartsWith("__TPLJSON__", StringComparison.Ordinal))
+            return string.IsNullOrWhiteSpace(termsBody) ? "Documento generado por HN Control." : termsBody;
+
+        try
+        {
+            var json = termsBody["__TPLJSON__".Length..];
+            var data = JsonSerializer.Deserialize<TemplateTermsData>(json) ?? new TemplateTermsData();
+            var lines = new List<string>
+            {
+                $"RSCLIENTE: {Safe(data.RSCLIENTE)}",
+                $"RLCLIENTE: {Safe(data.RLCLIENTE)}",
+                $"RFCC: {Safe(data.RFCC)}",
+                $"DIRECCIONC: {Safe(data.DIRECCIONC)}",
+                $"ESTADOC: {Safe(data.ESTADOC)}",
+                $"CPC: {Safe(data.CPC)}",
+                $"EMAILC: {Safe(data.EMAILC)}",
+                $"CONTRATOC: {Safe(data.CONTRATOC)}",
+                $"PERIODOC: {Safe(data.PERIODOC)}",
+                $"SUCURSALC: {Safe(data.SUCURSALC)}",
+                $"COSTOCLIENTE: {Safe(data.COSTOCLIENTE)}",
+                $"NOMBREPROYECTO: {Safe(data.NOMBREPROYECTO)}",
+                $"NOMBRETECNICO: {Safe(data.NOMBRETECNICO)}"
+            };
+            return string.Join("\n", lines);
+        }
+        catch
+        {
+            return "Documento generado por HN Control.";
+        }
+    }
+
+    private static string Safe(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+
     private static string BuildHash(ClientLegalDocument doc)
     {
         var payload = $"{doc.Id}|{doc.ClientId}|{doc.DocumentType}|{doc.Title}|{doc.SignedByName}|{doc.SignedByEmail}|{doc.SignedAt:O}";
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         return Convert.ToHexString(bytes)[..18];
+    }
+
+    private sealed class TemplateTermsData
+    {
+        public string? RSCLIENTE { get; set; }
+        public string? RLCLIENTE { get; set; }
+        public string? RFCC { get; set; }
+        public string? DIRECCIONC { get; set; }
+        public string? ESTADOC { get; set; }
+        public string? CPC { get; set; }
+        public string? EMAILC { get; set; }
+        public string? CONTRATOC { get; set; }
+        public string? PERIODOC { get; set; }
+        public string? SUCURSALC { get; set; }
+        public string? COSTOCLIENTE { get; set; }
+        public string? NOMBREPROYECTO { get; set; }
+        public string? NOMBRETECNICO { get; set; }
     }
 }

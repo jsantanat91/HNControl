@@ -1,6 +1,8 @@
 ﻿@inject HNControl.Web.Services.IActionAccessService ActionAccess
 @{
     var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
+    var isQuotesActive = path.StartsWith("/admin/quotes/requests") || path.StartsWith("/ventas/cotizaciones");
+    var isCatalogActive = path.StartsWith("/admin/quotes/catalog");
     var canDashboard = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewOwn) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewAll);
     var canWorkflow = canDashboard;
     var canGestion = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesManage);
@@ -32,7 +34,7 @@
         }
         @if (canQuotes)
         {
-            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizacion","info")">Cotizacion</a>
+            <a href="/Ventas/Cotizaciones" class="btn btn-sm px-3 py-2 fw-semibold @(isQuotesActive ? "btn-info text-white" : "btn-outline-info")">Cotización</a>
         }
         @if (canWorkflow)
         {
@@ -48,7 +50,7 @@
         }
         @if (canCatalog)
         {
-            <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
+            <a href="/Admin/Quotes/Catalog" class="btn btn-sm px-3 py-2 fw-semibold @(isCatalogActive ? "btn-dark text-white" : "btn-outline-dark")">Catálogo</a>
         }
     </div>
 </div>
