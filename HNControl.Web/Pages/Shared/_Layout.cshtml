@@ -42,6 +42,10 @@
     bool CanAction(string key) => AppRoles.IsGlobalAdmin(User) || allowedActions.Contains(key);
     var currentUserId = UserManager.GetUserId(User);
     var newServiceOrdersCount = 0;
+    var ticketsBadgeCount = 0;
+    var viaticosBadgeCount = 0;
+    var leavesBadgeCount = 0;
+    var examsBadgeCount = 0;
     if (SignInManager.IsSignedIn(User) && !string.IsNullOrWhiteSpace(currentUserId))
     {
         if (AppRoles.IsGlobalAdmin(User))
@@ -51,15 +55,69 @@
                 .CountAsync(o =>
                     o.Status == ServiceOrderStatus.Created ||
                     (o.Status == ServiceOrderStatus.InProgress && string.IsNullOrWhiteSpace(o.ClaimedByUserId)));
-        }
-        else if (Has(AppModules.ServiceOrders))
-        {
-            newServiceOrdersCount = await Db.ServiceOrders
+
+            ticketsBadgeCount = await Db.Tickets
                 .AsNoTracking()
-                .CountAsync(o =>
-                    (o.Status == ServiceOrderStatus.Created ||
-                     (o.Status == ServiceOrderStatus.InProgress && string.IsNullOrWhiteSpace(o.ClaimedByUserId))) &&
-                    (string.IsNullOrWhiteSpace(o.AssignedUserId) || o.AssignedUserId == currentUserId));
+                .CountAsync(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled);
+
+            viaticosBadgeCount = await Db.ViaticWeeks
+                .AsNoTracking()
+                .CountAsync(w => w.Status == ViaticWeekStatus.Submitted || w.Status == ViaticWeekStatus.SettlementSubmitted);
+
+            leavesBadgeCount = await Db.LeaveRequests
+                .AsNoTracking()
+                .CountAsync(l => l.Status == LeaveRequestStatus.Pending);
+
+            examsBadgeCount = await Db.ExamAssignments
+                .AsNoTracking()
+                .CountAsync(a => a.Status == ExamAssignmentStatus.Submitted);
+        }
+        else
+        {
+            if (Has(AppModules.ServiceOrders))
+            {
+                newServiceOrdersCount = await Db.ServiceOrders
+                    .AsNoTracking()
+                    .CountAsync(o =>
+                        (o.Status == ServiceOrderStatus.Created ||
+                         (o.Status == ServiceOrderStatus.InProgress && string.IsNullOrWhiteSpace(o.ClaimedByUserId))) &&
+                        (string.IsNullOrWhiteSpace(o.AssignedUserId) || o.AssignedUserId == currentUserId));
+            }
+
+            if (Has(AppModules.Tickets))
+            {
+                ticketsBadgeCount = await Db.Tickets
+                    .AsNoTracking()
+                    .CountAsync(t =>
+                        t.Status != TicketStatus.Closed &&
+                        t.Status != TicketStatus.Cancelled &&
+                        (string.IsNullOrWhiteSpace(t.AssignedToUserId) || t.AssignedToUserId == currentUserId));
+            }
+
+            if (Has(AppModules.Viaticos))
+            {
+                viaticosBadgeCount = await Db.ViaticWeeks
+                    .AsNoTracking()
+                    .CountAsync(w =>
+                        w.UserId == currentUserId &&
+                        (w.Status == ViaticWeekStatus.Draft || w.Status == ViaticWeekStatus.Rejected));
+            }
+
+            if (Has(AppModules.Leaves))
+            {
+                leavesBadgeCount = await Db.LeaveRequests
+                    .AsNoTracking()
+                    .CountAsync(l => l.UserId == currentUserId && l.Status == LeaveRequestStatus.Pending);
+            }
+
+            if (Has(AppModules.Exams))
+            {
+                examsBadgeCount = await Db.ExamAssignments
+                    .AsNoTracking()
+                    .CountAsync(a =>
+                        a.UserId == currentUserId &&
+                        (a.Status == ExamAssignmentStatus.Assigned || a.Status == ExamAssignmentStatus.InProgress));
+            }
         }
     }
 
@@ -154,6 +212,10 @@
                     <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index">
                         <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
                         <span class="hn-side-text">Viáticos</span>
+                        @if (viaticosBadgeCount > 0)
+                        {
+                            <span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>
+                        }
                     </a>
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard">
                         <span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span>
@@ -192,6 +254,10 @@
                     <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index">
                         <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                         <span class="hn-side-text">Tickets</span>
+                        @if (ticketsBadgeCount > 0)
+                        {
+                            <span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>
+                        }
                     </a>
                     <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")">
@@ -219,10 +285,18 @@
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index">
                         <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
                         <span class="hn-side-text">Vacaciones</span>
+                        @if (leavesBadgeCount > 0)
+                        {
+                            <span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>
+                        }
                     </a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index">
                         <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
                         <span class="hn-side-text">Ex&aacute;menes</span>
+                        @if (examsBadgeCount > 0)
+                        {
+                            <span class="badge rounded-pill bg-danger ms-auto">@examsBadgeCount</span>
+                        }
                     </a>
                     <details class="hn-side-group" @(isSystemPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Admin/System")">
@@ -315,6 +389,10 @@
                         <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index">
                             <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
                             <span class="hn-side-text">Mis viáticos</span>
+                            @if (viaticosBadgeCount > 0)
+                            {
+                                <span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>
+                            }
                         </a>
                     }
                     @if (Has(AppModules.Eval360))
@@ -398,6 +476,10 @@
                         <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index">
                             <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                             <span class="hn-side-text">Tickets</span>
+                            @if (ticketsBadgeCount > 0)
+                            {
+                                <span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>
+                            }
                         </a>
                     }
                     @if (Has(AppModules.Leaves))
@@ -405,6 +487,10 @@
                         <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index">
                             <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
                             <span class="hn-side-text">Vacaciones</span>
+                            @if (leavesBadgeCount > 0)
+                            {
+                                <span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>
+                            }
                         </a>
                     }
                     @if (Has(AppModules.Exams))
@@ -412,6 +498,10 @@
                         <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index">
                             <span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span>
                             <span class="hn-side-text">Ex&aacute;menes</span>
+                            @if (examsBadgeCount > 0)
+                            {
+                                <span class="badge rounded-pill bg-danger ms-auto">@examsBadgeCount</span>
+                            }
                         </a>
                     }
                 }
@@ -499,7 +589,7 @@
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">&Oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a>
-                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Viáticos</span></a>
+                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Viáticos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a>
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">KPI (80/20)</span></a>
                     <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a>
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a>
@@ -519,7 +609,7 @@
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a>
+                    <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span>@if (ticketsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>}</a>
                     <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
@@ -537,8 +627,8 @@
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturación</span></a>
-                    <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a>
-                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a>
+                    <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span>@if (leavesBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>}</a>
+                    <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span>@if (examsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@examsBadgeCount</span>}</a>
                     <details class="hn-side-group" @(isSystemPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Admin/System")"><span class="hn-side-icon"><i class="bi bi-database"></i></span><span class="hn-side-text">Sistema</span></summary>
                         <div class="hn-side-sub">
@@ -575,7 +665,7 @@
                     @if (Has(AppModules.ServiceOrders))
                     { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a> }
                     @if (Has(AppModules.Viaticos))
-                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis viáticos</span></a> }
+                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis viáticos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a> }
                     @if (Has(AppModules.Eval360))
                     { <a class="hn-side-link @Active("/Eval360")" asp-page="/Eval360/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a> }
                     @if (Has(AppModules.Projects))
@@ -634,11 +724,11 @@
                         </details>
                     }
                     @if (Has(AppModules.Tickets))
-                    { <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a> }
+                    { <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span>@if (ticketsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>}</a> }
                     @if (Has(AppModules.Leaves))
-                    { <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span></a> }
+                    { <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span>@if (leavesBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>}</a> }
                     @if (Has(AppModules.Exams))
-                    { <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span></a> }
+                    { <a class="hn-side-link @Active("/Exams")" asp-page="/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span>@if (examsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@examsBadgeCount</span>}</a> }
                 }
 
                 <hr class="border-light opacity-25 my-3" />

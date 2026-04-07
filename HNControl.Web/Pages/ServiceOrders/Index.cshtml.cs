@@ -80,7 +80,7 @@ public class IndexModel : PageModel
         {
             var nowLocal = DateTime.Now;
             DateFrom = new DateTime(nowLocal.Year, nowLocal.Month, 1);
-            DateTo = nowLocal.Date;
+            DateTo = DateFrom.Value.AddMonths(1).AddDays(-1);
         }
 
         var q = _db.ServiceOrders

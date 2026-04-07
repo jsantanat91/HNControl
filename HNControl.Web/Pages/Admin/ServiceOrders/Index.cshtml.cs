@@ -61,6 +61,13 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
+        if (!DateFrom.HasValue && !DateTo.HasValue)
+        {
+            var now = DateTime.Now.Date;
+            DateFrom = new DateTime(now.Year, now.Month, 1);
+            DateTo = DateFrom.Value.AddMonths(1).AddDays(-1);
+        }
+
         var q = _db.ServiceOrders
             .Include(o => o.Client)
             .Include(o => o.Project)
