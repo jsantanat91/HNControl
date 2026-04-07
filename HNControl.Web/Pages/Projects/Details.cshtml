@@ -81,10 +81,10 @@
 
                 @if (User.IsInRole(AppRoles.Admin))
                 {
-                    <form method="post" asp-page-handler="AddActivity" class="row g-2 mb-3">
+                    <form method="post" asp-page-handler="AddActivity" class="row g-2 mb-3 align-items-end">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="InputActivity.ProjectId" value="@Model.Project.Id" />
-                        <div class="col-lg-3 col-md-6">
+                        <div class="col-12 col-xl-3 col-lg-6">
                             <select class="form-select form-select-sm" name="InputActivity.AssignedToUserId">
                                 <option value="">Asignado a</option>
                                 @foreach (var emp in Model.EmployeeOptions)
@@ -93,23 +93,23 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-lg-4 col-md-6">
+                        <div class="col-12 col-xl-3 col-lg-6">
                             <input class="form-control form-control-sm" name="InputActivity.Description" placeholder="Actividad" />
                         </div>
-                        <div class="col-lg-2 col-md-4 d-flex gap-2">
+                        <div class="col-6 col-xl-2 col-lg-4 d-flex gap-2">
                             <input class="form-control form-control-sm" name="InputActivity.DurationValue" type="number" min="1" max="3650" value="1" />
                             <select class="form-select form-select-sm" name="InputActivity.DurationUnit">
                                 <option value="hours" selected>Horas</option>
                                 <option value="days">Dias</option>
                             </select>
                         </div>
-                        <div class="col-lg-2 col-md-4">
+                        <div class="col-6 col-xl-2 col-lg-4">
                             <input class="form-control form-control-sm" name="InputActivity.StartDateLocal" type="date" title="Fecha inicio" />
                         </div>
-                        <div class="col-lg-2 col-md-4">
+                        <div class="col-6 col-xl-2 col-lg-4">
                             <input class="form-control form-control-sm" name="InputActivity.EndDateLocal" type="date" title="Fecha fin" />
                         </div>
-                        <div class="col-lg-1 col-md-12 d-grid">
+                        <div class="col-6 col-xl-2 col-lg-12 d-grid">
                             <button class="btn btn-sm btn-primary" type="submit">Agregar</button>
                         </div>
                     </form>

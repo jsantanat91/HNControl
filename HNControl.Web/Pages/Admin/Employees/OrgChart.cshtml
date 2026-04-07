@@ -10,7 +10,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 mb-0">Organigrama</h1>
-        <div class="text-muted small">Arrastra tarjetas para definir jerarquía, guarda y exporta.</div>
+        <div class="text-muted small">Diagrama jerárquico tipo flujo: CEO arriba, mandos medios debajo y equipos al final.</div>
     </div>
     <div class="d-flex gap-2">
         @if (Model.CanExport)
@@ -26,23 +26,21 @@
 
 <div id="orgAlert" class="alert d-none"></div>
 
-<div class="row g-3">
-    <div class="col-12 col-xl-4">
-        <div class="card shadow-soft h-100">
-            <div class="card-header fw-semibold">Sin jefe (nivel raíz)</div>
-            <div class="card-body">
-                <div id="orgRoot" class="org-dropzone"></div>
-            </div>
-        </div>
+<div class="card shadow-soft h-100">
+    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span>Vista del organigrama (flujo)</span>
+        <span class="small text-muted">Arrastra y suelta para reordenar jerarquía.</span>
     </div>
-    <div class="col-12 col-xl-8">
-        <div class="card shadow-soft h-100">
-            <div class="card-header fw-semibold">Vista del organigrama</div>
-            <div class="card-body">
-                <div id="orgCanvas" class="org-dropzone">
-                    <div id="orgTreeRoot" class="org-tree-root"></div>
-                </div>
-            </div>
+    <div class="card-body">
+        <div id="orgRootDrop" class="org-root-dropzone mb-3">
+            Suelta aquí para convertir en nivel raíz (sin jefe)
+        </div>
+        <div id="orgCanvas" class="org-canvas">
+            <div id="orgFlowRoot" class="org-flow-root"></div>
+        </div>
+        <div class="mt-3">
+            <div class="fw-semibold mb-2">Sin asignar (opcional)</div>
+            <div id="orgUnassigned" class="org-unassigned"></div>
         </div>
     </div>
 </div>
@@ -54,38 +52,115 @@
 
 @section Styles {
     <style>
-        #orgRoot, #orgCanvas { min-height: 420px; }
-        .org-dropzone {
-            border: 1px dashed rgba(59,130,246,.45);
+        #orgCanvas { min-height: 520px; }
+        .org-canvas {
+            border: 1px solid rgba(15,23,42,.1);
             border-radius: 16px;
+            padding: 1rem;
+            background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(241,245,249,.7));
+        }
+        .org-root-dropzone,
+        .org-unassigned {
+            border: 1px dashed rgba(59,130,246,.45);
+            border-radius: 12px;
+            min-height: 56px;
             padding: .75rem;
             background: rgba(241,245,249,.55);
         }
-        .org-tree-root { min-height: 360px; }
+        .org-root-dropzone.drop-target,
+        .org-unassigned.drop-target {
+            background: rgba(147,197,253,.28);
+        }
+
+        .org-flow-root {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 1rem;
+            min-height: 420px;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+        }
+        .org-tree {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            justify-content: center;
+        }
+        .org-tree li {
+            text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 8px 0 8px;
+        }
+        .org-tree li::before,
+        .org-tree li::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            border-top: 2px solid rgba(59,130,246,.35);
+            width: 50%;
+            height: 20px;
+        }
+        .org-tree li::after {
+            right: auto;
+            left: 50%;
+            border-left: 2px solid rgba(59,130,246,.35);
+        }
+        .org-tree li:only-child::after,
+        .org-tree li:only-child::before {
+            display: none;
+        }
+        .org-tree li:only-child {
+            padding-top: 0;
+        }
+        .org-tree li:first-child::before,
+        .org-tree li:last-child::after {
+            border: 0 none;
+        }
+        .org-tree li:last-child::before {
+            border-right: 2px solid rgba(59,130,246,.35);
+            border-radius: 0 6px 0 0;
+        }
+        .org-tree li:first-child::after {
+            border-radius: 6px 0 0 0;
+        }
+        .org-tree ul {
+            padding-top: 20px;
+            position: relative;
+            padding-left: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .org-tree ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px solid rgba(59,130,246,.35);
+            width: 0;
+            height: 20px;
+        }
+
         .org-card {
             background: #fff;
             border: 1px solid rgba(15,23,42,.12);
             border-radius: 14px;
-            padding: .6rem .75rem;
-            margin-bottom: .55rem;
+            padding: .65rem .8rem;
+            min-width: 240px;
+            max-width: 280px;
             box-shadow: 0 8px 16px rgba(15,23,42,.06);
+            display: inline-block;
+            text-align: left;
         }
         .org-card.dragging { opacity: .55; }
-        .org-card.is-selected { outline: 2px solid rgba(37,99,235,.5); }
+        .org-card.is-selected { outline: 2px solid rgba(37,99,235,.55); }
+        .org-card.drop-target { box-shadow: 0 0 0 2px rgba(59,130,246,.35), 0 8px 16px rgba(15,23,42,.06); }
         .org-card-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
         .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
         .org-role { font-size:.8rem; color:#64748b; }
-        .org-children {
-            margin-top: .55rem;
-            margin-left: 1rem;
-            border-left: 2px solid rgba(59,130,246,.25);
-            padding-left: .6rem;
-            min-height: .75rem;
-        }
-        .org-children.drop-target, #orgRoot.drop-target {
-            background: rgba(147,197,253,.25);
-            border-radius: 12px;
-        }
         .org-link-help {
             font-size: .8rem;
             color: #64748b;
@@ -100,9 +175,10 @@
     const canEdit = @Model.CanEdit.ToString().ToLowerInvariant();
     const employees = @Html.Raw(employeesJson);
     const links = @Html.Raw(nodesJson);
-    const root = document.getElementById('orgRoot');
+    const rootDrop = document.getElementById('orgRootDrop');
     const canvas = document.getElementById('orgCanvas');
-    const orgTreeRoot = document.getElementById('orgTreeRoot');
+    const orgFlowRoot = document.getElementById('orgFlowRoot');
+    const unassignedZone = document.getElementById('orgUnassigned');
     const alertBox = document.getElementById('orgAlert');
 
     const getUserId = (x) => x?.userId || x?.UserId || '';
@@ -113,9 +189,12 @@
     const getEmail = (x) => x?.email || x?.Email || '-';
 
     const byUser = new Map(employees.map(e => [getUserId(e), e]).filter(([k]) => !!k));
+    const parentMap = new Map();
+    const orderMap = new Map();
     const cardByUser = new Map();
     let draggingUserId = null;
-    let selectedParentId = null;
+    let selectedUserId = null;
+    let orderCounter = 1;
 
     function showAlert(msg, ok) {
         alertBox.className = `alert ${ok ? 'alert-success' : 'alert-danger'}`;
@@ -140,114 +219,137 @@
         `;
         card.addEventListener('click', () => {
             if (!canEdit) return;
-            if (selectedParentId === userId) {
-                selectedParentId = null;
+            if (selectedUserId === userId) {
+                selectedUserId = null;
             } else {
-                selectedParentId = userId;
+                selectedUserId = userId;
             }
-            cardByUser.forEach(c => c.classList.toggle('is-selected', c.dataset.userId === selectedParentId));
+            cardByUser.forEach(c => c.classList.toggle('is-selected', c.dataset.userId === selectedUserId));
         });
         cardByUser.set(userId, card);
-        return card;
-    }
-
-    function buildBase() {
-        root.innerHTML = '';
-        orgTreeRoot.innerHTML = '';
-
-        employees.forEach(emp => {
-            const card = createCard(emp);
-            orgTreeRoot.appendChild(card);
-        });
-
-        const linkMap = new Map(links.map(x => [getUserId(x), x]).filter(([k]) => !!k));
-        const sorted = [...employees].sort((a, b) => {
-            const sa = getSortOrder(linkMap.get(getUserId(a))) || 9999;
-            const sb = getSortOrder(linkMap.get(getUserId(b))) || 9999;
-            if (sa !== sb) return sa - sb;
-            return (getFullName(a) || '').localeCompare(getFullName(b) || '');
-        });
-
-        sorted.forEach(emp => {
-            const userId = getUserId(emp);
-            const card = cardByUser.get(userId);
-            const parentId = getReportsTo(linkMap.get(userId));
-            if (!parentId) {
-                orgTreeRoot.appendChild(card);
-                return;
-            }
-            const parent = cardByUser.get(parentId);
-            const zone = parent?.querySelector('.org-children');
-            (zone || orgTreeRoot).appendChild(card);
-        });
-
-        const help = document.createElement('div');
-        help.className = 'org-link-help';
-        help.textContent = 'Tip: arrastra tarjetas al panel derecho. Para enlazar por jerarquía, suelta una tarjeta sobre otra.';
-        canvas.prepend(help);
-    }
-
-    function isDropInsideSelf(targetZone, draggedCard) {
-        const targetCard = targetZone.closest('.org-card');
-        return targetCard ? draggedCard.contains(targetCard) : false;
-    }
-
-    function enableDnD() {
-        if (!canEdit) return;
-
-        const zones = () => [root, orgTreeRoot, ...document.querySelectorAll('.org-children')];
-        zones().forEach(zone => {
-            zone.addEventListener('dragover', e => {
-                e.preventDefault();
-                zone.classList.add('drop-target');
-            });
-            zone.addEventListener('dragleave', () => zone.classList.remove('drop-target'));
-            zone.addEventListener('drop', e => {
-                e.preventDefault();
-                zone.classList.remove('drop-target');
-                if (!draggingUserId) return;
-                const card = cardByUser.get(draggingUserId);
-                if (!card) return;
-                if (isDropInsideSelf(zone, card)) return;
-                zone.appendChild(card);
-            });
-        });
-
-        cardByUser.forEach(card => {
+        if (canEdit) {
             card.addEventListener('dragstart', () => {
-                draggingUserId = card.dataset.userId;
+                draggingUserId = userId;
                 card.classList.add('dragging');
             });
             card.addEventListener('dragend', () => {
                 draggingUserId = null;
                 card.classList.remove('dragging');
+                card.classList.remove('drop-target');
             });
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                card.classList.add('drop-target');
+            });
+            card.addEventListener('dragleave', () => card.classList.remove('drop-target'));
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                card.classList.remove('drop-target');
+                if (!draggingUserId || draggingUserId === userId) return;
+                if (isDescendant(userId, draggingUserId)) return;
+                parentMap.set(draggingUserId, userId);
+                orderMap.set(draggingUserId, ++orderCounter);
+                render();
+            });
+        }
+        return card;
+    }
+
+    function initState() {
+        const linkMap = new Map(links.map(x => [getUserId(x), x]).filter(([k]) => !!k));
+        employees.forEach((emp, idx) => {
+            const uid = getUserId(emp);
+            const link = linkMap.get(uid);
+            const parent = getReportsTo(link);
+            parentMap.set(uid, parent || null);
+            orderMap.set(uid, getSortOrder(link) || (idx + 1));
+            orderCounter = Math.max(orderCounter, getSortOrder(link) || (idx + 1));
+            createCard(emp);
         });
+    }
+
+    function childrenOf(parentId) {
+        const out = [];
+        byUser.forEach((_, uid) => {
+            const p = parentMap.get(uid) || null;
+            if ((parentId || null) === p) out.push(uid);
+        });
+        out.sort((a, b) => {
+            const oa = orderMap.get(a) || 0;
+            const ob = orderMap.get(b) || 0;
+            if (oa !== ob) return oa - ob;
+            return (getFullName(byUser.get(a)) || '').localeCompare(getFullName(byUser.get(b)) || '');
+        });
+        return out;
+    }
+
+    function isDescendant(candidateParentId, movingUserId) {
+        let current = candidateParentId;
+        const visited = new Set();
+        while (current) {
+            if (current === movingUserId) return true;
+            if (visited.has(current)) break;
+            visited.add(current);
+            current = parentMap.get(current) || null;
+        }
+        return false;
+    }
+
+    function renderNode(userId, parentUl) {
+        const li = document.createElement('li');
+        const card = cardByUser.get(userId);
+        if (card) li.appendChild(card);
+
+        const kids = childrenOf(userId);
+        if (kids.length > 0) {
+            const ul = document.createElement('ul');
+            ul.className = 'org-tree';
+            kids.forEach(k => renderNode(k, ul));
+            li.appendChild(ul);
+        }
+        parentUl.appendChild(li);
+    }
+
+    function render() {
+        orgFlowRoot.innerHTML = '';
+        unassignedZone.innerHTML = '';
+
+        const roots = childrenOf(null);
+        const tree = document.createElement('ul');
+        tree.className = 'org-tree';
+        roots.forEach(r => renderNode(r, tree));
+        orgFlowRoot.appendChild(tree);
+
+        const unassigned = employees
+            .map(e => getUserId(e))
+            .filter(uid => !parentMap.has(uid));
+        if (unassigned.length === 0) {
+            unassignedZone.innerHTML = '<div class="text-muted small">Todos los empleados están en el organigrama.</div>';
+        } else {
+            unassigned.forEach(uid => {
+                const card = cardByUser.get(uid);
+                if (card) unassignedZone.appendChild(card);
+            });
+        }
     }
 
     function collectLayout() {
         const out = [];
         let order = 0;
-        const baseRect = orgTreeRoot.getBoundingClientRect();
-        function walk(zone, parentId) {
-            const cards = [...zone.children].filter(x => x.classList.contains('org-card'));
-            cards.forEach(card => {
-                const userId = card.dataset.userId;
-                const r = card.getBoundingClientRect();
+        const roots = childrenOf(null);
+        function walk(parentId) {
+            const kids = childrenOf(parentId);
+            kids.forEach(userId => {
                 order += 1;
-                out.push({
-                    userId,
-                    reportsToUserId: parentId,
-                    sortOrder: order,
-                    positionX: Math.max(0, Math.round(r.left - baseRect.left)),
-                    positionY: Math.max(0, Math.round(r.top - baseRect.top))
-                });
-                const childZone = card.querySelector(':scope > .org-children');
-                if (childZone) walk(childZone, userId);
+                out.push({ userId, reportsToUserId: parentId, sortOrder: order, positionX: 0, positionY: 0 });
+                walk(userId);
             });
         }
-        walk(orgTreeRoot, null);
-        walk(root, null);
+        roots.forEach(r => {
+            order += 1;
+            out.push({ userId: r, reportsToUserId: null, sortOrder: order, positionX: 0, positionY: 0 });
+            walk(r);
+        });
         return out;
     }
 
@@ -263,8 +365,31 @@
     const saveBtn = document.getElementById('saveOrgBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveLayout);
 
-    buildBase();
-    enableDnD();
+    if (canEdit) {
+        [rootDrop, unassignedZone].forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('drop-target');
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drop-target'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drop-target');
+                if (!draggingUserId) return;
+                parentMap.set(draggingUserId, null);
+                orderMap.set(draggingUserId, ++orderCounter);
+                render();
+            });
+        });
+    }
+
+    const help = document.createElement('div');
+    help.className = 'org-link-help';
+    help.textContent = 'Tip: arrastra una persona sobre otra para asignarle jefe directo. Suelta en “nivel raíz” para dejarla sin jefe.';
+    canvas.prepend(help);
+
+    initState();
+    render();
 })();
 </script>
 }

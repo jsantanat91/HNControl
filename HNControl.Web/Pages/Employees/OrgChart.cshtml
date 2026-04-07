@@ -16,28 +16,92 @@
 
 <div class="card shadow-soft">
     <div class="card-body">
-        <div id="orgReadOnly"></div>
+        <div id="orgReadOnly" class="org-flow-root"></div>
     </div>
 </div>
 
 @section Styles {
     <style>
+        .org-flow-root {
+            min-height: 420px;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+        }
+        .org-tree {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            justify-content: center;
+        }
+        .org-tree li {
+            text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 8px 0 8px;
+        }
+        .org-tree li::before,
+        .org-tree li::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 50%;
+            border-top: 2px solid rgba(59,130,246,.35);
+            width: 50%;
+            height: 20px;
+        }
+        .org-tree li::after {
+            right: auto;
+            left: 50%;
+            border-left: 2px solid rgba(59,130,246,.35);
+        }
+        .org-tree li:only-child::after,
+        .org-tree li:only-child::before {
+            display: none;
+        }
+        .org-tree li:only-child {
+            padding-top: 0;
+        }
+        .org-tree li:first-child::before,
+        .org-tree li:last-child::after {
+            border: 0 none;
+        }
+        .org-tree li:last-child::before {
+            border-right: 2px solid rgba(59,130,246,.35);
+            border-radius: 0 6px 0 0;
+        }
+        .org-tree li:first-child::after {
+            border-radius: 6px 0 0 0;
+        }
+        .org-tree ul {
+            padding-top: 20px;
+            position: relative;
+            padding-left: 0;
+            display: flex;
+            justify-content: center;
+        }
+        .org-tree ul::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            border-left: 2px solid rgba(59,130,246,.35);
+            width: 0;
+            height: 20px;
+        }
         .org-card {
             background: #fff;
             border: 1px solid rgba(15,23,42,.12);
             border-radius: 14px;
             padding: .6rem .75rem;
-            margin-bottom: .55rem;
+            min-width: 240px;
+            max-width: 280px;
             box-shadow: 0 8px 16px rgba(15,23,42,.06);
+            display: inline-block;
+            text-align: left;
         }
         .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
         .org-role { font-size:.8rem; color:#64748b; }
-        .org-children {
-            margin-top: .55rem;
-            margin-left: 1rem;
-            border-left: 2px solid rgba(59,130,246,.25);
-            padding-left: .6rem;
-        }
     </style>
 }
 
@@ -68,38 +132,41 @@
         list.sort((a, b) => getSortOrder(a) - getSortOrder(b));
     }
 
-    function buildCard(userId) {
+    function renderNode(userId, parentUl) {
         const emp = byUser.get(userId);
-        if (!emp) return null;
+        if (!emp) return;
+        const li = document.createElement('li');
         const card = document.createElement('div');
         card.className = 'org-card';
         card.innerHTML = `<div class="org-name">${getFullName(emp)}</div><div class="org-role">${getPosition(emp)} · ${getEmail(emp)}</div>`;
         const kids = children.get(userId) || [];
         if (kids.length > 0) {
-            const zone = document.createElement('div');
-            zone.className = 'org-children';
-            kids.forEach(k => {
-                const child = buildCard(getUserId(k));
-                if (child) zone.appendChild(child);
-            });
-            card.appendChild(zone);
+            const ul = document.createElement('ul');
+            ul.className = 'org-tree';
+            kids.forEach(k => renderNode(getUserId(k), ul));
+            li.appendChild(card);
+            li.appendChild(ul);
+        } else {
+            li.appendChild(card);
         }
-        return card;
+        parentUl.appendChild(li);
     }
 
     const roots = children.get('__ROOT__') || [];
+    const rootTree = document.createElement('ul');
+    rootTree.className = 'org-tree';
     if (roots.length === 0) {
         employees.forEach(e => {
-            const c = buildCard(getUserId(e));
-            if (c) root.appendChild(c);
+            renderNode(getUserId(e), rootTree);
         });
+        root.appendChild(rootTree);
         return;
     }
 
     roots.forEach(r => {
-        const c = buildCard(getUserId(r));
-        if (c) root.appendChild(c);
+        renderNode(getUserId(r), rootTree);
     });
+    root.appendChild(rootTree);
 })();
 </script>
 }

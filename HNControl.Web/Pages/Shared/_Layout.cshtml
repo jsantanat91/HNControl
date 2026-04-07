@@ -11,10 +11,14 @@
         => path.StartsWith(startsWith, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     string ActiveExact(string exact)
         => string.Equals(path, exact, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    var isProspectsBridge = path.StartsWith("/Clients/Index", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(Context?.Request?.Query["View"].ToString(), "leads", StringComparison.OrdinalIgnoreCase);
     var isSalesPath = path.StartsWith("/Ventas", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Sales", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase);
+        || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase)
+        || isProspectsBridge;
     var isSystemPath = path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Admin/Security", StringComparison.OrdinalIgnoreCase);
     var isSystemConfigPath = path.StartsWith("/Admin/System/Configuration", StringComparison.OrdinalIgnoreCase);
@@ -167,7 +171,7 @@
                         </summary>
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
-                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                            <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
                             <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizacion</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
@@ -232,7 +236,7 @@
                                 <span class="hn-side-text">Ventas</span>
                             </summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                                <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
                                 <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizacion</a>
                                 @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                     || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
@@ -471,7 +475,7 @@
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
-                            <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                            <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
                             <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizacion</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
@@ -507,7 +511,7 @@
                         <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Ventas/Prospectos")" href="/Ventas/Prospectos">Prospecto</a>
+                                <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
                                 <a class="hn-side-sublink @Active("/Ventas/Cotizaciones")" href="/Ventas/Cotizaciones">Cotizacion</a>
                                 @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                     || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))

@@ -5,10 +5,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using System.Globalization;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -74,6 +76,8 @@ public class DetailsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
+        await EnsureProjectActivityColumnsAsync();
+
         var isAdmin = User.IsInRole(AppRoles.Admin);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
@@ -113,19 +117,7 @@ public class DetailsModel : PageModel
         GanttTotalDays = Math.Max(1, (int)Math.Ceiling((Project.EstimatedEndDate - Project.StartDate).TotalHours));
         GanttElapsedDays = Math.Max(0, Math.Min(GanttTotalDays, (int)Math.Ceiling((nowUtc - Project.StartDate).TotalHours)));
         GanttProgressPercent = Math.Round((GanttElapsedDays * 100d) / GanttTotalDays, 1);
-        try
-        {
-            Project.Activities = await _db.ProjectActivities
-                .AsNoTracking()
-                .Where(a => a.ProjectId == Project.Id)
-                .OrderBy(a => a.SortOrder)
-                .ThenBy(a => a.CreatedAt)
-                .ToListAsync();
-        }
-        catch
-        {
-            Project.Activities = new List<ProjectActivity>();
-        }
+        Project.Activities = await LoadProjectActivitiesSafeAsync(Project.Id);
         BuildActivityGantt(Project);
 
         EmployeeOptions = await _db.EmployeeProfiles
@@ -184,6 +176,8 @@ public class DetailsModel : PageModel
         if (!User.IsInRole(AppRoles.Admin))
             return Forbid();
 
+        await EnsureProjectActivityColumnsAsync();
+
         if (InputActivity.ProjectId == Guid.Empty)
             return RedirectToPage("/Projects/Index");
 
@@ -201,40 +195,30 @@ public class DetailsModel : PageModel
             (InputActivity.StartDateLocal, InputActivity.EndDateLocal) = (InputActivity.EndDateLocal, InputActivity.StartDateLocal);
         }
 
-        int nextOrder;
-        try
-        {
-            nextOrder = (await _db.ProjectActivities
-                .Where(x => x.ProjectId == p.Id)
-                .Select(x => (int?)x.SortOrder)
-                .MaxAsync() ?? 0) + 1;
-        }
-        catch
-        {
-            nextOrder = 1;
-        }
-        _db.ProjectActivities.Add(new ProjectActivity
-        {
-            ProjectId = p.Id,
-            AssignedToUserId = string.IsNullOrWhiteSpace(InputActivity.AssignedToUserId) ? null : InputActivity.AssignedToUserId.Trim(),
-            AssignedToName = string.IsNullOrWhiteSpace(InputActivity.AssignedToUserId)
-                ? (string.IsNullOrWhiteSpace(InputActivity.AssignedTo)
-                    ? (p.AssignedEmployee?.FullName ?? p.AssignedUserId)
-                    : InputActivity.AssignedTo.Trim())
-                : (await _db.EmployeeProfiles.AsNoTracking()
-                    .Where(e => e.UserId == InputActivity.AssignedToUserId)
-                    .Select(e => e.FullName)
-                    .FirstOrDefaultAsync() ?? InputActivity.AssignedToUserId.Trim()),
-            Description = InputActivity.Description.Trim(),
-            PlannedDays = ParseDurationToHours(InputActivity.DurationValue, InputActivity.DurationUnit),
-            DurationUnit = NormalizeDurationUnit(InputActivity.DurationUnit),
-            DurationValue = Math.Max(1, InputActivity.DurationValue),
-            StartAtUtc = InputActivity.StartDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.StartDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
-            EndAtUtc = InputActivity.EndDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.EndDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
-            SortOrder = nextOrder
-        });
+        var nextOrder = await GetNextActivitySortOrderAsync(p.Id);
+        var assignedToUserId = string.IsNullOrWhiteSpace(InputActivity.AssignedToUserId) ? null : InputActivity.AssignedToUserId.Trim();
+        var assignedToName = string.IsNullOrWhiteSpace(assignedToUserId)
+            ? (string.IsNullOrWhiteSpace(InputActivity.AssignedTo)
+                ? (p.AssignedEmployee?.FullName ?? p.AssignedUserId)
+                : InputActivity.AssignedTo.Trim())
+            : (await _db.EmployeeProfiles.AsNoTracking()
+                .Where(e => e.UserId == assignedToUserId)
+                .Select(e => e.FullName)
+                .FirstOrDefaultAsync() ?? assignedToUserId);
 
-        await _db.SaveChangesAsync();
+        await InsertProjectActivitySafeAsync(
+            projectId: p.Id,
+            assignedToName: assignedToName,
+            assignedToUserId: assignedToUserId,
+            description: InputActivity.Description.Trim(),
+            durationValue: Math.Max(1, InputActivity.DurationValue),
+            durationUnit: NormalizeDurationUnit(InputActivity.DurationUnit),
+            plannedHours: ParseDurationToHours(InputActivity.DurationValue, InputActivity.DurationUnit),
+            startAtUtc: InputActivity.StartDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.StartDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
+            endAtUtc: InputActivity.EndDateLocal.HasValue ? DateTime.SpecifyKind(InputActivity.EndDateLocal.Value, DateTimeKind.Local).ToUniversalTime() : null,
+            sortOrder: nextOrder
+        );
+
         return RedirectToPage(new { id = InputActivity.ProjectId });
     }
 
@@ -243,18 +227,15 @@ public class DetailsModel : PageModel
         if (!User.IsInRole(AppRoles.Admin))
             return Forbid();
 
-        var activity = await _db.ProjectActivities.FirstOrDefaultAsync(x => x.Id == activityId && x.ProjectId == id);
-        if (activity != null)
-        {
-            _db.ProjectActivities.Remove(activity);
-            await _db.SaveChangesAsync();
-        }
+        await DeleteProjectActivitySafeAsync(id, activityId);
 
         return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnGetExportPdfAsync(Guid id)
     {
+        await EnsureProjectActivityColumnsAsync();
+
         var isAdmin = User.IsInRole(AppRoles.Admin);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
@@ -273,12 +254,7 @@ public class DetailsModel : PageModel
             .OrderBy(c => c.ServiceType)
             .ThenBy(c => c.Label)
             .ToListAsync();
-        var projectActivities = await _db.ProjectActivities
-            .AsNoTracking()
-            .Where(a => a.ProjectId == p.Id)
-            .OrderBy(a => a.SortOrder)
-            .ThenBy(a => a.CreatedAt)
-            .ToListAsync();
+        var projectActivities = await LoadProjectActivitiesSafeAsync(p.Id);
 
         var totalHours = Math.Max(1, (int)Math.Ceiling((p.EstimatedEndDate - p.StartDate).TotalHours));
         var elapsedHours = Math.Max(0, Math.Min(totalHours, (int)Math.Ceiling((DateTime.UtcNow - p.StartDate).TotalHours)));
@@ -501,6 +477,263 @@ public class DetailsModel : PageModel
 
     private static string Safe(string? text)
         => string.IsNullOrWhiteSpace(text) ? "-" : text.Trim();
+
+    private sealed record ProjectActivitySchema(
+        bool HasAssignedToUserId,
+        bool HasDurationUnit,
+        bool HasDurationValue,
+        bool HasStartAtUtc,
+        bool HasEndAtUtc,
+        bool HasColorHex);
+
+    private async Task EnsureProjectActivityColumnsAsync()
+    {
+        const string sql = """
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "DurationUnit" character varying(16);
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "DurationValue" integer;
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "StartAtUtc" timestamp with time zone;
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
+            ALTER TABLE IF EXISTS public."ProjectActivities" ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+            """;
+        try
+        {
+            await _db.Database.ExecuteSqlRawAsync(sql);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42501")
+        {
+            // Sin permisos de owner en algunos despliegues: seguimos en modo compatibilidad.
+        }
+        catch
+        {
+            // No bloquear la pantalla por esquema parcial.
+        }
+    }
+
+    private async Task<ProjectActivitySchema> GetProjectActivitySchemaAsync()
+    {
+        var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema='public'
+                  AND table_name IN ('ProjectActivities', 'projectactivities');
+                """;
+            using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync())
+            {
+                if (!rd.IsDBNull(0))
+                    cols.Add(rd.GetString(0));
+            }
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+
+        return new ProjectActivitySchema(
+            HasAssignedToUserId: cols.Contains("AssignedToUserId"),
+            HasDurationUnit: cols.Contains("DurationUnit"),
+            HasDurationValue: cols.Contains("DurationValue"),
+            HasStartAtUtc: cols.Contains("StartAtUtc"),
+            HasEndAtUtc: cols.Contains("EndAtUtc"),
+            HasColorHex: cols.Contains("ColorHex"));
+    }
+
+    private async Task<List<ProjectActivity>> LoadProjectActivitiesSafeAsync(Guid projectId)
+    {
+        var schema = await GetProjectActivitySchemaAsync();
+        var result = new List<ProjectActivity>();
+
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"""
+                SELECT
+                    p."Id",
+                    p."ProjectId",
+                    COALESCE(p."AssignedToName",'') AS "AssignedToName",
+                    {(schema.HasAssignedToUserId ? "p.\"AssignedToUserId\"" : "NULL::character varying(64)")} AS "AssignedToUserId",
+                    COALESCE(p."Description",'') AS "Description",
+                    COALESCE(p."PlannedDays",1) AS "PlannedDays",
+                    {(schema.HasDurationUnit ? "COALESCE(p.\"DurationUnit\", 'hours')" : "'hours'::character varying(16)")} AS "DurationUnit",
+                    {(schema.HasDurationValue ? "COALESCE(p.\"DurationValue\", GREATEST(COALESCE(p.\"PlannedDays\",1),1))" : "GREATEST(COALESCE(p.\"PlannedDays\",1),1)")} AS "DurationValue",
+                    {(schema.HasStartAtUtc ? "p.\"StartAtUtc\"" : "NULL::timestamp with time zone")} AS "StartAtUtc",
+                    {(schema.HasEndAtUtc ? "p.\"EndAtUtc\"" : "NULL::timestamp with time zone")} AS "EndAtUtc",
+                    {(schema.HasColorHex ? "p.\"ColorHex\"" : "NULL::character varying(16)")} AS "ColorHex",
+                    COALESCE(p."SortOrder",0) AS "SortOrder",
+                    COALESCE(p."CreatedAt", NOW()) AS "CreatedAt"
+                FROM public."ProjectActivities" p
+                WHERE p."ProjectId" = @pid
+                ORDER BY COALESCE(p."SortOrder",0), COALESCE(p."CreatedAt", NOW());
+                """;
+            var pProjectId = cmd.CreateParameter();
+            pProjectId.ParameterName = "pid";
+            pProjectId.Value = projectId;
+            cmd.Parameters.Add(pProjectId);
+
+            using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync())
+            {
+                result.Add(new ProjectActivity
+                {
+                    Id = rd.GetGuid(0),
+                    ProjectId = rd.GetGuid(1),
+                    AssignedToName = rd.IsDBNull(2) ? "" : rd.GetString(2),
+                    AssignedToUserId = rd.IsDBNull(3) ? null : rd.GetString(3),
+                    Description = rd.IsDBNull(4) ? "" : rd.GetString(4),
+                    PlannedDays = rd.IsDBNull(5) ? 1 : rd.GetInt32(5),
+                    DurationUnit = rd.IsDBNull(6) ? "hours" : rd.GetString(6),
+                    DurationValue = rd.IsDBNull(7) ? Math.Max(1, rd.IsDBNull(5) ? 1 : rd.GetInt32(5)) : Math.Max(1, rd.GetInt32(7)),
+                    StartAtUtc = rd.IsDBNull(8) ? null : rd.GetDateTime(8),
+                    EndAtUtc = rd.IsDBNull(9) ? null : rd.GetDateTime(9),
+                    ColorHex = rd.IsDBNull(10) ? null : rd.GetString(10),
+                    SortOrder = rd.IsDBNull(11) ? 0 : rd.GetInt32(11),
+                    CreatedAt = rd.IsDBNull(12) ? DateTime.UtcNow : rd.GetDateTime(12)
+                });
+            }
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+
+        return result;
+    }
+
+    private async Task<int> GetNextActivitySortOrderAsync(Guid projectId)
+    {
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT COALESCE(MAX("SortOrder"), 0)
+                FROM public."ProjectActivities"
+                WHERE "ProjectId" = @pid;
+                """;
+            var pProjectId = cmd.CreateParameter();
+            pProjectId.ParameterName = "pid";
+            pProjectId.Value = projectId;
+            cmd.Parameters.Add(pProjectId);
+            var scalar = await cmd.ExecuteScalarAsync();
+            var max = scalar == null || scalar == DBNull.Value ? 0 : Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
+            return max + 1;
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+    }
+
+    private async Task InsertProjectActivitySafeAsync(
+        Guid projectId,
+        string assignedToName,
+        string? assignedToUserId,
+        string description,
+        int durationValue,
+        string durationUnit,
+        int plannedHours,
+        DateTime? startAtUtc,
+        DateTime? endAtUtc,
+        int sortOrder)
+    {
+        var schema = await GetProjectActivitySchemaAsync();
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+
+        try
+        {
+            var columns = new List<string> { "\"Id\"", "\"ProjectId\"", "\"AssignedToName\"", "\"Description\"", "\"PlannedDays\"", "\"SortOrder\"", "\"CreatedAt\"" };
+            var values = new List<string> { "@id", "@projectId", "@assignedToName", "@description", "@plannedDays", "@sortOrder", "@createdAt" };
+
+            if (schema.HasAssignedToUserId) { columns.Add("\"AssignedToUserId\""); values.Add("@assignedToUserId"); }
+            if (schema.HasDurationUnit) { columns.Add("\"DurationUnit\""); values.Add("@durationUnit"); }
+            if (schema.HasDurationValue) { columns.Add("\"DurationValue\""); values.Add("@durationValue"); }
+            if (schema.HasStartAtUtc) { columns.Add("\"StartAtUtc\""); values.Add("@startAtUtc"); }
+            if (schema.HasEndAtUtc) { columns.Add("\"EndAtUtc\""); values.Add("@endAtUtc"); }
+            if (schema.HasColorHex) { columns.Add("\"ColorHex\""); values.Add("@colorHex"); }
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"""
+                INSERT INTO public."ProjectActivities" ({string.Join(", ", columns)})
+                VALUES ({string.Join(", ", values)});
+                """;
+
+            AddParam(cmd, "id", Guid.NewGuid());
+            AddParam(cmd, "projectId", projectId);
+            AddParam(cmd, "assignedToName", assignedToName ?? "");
+            AddParam(cmd, "description", description ?? "");
+            AddParam(cmd, "plannedDays", Math.Max(1, plannedHours));
+            AddParam(cmd, "sortOrder", sortOrder);
+            AddParam(cmd, "createdAt", DateTime.UtcNow);
+            if (schema.HasAssignedToUserId) AddParam(cmd, "assignedToUserId", (object?)assignedToUserId ?? DBNull.Value);
+            if (schema.HasDurationUnit) AddParam(cmd, "durationUnit", durationUnit);
+            if (schema.HasDurationValue) AddParam(cmd, "durationValue", Math.Max(1, durationValue));
+            if (schema.HasStartAtUtc) AddParam(cmd, "startAtUtc", (object?)startAtUtc ?? DBNull.Value);
+            if (schema.HasEndAtUtc) AddParam(cmd, "endAtUtc", (object?)endAtUtc ?? DBNull.Value);
+            if (schema.HasColorHex) AddParam(cmd, "colorHex", DBNull.Value);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+    }
+
+    private async Task DeleteProjectActivitySafeAsync(Guid projectId, Guid activityId)
+    {
+        var conn = _db.Database.GetDbConnection();
+        var mustClose = conn.State != ConnectionState.Open;
+        if (mustClose)
+            await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                DELETE FROM public."ProjectActivities"
+                WHERE "Id" = @activityId AND "ProjectId" = @projectId;
+                """;
+            AddParam(cmd, "activityId", activityId);
+            AddParam(cmd, "projectId", projectId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (mustClose)
+                await conn.CloseAsync();
+        }
+    }
+
+    private static void AddParam(IDbCommand cmd, string name, object? value)
+    {
+        var p = cmd.CreateParameter();
+        p.ParameterName = name;
+        p.Value = value ?? DBNull.Value;
+        cmd.Parameters.Add(p);
+    }
 
     private byte[]? LoadLogoBytes()
     {
