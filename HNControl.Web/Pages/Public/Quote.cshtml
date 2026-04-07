@@ -142,34 +142,7 @@
                                             </div>
                                         </div>
                                         <hr />
-                                        <div class="fw-semibold mb-2">Agregar hardware (inventario)</div>
-                                        <div class="row g-2">
-                                            <div class="col-md-8">
-                                                <select id="inventoryHardwareSelect" class="form-select">
-                                                    <option value="">-- Selecciona hardware de inventario --</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <input id="inventoryHardwareQty" class="form-control" type="number" min="1" value="1" />
-                                            </div>
-                                            <div class="col-md-2 d-grid">
-                                                <button class="btn btn-outline-dark" type="button" id="addHardwareBtn">Agregar hardware</button>
-                                            </div>
-                                        </div>
-                                        <div class="fw-semibold mb-2 mt-3">Agregar servicio (catálogo de servicios)</div>
-                                        <div class="row g-2">
-                                            <div class="col-md-8">
-                                                <select id="inventoryServiceSelect" class="form-select">
-                                                    <option value="">-- Selecciona servicio --</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <input id="inventoryServiceQty" class="form-control" type="number" min="1" value="1" />
-                                            </div>
-                                            <div class="col-md-2 d-grid">
-                                                <button class="btn btn-outline-primary" type="button" id="addServiceBtn">Agregar servicio</button>
-                                            </div>
-                                        </div>
+                                        <div class="small text-muted mt-2">Flujo simplificado: usa categorías del catálogo y concepto libre.</div>
                                     </div>
                                 </div>
                             </div>
@@ -290,8 +263,6 @@
     const prospects = @Html.Raw(prospectsJson);
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
-    const inventoryHardwareItems = payload.inventoryHardwareItems || [];
-    const inventoryServiceItems = payload.inventoryServiceItems || [];
     const lines = [];
     const manualLines = [];
 
@@ -310,12 +281,6 @@
     const manualRecurrence = document.getElementById('manualRecurrence');
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
-    const inventoryHardwareSelect = document.getElementById('inventoryHardwareSelect');
-    const inventoryHardwareQty = document.getElementById('inventoryHardwareQty');
-    const addHardwareBtn = document.getElementById('addHardwareBtn');
-    const inventoryServiceSelect = document.getElementById('inventoryServiceSelect');
-    const inventoryServiceQty = document.getElementById('inventoryServiceQty');
-    const addServiceBtn = document.getElementById('addServiceBtn');
     const prospectSelect = document.getElementById('prospectSelect');
     const inputCustomerName = document.getElementById('Input_CustomerName');
     const inputCustomerEmail = document.getElementById('Input_CustomerEmail');
@@ -385,38 +350,6 @@
 
     function toMoney(v){
         return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v || 0);
-    }
-
-    function fillInventorySelects(){
-        if(inventoryHardwareSelect){
-            inventoryHardwareSelect.innerHTML = '<option value="">-- Selecciona hardware de inventario --</option>';
-        }
-        inventoryHardwareItems.forEach(x => {
-            const itemId = x.id ?? x.Id;
-            const itemName = x.name ?? x.Name ?? 'Item';
-            const itemCategory = x.category ?? x.Category ?? 'Sin categoría';
-            const itemUnit = x.unit ?? x.Unit ?? 'pza';
-            const itemQty = Number(x.quantityOnHand ?? x.QuantityOnHand ?? 0);
-            const opt = document.createElement('option');
-            opt.value = String(itemId);
-            opt.textContent = `${itemName} · ${itemCategory} · Stock: ${itemQty} ${itemUnit}`;
-            inventoryHardwareSelect?.appendChild(opt);
-        });
-        if(inventoryServiceSelect){
-            inventoryServiceSelect.innerHTML = '<option value="">-- Selecciona servicio --</option>';
-        }
-        inventoryServiceItems.forEach(x => {
-            const itemId = x.id ?? x.Id;
-            const itemName = x.name ?? x.Name ?? 'Servicio';
-            const itemCategory = x.category ?? x.Category ?? 'Servicios';
-            const itemUnitPrice = x.unitPrice ?? x.UnitPrice;
-            const itemManual = x.isManualPrice ?? x.IsManualPrice;
-            const opt = document.createElement('option');
-            opt.value = String(itemId);
-            const price = itemManual || itemUnitPrice == null ? 'Precio manual' : toMoney(Number(itemUnitPrice || 0));
-            opt.textContent = `${itemName} · ${itemCategory} · ${price}`;
-            inventoryServiceSelect?.appendChild(opt);
-        });
     }
 
     function labelOffer(offer){
@@ -753,63 +686,6 @@
         renderCart();
     });
 
-    addHardwareBtn?.addEventListener('click', () => {
-        const id = String(inventoryHardwareSelect?.value || '');
-        if(!id){
-            alert('Selecciona un item de inventario.');
-            return;
-        }
-        const item = find(inventoryHardwareItems, id);
-        if(!item){
-            alert('No se encontró el item seleccionado.');
-            return;
-        }
-        const qtyVal = Math.max(1, Number(inventoryHardwareQty?.value || 1));
-        const itemCategory = readProp(item, 'category', 'Category');
-        const itemName = readProp(item, 'name', 'Name');
-        const itemUnit = readProp(item, 'unit', 'Unit');
-        manualLines.push({
-            categoryName: itemCategory || 'Inventario',
-            serviceName: itemName || 'Item inventario',
-            description: `Item inventario (${itemUnit || 'pza'})`,
-            quantity: qtyVal,
-            unitPrice: 0,
-            recurrence: 'Unica'
-        });
-        if(inventoryHardwareQty) inventoryHardwareQty.value = '1';
-        if(inventoryHardwareSelect) inventoryHardwareSelect.value = '';
-        renderCart();
-    });
-
-    addServiceBtn?.addEventListener('click', () => {
-        const id = String(inventoryServiceSelect?.value || '');
-        if(!id){
-            alert('Selecciona un servicio.');
-            return;
-        }
-        const item = find(inventoryServiceItems, id);
-        if(!item){
-            alert('No se encontró el servicio seleccionado.');
-            return;
-        }
-        const qtyVal = Math.max(1, Number(inventoryServiceQty?.value || 1));
-        const itemCategory = readProp(item, 'category', 'Category');
-        const itemName = readProp(item, 'name', 'Name');
-        const itemOffer = readProp(item, 'offerType', 'OfferType');
-        const itemPrice = readProp(item, 'unitPrice', 'UnitPrice');
-        manualLines.push({
-            categoryName: itemCategory || 'Servicios',
-            serviceName: itemName || 'Servicio',
-            description: `Servicio (${labelOffer(itemOffer || 'MonthlyRent')})`,
-            quantity: qtyVal,
-            unitPrice: Number(itemPrice || 0),
-            recurrence: (itemOffer || 'Sale') === 'MonthlyRent' ? 'Mensual' : 'Unica'
-        });
-        if(inventoryServiceQty) inventoryServiceQty.value = '1';
-        if(inventoryServiceSelect) inventoryServiceSelect.value = '';
-        renderCart();
-    });
-
     prevStepBtn.addEventListener('click', goPrev);
     nextStepBtn.addEventListener('click', goNext);
 
@@ -825,7 +701,6 @@
     });
 
     renderCategories();
-    fillInventorySelects();
     renderServices();
     renderSubproducts();
     renderCart();

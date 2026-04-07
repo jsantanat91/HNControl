@@ -17,14 +17,16 @@ public class QuoteModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
+    private readonly IActionAccessService _actions;
 
-    public QuoteModel(ApplicationDbContext db, IQuoteRequestPdfRenderer pdf, IFileStorage storage, IEmailSender email, IConfiguration cfg)
+    public QuoteModel(ApplicationDbContext db, IQuoteRequestPdfRenderer pdf, IFileStorage storage, IEmailSender email, IConfiguration cfg, IActionAccessService actions)
     {
         _db = db;
         _pdf = pdf;
         _storage = storage;
         _email = email;
         _cfg = cfg;
+        _actions = actions;
     }
 
     [BindProperty]
@@ -42,7 +44,7 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? token)
     {
-        if (!CanUseInternalQuote())
+        if (!await CanUseInternalQuoteAsync(requireCreate: false))
             return RedirectToPage("/Account/Login");
 
         Input.ClientToken = token;
@@ -53,7 +55,7 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnPostPreviewAsync()
     {
-        if (!CanUseInternalQuote())
+        if (!await CanUseInternalQuoteAsync(requireCreate: true))
             return RedirectToPage("/Account/Login");
 
         var build = await BuildRequestFromInputAsync(isPreview: true);
@@ -70,7 +72,7 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!CanUseInternalQuote())
+        if (!await CanUseInternalQuoteAsync(requireCreate: true))
             return RedirectToPage("/Account/Login");
 
         var build = await BuildRequestFromInputAsync(isPreview: false);
@@ -307,8 +309,6 @@ public class QuoteModel : PageModel
 
     private async Task LoadCatalogPayloadAsync()
     {
-        const string markerPackage = "INV_SERVICE_PACKAGE";
-
         var items = await _db.QuoteCatalogItems
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -319,38 +319,6 @@ public class QuoteModel : PageModel
             .AsNoTracking()
             .Where(x => x.IsActive)
             .ToListAsync();
-        var inventoryItems = await _db.InventoryItems
-            .AsNoTracking()
-            .Where(x => x.IsActive && x.QuantityOnHand > 0)
-            .OrderBy(x => x.Name)
-            .Select(x => new
-            {
-                id = x.Id,
-                name = x.Name,
-                category = x.Category,
-                unit = x.Unit,
-                quantityOnHand = x.QuantityOnHand
-            })
-            .ToListAsync();
-        var serviceItems = await _db.QuoteCatalogItems
-            .AsNoTracking()
-            .Where(x => x.IsActive
-                        && x.NodeType == QuoteNodeType.Service
-                        && x.VariantGroup == markerPackage)
-            .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => new
-            {
-                id = x.Id,
-                name = x.Name,
-                category = "Servicios",
-                unit = "servicio",
-                unitPrice = x.UnitPrice,
-                isManualPrice = x.IsManualPrice,
-                offerType = x.OfferType.ToString()
-            })
-            .ToListAsync();
-
         object Pack(QuoteSegment seg)
         {
             var q = items.Where(x => x.Segment == seg).ToList();
@@ -368,14 +336,15 @@ public class QuoteModel : PageModel
         {
             [QuoteSegment.Residential.ToString()] = Pack(QuoteSegment.Residential),
             [QuoteSegment.Business.ToString()] = Pack(QuoteSegment.Business),
-            [QuoteSegment.Events.ToString()] = Pack(QuoteSegment.Events),
-            ["inventoryHardwareItems"] = inventoryItems,
-            ["inventoryServiceItems"] = serviceItems
+            [QuoteSegment.Events.ToString()] = Pack(QuoteSegment.Events)
         };
 
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
         ProspectOptions = await _db.Clients
             .AsNoTracking()
             .Where(x => x.IsTemporaryLead && x.IsActive)
+            .Where(x => isGlobalAdmin || x.CreatedByUserId == currentUserId)
             .OrderBy(x => x.Name)
             .Take(400)
             .Select(x => new ProspectOptionVm(
@@ -522,6 +491,7 @@ public class QuoteModel : PageModel
     private async Task<Client> GetOrCreateTemporaryLeadAsync(string customerName, string email, string phone, string location, string? companyName)
     {
         email = (email ?? "").Trim().ToLowerInvariant();
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var lead = await _db.Clients
             .FirstOrDefaultAsync(x => x.IsTemporaryLead && x.Email != null && x.Email.ToLower() == email);
         if (lead != null)
@@ -531,6 +501,7 @@ public class QuoteModel : PageModel
             lead.Phone = phone.Trim();
             lead.Address = location.Trim();
             lead.IsActive = true;
+            lead.CreatedByUserId ??= currentUserId;
             await _db.SaveChangesAsync();
             return lead;
         }
@@ -547,6 +518,7 @@ public class QuoteModel : PageModel
             Address = location.Trim(),
             IsTemporaryLead = true,
             IsActive = true,
+            CreatedByUserId = currentUserId,
             CreatedAt = DateTime.UtcNow
         };
         _db.Clients.Add(client);
@@ -572,12 +544,17 @@ public class QuoteModel : PageModel
         return $"HN-VENTA-{max + 1:00}";
     }
 
-    private bool CanUseInternalQuote()
+    private async Task<bool> CanUseInternalQuoteAsync(bool requireCreate)
     {
         if (User?.Identity?.IsAuthenticated != true) return false;
-        return User.IsInRole(AppRoles.Employee)
-            || User.IsInRole(AppRoles.Admin)
-            || User.IsInRole(AppRoles.SuperAdmin);
+        if (User.IsInRole(AppRoles.SuperAdmin)) return true;
+        if (!User.IsInRole(AppRoles.Employee) && !User.IsInRole(AppRoles.Admin)) return false;
+
+        if (requireCreate)
+            return await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+
+        return await _actions.HasActionAsync(User, AppActions.SalesQuotesView)
+            || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
     }
 
     private async Task EnsureOpportunityForCurrentUserAsync(QuoteRequest request)

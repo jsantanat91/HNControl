@@ -26,7 +26,9 @@ public class DashboardModel : PageModel
 
     public record StageStat(string Stage, int Count);
     public record SellerStat(string Seller, int Deals, decimal Amount, decimal Commission);
+    public record SellerWinLossStat(string Seller, int Won, int Lost);
     public record AuditVm(DateTime CreatedAt, string UserName, string EventType, string Details);
+    [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
 
     public bool CanViewAll { get; set; }
     public bool IsOwnScope { get; set; }
@@ -40,24 +42,29 @@ public class DashboardModel : PageModel
 
     public List<StageStat> Funnel { get; set; } = new();
     public List<SellerStat> Sellers { get; set; } = new();
+    public List<SellerWinLossStat> SellersWinLoss { get; set; } = new();
     public List<AuditVm> RecentAudit { get; set; } = new();
 
     public string FunnelLabelsJson { get; set; } = "[]";
     public string FunnelValuesJson { get; set; } = "[]";
     public string SellerLabelsJson { get; set; } = "[]";
     public string SellerValuesJson { get; set; } = "[]";
+    public string SellerWinLossLabelsJson { get; set; } = "[]";
+    public string SellerWonValuesJson { get; set; } = "[]";
+    public string SellerLostValuesJson { get; set; } = "[]";
 
     public async Task<IActionResult> OnGetAsync()
     {
         var userId = _userMgr.GetUserId(User);
         if (string.IsNullOrWhiteSpace(userId)) return Forbid();
 
-        var hasViewAll = AppRoles.IsGlobalAdmin(User);
+        var hasViewAll = User.IsInRole(AppRoles.SuperAdmin);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!hasViewOwn) return Forbid();
 
         CanViewAll = hasViewAll;
         IsOwnScope = !hasViewAll;
+        var (fromUtc, toUtc) = ResolveMonthRange();
 
         var oppQuery = _db.SalesOpportunities
             .AsNoTracking()
@@ -69,28 +76,29 @@ public class DashboardModel : PageModel
         {
             oppQuery = oppQuery.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
         }
+        oppQuery = oppQuery.Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
 
         var opps = await oppQuery.ToListAsync();
 
-        LeadsOpen = opps.Count(x => x.WorkflowStage != SalesWorkflowStage.ClosedWon && x.WorkflowStage != SalesWorkflowStage.ClosedLost);
-        ClosedWon = opps.Count(x => x.WorkflowStage == SalesWorkflowStage.ClosedWon);
-        ClosedLost = opps.Count(x => x.WorkflowStage == SalesWorkflowStage.ClosedLost);
+        LeadsOpen = opps.Count(x => NormalizeStage(x.WorkflowStage) != SalesWorkflowStage.ClosedWon && NormalizeStage(x.WorkflowStage) != SalesWorkflowStage.ClosedLost);
+        ClosedWon = opps.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedWon);
+        ClosedLost = opps.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedLost);
 
         var closedTotal = ClosedWon + ClosedLost;
         CloseRate = closedTotal > 0 ? Math.Round((decimal)ClosedWon * 100m / closedTotal, 2) : 0m;
 
         var wonTickets = opps
-            .Where(x => x.WorkflowStage == SalesWorkflowStage.ClosedWon)
+            .Where(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedWon)
             .Select(x => x.QuoteRequest?.EstimatedTotal ?? x.QuoteRequest?.SubtotalAuto ?? 0m)
             .ToList();
         AvgTicket = wonTickets.Count > 0 ? Math.Round(wonTickets.Average(), 2) : 0m;
 
         CommissionProjected = opps
-            .Where(x => x.WorkflowStage != SalesWorkflowStage.ClosedLost && !x.BonusDeductionId.HasValue)
+            .Where(x => NormalizeStage(x.WorkflowStage) != SalesWorkflowStage.ClosedLost && !x.BonusDeductionId.HasValue)
             .Sum(x => x.CommissionAmount);
 
         Funnel = opps
-            .GroupBy(x => x.WorkflowStage)
+            .GroupBy(x => NormalizeStage(x.WorkflowStage))
             .Select(g => new StageStat(StageLabel(g.Key), g.Count()))
             .OrderBy(x => StageSort(x.Stage))
             .ToList();
@@ -106,6 +114,16 @@ public class DashboardModel : PageModel
             .Take(8)
             .ToList();
 
+        SellersWinLoss = opps
+            .GroupBy(x => x.SellerProfile != null && x.SellerProfile.Employee != null ? x.SellerProfile.Employee.FullName : "Sin vendedor")
+            .Select(g => new SellerWinLossStat(
+                g.Key,
+                g.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedWon),
+                g.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedLost)))
+            .OrderByDescending(x => x.Won + x.Lost)
+            .Take(10)
+            .ToList();
+
         var oppIds = opps.Select(x => x.Id).ToHashSet();
         RecentAudit = await _db.SalesAuditLogs
             .AsNoTracking()
@@ -119,6 +137,9 @@ public class DashboardModel : PageModel
         FunnelValuesJson = JsonSerializer.Serialize(Funnel.Select(x => x.Count).ToList());
         SellerLabelsJson = JsonSerializer.Serialize(Sellers.Select(x => x.Seller).ToList());
         SellerValuesJson = JsonSerializer.Serialize(Sellers.Select(x => x.Amount).ToList());
+        SellerWinLossLabelsJson = JsonSerializer.Serialize(SellersWinLoss.Select(x => x.Seller).ToList());
+        SellerWonValuesJson = JsonSerializer.Serialize(SellersWinLoss.Select(x => x.Won).ToList());
+        SellerLostValuesJson = JsonSerializer.Serialize(SellersWinLoss.Select(x => x.Lost).ToList());
 
         return Page();
     }
@@ -128,10 +149,6 @@ public class DashboardModel : PageModel
         SalesWorkflowStage.Lead => "Lead",
         SalesWorkflowStage.Quotation => "Cotizacion",
         SalesWorkflowStage.Closing => "Cierre",
-        SalesWorkflowStage.Contract => "Contrato",
-        SalesWorkflowStage.Signature => "Firma",
-        SalesWorkflowStage.Billing => "Facturacion",
-        SalesWorkflowStage.Commission => "Comision",
         SalesWorkflowStage.ClosedWon => "Ganado",
         SalesWorkflowStage.ClosedLost => "Perdido",
         _ => stage.ToString()
@@ -142,12 +159,25 @@ public class DashboardModel : PageModel
         "Lead" => 1,
         "Cotizacion" => 2,
         "Cierre" => 3,
-        "Contrato" => 4,
-        "Firma" => 5,
-        "Facturacion" => 6,
-        "Comision" => 7,
-        "Ganado" => 8,
-        "Perdido" => 9,
+        "Ganado" => 4,
+        "Perdido" => 5,
         _ => 99
     };
+
+    private static SalesWorkflowStage NormalizeStage(SalesWorkflowStage stage) => stage switch
+    {
+        SalesWorkflowStage.Contract => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Signature => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Billing => SalesWorkflowStage.Closing,
+        SalesWorkflowStage.Commission => SalesWorkflowStage.Closing,
+        _ => stage
+    };
+
+    private (DateTime fromUtc, DateTime toUtc) ResolveMonthRange()
+    {
+        if (!DateTime.TryParse($"{Month}-01", out var monthStart))
+            monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        monthStart = DateTime.SpecifyKind(monthStart, DateTimeKind.Utc);
+        return (monthStart, monthStart.AddMonths(1));
+    }
 }

@@ -191,7 +191,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Workflow", "/Ventas/Workflow");
     options.Conventions.AddPageRoute("/Sales/Templates", "/Ventas/Plantillas");
     options.Conventions.AddPageRoute("/Sales/Prospects", "/Ventas/Prospectos");
-    options.Conventions.AddPageRoute("/Sales/My", "/Ventas/Cotizaciones");
+    options.Conventions.AddPageRoute("/Admin/Quotes/Requests", "/Ventas/Cotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
     options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
     options.Conventions.AddPageRoute("/Employees/OrgChart", "/Employees/Organigrama");
@@ -254,6 +254,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureSecuritySchemaAsync(db);
     await EnsureOrgChartSchemaAsync(db);
     await EnsureProjectActivitySchemaAsync(db);
+    await EnsureClientProspectsSchemaAsync(db);
+    await EnsureSalesSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await SeedServiceOrderTemplates.EnsureAsync(db);
@@ -621,5 +623,42 @@ WHERE "DurationUnit" IS NULL OR "DurationUnit" = '' OR "DurationValue" IS NULL O
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureProjectActivitySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureClientProspectsSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."Clients"
+    ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
+ALTER TABLE IF EXISTS public.clients
+    ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
+
+CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_CreatedByUserId_CreatedAt"
+    ON public."Clients" ("IsTemporaryLead", "CreatedByUserId", "CreatedAt");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureClientProspectsSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureSalesSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."SalesAuditLogs"
+    ALTER COLUMN "Details" TYPE character varying(2000);
+ALTER TABLE IF EXISTS public.salesauditlogs
+    ALTER COLUMN "Details" TYPE character varying(2000);
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureSalesSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
     }
 }

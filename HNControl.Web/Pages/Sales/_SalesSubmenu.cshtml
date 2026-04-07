@@ -1,6 +1,12 @@
 ﻿@inject HNControl.Web.Services.IActionAccessService ActionAccess
 @{
     var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
+    var canDashboard = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewOwn) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewAll);
+    var canWorkflow = canDashboard;
+    var canGestion = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesManage);
+    var canProspects = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesProspectsView);
+    var canQuotes = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesView) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage);
+    var canTemplates = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.TemplatesManage);
     var canCatalog = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogView)
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogManage);
@@ -16,27 +22,33 @@
 <div class="card border-0 shadow-soft mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center">
         <span class="text-muted small me-2">Comercial:</span>
-        @if (User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+        @if (canDashboard)
         {
             <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
-            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
-            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizacion","info")">Cotizacion</a>
-            <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
-            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion</a>
-            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
-            @if (canCatalog)
-            {
-                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
-            }
         }
-        else
+        @if (canProspects)
         {
             <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
-            <a href="/Ventas/Cotizaciones" class="@Btn("/ventas/cotizaciones","Cotizacion","info")">Cotizacion</a>
-            @if (canCatalog)
-            {
-                <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
-            }
+        }
+        @if (canQuotes)
+        {
+            <a href="/Admin/Quotes/Requests" class="@Btn("/admin/quotes/requests","Cotizacion","info")">Cotizacion</a>
+        }
+        @if (canWorkflow)
+        {
+            <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
+        }
+        @if (canGestion)
+        {
+            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion</a>
+        }
+        @if (canTemplates)
+        {
+            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
+        }
+        @if (canCatalog)
+        {
+            <a href="/Admin/Quotes/Catalog" class="@Btn("/admin/quotes/catalog","Catalogo","dark")">Catalogo</a>
         }
     </div>
 </div>

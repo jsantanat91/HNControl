@@ -20,7 +20,7 @@ public class SalesAuditLog
     public SalesWorkflowStage? PreviousStage { get; set; }
     public SalesWorkflowStage? NewStage { get; set; }
 
-    [MaxLength(1400)]
+    [MaxLength(2000)]
     public string Details { get; set; } = "";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

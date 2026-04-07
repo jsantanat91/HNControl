@@ -14,11 +14,13 @@ public class RequestsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
+    private readonly IActionAccessService _actions;
 
-    public RequestsModel(ApplicationDbContext db, IFileStorage storage)
+    public RequestsModel(ApplicationDbContext db, IFileStorage storage, IActionAccessService actions)
     {
         _db = db;
         _storage = storage;
+        _actions = actions;
     }
 
     [BindProperty(SupportsGet = true, Name = "q")]
@@ -43,9 +45,20 @@ public class RequestsModel : PageModel
 
     public List<RowVm> Rows { get; set; } = [];
     public int TotalPages { get; set; } = 1;
+    public bool CanManage { get; set; }
+    public bool CanCreate { get; set; }
 
     public async Task OnGetAsync()
     {
+        var canView = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesView);
+        if (!canView)
+        {
+            Rows = [];
+            return;
+        }
+        CanManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        CanCreate = CanManage;
+
         await AutoRejectExpiredAsync();
 
         var query = _db.QuoteRequests
@@ -53,8 +66,7 @@ public class RequestsModel : PageModel
             .Include(x => x.Lines)
             .AsQueryable();
 
-        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
-        if (!isGlobalAdmin)
+        if (!CanManage)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
@@ -187,12 +199,13 @@ public class RequestsModel : PageModel
 
     public async Task<IActionResult> OnPostAcceptAsync(Guid id)
     {
-        if (!AppRoles.IsGlobalAdmin(User))
+        var canManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        if (!canManage)
             return Forbid();
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Accepted;
         req.AcceptedAt = DateTime.UtcNow;
@@ -200,17 +213,18 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Aceptada.";
-        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnPostRejectAsync(Guid id)
     {
-        if (!AppRoles.IsGlobalAdmin(User))
+        var canManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        if (!canManage)
             return Forbid();
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Rejected;
         req.AcceptedAt = DateTime.UtcNow;
@@ -218,7 +232,7 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Rechazada.";
-        return RedirectToPage(new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)

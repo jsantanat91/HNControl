@@ -40,8 +40,10 @@ public class WorkflowModel : PageModel
     [BindProperty] public SalesWorkflowStage NewStage { get; set; }
     [BindProperty] public Guid? AssignSellerProfileId { get; set; }
     [BindProperty] public string AssignOwnerUserId { get; set; } = "";
+    [BindProperty] public string NoteText { get; set; } = "";
     [BindProperty(SupportsGet = true)] public string StageFilter { get; set; } = "all";
     [BindProperty(SupportsGet = true)] public string OwnerFilterUserId { get; set; } = "all";
+    [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
 
     public bool CanViewAll { get; set; }
     public bool CanMove { get; set; }
@@ -74,7 +76,11 @@ public class WorkflowModel : PageModel
         bool IsToday,
         bool IsSoon);
 
+    public record NoteVm(DateTime CreatedAt, string UserName, string Text);
+    public record DealDetailsVm(Guid OpportunityId, string Folio, string Customer, string Seller, string Owner, string Status, decimal Total, List<NoteVm> Notes);
+
     public Dictionary<SalesWorkflowStage, List<DealVm>> Board { get; set; } = new();
+    public Dictionary<Guid, DealDetailsVm> DetailsByOpportunityId { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -90,7 +96,7 @@ public class WorkflowModel : PageModel
         {
             Flash = "No tienes permiso para mover etapas.";
             FlashType = "warning";
-            return RedirectToPage();
+            return RedirectToPage(new { StageFilter, OwnerFilterUserId, Month });
         }
 
         var userId = _userMgr.GetUserId(User) ?? "";
@@ -134,7 +140,15 @@ public class WorkflowModel : PageModel
             }
         }
         if (NewStage == SalesWorkflowStage.ClosedLost)
+        {
             opp.Status = SalesOpportunityStatus.ClosedLost;
+            if (opp.QuoteRequest != null)
+            {
+                opp.QuoteRequest.Status = QuoteRequestStatus.Rejected;
+                opp.QuoteRequest.AcceptedAt = DateTime.UtcNow;
+                opp.QuoteRequest.AcceptedByUserId = User.Identity?.Name;
+            }
+        }
         if (NewStage == SalesWorkflowStage.Lead || NewStage == SalesWorkflowStage.Quotation || NewStage == SalesWorkflowStage.Closing)
             opp.Status = SalesOpportunityStatus.Prospect;
 
@@ -154,19 +168,56 @@ public class WorkflowModel : PageModel
 
         Flash = "Etapa actualizada.";
         FlashType = "success";
-        return RedirectToPage();
+        return RedirectToPage(new { StageFilter, OwnerFilterUserId, Month });
+    }
+
+    public async Task<IActionResult> OnPostAddNoteAsync()
+    {
+        if (!await EnsurePermissionsAsync()) return Forbid();
+
+        var userId = _userMgr.GetUserId(User) ?? "";
+        var opp = await ScopedOppQuery(userId, CanViewAll).FirstOrDefaultAsync(x => x.Id == OpportunityId);
+        if (opp == null) return NotFound();
+
+        var text = (NoteText ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            Flash = "Escribe una nota para guardar.";
+            FlashType = "warning";
+            return RedirectToPage(new { StageFilter, OwnerFilterUserId, Month });
+        }
+
+        if (text.Length > 2000)
+            text = text[..2000];
+
+        _db.SalesAuditLogs.Add(new SalesAuditLog
+        {
+            SalesOpportunityId = opp.Id,
+            EventType = "workflow.note",
+            UserId = userId,
+            UserName = User.Identity?.Name ?? "-",
+            PreviousStage = opp.WorkflowStage,
+            NewStage = opp.WorkflowStage,
+            Details = text,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        Flash = "Nota guardada.";
+        FlashType = "success";
+        return RedirectToPage(new { StageFilter, OwnerFilterUserId, Month });
     }
 
     public async Task<IActionResult> OnPostAssignAsync()
     {
         Flash = "La asignación de owner/vendedor se define al crear la oportunidad.";
         FlashType = "info";
-        return RedirectToPage();
+        return RedirectToPage(new { StageFilter, OwnerFilterUserId, Month });
     }
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        var hasViewAll = AppRoles.IsGlobalAdmin(User);
+        var hasViewAll = User.IsInRole(AppRoles.SuperAdmin);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         CanMove = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
         CanAssign = false;
@@ -178,12 +229,16 @@ public class WorkflowModel : PageModel
     private async Task LoadAsync()
     {
         var userId = _userMgr.GetUserId(User) ?? "";
-        var query = ScopedOppQuery(userId, CanViewAll)
+        IQueryable<SalesOpportunity> query = ScopedOppQuery(userId, CanViewAll)
             .Include(x => x.QuoteRequest)
-            .Include(x => x.SellerProfile!).ThenInclude(x => x.Employee)
-            .OrderByDescending(x => x.UpdatedAt);
+            .Include(x => x.SellerProfile!).ThenInclude(x => x.Employee);
 
-        var rows = await query.ToListAsync();
+        var (fromUtc, toUtc) = ResolveMonthRange();
+        query = query.Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
+
+        var rows = await query
+            .OrderByDescending(x => x.UpdatedAt)
+            .ToListAsync();
 
         StageItems = new SelectList(WorkflowStages
             .Select(x => new { Value = x, Label = StageLabel(x) }), "Value", "Label");
@@ -259,6 +314,34 @@ public class WorkflowModel : PageModel
         DueSoonDeals = data.Count(d => d.IsSoon || d.IsToday);
         WonDeals = data.Count(d => d.Stage == SalesWorkflowStage.ClosedWon);
         Board = WorkflowStages.ToDictionary(s => s, s => data.Where(d => d.Stage == s).ToList());
+
+        var ids = rows.Select(x => x.Id).ToList();
+        var notes = await _db.SalesAuditLogs
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.SalesOpportunityId))
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(1200)
+            .ToListAsync();
+
+        DetailsByOpportunityId = rows.ToDictionary(
+            x => x.Id,
+            x =>
+            {
+                var n = notes.Where(a => a.SalesOpportunityId == x.Id && a.EventType == "workflow.note")
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(20)
+                    .Select(a => new NoteVm(a.CreatedAt, a.UserName, a.Details))
+                    .ToList();
+                return new DealDetailsVm(
+                    x.Id,
+                    x.QuoteRequest?.Folio ?? "-",
+                    x.QuoteRequest?.CustomerName ?? "-",
+                    x.SellerProfile?.Employee?.FullName ?? "Sin vendedor",
+                    !string.IsNullOrWhiteSpace(x.OwnerUserId) && byUser.TryGetValue(x.OwnerUserId, out var ownerName) ? ownerName : "Sin owner",
+                    x.Status.ToString(),
+                    x.QuoteRequest?.EstimatedTotal ?? x.QuoteRequest?.SubtotalAuto ?? 0m,
+                    n);
+            });
     }
 
     private IQueryable<SalesOpportunity> ScopedOppQuery(string userId, bool viewAll)
@@ -267,6 +350,14 @@ public class WorkflowModel : PageModel
         if (!viewAll)
             q = q.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
         return q;
+    }
+
+    private (DateTime fromUtc, DateTime toUtc) ResolveMonthRange()
+    {
+        if (!DateTime.TryParse($"{Month}-01", out var monthStart))
+            monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        monthStart = DateTime.SpecifyKind(monthStart, DateTimeKind.Utc);
+        return (monthStart, monthStart.AddMonths(1));
     }
 
     private async Task<string> NextFormalClientCodeAsync()

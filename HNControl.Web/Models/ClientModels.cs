@@ -97,6 +97,8 @@ public class Client
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
     public bool IsTemporaryLead { get; set; }
+    [MaxLength(64)]
+    public string? CreatedByUserId { get; set; }
     public DateTime? ConvertedToFormalAt { get; set; }
 
     // ✅ Contratos/servicios del cliente (múltiples por categoría)

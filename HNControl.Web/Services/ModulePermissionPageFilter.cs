@@ -143,6 +143,17 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
             if (path.StartsWith("/Sales/Templates", StringComparison.OrdinalIgnoreCase))
                 return AppActions.TemplatesManage;
 
+            if (path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase))
+            {
+                if (handler.Contains("Convert", StringComparison.OrdinalIgnoreCase))
+                    return AppActions.SalesProspectsConvert;
+                if (handler.Contains("Create", StringComparison.OrdinalIgnoreCase))
+                    return AppActions.SalesProspectsCreate;
+                if (isWrite)
+                    return AppActions.SalesProspectsEdit;
+                return AppActions.SalesProspectsView;
+            }
+
             if (path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase))
                 return isWrite ? AppActions.SalesQuotesManage : AppActions.SalesQuotesView;
 

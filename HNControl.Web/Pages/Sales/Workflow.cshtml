@@ -32,13 +32,17 @@
 
 <form method="get" class="card shadow-soft border-0 mb-3">
     <div class="card-body row g-2 align-items-end">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
             <label class="form-label mb-1">Filtrar etapa</label>
             <select class="form-select" asp-for="StageFilter" asp-items="Model.StageFilterItems"></select>
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
             <label class="form-label mb-1">Filtrar owner</label>
             <select class="form-select" asp-for="OwnerFilterUserId" asp-items="Model.OwnerFilterItems"></select>
+        </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label mb-1">Mes</label>
+            <input class="form-control" type="month" asp-for="Month" />
         </div>
         <div class="col-12 col-md-4 d-grid d-md-flex justify-content-md-end gap-2">
             <button class="btn btn-primary" type="submit">Aplicar</button>
@@ -106,9 +110,6 @@
                                  data-opportunity-id="@d.Id"
                                  data-current-stage="@d.Stage">
                             <div class="fw-semibold">@d.Folio</div>
-                            <div class="small">@d.Customer</div>
-                            <div class="small text-muted">Vendedor: @d.Seller</div>
-                            <div class="small text-muted">Owner: @d.Owner</div>
                             <div class="small">Monto: <b>@d.Total.ToString("C")</b></div>
 
                             <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
@@ -117,6 +118,10 @@
                                     <span class="badge @slaClass">SLA @d.StageDueAt.Value.ToString("yyyy-MM-dd")</span>
                                 }
                                 <span class="badge text-bg-light">@d.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm")</span>
+                            </div>
+
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
                             </div>
 
                             @if ((User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)) && d.ClientId.HasValue)
@@ -132,6 +137,52 @@
         </section>
     }
 </div>
+
+@foreach (var kv in Model.DetailsByOpportunityId)
+{
+    var det = kv.Value;
+    <div class="modal fade" id="wfDetail-@det.OpportunityId" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@det.Folio · @det.Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-2">Vendedor: @det.Seller · Owner: @det.Owner · Estado: @det.Status</div>
+                    <div class="fw-semibold mb-3">Monto: @det.Total.ToString("C")</div>
+
+                    <div class="fw-semibold mb-2">Bitácora de seguimiento</div>
+                    <form method="post" asp-page-handler="AddNote" class="mb-3">
+                        <input type="hidden" asp-for="OpportunityId" value="@det.OpportunityId" />
+                        <input type="hidden" asp-for="StageFilter" />
+                        <input type="hidden" asp-for="OwnerFilterUserId" />
+                        <input type="hidden" asp-for="Month" />
+                        <textarea class="form-control mb-2" asp-for="NoteText" maxlength="2000" rows="3" placeholder="Escribe seguimiento (max 2000 caracteres)"></textarea>
+                        <button class="btn btn-sm btn-primary" type="submit">Guardar nota</button>
+                    </form>
+
+                    @if (!det.Notes.Any())
+                    {
+                        <div class="text-muted small">Sin notas todavía.</div>
+                    }
+                    else
+                    {
+                        <div class="vstack gap-2">
+                            @foreach (var n in det.Notes)
+                            {
+                                <div class="border rounded-3 p-2">
+                                    <div class="small text-muted">@n.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm") · @n.UserName</div>
+                                    <div class="small">@n.Text</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (Model.CanMove)
 {

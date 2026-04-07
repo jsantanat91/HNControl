@@ -1,3 +1,150 @@
 @page
 @model HNControl.Web.Pages.Sales.ProspectsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Prospectos";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Prospectos</h1>
+        <div class="text-muted small">@(Model.CanViewAll ? "Vista global" : "Solo tus prospectos")</div>
+    </div>
+    @if (Model.CanCreate)
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalNuevoProspecto">+ Nuevo prospecto</button>
+    }
+</div>
+
+<form method="get" class="card shadow-soft border-0 mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-12 col-md-6">
+            <label class="form-label">Buscar</label>
+            <input class="form-control" name="Name" value="@Model.Name" placeholder="Nombre, contacto o correo" />
+        </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label">Por página</label>
+            <select class="form-select" name="PageSize">
+                @foreach (var s in new[] { 10, 20, 50, 100 })
+                {
+                    <option value="@s" selected="@(Model.PageSize == s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-4 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-outline-secondary" asp-page="./Prospects">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+@if (!Model.Rows.Any())
+{
+    <div class="card shadow-soft border-0"><div class="card-body text-muted">Sin prospectos en este filtro.</div></div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var p in Model.Rows)
+        {
+            <div class="col-12 col-lg-6">
+                <article class="card shadow-soft border-0 h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div>
+                                <div class="fw-semibold">@p.Name</div>
+                                <div class="small text-muted">@p.ClientCode · @p.ContactName</div>
+                            </div>
+                            <span class="badge @(p.IsActive ? "text-bg-success" : "text-bg-secondary")">@(p.IsActive ? "Activo" : "Inactivo")</span>
+                        </div>
+                        <div class="small mt-2">@p.Email · @p.Phone</div>
+                        <div class="small text-muted">@p.Location</div>
+                        <div class="small text-muted mt-1">Alta: @p.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            @if (Model.CanEdit)
+                            {
+                                <form method="post" asp-page-handler="Toggle">
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <input type="hidden" name="Name" value="@Model.Name" />
+                                    <input type="hidden" name="Page" value="@Model.Page" />
+                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <button class="btn btn-sm btn-outline-secondary" type="submit">@(p.IsActive ? "Desactivar" : "Activar")</button>
+                                </form>
+                            }
+                            @if (Model.CanConvert)
+                            {
+                                <form method="post" asp-page-handler="Convert">
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <input type="hidden" name="Name" value="@Model.Name" />
+                                    <input type="hidden" name="Page" value="@Model.Page" />
+                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Convertir a cliente</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link" asp-page="./Prospects" asp-route-Name="@Model.Name" asp-route-PageSize="@Model.PageSize" asp-route-Page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@if (Model.CanCreate)
+{
+    <div class="modal fade" id="modalNuevoProspecto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo prospecto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" asp-page-handler="Create">
+                    <div class="modal-body row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Contacto</label>
+                            <input class="form-control" asp-for="Lead.ContactName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Empresa (opcional)</label>
+                            <input class="form-control" asp-for="Lead.CompanyName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Correo</label>
+                            <input class="form-control" asp-for="Lead.Email" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Teléfono</label>
+                            <input class="form-control" asp-for="Lead.Phone" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ubicación</label>
+                            <input class="form-control" asp-for="Lead.Location" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <input type="hidden" name="Name" value="@Model.Name" />
+                        <input type="hidden" name="Page" value="@Model.Page" />
+                        <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                        <button class="btn btn-primary" type="submit">Guardar prospecto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 

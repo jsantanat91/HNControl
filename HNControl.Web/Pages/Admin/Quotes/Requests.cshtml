@@ -1,9 +1,9 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Admin.Quotes.RequestsModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Admin - Cotizaciones";
-    var canManage = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin);
+    var canManage = Model.CanManage;
 }
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -12,10 +12,13 @@
         <div class="text-muted small">Cotizaciones internas de ventas y PDF generado.</div>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="button" data-quote-modal-open="true" data-quote-modal-size="xl" onclick="return false;">+ Nueva cotización</button>
-        @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin))
+        @if (Model.CanCreate)
         {
-            <a class="btn btn-outline-primary" asp-page="./Catalog">Catálogo</a>
+            <button class="btn btn-primary" type="button" data-quote-modal-open="true" data-quote-modal-size="xl" onclick="return false;">+ Nueva cotización</button>
+        }
+        @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || canManage)
+        {
+            <a class="btn btn-outline-primary" asp-page="./Catalog">CatÃ¡logo</a>
         }
     </div>
 </div>
@@ -45,7 +48,7 @@
                     <option value="">Todos</option>
                     <option value="New" selected="@(Model.Status == "New")">Nueva</option>
                     <option value="Emailed" selected="@(Model.Status == "Emailed")">Enviada</option>
-                    <option value="EmailError" selected="@(Model.Status == "EmailError")">Error envío</option>
+                    <option value="EmailError" selected="@(Model.Status == "EmailError")">Error envÃ­o</option>
                     <option value="Accepted" selected="@(Model.Status == "Accepted")">Aceptada</option>
                     <option value="Rejected" selected="@(Model.Status == "Rejected")">Rechazada</option>
                 </select>
@@ -67,8 +70,8 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between gap-2">
                     <div>
-                        <div class="fw-semibold">@r.Folio · @r.CustomerName</div>
-                        <div class="small text-muted">@r.CustomerEmail · @r.CreatedAtLocal</div>
+                        <div class="fw-semibold">@r.Folio Â· @r.CustomerName</div>
+                        <div class="small text-muted">@r.CustomerEmail Â· @r.CreatedAtLocal</div>
                         <div class="small d-flex gap-1 flex-wrap mt-1">
                             <span class="badge text-bg-light border">@r.SegmentLabel</span>
                             <span class="hn-chip @(r.Status == "Accepted" ? "hn-chip-status-up" : r.Status == "Rejected" ? "hn-chip-priority-critical" : "hn-chip-type")">@r.StatusLabel</span>
@@ -108,15 +111,15 @@
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@r.Folio · @r.CustomerName</h5>
+                    <h5 class="modal-title">@r.Folio Â· @r.CustomerName</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="small text-muted mb-2">@r.CustomerEmail · @r.CustomerPhone · @r.CustomerLocation</div>
+                    <div class="small text-muted mb-2">@r.CustomerEmail Â· @r.CustomerPhone Â· @r.CustomerLocation</div>
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead>
-                                <tr><th>Categoría</th><th>Servicio</th><th>Subproducto</th><th class="text-center">Cant</th><th class="text-center">Modalidad</th><th class="text-end">Costo</th><th class="text-end">Total</th></tr>
+                                <tr><th>CategorÃ­a</th><th>Servicio</th><th>Subproducto</th><th class="text-center">Cant</th><th class="text-center">Modalidad</th><th class="text-end">Costo</th><th class="text-end">Total</th></tr>
                             </thead>
                             <tbody>
                             @foreach (var l in r.Lines)
@@ -157,3 +160,4 @@
         }
     </ul></nav>
 }
+

@@ -107,9 +107,6 @@ public class ActionAccessService : IActionAccessService
         if (modules.Contains(AppModules.Sales))
         {
             result.Add(AppActions.SalesViewOwn);
-            result.Add(AppActions.SalesWorkflowMove);
-            result.Add(AppActions.SalesQuotesView);
-            result.Add(AppActions.SalesProspectsView);
         }
 
         if (modules.Contains(AppModules.Billing))
@@ -127,12 +124,6 @@ public class ActionAccessService : IActionAccessService
         if (modules.Contains(AppModules.Projects))
         {
             result.Add(AppActions.ProjectsView);
-            result.Add(AppActions.ProjectsInvestmentsView);
-            result.Add(AppActions.ProjectsResellersView);
-            result.Add(AppActions.ProjectsDeliveryView);
         }
-
-        if (modules.Contains(AppModules.Performance))
-            result.Add(AppActions.EmployeesOrgChartView);
     }
 }

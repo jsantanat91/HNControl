@@ -15,7 +15,7 @@
     <div class="d-flex gap-2">
         @if (Model.CanExport)
         {
-            <a class="btn btn-outline-success" asp-page-handler="Export">Exportar Excel</a>
+            <button class="btn btn-outline-success" type="button" id="exportOrgImageBtn">Exportar imagen</button>
         }
         @if (Model.CanEdit)
         {
@@ -25,6 +25,9 @@
 </div>
 
 <div id="orgAlert" class="alert d-none"></div>
+<form id="orgAntiForm" method="post">
+    @Html.AntiForgeryToken()
+</form>
 
 <div class="card shadow-soft h-100">
     <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
@@ -58,6 +61,7 @@
             border-radius: 16px;
             padding: 1rem;
             background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(241,245,249,.7));
+            overflow: auto;
         }
         .org-root-dropzone,
         .org-unassigned {
@@ -73,16 +77,13 @@
         }
 
         .org-flow-root {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 1rem;
+            display: block;
             min-height: 420px;
-            overflow-x: auto;
-            padding-bottom: 1rem;
+            min-width: max-content;
+            padding: 0 .5rem 1rem .5rem;
         }
         .org-tree {
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
             list-style: none;
             display: flex;
@@ -92,7 +93,7 @@
             text-align: center;
             list-style-type: none;
             position: relative;
-            padding: 20px 8px 0 8px;
+            padding: 20px 4px 0 4px;
         }
         .org-tree li::before,
         .org-tree li::after {
@@ -148,9 +149,9 @@
             background: #fff;
             border: 1px solid rgba(15,23,42,.12);
             border-radius: 14px;
-            padding: .65rem .8rem;
-            min-width: 240px;
-            max-width: 280px;
+            padding: .5rem .6rem;
+            min-width: 170px;
+            max-width: 220px;
             box-shadow: 0 8px 16px rgba(15,23,42,.06);
             display: inline-block;
             text-align: left;
@@ -159,8 +160,16 @@
         .org-card.is-selected { outline: 2px solid rgba(37,99,235,.55); }
         .org-card.drop-target { box-shadow: 0 0 0 2px rgba(59,130,246,.35), 0 8px 16px rgba(15,23,42,.06); }
         .org-card-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
-        .org-name { font-weight: 700; font-size: .96rem; line-height:1.2; }
+        .org-name { font-weight: 700; font-size: .9rem; line-height:1.2; }
         .org-role { font-size:.8rem; color:#64748b; }
+        .org-email {
+            max-width: 104px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            font-size: .7rem;
+        }
         .org-link-help {
             font-size: .8rem;
             color: #64748b;
@@ -213,7 +222,7 @@
                     <div class="org-name">${getFullName(emp)}</div>
                     <div class="org-role">${getPosition(emp)}</div>
                 </div>
-                <span class="badge text-bg-light">${getEmail(emp)}</span>
+                <span class="badge text-bg-light org-email" title="${getEmail(emp)}">${getEmail(emp)}</span>
             </div>
             <div class="org-children" data-parent-id="${userId}"></div>
         `;
@@ -357,13 +366,155 @@
         const payload = collectLayout();
         const fd = new FormData();
         fd.append('layoutJson', JSON.stringify(payload));
-        const res = await fetch('?handler=Save', { method: 'POST', body: fd });
-        const json = await res.json();
-        showAlert(json.message || 'Sin respuesta', !!json.ok);
+        const token = document.querySelector('#orgAntiForm input[name="__RequestVerificationToken"]')?.value || '';
+        try {
+            const res = await fetch('?handler=Save', {
+                method: 'POST',
+                body: fd,
+                headers: token ? { 'RequestVerificationToken': token } : {}
+            });
+            const text = await res.text();
+            let json = null;
+            try { json = JSON.parse(text); } catch { json = null; }
+            if (!res.ok || !json) {
+                showAlert('No se pudo guardar el organigrama.', false);
+                return;
+            }
+            showAlert(json.message || 'Sin respuesta', !!json.ok);
+        } catch {
+            showAlert('No se pudo guardar el organigrama.', false);
+        }
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+    }
+
+    function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+        const words = (text || '').split(/\s+/).filter(Boolean);
+        let line = '';
+        let lines = 0;
+        for (let i = 0; i < words.length; i += 1) {
+            const test = line ? `${line} ${words[i]}` : words[i];
+            const metrics = ctx.measureText(test);
+            if (metrics.width > maxWidth && line) {
+                ctx.fillText(line, x, y + (lines * lineHeight));
+                lines += 1;
+                line = words[i];
+                if (lines >= maxLines - 1) break;
+            } else {
+                line = test;
+            }
+        }
+        if (line && lines < maxLines) ctx.fillText(line, x, y + (lines * lineHeight));
+    }
+
+    function exportOrgAsImage() {
+        const ids = Array.from(cardByUser.keys()).filter(uid => cardByUser.get(uid)?.isConnected);
+        if (ids.length === 0) {
+            showAlert('No hay datos para exportar.', false);
+            return;
+        }
+
+        const areaRect = orgFlowRoot.getBoundingClientRect();
+        const boxes = ids.map(uid => {
+            const card = cardByUser.get(uid);
+            const r = card.getBoundingClientRect();
+            return {
+                uid,
+                x: r.left - areaRect.left,
+                y: r.top - areaRect.top,
+                w: r.width,
+                h: r.height
+            };
+        });
+
+        const minX = Math.min(...boxes.map(b => b.x));
+        const minY = Math.min(...boxes.map(b => b.y));
+        const maxX = Math.max(...boxes.map(b => b.x + b.w));
+        const maxY = Math.max(...boxes.map(b => b.y + b.h));
+        const pad = 24;
+
+        const width = Math.max(1200, Math.ceil((maxX - minX) + pad * 2));
+        const height = Math.max(680, Math.ceil((maxY - minY) + pad * 2));
+        const canvasEl = document.createElement('canvas');
+        canvasEl.width = width;
+        canvasEl.height = height;
+        const ctx = canvasEl.getContext('2d');
+        if (!ctx) return;
+
+        const points = new Map();
+        boxes.forEach(b => {
+            points.set(b.uid, {
+                x: b.x - minX + pad,
+                y: b.y - minY + pad,
+                w: b.w,
+                h: b.h
+            });
+        });
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, width, height);
+        ctx.strokeStyle = 'rgba(59,130,246,.55)';
+        ctx.lineWidth = 2;
+
+        ids.forEach(uid => {
+            const parent = parentMap.get(uid) || null;
+            if (!parent || !points.has(parent) || !points.has(uid)) return;
+            const p = points.get(parent);
+            const c = points.get(uid);
+            const pX = p.x + (p.w / 2);
+            const pY = p.y + p.h;
+            const cX = c.x + (c.w / 2);
+            const cY = c.y;
+            const midY = pY + ((cY - pY) / 2);
+            ctx.beginPath();
+            ctx.moveTo(pX, pY);
+            ctx.lineTo(pX, midY);
+            ctx.lineTo(cX, midY);
+            ctx.lineTo(cX, cY);
+            ctx.stroke();
+        });
+
+        boxes.forEach(b => {
+            const emp = byUser.get(b.uid);
+            const p = points.get(b.uid);
+            roundRect(ctx, p.x, p.y, p.w, p.h, 12);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(15,23,42,.16)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '700 15px Segoe UI';
+            drawWrappedText(ctx, getFullName(emp), p.x + 10, p.y + 22, p.w - 20, 16, 2);
+            ctx.fillStyle = '#475569';
+            ctx.font = '13px Segoe UI';
+            drawWrappedText(ctx, getPosition(emp), p.x + 10, p.y + 54, p.w - 20, 15, 1);
+            ctx.fillStyle = '#1d4ed8';
+            ctx.font = '12px Segoe UI';
+            drawWrappedText(ctx, getEmail(emp), p.x + 10, p.y + 72, p.w - 20, 14, 1);
+        });
+
+        const link = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        link.download = `organigrama_${stamp}.png`;
+        link.href = canvasEl.toDataURL('image/png');
+        link.click();
     }
 
     const saveBtn = document.getElementById('saveOrgBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveLayout);
+    const exportBtn = document.getElementById('exportOrgImageBtn');
+    if (exportBtn) exportBtn.addEventListener('click', exportOrgAsImage);
 
     if (canEdit) {
         [rootDrop, unassignedZone].forEach(zone => {

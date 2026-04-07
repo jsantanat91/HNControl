@@ -56,6 +56,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
         var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
         if (showLeads)
         {
@@ -81,6 +82,8 @@ public class IndexModel : PageModel
             .AsQueryable();
 
         q = q.Where(c => c.IsTemporaryLead == showLeads);
+        if (showLeads && !AppRoles.IsGlobalAdmin(User))
+            q = q.Where(c => c.CreatedByUserId == userId);
 
         var name = (Name ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
@@ -144,6 +147,7 @@ public class IndexModel : PageModel
     {
         var canCreate = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
         if (!canCreate) return Forbid();
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
 
         var contactName = (Lead.ContactName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(contactName))
@@ -165,6 +169,7 @@ public class IndexModel : PageModel
             existing.Phone = phone;
             existing.Address = location;
             existing.IsActive = true;
+            existing.CreatedByUserId ??= userId;
         }
         else
         {
@@ -179,6 +184,7 @@ public class IndexModel : PageModel
                 Address = location,
                 IsTemporaryLead = true,
                 IsActive = true,
+                CreatedByUserId = userId,
                 CreatedAt = DateTime.UtcNow
             });
         }

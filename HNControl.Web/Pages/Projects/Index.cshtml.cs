@@ -37,7 +37,7 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
-        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var isAdmin = User.IsInRole(AppRoles.SuperAdmin);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         var q = _db.Projects

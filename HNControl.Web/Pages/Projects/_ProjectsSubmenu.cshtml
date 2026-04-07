@@ -1,23 +1,40 @@
+@inject HNControl.Web.Services.IActionAccessService ActionAccess
 @{
     var path = Context?.Request?.Path.Value ?? "";
     bool IsActive(string p) => path.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+    var canBase = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsView);
+    var canInvest = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsInvestmentsView);
+    var canReseller = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsResellersView);
+    var canDelivery = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsDeliveryView);
 }
 
 <div class="card shadow-soft hn-hover mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-center">
         <span class="text-muted me-2">Submodulos de proyectos:</span>
 
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Index") ? "project-sub-btn-active" : "project-sub-btn-projects")"
-           asp-page="/Projects/Index">Proyectos</a>
+        @if (canBase)
+        {
+            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Index") ? "project-sub-btn-active" : "project-sub-btn-projects")"
+               asp-page="/Projects/Index">Proyectos</a>
+        }
 
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Investments") ? "project-sub-btn-active" : "project-sub-btn-invest")"
-           asp-page="/Projects/Investments/Index">Inversiones</a>
+        @if (canInvest)
+        {
+            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Investments") ? "project-sub-btn-active" : "project-sub-btn-invest")"
+               asp-page="/Projects/Investments/Index">Inversiones</a>
+        }
 
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Resellers") ? "project-sub-btn-active" : "project-sub-btn-reseller")"
-           asp-page="/Projects/Resellers/Index">Reseller</a>
+        @if (canReseller)
+        {
+            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Resellers") ? "project-sub-btn-active" : "project-sub-btn-reseller")"
+               asp-page="/Projects/Resellers/Index">Reseller</a>
+        }
 
-        <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Delivery") ? "project-sub-btn-active" : "project-sub-btn-delivery")"
-           asp-page="/Projects/Delivery/Index">Formato de entrega</a>
+        @if (canDelivery)
+        {
+            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Delivery") ? "project-sub-btn-active" : "project-sub-btn-delivery")"
+               asp-page="/Projects/Delivery/Index">Formato de entrega</a>
+        }
 
     </div>
 </div>

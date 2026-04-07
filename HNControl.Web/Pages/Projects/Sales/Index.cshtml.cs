@@ -403,7 +403,7 @@ public class IndexModel : PageModel
 
     private async Task EnsurePermissionsAsync()
     {
-        CanViewAll = AppRoles.IsGlobalAdmin(User);
+        CanViewAll = User.IsInRole(AppRoles.SuperAdmin);
         var canViewOwn = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!canViewOwn)
         {
