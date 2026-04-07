@@ -97,9 +97,36 @@ public class OfficePdfConverter : IOfficePdfConverter
         if (!string.IsNullOrWhiteSpace(configured))
             return configured;
 
+        var candidates = new List<string>();
         if (OperatingSystem.IsWindows())
-            return "soffice.exe";
+        {
+            candidates.Add("soffice.com");
+            candidates.Add("soffice.exe");
+            candidates.Add(@"C:\Program Files\LibreOffice\program\soffice.com");
+            candidates.Add(@"C:\Program Files\LibreOffice\program\soffice.exe");
+            candidates.Add(@"C:\Program Files (x86)\LibreOffice\program\soffice.com");
+            candidates.Add(@"C:\Program Files (x86)\LibreOffice\program\soffice.exe");
+        }
+        else
+        {
+            candidates.Add("soffice");
+            candidates.Add("/usr/bin/soffice");
+            candidates.Add("/snap/bin/libreoffice");
+        }
 
-        return "soffice";
+        foreach (var candidate in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+                continue;
+
+            if (!Path.IsPathRooted(candidate))
+                return candidate;
+
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        _logger.LogWarning("No se encontró comando de LibreOffice/soffice. Configura Office:Command o agrega soffice al PATH.");
+        return null;
     }
 }

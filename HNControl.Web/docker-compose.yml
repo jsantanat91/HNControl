@@ -15,6 +15,7 @@ services:
       Storage__BasePath: "App_Data/uploads"
       Database__PgDumpPath: "pg_dump"
       Database__PsqlPath: "psql"
+      Office__Command: "/usr/bin/soffice"
 
     volumes:
       - hncontrol_uploads:/app/App_Data/uploads

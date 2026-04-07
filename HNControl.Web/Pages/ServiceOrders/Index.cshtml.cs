@@ -91,14 +91,14 @@ public class IndexModel : PageModel
 
         if (DateFrom.HasValue)
         {
-            var from = DateFrom.Value.Date;
-            q = q.Where(o => o.CreatedAt.Date >= from);
+            var fromUtc = DateTime.SpecifyKind(DateFrom.Value.Date, DateTimeKind.Utc);
+            q = q.Where(o => o.CreatedAt >= fromUtc);
         }
 
         if (DateTo.HasValue)
         {
-            var to = DateTo.Value.Date;
-            q = q.Where(o => o.CreatedAt.Date <= to);
+            var toExclusiveUtc = DateTime.SpecifyKind(DateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            q = q.Where(o => o.CreatedAt < toExclusiveUtc);
         }
 
         if (Status.HasValue)
