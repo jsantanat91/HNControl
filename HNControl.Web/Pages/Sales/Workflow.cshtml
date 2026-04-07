@@ -224,8 +224,29 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="small text-muted mb-2">Vendedor: @det.Seller · Owner: @det.Owner · Estado: @det.Status</div>
-                    <div class="fw-semibold mb-3">Monto: @det.Total.ToString("C")</div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-lg-6">
+                            <div class="border rounded-3 p-2 h-100">
+                                <div class="fw-semibold mb-1">Cliente / Prospecto</div>
+                                <div class="small"><span class="hn-badge hn-badge-blue">@det.CustomerType</span></div>
+                                <div class="small mt-1"><b>Nombre:</b> @det.Customer</div>
+                                <div class="small"><b>Empresa:</b> @det.CompanyName</div>
+                                <div class="small"><b>Correo:</b> @det.CustomerEmail</div>
+                                <div class="small"><b>Teléfono:</b> @det.CustomerPhone</div>
+                                <div class="small"><b>Ubicación:</b> @det.CustomerLocation</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <div class="border rounded-3 p-2 h-100">
+                                <div class="fw-semibold mb-1">Venta</div>
+                                <div class="small"><b>Vendedor:</b> @det.Seller</div>
+                                <div class="small"><b>Correo vendedor:</b> @det.SellerEmail</div>
+                                <div class="small"><b>Owner:</b> @det.Owner</div>
+                                <div class="small"><b>Estado:</b> @det.Status</div>
+                                <div class="small mt-1"><b>Monto:</b> @det.Total.ToString("C")</div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="fw-semibold mb-2">Bitácora de seguimiento</div>
                     <form method="post" asp-page-handler="AddNote" class="mb-3">

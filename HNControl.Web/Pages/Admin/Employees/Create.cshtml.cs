@@ -16,6 +16,7 @@ namespace HNControl.Web.Pages.Admin.Employees;
 [Authorize(Roles = AppRoles.Admin)]
 public class CreateModel : PageModel
 {
+    private const string EmployeeNumberPrefix = "HN-NOM-5";
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
@@ -31,6 +32,7 @@ public class CreateModel : PageModel
     public InputModel Input { get; set; } = new();
 
     public List<SelectListItem> PermissionRoleOptions { get; set; } = new();
+    public string NextEmployeeNumberPreview { get; set; } = "";
 
     public string? Error { get; set; }
 
@@ -47,7 +49,6 @@ public class CreateModel : PageModel
         [MaxLength(13)] public string Rfc { get; set; } = "";
         [MaxLength(10)] public string PostalCode { get; set; } = "";
         [MaxLength(120)] public string EducationLevel { get; set; } = "";
-        [MaxLength(30)] public string EmployeeNumber { get; set; } = "";
         [MaxLength(3)] public string SatContractTypeCode { get; set; } = "";
         [MaxLength(3)] public string SatWorkdayTypeCode { get; set; } = "";
         [MaxLength(3)] public string SatJobRiskCode { get; set; } = "";
@@ -75,6 +76,7 @@ public class CreateModel : PageModel
     public async Task OnGetAsync()
     {
         Input.AppRole = AppRoles.Employee;
+        NextEmployeeNumberPreview = await NextEmployeeNumberAsync();
         await LoadPermissionRoleOptionsAsync();
     }
 
@@ -108,6 +110,7 @@ public class CreateModel : PageModel
     {
         if (!ModelState.IsValid)
         {
+            NextEmployeeNumberPreview = await NextEmployeeNumberAsync();
             await LoadPermissionRoleOptionsAsync(Input.PermissionRoleId);
             return Page();
         }
@@ -116,6 +119,7 @@ public class CreateModel : PageModel
         if (existing != null)
         {
             Error = "Ya existe un usuario con ese correo.";
+            NextEmployeeNumberPreview = await NextEmployeeNumberAsync();
             return Page();
         }
 
@@ -130,6 +134,7 @@ public class CreateModel : PageModel
         if (!created.Succeeded)
         {
             Error = string.Join("; ", created.Errors.Select(e => e.Description));
+            NextEmployeeNumberPreview = await NextEmployeeNumberAsync();
             return Page();
         }
 
@@ -144,7 +149,7 @@ public class CreateModel : PageModel
             ? VacationPolicyMxLft.GetAnnualVacationDays(Input.HireDate, DateTime.Now.Date)
             : Input.VacationAllowanceDays;
 
-_db.EmployeeProfiles.Add(new EmployeeProfile
+        _db.EmployeeProfiles.Add(new EmployeeProfile
         {
             UserId = user.Id,
             FullName = Input.FullName,
@@ -157,7 +162,7 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
             Rfc = (Input.Rfc ?? "").Trim().ToUpperInvariant(),
             PostalCode = (Input.PostalCode ?? "").Trim(),
             EducationLevel = (Input.EducationLevel ?? "").Trim(),
-            EmployeeNumber = (Input.EmployeeNumber ?? "").Trim(),
+            EmployeeNumber = await NextEmployeeNumberAsync(),
             SatContractTypeCode = (Input.SatContractTypeCode ?? "").Trim(),
             SatWorkdayTypeCode = (Input.SatWorkdayTypeCode ?? "").Trim(),
             SatJobRiskCode = (Input.SatJobRiskCode ?? "").Trim(),
@@ -217,6 +222,32 @@ _db.EmployeeProfiles.Add(new EmployeeProfile
             }
         }
         return RedirectToPage("/Admin/Employees/Index");
+    }
+
+    private async Task<string> NextEmployeeNumberAsync()
+    {
+        var numbers = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeNumber) && EF.Functions.Like(x.EmployeeNumber!, EmployeeNumberPrefix + "%"))
+            .Select(x => x.EmployeeNumber!)
+            .ToListAsync();
+
+        var max = 0;
+        foreach (var employeeNumber in numbers)
+        {
+            if (!employeeNumber.StartsWith(EmployeeNumberPrefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var suffix = employeeNumber[EmployeeNumberPrefix.Length..];
+            if (int.TryParse(suffix, out var n) && n > max)
+                max = n;
+        }
+
+        var next = max + 1;
+        if (next > 9999)
+            throw new InvalidOperationException("Se alcanzó el límite de números de empleado (9999).");
+
+        return $"{EmployeeNumberPrefix}{next:000}";
     }
 
     private static bool IsGlobalRole(string? role)

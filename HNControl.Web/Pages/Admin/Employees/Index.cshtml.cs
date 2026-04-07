@@ -21,7 +21,7 @@ public class IndexModel : PageModel
         _userManager = userManager;
     }
 
-    public record Row(string UserId, string FullName, string Email, string Position, decimal SalaryBase, bool IsInventoryManager, bool HasPhoto, bool IsActive);
+    public record Row(string UserId, string FullName, string Email, string Position, string EmployeeNumber, decimal SalaryBase, bool IsInventoryManager, bool HasPhoto, bool IsActive);
     public List<Row> Rows { get; set; } = new();
 
     [TempData]
@@ -55,6 +55,7 @@ public class IndexModel : PageModel
                 e.FullName,
                 e.Email,
                 e.Position,
+                e.EmployeeNumber ?? "",
                 e.SalaryBase,
                 managerUserIds.Contains(e.UserId),
                 !string.IsNullOrWhiteSpace(e.ProfilePhotoStoragePath),

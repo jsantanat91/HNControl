@@ -71,6 +71,10 @@ else if (!isTable)
                             <div class="flex-grow-1 min-w-0">
                                 <div class="fw-bold fs-5 lh-sm">@r.FullName</div>
                                 <div class="text-muted small text-truncate">@r.Email</div>
+                                @if (!string.IsNullOrWhiteSpace(r.EmployeeNumber))
+                                {
+                                    <div class="mt-1"><span class="hn-badge hn-badge-blue">@r.EmployeeNumber</span></div>
+                                }
                             </div>
                         </div>
 
@@ -136,6 +140,7 @@ else
                             <th>Nombre</th>
                             <th>Email</th>
                             <th>Puesto</th>
+                            <th>ID empleado</th>
                             <th>Inventario</th>
                             <th>Estatus</th>
                             <th class="text-end">Sueldo</th>
@@ -149,6 +154,16 @@ else
                                 <td class="fw-semibold">@r.FullName</td>
                                 <td>@r.Email</td>
                                 <td>@r.Position</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(r.EmployeeNumber))
+                                    {
+                                        <span class="hn-badge hn-badge-blue">@r.EmployeeNumber</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">-</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (r.IsInventoryManager)
                                     {

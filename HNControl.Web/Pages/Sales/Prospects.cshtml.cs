@@ -25,6 +25,7 @@ public class ProspectsModel : PageModel
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
     [BindProperty] public LeadInput Lead { get; set; } = new();
+    [BindProperty] public EditLeadInput EditLead { get; set; } = new();
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
@@ -43,6 +44,12 @@ public class ProspectsModel : PageModel
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? Location { get; set; }
+    }
+
+    public class EditLeadInput : LeadInput
+    {
+        public Guid Id { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -120,6 +127,38 @@ public class ProspectsModel : PageModel
 
         lead.IsActive = !lead.IsActive;
         await _db.SaveChangesAsync();
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+    }
+
+    public async Task<IActionResult> OnPostEditAsync()
+    {
+        if (!await EnsurePermissionsAsync() || !CanEdit)
+            return Forbid();
+
+        if (EditLead.Id == Guid.Empty)
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == EditLead.Id && x.IsTemporaryLead);
+        if (lead == null)
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            return Forbid();
+
+        var contactName = (EditLead.ContactName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(contactName))
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+
+        var company = string.IsNullOrWhiteSpace(EditLead.CompanyName) ? contactName : EditLead.CompanyName!.Trim();
+        lead.Name = company;
+        lead.ContactName = contactName;
+        lead.Email = (EditLead.Email ?? "").Trim().ToLowerInvariant();
+        lead.Phone = (EditLead.Phone ?? "").Trim();
+        lead.Address = (EditLead.Location ?? "").Trim();
+        lead.IsActive = EditLead.IsActive;
+        lead.CreatedByUserId ??= userId;
+        await _db.SaveChangesAsync();
+
         return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
     }
 

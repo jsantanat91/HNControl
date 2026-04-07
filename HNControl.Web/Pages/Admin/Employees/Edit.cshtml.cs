@@ -49,7 +49,6 @@ public class EditModel : PageModel
         [MaxLength(13)] public string? Rfc { get; set; }
         [MaxLength(10)] public string? PostalCode { get; set; }
         [MaxLength(120)] public string? EducationLevel { get; set; }
-        [MaxLength(30)] public string? EmployeeNumber { get; set; }
         [MaxLength(3)] public string? SatContractTypeCode { get; set; }
         [MaxLength(3)] public string? SatWorkdayTypeCode { get; set; }
         [MaxLength(3)] public string? SatJobRiskCode { get; set; }
@@ -99,7 +98,6 @@ public class EditModel : PageModel
             Rfc = Employee.Rfc,
             PostalCode = Employee.PostalCode,
             EducationLevel = Employee.EducationLevel,
-            EmployeeNumber = Employee.EmployeeNumber,
             SatContractTypeCode = Employee.SatContractTypeCode,
             SatWorkdayTypeCode = Employee.SatWorkdayTypeCode,
             SatJobRiskCode = Employee.SatJobRiskCode,
@@ -183,7 +181,6 @@ public class EditModel : PageModel
         Employee.Rfc = (Input.Rfc ?? "").Trim().ToUpperInvariant();
         Employee.PostalCode = (Input.PostalCode ?? "").Trim();
         Employee.EducationLevel = (Input.EducationLevel ?? "").Trim();
-        Employee.EmployeeNumber = (Input.EmployeeNumber ?? "").Trim();
         Employee.SatContractTypeCode = (Input.SatContractTypeCode ?? "").Trim();
         Employee.SatWorkdayTypeCode = (Input.SatWorkdayTypeCode ?? "").Trim();
         Employee.SatJobRiskCode = (Input.SatJobRiskCode ?? "").Trim();

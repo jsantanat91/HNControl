@@ -168,6 +168,10 @@ else
                     <div class="fs-5 fw-semibold">@Model.Profile.FullName</div>
                     <div class="text-muted small">@Model.Profile.Email &middot; @Model.Profile.Position</div>
                     <div class="d-flex flex-wrap gap-2 mt-2">
+                        @if (!string.IsNullOrWhiteSpace(Model.Profile.EmployeeNumber))
+                        {
+                            <span class="hn-badge hn-badge-blue">@Model.Profile.EmployeeNumber</span>
+                        }
                         <span class="hn-badge hn-badge-blue">RFC: @(string.IsNullOrWhiteSpace(Model.Profile.Rfc) ? "-" : Model.Profile.Rfc)</span>
                         <span class="hn-badge hn-badge-green">NSS: @(string.IsNullOrWhiteSpace(Model.Profile.Nss) ? "-" : Model.Profile.Nss)</span>
                         <span class="hn-badge hn-badge-gray">CURP: @(string.IsNullOrWhiteSpace(Model.Profile.Curp) ? "-" : Model.Profile.Curp)</span>

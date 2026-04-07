@@ -62,8 +62,9 @@
                 <input class="form-control" asp-for="Input.HireDate" type="date" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Numero empleado</label>
-                <input class="form-control" asp-for="Input.EmployeeNumber" />
+                <label class="form-label">Número de empleado</label>
+                <input class="form-control" value="@Model.NextEmployeeNumberPreview" readonly />
+                <div class="form-text">Se genera automático y no se puede editar.</div>
             </div>
 
             <div class="col-12">
@@ -164,4 +165,3 @@
         })();
     </script>
 }
-

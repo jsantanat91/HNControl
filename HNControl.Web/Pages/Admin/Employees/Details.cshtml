@@ -29,6 +29,10 @@
                 <div class="text-muted small">
                     @Model.Employee.Position &middot; @Model.Employee.Email &middot; @Model.Employee.Phone
                 </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Employee.EmployeeNumber))
+                {
+                    <div class="mt-1"><span class="hn-badge hn-badge-blue">@Model.Employee.EmployeeNumber</span></div>
+                }
                 <div class="text-muted small">
                     RFC: @(string.IsNullOrWhiteSpace(Model.Employee.Rfc) ? "-" : Model.Employee.Rfc)
                     &middot; Estudios: @(string.IsNullOrWhiteSpace(Model.Employee.EducationLevel) ? "-" : Model.Employee.EducationLevel)

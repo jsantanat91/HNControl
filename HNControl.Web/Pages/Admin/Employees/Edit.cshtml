@@ -65,8 +65,9 @@
                 <input class="form-control" asp-for="Input.HireDate" type="date" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Numero empleado</label>
-                <input class="form-control" asp-for="Input.EmployeeNumber" />
+                <label class="form-label">Número de empleado</label>
+                <input class="form-control" value="@Model.Employee.EmployeeNumber" readonly />
+                <div class="form-text">Campo protegido (solo lectura).</div>
             </div>
 
             <div class="col-12">
@@ -176,4 +177,3 @@
         })();
     </script>
 }
-

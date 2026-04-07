@@ -16,6 +16,7 @@ public class PayrollReceiptData
     public string FullName { get; set; } = "";
     public string Email { get; set; } = "";
     public string Position { get; set; } = "";
+    public string EmployeeNumber { get; set; } = "";
     public string Nss { get; set; } = "";
     public DateTime PeriodStart { get; set; }
     public DateTime PeriodEnd { get; set; }

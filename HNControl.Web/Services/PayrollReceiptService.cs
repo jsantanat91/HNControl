@@ -72,6 +72,7 @@ public class PayrollReceiptService : IPayrollReceiptService
             FullName = profile.FullName,
             Email = profile.Email,
             Position = profile.Position,
+            EmployeeNumber = profile.EmployeeNumber ?? "",
             Nss = profile.Nss,
             PeriodStart = pStart,
             PeriodEnd = pEnd,
@@ -134,6 +135,7 @@ public class PayrollReceiptService : IPayrollReceiptService
                             x.Item().Text("Empleado").SemiBold();
                             x.Item().Text(data.FullName);
                             x.Item().Text($"Puesto: {ValueOrDash(data.Position)}").FontColor(Colors.Grey.Darken2);
+                            x.Item().Text($"No. empleado: {ValueOrDash(data.EmployeeNumber)}").FontColor(Colors.Grey.Darken2);
                             x.Item().Text($"Correo: {ValueOrDash(data.Email)}").FontColor(Colors.Grey.Darken2);
                             x.Item().Text($"NSS: {ValueOrDash(data.Nss)}").FontColor(Colors.Grey.Darken2);
                         });

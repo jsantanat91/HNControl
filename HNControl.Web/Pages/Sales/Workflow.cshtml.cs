@@ -77,7 +77,21 @@ public class WorkflowModel : PageModel
         bool IsSoon);
 
     public record NoteVm(DateTime CreatedAt, string UserName, string Text);
-    public record DealDetailsVm(Guid OpportunityId, string Folio, string Customer, string Seller, string Owner, string Status, decimal Total, List<NoteVm> Notes);
+    public record DealDetailsVm(
+        Guid OpportunityId,
+        string Folio,
+        string Customer,
+        string CustomerType,
+        string CustomerEmail,
+        string CustomerPhone,
+        string CustomerLocation,
+        string CompanyName,
+        string Seller,
+        string SellerEmail,
+        string Owner,
+        string Status,
+        decimal Total,
+        List<NoteVm> Notes);
 
     public Dictionary<SalesWorkflowStage, List<DealVm>> Board { get; set; } = new();
     public Dictionary<Guid, DealDetailsVm> DetailsByOpportunityId { get; set; } = new();
@@ -233,6 +247,7 @@ public class WorkflowModel : PageModel
         var userId = _userMgr.GetUserId(User) ?? "";
         IQueryable<SalesOpportunity> query = ScopedOppQuery(userId, CanViewAll)
             .Include(x => x.QuoteRequest)
+            .Include(x => x.Client)
             .Include(x => x.SellerProfile!).ThenInclude(x => x.Employee);
 
         var (fromUtc, toUtc) = ResolveMonthRange();
@@ -338,7 +353,13 @@ public class WorkflowModel : PageModel
                     x.Id,
                     x.QuoteRequest?.Folio ?? "-",
                     x.QuoteRequest?.CustomerName ?? "-",
+                    x.Client?.IsTemporaryLead == true ? "Prospecto" : "Cliente",
+                    x.QuoteRequest?.CustomerEmail ?? "-",
+                    x.QuoteRequest?.CustomerPhone ?? "-",
+                    x.QuoteRequest?.CustomerLocation ?? "-",
+                    x.QuoteRequest?.CompanyName ?? "-",
                     x.SellerProfile?.Employee?.FullName ?? "Sin vendedor",
+                    x.SellerProfile?.Employee?.Email ?? "-",
                     !string.IsNullOrWhiteSpace(x.OwnerUserId) && byUser.TryGetValue(x.OwnerUserId, out var ownerName) ? ownerName : "Sin owner",
                     x.Status.ToString(),
                     x.QuoteRequest?.EstimatedTotal ?? x.QuoteRequest?.SubtotalAuto ?? 0m,
