@@ -49,14 +49,14 @@ public class IndexModel : PageModel
 
         if (DateFrom.HasValue)
         {
-            var from = DateFrom.Value.Date;
-            q = q.Where(p => p.StartDate.Date >= from);
+            var fromUtc = DateTime.SpecifyKind(DateFrom.Value.Date, DateTimeKind.Utc);
+            q = q.Where(p => p.StartDate >= fromUtc);
         }
 
         if (DateTo.HasValue)
         {
-            var to = DateTo.Value.Date;
-            q = q.Where(p => p.StartDate.Date <= to);
+            var toUtcExclusive = DateTime.SpecifyKind(DateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+            q = q.Where(p => p.StartDate < toUtcExclusive);
         }
 
         TotalCount = await q.CountAsync();
