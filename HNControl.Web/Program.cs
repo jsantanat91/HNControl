@@ -13,6 +13,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Localization;
 using System.Text;
 using Npgsql;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -191,6 +192,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Workflow", "/Ventas/Workflow");
     options.Conventions.AddPageRoute("/Sales/Templates", "/Ventas/Plantillas");
     options.Conventions.AddPageRoute("/Sales/Prospects", "/Ventas/Prospectos");
+    options.Conventions.AddPageRoute("/Sales/Calls", "/Ventas/Llamadas");
     options.Conventions.AddPageRoute("/Admin/Quotes/Requests", "/Ventas/Cotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
     options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
@@ -257,8 +259,10 @@ using (var scope = app.Services.CreateScope())
     await EnsureProjectActivitySchemaAsync(db);
     await EnsureClientProspectsSchemaAsync(db);
     await EnsureSalesSchemaAsync(db);
+    await EnsureSalesTelephonySchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
+    await EnsureEmployeeNumbersAsync(db);
     await SeedServiceOrderTemplates.EnsureAsync(db);
 
     // Eval360: si aún no ejecutaste el script de tablas, no tronamos el arranque.
@@ -717,5 +721,161 @@ ALTER TABLE IF EXISTS public.salesauditlogs
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureSalesSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureSalesTelephonySchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."SalesSipAccounts" (
+    "Id" uuid NOT NULL,
+    "UserId" character varying(64) NOT NULL,
+    "Host" character varying(220) NOT NULL DEFAULT '',
+    "SipUser" character varying(180) NOT NULL DEFAULT '',
+    "SipPasswordProtected" character varying(2000) NOT NULL DEFAULT '',
+    "IsActive" boolean NOT NULL DEFAULT TRUE,
+    "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_SalesSipAccounts" PRIMARY KEY ("Id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_SalesSipAccounts_UserId"
+    ON public."SalesSipAccounts" ("UserId");
+
+CREATE TABLE IF NOT EXISTS public."SalesCallLogs" (
+    "Id" uuid NOT NULL,
+    "UserId" character varying(64) NOT NULL,
+    "SalesOpportunityId" uuid NULL,
+    "DialedNumber" character varying(60) NOT NULL DEFAULT '',
+    "Result" integer NOT NULL DEFAULT 1,
+    "DurationSeconds" integer NOT NULL DEFAULT 0,
+    "Notes" character varying(2000) NOT NULL DEFAULT '',
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_SalesCallLogs" PRIMARY KEY ("Id")
+);
+
+CREATE INDEX IF NOT EXISTS "IX_SalesCallLogs_UserId_CreatedAt"
+    ON public."SalesCallLogs" ("UserId", "CreatedAt");
+
+CREATE INDEX IF NOT EXISTS "IX_SalesCallLogs_SalesOpportunityId_CreatedAt"
+    ON public."SalesCallLogs" ("SalesOpportunityId", "CreatedAt");
+
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "UserId" character varying(64) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "SalesOpportunityId" uuid;
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "DialedNumber" character varying(60) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "Result" integer NOT NULL DEFAULT 1;
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "DurationSeconds" integer NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "Notes" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "UserId" character varying(64) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "Host" character varying(220) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "SipUser" character varying(180) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "SipPasswordProtected" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "IsActive" boolean NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureSalesTelephonySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureEmployeeNumbersAsync(ApplicationDbContext db)
+{
+    const string Prefix = "HN-NOM-5";
+
+    var employees = await db.EmployeeProfiles
+        .OrderBy(x => x.CreatedAt)
+        .ThenBy(x => x.UserId)
+        .ToListAsync();
+
+    if (employees.Count == 0) return;
+
+    var used = new HashSet<int>();
+    foreach (var e in employees)
+    {
+        if (TryParseEmployeeSequence(e.EmployeeNumber, out var seq) && seq > 0)
+            used.Add(seq);
+    }
+
+    var next = used.Count == 0 ? 1 : used.Max() + 1;
+    var changed = false;
+
+    foreach (var e in employees)
+    {
+        if (TryParseEmployeeSequence(e.EmployeeNumber, out var seq) && seq > 0)
+        {
+            var normalized = $"{Prefix}{seq:000}";
+            if (!string.Equals(e.EmployeeNumber, normalized, StringComparison.Ordinal))
+            {
+                e.EmployeeNumber = normalized;
+                e.UpdatedAt = DateTime.UtcNow;
+                changed = true;
+            }
+            continue;
+        }
+
+        while (used.Contains(next)) next++;
+        e.EmployeeNumber = $"{Prefix}{next:000}";
+        e.UpdatedAt = DateTime.UtcNow;
+        used.Add(next);
+        next++;
+        changed = true;
+    }
+
+    if (changed)
+        await db.SaveChangesAsync();
+
+    static bool TryParseEmployeeSequence(string? value, out int sequence)
+    {
+        sequence = 0;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+
+        var v = value.Trim().ToUpperInvariant();
+
+        if (v.StartsWith("HN-NOM-5", StringComparison.Ordinal))
+        {
+            var suffix = v["HN-NOM-5".Length..];
+            if (int.TryParse(suffix, out var parsed) && parsed > 0)
+            {
+                sequence = parsed;
+                return true;
+            }
+        }
+
+        if (v.StartsWith("ID-", StringComparison.Ordinal) || v.StartsWith("HN-", StringComparison.Ordinal))
+        {
+            var candidate = v[3..];
+            if (int.TryParse(candidate, out var parsed) && parsed > 0)
+            {
+                sequence = parsed;
+                return true;
+            }
+        }
+
+        var digits = Regex.Replace(v, @"\D", "");
+        if (digits.Length > 0 && int.TryParse(digits, out var fallback) && fallback > 0)
+        {
+            sequence = fallback;
+            return true;
+        }
+
+        return false;
     }
 }

@@ -88,7 +88,7 @@ public class TemplateDocxService : ITemplateDocxService
         var legalName = Safe(tpl.RSCLIENTE, client.Name);
         var legalAddress = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address, "Domicilio por confirmar");
         var signer = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName, "Representante legal");
-        var periodo = Safe(tpl.PERIODOC, BuildContractPeriod(doc, doc.ClientServiceContract));
+        var periodo = Safe(BuildContractPeriod(doc, doc.ClientServiceContract), tpl.PERIODOC, "12 meses");
         var firma = BuildDigitalSignatureText(doc, signer);
 
         return new Dictionary<string, string>
@@ -107,14 +107,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["COSTOCLIENTE"] = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? doc.ClientServiceContract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX"))),
             ["FIRMACLIENTE"] = firma,
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, doc.ClientServiceContract?.Label, doc.Title, "-"),
-            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-"),
-
-            // Compatibilidad con plantillas viejas.
-            ["CLIENTE"] = legalName,
-            ["con domicilio en"] = $"con domicilio en {legalAddress}",
-            ["con fecha"] = $"con fecha {cityDate}",
-            ["Jorge Alberto Santana Torres"] = signer,
-            ["HUBNET INFRAESTRUCTURE TECHNOLOGY SOLUTIONS"] = "HUBNET INFRAESTRUCTURE TECHNOLOGY SOLUTIONS"
+            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
         };
     }
 
@@ -138,31 +131,12 @@ public class TemplateDocxService : ITemplateDocxService
             ["CPC"] = Safe(client.FiscalZipCode, "00000"),
             ["EMAILC"] = Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com"),
             ["CONTRATOC"] = Safe(tpl.CONTRATOC, doc.Title, serviceName),
-            ["PERIODOC"] = Safe(tpl.PERIODOC, period),
+            ["PERIODOC"] = Safe(period, tpl.PERIODOC, "12 meses"),
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label, "-"),
             ["COSTOCLIENTE"] = monthly,
             ["FIRMACLIENTE"] = firma,
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, contract?.Label, doc.Title, "-"),
-            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-"),
-
-            ["Nombre o RazÃ³n Social:"] = $"Nombre o RazÃ³n Social: {Safe(client.Name)}",
-            ["Nombre o RazÃƒÂ³n Social:"] = $"Nombre o RazÃ³n Social: {Safe(client.Name)}",
-            ["Fecha Contrato:"] = $"Fecha Contrato: {nowText}",
-            ["RFC:"] = $"RFC: {Safe(client.Rfc, "XAXX010101000")}",
-            ["Nombre Comercial:"] = $"Nombre Comercial: {Safe(client.Name)}",
-            ["Correo ElectrÃ³nico:"] = $"Correo ElectrÃ³nico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
-            ["Correo ElectrÃƒÂ³nico:"] = $"Correo ElectrÃ³nico: {Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com")}",
-            ["Calle o Avenida:"] = $"Calle o Avenida: {Safe(client.Address, client.FiscalAddress, "Por definir")}",
-            ["Ciudad:"] = $"Ciudad: {Safe(client.Municipality, client.Address, "Ciudad de MÃ©xico")}",
-            ["Estado:"] = $"Estado: {Safe(client.State, "MÃ©xico")}",
-            ["CÃ³digo Postal:"] = $"CÃ³digo Postal: {Safe(client.FiscalZipCode, "00000")}",
-            ["CÃƒÂ³digo Postal:"] = $"CÃ³digo Postal: {Safe(client.FiscalZipCode, "00000")}",
-            ["Servici"] = "Servicio(s) Contratados: " + serviceName,
-            ["Periodo de ContrataciÃ³n:"] = $"Periodo de ContrataciÃ³n: {period}",
-            ["Periodo de ContrataciÃƒÂ³n:"] = $"Periodo de ContrataciÃ³n: {period}",
-            ["$"] = "$" + monthly,
-            ["UbicaciÃ³n del Servicio"] = "UbicaciÃ³n del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir"),
-            ["UbicaciÃƒÂ³n del Servicio"] = "UbicaciÃ³n del Servicio: " + Safe(contract?.BranchAddress, client.Address, "Por definir")
+            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
         };
 
         return replacements;
@@ -215,21 +189,25 @@ public class TemplateDocxService : ITemplateDocxService
 
     private static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)
     {
-        if (doc.ContractStartDate.HasValue || doc.ContractEndDate.HasValue)
+        static int? EstimateMonths(DateTime? start, DateTime? end)
         {
-            var start = doc.ContractStartDate?.ToString("dd/MM/yyyy") ?? "-";
-            var end = doc.ContractEndDate?.ToString("dd/MM/yyyy") ?? "-";
-            return $"{start} al {end}";
+            if (!start.HasValue || !end.HasValue)
+                return null;
+
+            var s = start.Value.Date;
+            var e = end.Value.Date;
+            if (e < s)
+                (s, e) = (e, s);
+
+            var months = (int)Math.Round((e - s).TotalDays / 30.4375, MidpointRounding.AwayFromZero);
+            return Math.Max(1, months);
         }
 
-        if (contract?.ContractStartDate.HasValue == true || contract?.ContractEndDate.HasValue == true)
-        {
-            var start = contract.ContractStartDate?.ToString("dd/MM/yyyy") ?? "-";
-            var end = contract.ContractEndDate?.ToString("dd/MM/yyyy") ?? "-";
-            return $"{start} al {end}";
-        }
+        var months =
+            EstimateMonths(doc.ContractStartDate, doc.ContractEndDate) ??
+            EstimateMonths(contract?.ContractStartDate, contract?.ContractEndDate);
 
-        return "12 meses";
+        return $"{(months ?? 12)} meses";
     }
 
     private static string Safe(params string?[] values)

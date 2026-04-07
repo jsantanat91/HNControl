@@ -1,0 +1,407 @@
+@page
+@model HNControl.Web.Pages.Sales.CallsModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Ventas · Llamadas";
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 mb-0">Llamadas comerciales (WebPhone)</h1>
+        <div class="text-muted small">Registra extensión SIP, marca desde navegador y guarda seguimiento por oportunidad.</div>
+    </div>
+    <span class="badge text-bg-secondary">@(Model.CanViewAll ? "Vista global" : "Solo mis oportunidades")</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-xl-4">
+        <div class="card shadow-soft border-0">
+            <div class="card-header fw-semibold">Extensión SIP</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="SaveSip" class="vstack gap-2 mb-3">
+                    <div>
+                        <label class="form-label">Host (WSS o dominio)</label>
+                        <input class="form-control" asp-for="Sip.Host" placeholder="pbx.midominio.com:8089/ws" />
+                    </div>
+                    <div>
+                        <label class="form-label">Usuario SIP</label>
+                        <input class="form-control" asp-for="Sip.User" placeholder="1001" />
+                    </div>
+                    <div>
+                        <label class="form-label">Password SIP</label>
+                        <input class="form-control" asp-for="Sip.Password" type="password" autocomplete="new-password" placeholder="••••••••" />
+                        @if (Model.HasStoredPassword)
+                        {
+                            <div class="small text-muted mt-1">Ya hay contraseña guardada. Si dejas vacío, se conserva.</div>
+                        }
+                    </div>
+                    <button class="btn btn-outline-primary" type="submit" @(Model.CanUseCalls ? null : "disabled")>Guardar credenciales</button>
+                </form>
+
+                <div class="d-flex gap-2">
+                    <button id="btnRegisterSip" class="btn btn-primary flex-grow-1" type="button" @(Model.CanUseCalls ? null : "disabled")>Register</button>
+                    <button id="btnUnregisterSip" class="btn btn-outline-secondary" type="button" disabled>Salir</button>
+                </div>
+                <div id="sipStatus" class="small mt-2 text-muted">Sin registrar.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+        <div class="card shadow-soft border-0">
+            <div class="card-header fw-semibold">WebPhone</div>
+            <div class="card-body">
+                <div class="row g-2 mb-2">
+                    <div class="col-12 col-md-8">
+                        <label class="form-label">Número</label>
+                        <input id="dialNumber" class="form-control form-control-lg" placeholder="Ingrese número" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Oportunidad</label>
+                        <select id="dialOpportunity" class="form-select">
+                            <option value="">-- sin ligar --</option>
+                            @foreach (var opp in Model.Opportunities)
+                            {
+                                <option value="@opp.Id" selected="@(Model.SelectedOpportunityId.HasValue && Model.SelectedOpportunityId.Value == opp.Id)">@opp.Label</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="dialpad-grid mb-3">
+                    @foreach (var k in new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#" })
+                    {
+                        <button class="btn btn-outline-secondary dial-key" type="button" data-key="@k">@k</button>
+                    }
+                </div>
+
+                <div class="row g-2 mb-2">
+                    <div class="col-12 col-md-8">
+                        <label class="form-label">Nota de seguimiento (máx 2000)</label>
+                        <textarea id="dialNote" class="form-control" rows="2" maxlength="2000" placeholder="Seguimiento comercial de la llamada..."></textarea>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Resultado</label>
+                        <select id="dialResult" class="form-select">
+                            <option value="initiated">Iniciada</option>
+                            <option value="connected">Conectada</option>
+                            <option value="completed">Completada</option>
+                            <option value="failed">Fallida</option>
+                            <option value="canceled">Cancelada</option>
+                        </select>
+                        <div class="small text-muted mt-2">Duración: <span id="callDuration">0s</span></div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button id="btnCall" class="btn btn-success" type="button" @(Model.CanUseCalls ? null : "disabled")>Marcar</button>
+                    <button id="btnHangup" class="btn btn-outline-danger" type="button" disabled>Colgar</button>
+                    <button id="btnSaveCallLog" class="btn btn-outline-primary" type="button" @(Model.CanUseCalls ? null : "disabled")>Guardar seguimiento</button>
+                </div>
+                <div id="callStatus" class="small text-muted mt-2">Listo para marcar.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-soft border-0 mt-3">
+    <div class="card-header fw-semibold">Bitácora reciente de llamadas</div>
+    <div class="card-body">
+        @if (!Model.RecentCalls.Any())
+        {
+            <div class="text-muted small">Sin llamadas registradas.</div>
+        }
+        else
+        {
+            <div class="row g-2">
+                @foreach (var c in Model.RecentCalls)
+                {
+                    <div class="col-12 col-lg-6">
+                        <article class="border rounded-3 p-2 h-100">
+                            <div class="d-flex justify-content-between gap-2">
+                                <div class="fw-semibold">@c.Seller</div>
+                                <div class="small text-muted">@c.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+                            <div class="small">@c.Number · @c.Result · @c.DurationSeconds s</div>
+                            <div class="small text-muted">Oportunidad: @c.Opportunity</div>
+                            @if (!string.IsNullOrWhiteSpace(c.Notes))
+                            {
+                                <div class="small mt-1">@c.Notes</div>
+                            }
+                        </article>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<form id="logCallForm" method="post" asp-page-handler="LogCall" class="d-none">
+    <input type="hidden" asp-for="Call.SalesOpportunityId" id="logSalesOpportunityId" />
+    <input type="hidden" asp-for="Call.DialedNumber" id="logDialedNumber" />
+    <input type="hidden" asp-for="Call.Result" id="logResult" />
+    <input type="hidden" asp-for="Call.DurationSeconds" id="logDurationSeconds" />
+    <input type="hidden" asp-for="Call.Note" id="logNote" />
+</form>
+
+@section Styles {
+<style>
+    .dialpad-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 84px));
+        gap: .5rem;
+    }
+    .dial-key {
+        border-radius: 50%;
+        width: 84px;
+        height: 84px;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+</style>
+}
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/sip.js@0.21.2/lib/index.min.js"></script>
+<script>
+(() => {
+    const canUse = @Html.Raw(Model.CanUseCalls.ToString().ToLowerInvariant());
+    const sipHostInput = document.getElementById('Sip_Host');
+    const sipUserInput = document.getElementById('Sip_User');
+    const sipPassInput = document.getElementById('Sip_Password');
+    const btnRegister = document.getElementById('btnRegisterSip');
+    const btnUnregister = document.getElementById('btnUnregisterSip');
+    const sipStatus = document.getElementById('sipStatus');
+    const callStatus = document.getElementById('callStatus');
+    const dialInput = document.getElementById('dialNumber');
+    const dialOpportunity = document.getElementById('dialOpportunity');
+    const dialNote = document.getElementById('dialNote');
+    const dialResult = document.getElementById('dialResult');
+    const callDuration = document.getElementById('callDuration');
+    const btnCall = document.getElementById('btnCall');
+    const btnHangup = document.getElementById('btnHangup');
+    const btnSaveCallLog = document.getElementById('btnSaveCallLog');
+    const dialKeys = document.querySelectorAll('.dial-key');
+    const logForm = document.getElementById('logCallForm');
+
+    let userAgent = null;
+    let registerer = null;
+    let inviter = null;
+    const atSign = String.fromCharCode(64);
+    let startedAtMs = 0;
+    let timer = null;
+
+    const setSipStatus = (txt, cls = 'text-muted') => {
+        sipStatus.className = `small mt-2 ${cls}`;
+        sipStatus.textContent = txt;
+    };
+    const setCallStatus = (txt, cls = 'text-muted') => {
+        callStatus.className = `small mt-2 ${cls}`;
+        callStatus.textContent = txt;
+    };
+
+    const normalizeServer = host => {
+        const h = (host || '').trim();
+        if (!h) return '';
+        if (h.startsWith('ws://') || h.startsWith('wss://')) return h;
+        return `wss://${h}`;
+    };
+
+    const getDomainFromServer = server => {
+        try {
+            return new URL(server).hostname;
+        } catch {
+            return '';
+        }
+    };
+
+    const setButtonsForCall = active => {
+        btnCall.disabled = !canUse || active;
+        btnHangup.disabled = !active;
+    };
+
+    const updateDuration = () => {
+        if (!startedAtMs) {
+            callDuration.textContent = '0s';
+            return;
+        }
+        const seconds = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
+        callDuration.textContent = `${seconds}s`;
+    };
+
+    const startTimer = () => {
+        stopTimer();
+        startedAtMs = Date.now();
+        timer = setInterval(updateDuration, 1000);
+        updateDuration();
+    };
+
+    const stopTimer = () => {
+        if (timer) clearInterval(timer);
+        timer = null;
+        updateDuration();
+    };
+
+    const getDurationSeconds = () => startedAtMs ? Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)) : 0;
+
+    const saveCallLog = async () => {
+        if (!canUse) return;
+        const number = (dialInput.value || '').trim();
+        if (!number) {
+            setCallStatus('Captura un número para guardar seguimiento.', 'text-danger');
+            return;
+        }
+
+        document.getElementById('logSalesOpportunityId').value = dialOpportunity.value || '';
+        document.getElementById('logDialedNumber').value = number;
+        document.getElementById('logResult').value = dialResult.value || 'initiated';
+        document.getElementById('logDurationSeconds').value = getDurationSeconds().toString();
+        document.getElementById('logNote').value = (dialNote.value || '').trim();
+
+        try {
+            const response = await fetch(logForm.action, {
+                method: 'POST',
+                body: new FormData(logForm)
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                setCallStatus(payload.message || 'No se pudo guardar el seguimiento.', 'text-danger');
+                return;
+            }
+            setCallStatus('Seguimiento guardado.', 'text-success');
+        } catch (err) {
+            setCallStatus('Error al guardar seguimiento.', 'text-danger');
+        }
+    };
+
+    if (btnSaveCallLog) {
+        btnSaveCallLog.addEventListener('click', saveCallLog);
+    }
+
+    dialKeys.forEach(btn => {
+        btn.addEventListener('click', () => {
+            dialInput.value = `${dialInput.value || ''}${btn.dataset.key || ''}`;
+            dialInput.focus();
+        });
+    });
+
+    if (!canUse) {
+        setSipStatus('Sin permiso para usar llamadas.', 'text-danger');
+        return;
+    }
+
+    btnRegister.addEventListener('click', async () => {
+        try {
+            const host = normalizeServer(sipHostInput.value);
+            const sipUser = (sipUserInput.value || '').trim();
+            const sipPass = (sipPassInput.value || '').trim();
+            if (!host || !sipUser || !sipPass) {
+                setSipStatus('Host, usuario y password son requeridos para registrar.', 'text-danger');
+                return;
+            }
+
+            const domain = getDomainFromServer(host);
+            if (!domain) {
+                setSipStatus('Host inválido para WebSocket SIP.', 'text-danger');
+                return;
+            }
+
+            userAgent = new SIP.UserAgent({
+                uri: SIP.UserAgent.makeURI('sip:' + sipUser + atSign + domain),
+                authorizationUsername: sipUser,
+                authorizationPassword: sipPass,
+                transportOptions: { server: host }
+            });
+
+            await userAgent.start();
+            registerer = new SIP.Registerer(userAgent);
+            await registerer.register();
+            btnUnregister.disabled = false;
+            setSipStatus('Registro SIP exitoso.', 'text-success');
+        } catch (e) {
+            setSipStatus(`No se pudo registrar SIP: ${e?.message || e}`, 'text-danger');
+        }
+    });
+
+    btnUnregister.addEventListener('click', async () => {
+        try {
+            if (registerer) await registerer.unregister();
+            if (userAgent) await userAgent.stop();
+            registerer = null;
+            userAgent = null;
+            setButtonsForCall(false);
+            btnUnregister.disabled = true;
+            setSipStatus('Registro finalizado.', 'text-muted');
+        } catch (e) {
+            setSipStatus(`Error al cerrar sesión SIP: ${e?.message || e}`, 'text-danger');
+        }
+    });
+
+    btnCall.addEventListener('click', async () => {
+        try {
+            if (!userAgent) {
+                setCallStatus('Primero registra la extensión SIP.', 'text-danger');
+                return;
+            }
+
+            const number = (dialInput.value || '').trim();
+            if (!number) {
+                setCallStatus('Captura un número.', 'text-danger');
+                return;
+            }
+
+            const host = normalizeServer(sipHostInput.value);
+            const domain = getDomainFromServer(host);
+            const target = number.includes(atSign) ? ('sip:' + number) : ('sip:' + number + atSign + domain);
+            const targetUri = SIP.UserAgent.makeURI(target);
+            if (!targetUri) {
+                setCallStatus('Número/URI inválido.', 'text-danger');
+                return;
+            }
+
+            inviter = new SIP.Inviter(userAgent, targetUri);
+            inviter.stateChange.addListener(state => {
+                if (state === SIP.SessionState.Establishing) {
+                    setCallStatus('Marcando...', 'text-primary');
+                } else if (state === SIP.SessionState.Established) {
+                    startTimer();
+                    setCallStatus('Llamada conectada.', 'text-success');
+                    if (dialResult.value === 'initiated') dialResult.value = 'connected';
+                } else if (state === SIP.SessionState.Terminated) {
+                    stopTimer();
+                    setButtonsForCall(false);
+                    if (dialResult.value === 'connected' || dialResult.value === 'initiated') {
+                        dialResult.value = 'completed';
+                    }
+                    setCallStatus('Llamada finalizada.', 'text-muted');
+                }
+            });
+            await inviter.invite();
+            setButtonsForCall(true);
+        } catch (e) {
+            if (dialResult.value === 'initiated') dialResult.value = 'failed';
+            stopTimer();
+            setButtonsForCall(false);
+            setCallStatus(`Error de llamada: ${e?.message || e}`, 'text-danger');
+        }
+    });
+
+    btnHangup.addEventListener('click', async () => {
+        try {
+            if (!inviter) return;
+            if (inviter.state === SIP.SessionState.Established) {
+                await inviter.bye();
+            } else {
+                await inviter.cancel();
+            }
+            if (dialResult.value === 'initiated') dialResult.value = 'canceled';
+        } catch (e) {
+            setCallStatus(`No se pudo colgar: ${e?.message || e}`, 'text-danger');
+        } finally {
+            stopTimer();
+            setButtonsForCall(false);
+        }
+    });
+})();
+</script>
+}

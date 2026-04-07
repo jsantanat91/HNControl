@@ -107,6 +107,8 @@ public class ActionAccessService : IActionAccessService
         if (modules.Contains(AppModules.Sales))
         {
             result.Add(AppActions.SalesViewOwn);
+            result.Add(AppActions.SalesCallsView);
+            result.Add(AppActions.SalesCallsUse);
         }
 
         if (modules.Contains(AppModules.Billing))

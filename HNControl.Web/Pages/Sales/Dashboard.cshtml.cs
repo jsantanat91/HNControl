@@ -27,6 +27,7 @@ public class DashboardModel : PageModel
     public record StageStat(string Stage, int Count);
     public record SellerStat(string Seller, int Deals, decimal Amount, decimal Commission);
     public record SellerWinLossStat(string Seller, int Won, int Lost);
+    public record SellerCallStat(string Seller, int Calls, int Connected, decimal AvgSeconds);
     public record AuditVm(DateTime CreatedAt, string UserName, string EventType, string Details);
     [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
 
@@ -43,6 +44,7 @@ public class DashboardModel : PageModel
     public List<StageStat> Funnel { get; set; } = new();
     public List<SellerStat> Sellers { get; set; } = new();
     public List<SellerWinLossStat> SellersWinLoss { get; set; } = new();
+    public List<SellerCallStat> SellerCalls { get; set; } = new();
     public List<AuditVm> RecentAudit { get; set; } = new();
 
     public string FunnelLabelsJson { get; set; } = "[]";
@@ -123,6 +125,33 @@ public class DashboardModel : PageModel
                 g.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedWon),
                 g.Count(x => NormalizeStage(x.WorkflowStage) == SalesWorkflowStage.ClosedLost)))
             .OrderByDescending(x => x.Won + x.Lost)
+            .Take(10)
+            .ToList();
+
+        var callsQuery = _db.SalesCallLogs
+            .AsNoTracking()
+            .Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
+        if (!hasViewAll)
+            callsQuery = callsQuery.Where(x => x.UserId == userId);
+
+        var callRows = await callsQuery.ToListAsync();
+        var userIds = callRows.Select(x => x.UserId).Distinct().ToList();
+        var userMap = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => userIds.Contains(x.UserId))
+            .ToDictionaryAsync(x => x.UserId, x => x.FullName);
+
+        SellerCalls = callRows
+            .GroupBy(x => x.UserId)
+            .Select(g =>
+            {
+                var seller = userMap.TryGetValue(g.Key, out var fullName) ? fullName : g.Key;
+                var calls = g.Count();
+                var connected = g.Count(x => x.Result == SalesCallResult.Connected || x.Result == SalesCallResult.Completed);
+                var avg = calls > 0 ? (decimal)g.Average(x => x.DurationSeconds) : 0m;
+                return new SellerCallStat(seller, calls, connected, Math.Round(avg, 1));
+            })
+            .OrderByDescending(x => x.Calls)
             .Take(10)
             .ToList();
 

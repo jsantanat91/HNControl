@@ -270,6 +270,10 @@
                             <a class="hn-side-sublink @((path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">Cotización</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                             <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                            @if (CanAction(HNControl.Web.Models.AppActions.SalesCallsView))
+                            {
+                                <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                            }
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                 || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
@@ -351,6 +355,10 @@
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
                                     <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestion</a>
+                                    @if (CanAction(HNControl.Web.Models.AppActions.SalesCallsView))
+                                    {
+                                        <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                                    }
                                     <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                                 }
                                 @if (CanAction(HNControl.Web.Models.AppActions.TemplatesManage))

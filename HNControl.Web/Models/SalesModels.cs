@@ -72,3 +72,56 @@ public class SalesOpportunity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public enum SalesCallResult
+{
+    Initiated = 1,
+    Connected = 2,
+    Completed = 3,
+    Failed = 4,
+    Canceled = 5
+}
+
+public class SalesSipAccount
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [MaxLength(64)]
+    public string UserId { get; set; } = "";
+    public EmployeeProfile? Employee { get; set; }
+
+    [MaxLength(220)]
+    public string Host { get; set; } = "";
+
+    [MaxLength(180)]
+    public string SipUser { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string SipPasswordProtected { get; set; } = "";
+
+    public bool IsActive { get; set; } = true;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class SalesCallLog
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    [MaxLength(64)]
+    public string UserId { get; set; } = "";
+    public EmployeeProfile? Employee { get; set; }
+
+    public Guid? SalesOpportunityId { get; set; }
+    public SalesOpportunity? SalesOpportunity { get; set; }
+
+    [MaxLength(60)]
+    public string DialedNumber { get; set; } = "";
+
+    public SalesCallResult Result { get; set; } = SalesCallResult.Initiated;
+    public int DurationSeconds { get; set; }
+
+    [MaxLength(2000)]
+    public string Notes { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

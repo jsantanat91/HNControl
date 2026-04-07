@@ -91,9 +91,27 @@
 
     <div class="col-12 col-xl-6">
         <div class="card shadow-soft hn-hover h-100">
-            <div class="card-header fw-semibold">Detalle por vendedor</div>
+            <div class="card-header fw-semibold">Marcadores de llamadas por vendedor</div>
             <div class="card-body">
-                <div class="text-muted small">Resumen rapido. Usa "Ver detalle" para abrir el modal completo por vendedor.</div>
+                @if (!Model.SellerCalls.Any())
+                {
+                    <div class="text-muted small">Sin llamadas registradas en el período.</div>
+                }
+                else
+                {
+                    <div class="vstack gap-2">
+                        @foreach (var c in Model.SellerCalls.Take(6))
+                        {
+                            <div class="border rounded-3 p-2">
+                                <div class="d-flex justify-content-between gap-2 align-items-center">
+                                    <span class="fw-semibold">@c.Seller</span>
+                                    <span class="badge text-bg-light">@c.Calls llamadas</span>
+                                </div>
+                                <div class="small text-muted">Conectadas: @c.Connected · Promedio: @c.AvgSeconds s</div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>

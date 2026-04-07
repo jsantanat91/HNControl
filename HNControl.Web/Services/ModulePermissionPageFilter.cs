@@ -154,6 +154,9 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
                 return AppActions.SalesProspectsView;
             }
 
+            if (path.StartsWith("/Sales/Calls", StringComparison.OrdinalIgnoreCase))
+                return isWrite ? AppActions.SalesCallsUse : AppActions.SalesCallsView;
+
             if (path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase))
                 return isWrite ? AppActions.SalesQuotesManage : AppActions.SalesQuotesView;
 

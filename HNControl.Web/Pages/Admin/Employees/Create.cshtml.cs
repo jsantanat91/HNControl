@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using HNControl.Web.Services;
+using System.Text.RegularExpressions;
 
 namespace HNControl.Web.Pages.Admin.Employees;
 
@@ -228,18 +229,13 @@ public class CreateModel : PageModel
     {
         var numbers = await _db.EmployeeProfiles
             .AsNoTracking()
-            .Where(x => !string.IsNullOrWhiteSpace(x.EmployeeNumber) && EF.Functions.Like(x.EmployeeNumber!, EmployeeNumberPrefix + "%"))
             .Select(x => x.EmployeeNumber!)
             .ToListAsync();
 
         var max = 0;
         foreach (var employeeNumber in numbers)
         {
-            if (!employeeNumber.StartsWith(EmployeeNumberPrefix, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var suffix = employeeNumber[EmployeeNumberPrefix.Length..];
-            if (int.TryParse(suffix, out var n) && n > max)
+            if (TryParseEmployeeSequence(employeeNumber, out var n) && n > max)
                 max = n;
         }
 
@@ -248,6 +244,43 @@ public class CreateModel : PageModel
             throw new InvalidOperationException("Se alcanzó el límite de números de empleado (9999).");
 
         return $"{EmployeeNumberPrefix}{next:000}";
+    }
+
+    private static bool TryParseEmployeeSequence(string? value, out int sequence)
+    {
+        sequence = 0;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+
+        var v = value.Trim().ToUpperInvariant();
+
+        if (v.StartsWith(EmployeeNumberPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var suffix = v[EmployeeNumberPrefix.Length..];
+            if (int.TryParse(suffix, out var parsed) && parsed > 0)
+            {
+                sequence = parsed;
+                return true;
+            }
+        }
+
+        if (v.StartsWith("ID-", StringComparison.Ordinal) || v.StartsWith("HN-", StringComparison.Ordinal))
+        {
+            var candidate = v[3..];
+            if (int.TryParse(candidate, out var parsed) && parsed > 0)
+            {
+                sequence = parsed;
+                return true;
+            }
+        }
+
+        var digits = Regex.Replace(v, @"\D", "");
+        if (digits.Length > 0 && int.TryParse(digits, out var fallback) && fallback > 0)
+        {
+            sequence = fallback;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsGlobalRole(string? role)

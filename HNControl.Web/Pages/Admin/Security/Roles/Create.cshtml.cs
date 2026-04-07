@@ -219,6 +219,7 @@ public class CreateModel : PageModel
             new() { Area = "Ventas", Label = "Workflow (arrastre)", ViewKey = AppActions.SalesViewOwn, EditKey = AppActions.SalesWorkflowMove, ApproveKey = AppActions.SalesWorkflowAssign },
             new() { Area = "Ventas", Label = "Gestion comercial", ViewKey = AppActions.SalesViewOwn, CreateKey = AppActions.SalesManage, EditKey = AppActions.SalesManage, ApproveKey = AppActions.SalesWorkflowAssign },
             new() { Area = "Ventas", Label = "Cotizacion", ViewKey = AppActions.SalesQuotesView, CreateKey = AppActions.SalesQuotesManage, EditKey = AppActions.SalesQuotesManage },
+            new() { Area = "Ventas", Label = "Llamadas (WebPhone)", ViewKey = AppActions.SalesCallsView, CreateKey = AppActions.SalesCallsUse, EditKey = AppActions.SalesCallsUse },
             new() { Area = "Ventas", Label = "Prospectos", ViewKey = AppActions.SalesProspectsView, CreateKey = AppActions.SalesProspectsCreate, EditKey = AppActions.SalesProspectsEdit, ApproveKey = AppActions.SalesProspectsConvert },
             new() { Area = "Ventas", Label = "Catalogo", ViewKey = AppActions.SalesCatalogView, CreateKey = AppActions.SalesCatalogManage, EditKey = AppActions.SalesCatalogManage },
             new() { Area = "Facturacion", Label = "Facturacion", ViewKey = AppActions.BillingViewOwn, CreateKey = AppActions.BillingManage, EditKey = AppActions.BillingManage, ApproveKey = AppActions.BillingSend },

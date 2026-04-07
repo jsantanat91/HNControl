@@ -28,6 +28,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ProjectDeliveryFormat> ProjectDeliveryFormats => Set<ProjectDeliveryFormat>();
     public DbSet<SalesSellerProfile> SalesSellerProfiles => Set<SalesSellerProfile>();
     public DbSet<SalesOpportunity> SalesOpportunities => Set<SalesOpportunity>();
+    public DbSet<SalesSipAccount> SalesSipAccounts => Set<SalesSipAccount>();
+    public DbSet<SalesCallLog> SalesCallLogs => Set<SalesCallLog>();
     public DbSet<SalesAuditLog> SalesAuditLogs => Set<SalesAuditLog>();
     public DbSet<BillingInvoicePlan> BillingInvoicePlans => Set<BillingInvoicePlan>();
     public DbSet<BillingInvoiceLine> BillingInvoiceLines => Set<BillingInvoiceLine>();
@@ -227,6 +229,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Description).HasMaxLength(1000);
             e.Property(x => x.DurationUnit).HasMaxLength(16);
             e.Property(x => x.ColorHex).HasMaxLength(16);
+        });
+
+        b.Entity<SalesSipAccount>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.Host).HasMaxLength(220);
+            e.Property(x => x.SipUser).HasMaxLength(180);
+            e.Property(x => x.SipPasswordProtected).HasMaxLength(2000);
+            e.HasIndex(x => x.UserId).IsUnique();
+        });
+
+        b.Entity<SalesCallLog>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.DialedNumber).HasMaxLength(60);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
+            e.HasIndex(x => new { x.SalesOpportunityId, x.CreatedAt });
         });
 
         b.Entity<ViaticWeek>(w =>

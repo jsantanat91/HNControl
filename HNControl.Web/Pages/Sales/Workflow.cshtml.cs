@@ -48,6 +48,7 @@ public class WorkflowModel : PageModel
     public bool CanViewAll { get; set; }
     public bool CanMove { get; set; }
     public bool CanAssign { get; set; }
+    public bool CanCall { get; set; }
 
     public SelectList StageItems { get; set; } = default!;
     public SelectList SellerItems { get; set; } = default!;
@@ -237,6 +238,9 @@ public class WorkflowModel : PageModel
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         CanMove = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
         CanAssign = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
+        CanCall = hasViewAll
+            || await _actions.HasActionAsync(User, AppActions.SalesCallsView)
+            || await _actions.HasActionAsync(User, AppActions.SalesCallsUse);
 
         CanViewAll = hasViewAll;
         return hasViewOwn;

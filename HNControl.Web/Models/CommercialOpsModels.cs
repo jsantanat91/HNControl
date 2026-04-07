@@ -121,6 +121,8 @@ public static class AppActions
     public const string SalesQuotesManage = "Sales.Quotes.Manage";
     public const string SalesCatalogView = "Sales.Catalog.View";
     public const string SalesCatalogManage = "Sales.Catalog.Manage";
+    public const string SalesCallsView = "Sales.Calls.View";
+    public const string SalesCallsUse = "Sales.Calls.Use";
     public const string SalesProspectsView = "Sales.Prospects.View";
     public const string SalesProspectsCreate = "Sales.Prospects.Create";
     public const string SalesProspectsEdit = "Sales.Prospects.Edit";
@@ -165,6 +167,8 @@ public static class AppActions
         SalesQuotesManage,
         SalesCatalogView,
         SalesCatalogManage,
+        SalesCallsView,
+        SalesCallsUse,
         SalesProspectsView,
         SalesProspectsCreate,
         SalesProspectsEdit,
@@ -187,6 +191,8 @@ public static class AppActions
         TicketsView,
         SalesViewOwn,
         SalesWorkflowMove,
+        SalesCallsView,
+        SalesCallsUse,
         BillingViewOwn
         ,EmployeesOrgChartView
     ];
@@ -203,6 +209,8 @@ public static class AppActions
         [SalesWorkflowAssign] = [SalesWorkflowMove, SalesViewOwn],
         [SalesQuotesManage] = [SalesQuotesView],
         [SalesCatalogManage] = [SalesCatalogView],
+        [SalesCallsView] = [SalesViewOwn],
+        [SalesCallsUse] = [SalesCallsView, SalesViewOwn],
         [SalesProspectsCreate] = [SalesProspectsView],
         [SalesProspectsEdit] = [SalesProspectsView],
         [SalesProspectsConvert] = [SalesProspectsEdit, SalesProspectsView],
@@ -279,6 +287,8 @@ public static class AppActions
         SalesQuotesManage => "Ventas/Cotizaciones: gestionar",
         SalesCatalogView => "Ventas/Catálogo: ver",
         SalesCatalogManage => "Ventas/Catálogo: gestionar",
+        SalesCallsView => "Ventas/Llamadas: ver",
+        SalesCallsUse => "Ventas/Llamadas: registrar y llamar",
         SalesProspectsView => "Ventas/Prospectos: ver",
         SalesProspectsCreate => "Ventas/Prospectos: crear",
         SalesProspectsEdit => "Ventas/Prospectos: editar",

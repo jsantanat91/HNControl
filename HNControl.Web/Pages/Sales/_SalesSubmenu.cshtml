@@ -6,6 +6,7 @@
     var canDashboard = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewOwn) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewAll);
     var canWorkflow = canDashboard;
     var canGestion = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesManage);
+    var canCalls = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCallsView);
     var canProspects = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesProspectsView);
     var canQuotes = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesView) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage);
     var canTemplates = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.TemplatesManage);
@@ -43,6 +44,10 @@
         @if (canGestion)
         {
             <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion</a>
+        }
+        @if (canCalls)
+        {
+            <a href="/Ventas/Llamadas" class="@Btn("/ventas/llamadas","Llamadas","danger")">Llamadas</a>
         }
         @if (canTemplates)
         {
