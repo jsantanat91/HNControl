@@ -764,6 +764,8 @@ CREATE INDEX IF NOT EXISTS "IX_SalesCallLogs_SalesOpportunityId_CreatedAt"
 ALTER TABLE IF EXISTS public."SalesCallLogs"
     ADD COLUMN IF NOT EXISTS "UserId" character varying(64) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesCallLogs"
+    ADD COLUMN IF NOT EXISTS "EmployeeUserId" character varying(64);
+ALTER TABLE IF EXISTS public."SalesCallLogs"
     ADD COLUMN IF NOT EXISTS "SalesOpportunityId" uuid;
 ALTER TABLE IF EXISTS public."SalesCallLogs"
     ADD COLUMN IF NOT EXISTS "DialedNumber" character varying(60) NOT NULL DEFAULT '';
@@ -779,6 +781,8 @@ ALTER TABLE IF EXISTS public."SalesCallLogs"
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "UserId" character varying(64) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "EmployeeUserId" character varying(64);
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "Host" character varying(220) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "SipUser" character varying(180) NOT NULL DEFAULT '';
@@ -788,6 +792,14 @@ ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "IsActive" boolean NOT NULL DEFAULT TRUE;
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+
+UPDATE public."SalesSipAccounts"
+SET "EmployeeUserId" = "UserId"
+WHERE COALESCE("EmployeeUserId", '') = '' AND COALESCE("UserId", '') <> '';
+
+UPDATE public."SalesCallLogs"
+SET "EmployeeUserId" = "UserId"
+WHERE COALESCE("EmployeeUserId", '') = '' AND COALESCE("UserId", '') <> '';
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

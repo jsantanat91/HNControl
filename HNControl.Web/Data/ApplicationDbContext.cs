@@ -239,6 +239,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.SipUser).HasMaxLength(180);
             e.Property(x => x.SipPasswordProtected).HasMaxLength(2000);
             e.HasIndex(x => x.UserId).IsUnique();
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<SalesCallLog>(e =>
@@ -249,6 +254,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.HasIndex(x => new { x.UserId, x.CreatedAt });
             e.HasIndex(x => new { x.SalesOpportunityId, x.CreatedAt });
+            e.HasOne(x => x.Employee)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ViaticWeek>(w =>

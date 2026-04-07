@@ -57,7 +57,11 @@ public class CreateModel : PageModel
 
         if (Input.ClientId == Guid.Empty)
         {
-            var firstClient = await _db.Clients.OrderBy(c => c.Name).Select(c => c.Id).FirstOrDefaultAsync();
+            var firstClient = await _db.Clients
+                .Where(c => c.IsActive && !c.IsTemporaryLead)
+                .OrderBy(c => c.Name)
+                .Select(c => c.Id)
+                .FirstOrDefaultAsync();
             if (firstClient != Guid.Empty) Input.ClientId = firstClient;
         }
     }
@@ -67,6 +71,14 @@ public class CreateModel : PageModel
         await LoadListsAsync();
 
         if (!ModelState.IsValid) return Page();
+
+        var validClient = await _db.Clients
+            .AnyAsync(c => c.Id == Input.ClientId && c.IsActive && !c.IsTemporaryLead);
+        if (!validClient)
+        {
+            Error = "Solo se permiten clientes activos (no prospectos).";
+            return Page();
+        }
 
         if (Input.ClientServiceContractId.HasValue)
         {
@@ -148,7 +160,10 @@ public class CreateModel : PageModel
 
     private async Task LoadListsAsync()
     {
-        var clients = await _db.Clients.OrderBy(c => c.Name).ToListAsync();
+        var clients = await _db.Clients
+            .Where(c => c.IsActive && !c.IsTemporaryLead)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Name");
 
         var employees = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();

@@ -90,6 +90,9 @@ public class TemplateDocxService : ITemplateDocxService
         var signer = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName, "Representante legal");
         var periodo = Safe(BuildContractPeriod(doc, doc.ClientServiceContract), tpl.PERIODOC, "12 meses");
         var firma = BuildDigitalSignatureText(doc, signer);
+        var firmaHash = BuildDigitalSignatureHash(doc, signer);
+        var firmaFecha = BuildDigitalSignatureDate(doc);
+        var firmaCorreo = BuildDigitalSignatureEmail(doc);
 
         return new Dictionary<string, string>
         {
@@ -106,6 +109,13 @@ public class TemplateDocxService : ITemplateDocxService
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, doc.ClientServiceContract?.Branch, "-"),
             ["COSTOCLIENTE"] = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? doc.ClientServiceContract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX"))),
             ["FIRMACLIENTE"] = firma,
+            ["HASHFIRMA"] = firmaHash,
+            ["FIRMAHASH"] = firmaHash,
+            ["SELLODIGITAL"] = firmaHash,
+            ["FIRMAHN"] = firmaHash,
+            ["FIRMAFECHA"] = firmaFecha,
+            ["FIRMACORREO"] = firmaCorreo,
+            ["FIRMAINFO"] = firma,
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, doc.ClientServiceContract?.Label, doc.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
         };
@@ -119,6 +129,9 @@ public class TemplateDocxService : ITemplateDocxService
         var serviceName = Safe(tpl.CONTRATOC, contract?.Label, "Servicio de telecomunicaciones");
         var monthly = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? contract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")));
         var firma = BuildDigitalSignatureText(doc, Safe(client.LegalRepresentative, client.ContactName));
+        var firmaHash = BuildDigitalSignatureHash(doc, Safe(client.LegalRepresentative, client.ContactName));
+        var firmaFecha = BuildDigitalSignatureDate(doc);
+        var firmaCorreo = BuildDigitalSignatureEmail(doc);
 
         var replacements = new Dictionary<string, string>
         {
@@ -135,6 +148,13 @@ public class TemplateDocxService : ITemplateDocxService
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label, "-"),
             ["COSTOCLIENTE"] = monthly,
             ["FIRMACLIENTE"] = firma,
+            ["HASHFIRMA"] = firmaHash,
+            ["FIRMAHASH"] = firmaHash,
+            ["SELLODIGITAL"] = firmaHash,
+            ["FIRMAHN"] = firmaHash,
+            ["FIRMAFECHA"] = firmaFecha,
+            ["FIRMACORREO"] = firmaCorreo,
+            ["FIRMAINFO"] = firma,
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, contract?.Label, doc.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
         };
@@ -232,7 +252,36 @@ public class TemplateDocxService : ITemplateDocxService
         var payload = $"{doc.Id}|{signer}|{email}|{doc.SignedAt:O}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
         return $"Firmado digitalmente por {signer} ({email}) el {date}. Hash: {hash}";
-    }private static ContractTemplateData ParseContractTemplateData(string? raw)
+    }
+
+    private static string BuildDigitalSignatureHash(ClientLegalDocument doc, string fallbackName)
+    {
+        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+            return "PENDIENTE DE FIRMA";
+
+        var signer = Safe(doc.SignedByName, fallbackName);
+        var email = Safe(doc.SignedByEmail, "-");
+        var payload = $"{doc.Id}|{signer}|{email}|{doc.SignedAt:O}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
+    }
+
+    private static string BuildDigitalSignatureDate(ClientLegalDocument doc)
+    {
+        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+            return "PENDIENTE DE FIRMA";
+
+        return doc.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    }
+
+    private static string BuildDigitalSignatureEmail(ClientLegalDocument doc)
+    {
+        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+            return "PENDIENTE DE FIRMA";
+
+        return Safe(doc.SignedByEmail, "-");
+    }
+
+    private static ContractTemplateData ParseContractTemplateData(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw) || !raw.StartsWith("__TPLJSON__", StringComparison.Ordinal))
             return new ContractTemplateData();
