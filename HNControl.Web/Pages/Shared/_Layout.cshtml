@@ -20,6 +20,7 @@
         || path.StartsWith("/Sales", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Admin/Quotes", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/Ventas/MisCotizaciones", StringComparison.OrdinalIgnoreCase)
         || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase)
         || isProspectsBridge;
     var isSystemPath = path.StartsWith("/Admin/System", StringComparison.OrdinalIgnoreCase)
@@ -40,6 +41,19 @@
     }
     bool Has(string key) => AppRoles.IsGlobalAdmin(User) || allowedModules.Contains(key);
     bool CanAction(string key) => AppRoles.IsGlobalAdmin(User) || allowedActions.Contains(key);
+    var canSalesViewOwn = CanAction(HNControl.Web.Models.AppActions.SalesViewOwn);
+    var canSalesViewAll = CanAction(HNControl.Web.Models.AppActions.SalesViewAll);
+    var canSalesManage = CanAction(HNControl.Web.Models.AppActions.SalesManage);
+    var canSalesWorkflow = canSalesViewOwn || canSalesViewAll || canSalesManage;
+    var canSalesGestion = canSalesViewAll || canSalesManage;
+    var canSalesDashboard = canSalesWorkflow;
+    var canSalesProspects = CanAction(HNControl.Web.Models.AppActions.SalesProspectsView);
+    var canSalesQuotes = CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || CanAction(HNControl.Web.Models.AppActions.SalesQuotesManage);
+    var canSalesCalls = CanAction(HNControl.Web.Models.AppActions.SalesCallsView);
+    var canSalesTemplates = CanAction(HNControl.Web.Models.AppActions.TemplatesManage);
+    var canSalesCatalog = CanAction(HNControl.Web.Models.AppActions.SalesCatalogView) || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage);
+    var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales) && canSalesViewOwn;
+    var hasEmployeeSalesLinks = canSalesProspects || canMyQuotes || canSalesWorkflow || canSalesGestion || canSalesDashboard || canSalesCalls || canSalesTemplates || canSalesCatalog;
     var currentUserId = UserManager.GetUserId(User);
     var newServiceOrdersCount = 0;
     var ticketsBadgeCount = 0;
@@ -335,7 +349,7 @@
                             <span class="hn-side-text">Clientes</span>
                         </a>
                     }
-                    @if (Has(HNControl.Web.Models.AppModules.Sales))
+                    @if (Has(HNControl.Web.Models.AppModules.Sales) && hasEmployeeSalesLinks)
                     {
                         <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")">
@@ -343,42 +357,40 @@
                                 <span class="hn-side-text">Ventas</span>
                             </summary>
                             <div class="hn-side-sub">
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesProspectsView))
+                                @if (canSalesDashboard)
+                                {
+                                    <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
+                                }
+                                @if (canSalesProspects)
                                 {
                                     <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || CanAction(HNControl.Web.Models.AppActions.SalesQuotesManage))
+                                @if (canMyQuotes)
                                 {
-                                    <a class="hn-side-sublink @((path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">Cotización</a>
+                                    <a class="hn-side-sublink @((path.StartsWith("/Ventas/MisCotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/MisCotizaciones">Mis cotizaciones</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesViewOwn))
+                                @if (canSalesWorkflow)
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestion</a>
-                                    @if (CanAction(HNControl.Web.Models.AppActions.SalesCallsView))
-                                    {
-                                        <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
-                                    }
-                                    <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.TemplatesManage))
+                                @if (canSalesGestion)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestion</a>
+                                }
+                                @if (canSalesCalls)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                                }
+                                @if (canSalesTemplates)
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
-                                    || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
+                                @if (canSalesCatalog)
                                 {
                                     <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
                                 }
                             </div>
                         </details>
-                    }
-                    @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales) && (CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || CanAction(HNControl.Web.Models.AppActions.SalesQuotesManage)))
-                    {
-                        <a class="hn-side-link @((path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">
-                            <span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span>
-                            <span class="hn-side-text">Mis cotizaciones</span>
-                        </a>
                     }
 
                     @if (Has(AppModules.ServiceOrders))
@@ -518,6 +530,9 @@
             <div class="hn-side-footer mt-auto">
                 <div class="hn-side-user">@User.Identity?.Name</div>
                 <div class="hn-side-user-sub">Sesi&oacute;n activa</div>
+                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword">
+                    <i class="bi bi-key me-1"></i> Cambiar contraseña
+                </a>
 
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
                     <button class="btn btn-sm hn-navbtn-danger w-100" type="submit">
@@ -653,23 +668,46 @@
                     { <a class="hn-side-link @Active("/Employees/OrgChart")" asp-page="/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a> }
                     @if (Has(AppModules.Clients))
                     { <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a> }
-                    @if (Has(HNControl.Web.Models.AppModules.Sales))
+                    @if (Has(HNControl.Web.Models.AppModules.Sales) && hasEmployeeSalesLinks)
                     {
                         <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                             <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-funnel"></i></span><span class="hn-side-text">Ventas</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
-                                    <a class="hn-side-sublink @((path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">Cotización</a>
-                                @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
-                                    || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
+                                @if (canSalesDashboard)
+                                {
+                                    <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
+                                }
+                                @if (canSalesProspects)
+                                {
+                                    <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
+                                }
+                                @if (canMyQuotes)
+                                {
+                                    <a class="hn-side-sublink @((path.StartsWith("/Ventas/MisCotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/My", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/MisCotizaciones">Mis cotizaciones</a>
+                                }
+                                @if (canSalesWorkflow)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
+                                }
+                                @if (canSalesGestion)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gestión</a>
+                                }
+                                @if (canSalesCalls)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                                }
+                                @if (canSalesTemplates)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
+                                }
+                                @if (canSalesCatalog)
                                 {
                                     <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Catálogo</a>
                                 }
                             </div>
                         </details>
                     }
-                    @if (User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales))
-                    { <a class="hn-side-link @((path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones"><span class="hn-side-icon"><i class="bi bi-cash-coin"></i></span><span class="hn-side-text">Mis cotizaciones</span></a> }
                     @if (Has(AppModules.ServiceOrders))
                     { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a> }
                     @if (Has(AppModules.Viaticos))
@@ -742,6 +780,7 @@
                 <hr class="border-light opacity-25 my-3" />
 
                 <div class="hn-side-user">@User.Identity?.Name</div>
+                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword"><i class="bi bi-key me-1"></i> Cambiar contraseña</a>
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
                     <button class="btn btn-sm btn-danger w-100" type="submit"><i class="bi bi-box-arrow-right me-1"></i> Salir</button>
                 </form>

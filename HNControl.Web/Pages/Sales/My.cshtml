@@ -16,7 +16,10 @@
         <h1 class="h4 mb-0">Mi panel de ventas</h1>
         <div class="text-muted small">@Model.Employee.FullName · @Model.Employee.Email</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="/Employees/MyProfile">Mi ficha</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="button" data-quote-modal-open="true" data-quote-modal-size="xl" onclick="return false;">+ Nueva cotización</button>
+        <a class="btn btn-outline-secondary" asp-page="/Employees/MyProfile">Mi ficha</a>
+    </div>
 </div>
 
 <div class="row g-3 mb-2">

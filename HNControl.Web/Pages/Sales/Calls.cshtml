@@ -166,6 +166,7 @@
 <script>
 (() => {
     const canUse = @Html.Raw(Model.CanUseCalls.ToString().ToLowerInvariant());
+    const hasStoredPassword = @Html.Raw(Model.HasStoredPassword.ToString().ToLowerInvariant());
     const sipHostInput = document.getElementById('Sip_Host');
     const sipUserInput = document.getElementById('Sip_User');
     const sipPassInput = document.getElementById('Sip_Password');
@@ -187,6 +188,7 @@
     let userAgent = null;
     let registerer = null;
     let inviter = null;
+    let sipLib = null;
     const atSign = String.fromCharCode(64);
     let startedAtMs = 0;
     let timer = null;
@@ -220,6 +222,50 @@
         btnHangup.disabled = !active;
     };
 
+    const loadSipLibrary = async () => {
+        if (sipLib) return sipLib;
+        if (window.SIP) {
+            sipLib = window.SIP;
+            return sipLib;
+        }
+
+        try {
+            sipLib = await import('https://cdn.jsdelivr.net/npm/sip.js@0.21.2/lib/index.js');
+        } catch {
+            try {
+                sipLib = await import('https://unpkg.com/sip.js@0.21.2/lib/index.js');
+            } catch {
+                throw new Error('No se pudo cargar la libreria SIP.js.');
+            }
+        }
+
+        return sipLib;
+    };
+
+    const resolveSipCredentials = async (hostInput, userInput, passInput) => {
+        let host = (hostInput || '').trim();
+        let user = (userInput || '').trim();
+        let password = (passInput || '').trim();
+
+        if (password || !hasStoredPassword) {
+            return { host, user, password };
+        }
+
+        try {
+            const response = await fetch('?handler=SipSecret');
+            const payload = await response.json();
+            if (response.ok && payload?.ok) {
+                host = host || (payload.host || '').trim();
+                user = user || (payload.user || '').trim();
+                password = (payload.password || '').trim();
+            }
+        } catch {
+            // ignored
+        }
+
+        return { host, user, password };
+    };
+
     const updateDuration = () => {
         if (!startedAtMs) {
             callDuration.textContent = '0s';
@@ -248,7 +294,7 @@
         if (!canUse) return;
         const number = (dialInput.value || '').trim();
         if (!number) {
-            setCallStatus('Captura un número para guardar seguimiento.', 'text-danger');
+            setCallStatus('Captura un numero para guardar seguimiento.', 'text-danger');
             return;
         }
 
@@ -269,7 +315,7 @@
                 return;
             }
             setCallStatus('Seguimiento guardado.', 'text-success');
-        } catch (err) {
+        } catch {
             setCallStatus('Error al guardar seguimiento.', 'text-danger');
         }
     };
@@ -292,9 +338,18 @@
 
     btnRegister.addEventListener('click', async () => {
         try {
-            const host = normalizeServer(sipHostInput.value);
-            const sipUser = (sipUserInput.value || '').trim();
-            const sipPass = (sipPassInput.value || '').trim();
+            const SIP = await loadSipLibrary();
+
+            const creds = await resolveSipCredentials(
+                sipHostInput.value,
+                sipUserInput.value,
+                sipPassInput.value
+            );
+
+            const host = normalizeServer(creds.host);
+            const sipUser = (creds.user || '').trim();
+            const sipPass = (creds.password || '').trim();
+
             if (!host || !sipUser || !sipPass) {
                 setSipStatus('Host, usuario y password son requeridos para registrar.', 'text-danger');
                 return;
@@ -302,7 +357,7 @@
 
             const domain = getDomainFromServer(host);
             if (!domain) {
-                setSipStatus('Host inválido para WebSocket SIP.', 'text-danger');
+                setSipStatus('Host invalido para WebSocket SIP.', 'text-danger');
                 return;
             }
 
@@ -333,20 +388,21 @@
             btnUnregister.disabled = true;
             setSipStatus('Registro finalizado.', 'text-muted');
         } catch (e) {
-            setSipStatus(`Error al cerrar sesión SIP: ${e?.message || e}`, 'text-danger');
+            setSipStatus(`Error al cerrar sesion SIP: ${e?.message || e}`, 'text-danger');
         }
     });
 
     btnCall.addEventListener('click', async () => {
         try {
+            const SIP = await loadSipLibrary();
             if (!userAgent) {
-                setCallStatus('Primero registra la extensión SIP.', 'text-danger');
+                setCallStatus('Primero registra la extension SIP.', 'text-danger');
                 return;
             }
 
             const number = (dialInput.value || '').trim();
             if (!number) {
-                setCallStatus('Captura un número.', 'text-danger');
+                setCallStatus('Captura un numero.', 'text-danger');
                 return;
             }
 
@@ -355,7 +411,7 @@
             const target = number.includes(atSign) ? ('sip:' + number) : ('sip:' + number + atSign + domain);
             const targetUri = SIP.UserAgent.makeURI(target);
             if (!targetUri) {
-                setCallStatus('Número/URI inválido.', 'text-danger');
+                setCallStatus('Numero/URI invalido.', 'text-danger');
                 return;
             }
 
@@ -388,6 +444,7 @@
 
     btnHangup.addEventListener('click', async () => {
         try {
+            const SIP = await loadSipLibrary();
             if (!inviter) return;
             if (inviter.state === SIP.SessionState.Established) {
                 await inviter.bye();
@@ -405,3 +462,4 @@
 })();
 </script>
 }
+

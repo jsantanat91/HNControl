@@ -194,9 +194,11 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Prospects", "/Ventas/Prospectos");
     options.Conventions.AddPageRoute("/Sales/Calls", "/Ventas/Llamadas");
     options.Conventions.AddPageRoute("/Admin/Quotes/Requests", "/Ventas/Cotizaciones");
+    options.Conventions.AddPageRoute("/Sales/My", "/Ventas/MisCotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
     options.Conventions.AddPageRoute("/Projects/Billing/Index", "/Facturacion");
     options.Conventions.AddPageRoute("/Employees/OrgChart", "/Employees/Organigrama");
+    options.Conventions.AddPageRoute("/Account/ChangePassword", "/Cuenta/CambiarContrasena");
 })
 .AddMvcOptions(o => o.Filters.AddService<ModulePermissionPageFilter>());
 

@@ -128,6 +128,32 @@ public class CallsModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnGetSipSecretAsync()
+    {
+        var userId = _userMgr.GetUserId(User);
+        if (string.IsNullOrWhiteSpace(userId))
+            return new JsonResult(new { ok = false, message = "Sesión no válida." }) { StatusCode = 401 };
+
+        if (!await ResolvePermissionsAsync() || !CanUseCalls)
+            return new JsonResult(new { ok = false, message = "Sin permiso para usar llamadas." }) { StatusCode = 403 };
+
+        var account = await _db.SalesSipAccounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive);
+
+        if (account == null)
+            return new JsonResult(new { ok = false, message = "No hay extensión SIP guardada." }) { StatusCode = 404 };
+
+        var password = _protector.Unprotect(account.SipPasswordProtected ?? "");
+        return new JsonResult(new
+        {
+            ok = true,
+            host = account.Host ?? "",
+            user = account.SipUser ?? "",
+            password
+        });
+    }
+
     public async Task<IActionResult> OnPostLogCallAsync()
     {
         var userId = _userMgr.GetUserId(User);
@@ -318,3 +344,4 @@ public class CallsModel : PageModel
         public int DurationSeconds { get; set; }
     }
 }
+

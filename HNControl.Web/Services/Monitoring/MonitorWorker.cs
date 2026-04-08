@@ -2,6 +2,7 @@ using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services.Tickets;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -15,16 +16,18 @@ public class MonitorWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<MonitorWorker> _log;
+    private readonly int _autoTicketDelayMinutes;
 
-    public MonitorWorker(IServiceScopeFactory scopeFactory, ILogger<MonitorWorker> log)
+    public MonitorWorker(IServiceScopeFactory scopeFactory, ILogger<MonitorWorker> log, IConfiguration cfg)
     {
         _scopeFactory = scopeFactory;
         _log = log;
+        _autoTicketDelayMinutes = Math.Max(0, cfg.GetValue<int?>("Monitoring:AutoTicketDelayMinutes") ?? 10);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // loop simple: cada 5s revisa qué targets ya les toca
+        // loop simple: cada 5s revisa que targets ya les toca
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -33,7 +36,7 @@ public class MonitorWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _log.LogError(ex, "MonitorWorker tick falló");
+                _log.LogError(ex, "MonitorWorker tick fallo");
             }
 
             try { await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); }
@@ -96,13 +99,23 @@ public class MonitorWorker : BackgroundService
             t.NextCheckAt = now.AddSeconds(Math.Max(10, t.CheckIntervalSeconds));
             t.UpdatedAt = now;
 
-            // Auto-ticket por caída (solo al transicionar a DOWN).
-            if (!wasDown && t.LastStatus == MonitorStatus.Down)
+            // Auto-ticket por caida:
+            // espera una ventana minima de caida continua para evitar falsos positivos.
+            if (t.LastStatus == MonitorStatus.Down)
             {
-                var title = $"Caida monitor: {t.Name}";
-                var host = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn;
-                var desc = $"Monitoreo detecto falla en {t.Name} ({host}). Error: {t.LastError}";
-                await ticketFlow.CreateMonitoringAutoAsync(t.Id, title, desc, ct);
+                var effectiveIntervalSeconds = Math.Max(10, t.CheckIntervalSeconds);
+                var continuousDownSeconds = Math.Max(0, t.ConsecutiveFails - 1) * effectiveIntervalSeconds;
+                var shouldCreate = _autoTicketDelayMinutes == 0
+                    ? (!wasDown) // comportamiento previo
+                    : continuousDownSeconds >= _autoTicketDelayMinutes * 60;
+
+                if (shouldCreate)
+                {
+                    var title = $"Caida monitor: {t.Name}";
+                    var host = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn;
+                    var desc = $"Monitoreo detecto falla en {t.Name} ({host}). Error: {t.LastError}";
+                    await ticketFlow.CreateMonitoringAutoAsync(t.Id, title, desc, ct);
+                }
             }
         }
 
