@@ -50,6 +50,10 @@ else
                             {
                                 <span class="hn-chip hn-chip-type">Sucursal: @t.Branch</span>
                             }
+                            @if (t.IsAutoTicketPaused)
+                            {
+                                <span class="hn-chip hn-chip-pause">Tickets en pausa</span>
+                            }
                             <span class="hn-chip hn-chip-ref">@t.Address</span>
                             <span class="hn-chip hn-chip-type">@t.IntervalSeconds s</span>
                         </div>
@@ -73,6 +77,12 @@ else
 
                         <div class="mt-auto pt-3 d-flex justify-content-end gap-2">
                             <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@t.Id">Editar</a>
+                            <form method="post" asp-page-handler="TogglePause" class="m-0">
+                                <input type="hidden" name="id" value="@t.Id" />
+                                <button type="submit" class="btn btn-sm @(t.IsAutoTicketPaused ? "btn-success" : "btn-outline-warning")">
+                                    @(t.IsAutoTicketPaused ? "Reanudar tickets" : "Pausar tickets")
+                                </button>
+                            </form>
                             <form method="post" asp-page-handler="Toggle" class="m-0">
                                 <input type="hidden" name="id" value="@t.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-secondary">@(t.IsActive ? "Desactivar" : "Activar")</button>
@@ -113,6 +123,12 @@ else
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .hn-chip-pause {
+            color: #9a3412;
+            background: #ffedd5;
+            border: 1px solid #fdba74;
         }
 
         @@media (max-width: 767.98px) {

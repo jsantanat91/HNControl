@@ -8,6 +8,7 @@ namespace HNControl.Web.Pages.Admin.Monitoring.Targets;
 
 public class IndexModel : PageModel
 {
+    private const string AutoTicketPauseMarker = "[MONITOR_TICKET_PAUSED]";
     private readonly ApplicationDbContext _db;
 
     public IndexModel(ApplicationDbContext db)
@@ -41,7 +42,8 @@ public class IndexModel : PageModel
             Status = t.LastStatus,
             LastCheckedAt = t.LastCheckedAt,
             LastError = t.LastError,
-            IsActive = t.IsActive
+            IsActive = t.IsActive,
+            IsAutoTicketPaused = IsAutoTicketPaused(t.Notes)
         }).ToList();
     }
 
@@ -51,6 +53,27 @@ public class IndexModel : PageModel
         if (t == null) return NotFound();
 
         t.IsActive = !t.IsActive;
+        t.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostTogglePauseAsync(Guid id)
+    {
+        var t = await _db.MonitorTargets.FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return NotFound();
+
+        var notes = t.Notes ?? string.Empty;
+        if (IsAutoTicketPaused(notes))
+        {
+            t.Notes = RemovePauseMarker(notes);
+        }
+        else
+        {
+            var line = string.IsNullOrWhiteSpace(notes) ? "" : Environment.NewLine;
+            t.Notes = $"{notes}{line}{AutoTicketPauseMarker}".Trim();
+        }
+
         t.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return RedirectToPage();
@@ -71,11 +94,27 @@ public class IndexModel : PageModel
         public DateTime? LastCheckedAt { get; set; }
         public string LastError { get; set; } = "";
         public bool IsActive { get; set; }
+        public bool IsAutoTicketPaused { get; set; }
         public string BadgeClass => Status switch
         {
             MonitorStatus.Up => "text-bg-success",
             MonitorStatus.Down => "text-bg-danger",
             _ => "text-bg-secondary"
         };
+    }
+
+    private static bool IsAutoTicketPaused(string? notes)
+        => (notes ?? string.Empty).IndexOf(AutoTicketPauseMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static string RemovePauseMarker(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return string.Empty;
+
+        var cleaned = notes
+            .Replace(AutoTicketPauseMarker, string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace(Environment.NewLine + Environment.NewLine, Environment.NewLine)
+            .Trim();
+
+        return cleaned;
     }
 }

@@ -188,6 +188,7 @@
     let userAgent = null;
     let registerer = null;
     let inviter = null;
+    let activeSipServer = '';
     let sipLib = null;
     const atSign = String.fromCharCode(64);
     let startedAtMs = 0;
@@ -207,6 +208,55 @@
         if (!h) return '';
         if (h.startsWith('ws://') || h.startsWith('wss://')) return h;
         return `wss://${h}`;
+    };
+
+    const buildSipServerCandidates = hostRaw => {
+        const value = (hostRaw || '').trim();
+        if (!value) return [];
+
+        const addUnique = (arr, item) => {
+            if (!item) return;
+            if (!arr.includes(item)) arr.push(item);
+        };
+
+        // Full ws(s) URL provided by user.
+        if (value.startsWith('ws://') || value.startsWith('wss://')) {
+            const result = [];
+            addUnique(result, value);
+
+            // If protocol URL was provided without path, also try common WebRTC paths.
+            try {
+                const parsed = new URL(value);
+                const hasPath = parsed.pathname && parsed.pathname !== '/';
+                if (!hasPath) {
+                    const isSecure = parsed.protocol === 'wss:';
+                    if (isSecure) {
+                        addUnique(result, `wss://${parsed.hostname}/ws`);
+                        addUnique(result, `wss://${parsed.hostname}:8089/ws`);
+                        addUnique(result, `wss://${parsed.hostname}:7443/ws`);
+                    } else {
+                        addUnique(result, `ws://${parsed.hostname}/ws`);
+                        addUnique(result, `ws://${parsed.hostname}:8088/ws`);
+                    }
+                }
+            } catch {
+                // Ignore malformed URL extensions.
+            }
+
+            return result;
+        }
+
+        // Domain/host format provided by user. Try common secure and non-secure paths.
+        const hostOnly = value.replace(/^https?:\/\//i, '').replace(/^wss?:\/\//i, '').replace(/\/+$/, '');
+        const result = [];
+        addUnique(result, `wss://${hostOnly}/ws`);
+        addUnique(result, `wss://${hostOnly}:8089/ws`);
+        addUnique(result, `wss://${hostOnly}:7443/ws`);
+        addUnique(result, `wss://${hostOnly}`);
+        addUnique(result, `ws://${hostOnly}/ws`);
+        addUnique(result, `ws://${hostOnly}:8088/ws`);
+        addUnique(result, `ws://${hostOnly}`);
+        return result;
     };
 
     const getDomainFromServer = server => {
@@ -346,7 +396,7 @@
                 sipPassInput.value
             );
 
-            const host = normalizeServer(creds.host);
+            const host = (creds.host || '').trim();
             const sipUser = (creds.user || '').trim();
             const sipPass = (creds.password || '').trim();
 
@@ -355,24 +405,61 @@
                 return;
             }
 
-            const domain = getDomainFromServer(host);
-            if (!domain) {
+            const servers = buildSipServerCandidates(host);
+            if (!servers.length) {
                 setSipStatus('Host invalido para WebSocket SIP.', 'text-danger');
                 return;
             }
 
-            userAgent = new SIP.UserAgent({
-                uri: SIP.UserAgent.makeURI('sip:' + sipUser + atSign + domain),
-                authorizationUsername: sipUser,
-                authorizationPassword: sipPass,
-                transportOptions: { server: host }
-            });
+            let lastError = '';
+            let registered = false;
 
-            await userAgent.start();
-            registerer = new SIP.Registerer(userAgent);
-            await registerer.register();
+            for (const server of servers) {
+                const domain = getDomainFromServer(server);
+                if (!domain) {
+                    continue;
+                }
+
+                setSipStatus(`Probando ${server}...`, 'text-muted');
+
+                try {
+                    const ua = new SIP.UserAgent({
+                        uri: SIP.UserAgent.makeURI('sip:' + sipUser + atSign + domain),
+                        authorizationUsername: sipUser,
+                        authorizationPassword: sipPass,
+                        transportOptions: { server }
+                    });
+
+                    await ua.start();
+                    const reg = new SIP.Registerer(ua);
+                    await reg.register();
+
+                    userAgent = ua;
+                    registerer = reg;
+                    activeSipServer = server;
+                    registered = true;
+                    break;
+                } catch (err) {
+                    lastError = err?.message || String(err || '');
+                    try {
+                        if (registerer) await registerer.unregister();
+                    } catch {}
+                    try {
+                        if (userAgent) await userAgent.stop();
+                    } catch {}
+                    registerer = null;
+                    userAgent = null;
+                }
+            }
+
+            if (!registered) {
+                const detail = lastError || 'No se pudo conectar a ningun endpoint WSS/WS del host.';
+                setSipStatus(`No se pudo registrar SIP: ${detail}`, 'text-danger');
+                return;
+            }
+
             btnUnregister.disabled = false;
-            setSipStatus('Registro SIP exitoso.', 'text-success');
+            setSipStatus(`Registro SIP exitoso (${activeSipServer}).`, 'text-success');
         } catch (e) {
             setSipStatus(`No se pudo registrar SIP: ${e?.message || e}`, 'text-danger');
         }
@@ -384,6 +471,7 @@
             if (userAgent) await userAgent.stop();
             registerer = null;
             userAgent = null;
+            activeSipServer = '';
             setButtonsForCall(false);
             btnUnregister.disabled = true;
             setSipStatus('Registro finalizado.', 'text-muted');
@@ -406,8 +494,12 @@
                 return;
             }
 
-            const host = normalizeServer(sipHostInput.value);
+            const host = activeSipServer || normalizeServer(sipHostInput.value);
             const domain = getDomainFromServer(host);
+            if (!domain) {
+                setCallStatus('No se pudo resolver dominio SIP para marcar.', 'text-danger');
+                return;
+            }
             const target = number.includes(atSign) ? ('sip:' + number) : ('sip:' + number + atSign + domain);
             const targetUri = SIP.UserAgent.makeURI(target);
             if (!targetUri) {

@@ -14,6 +14,7 @@ namespace HNControl.Web.Services.Monitoring;
 /// </summary>
 public class MonitorWorker : BackgroundService
 {
+    private const string AutoTicketPauseMarker = "[MONITOR_TICKET_PAUSED]";
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<MonitorWorker> _log;
     private readonly int _autoTicketDelayMinutes;
@@ -109,7 +110,7 @@ public class MonitorWorker : BackgroundService
                     ? (!wasDown) // comportamiento previo
                     : continuousDownSeconds >= _autoTicketDelayMinutes * 60;
 
-                if (shouldCreate)
+                if (shouldCreate && !IsAutoTicketPaused(t))
                 {
                     var title = $"Caida monitor: {t.Name}";
                     var host = !string.IsNullOrWhiteSpace(t.IpAddress) ? t.IpAddress : t.Fqdn;
@@ -120,5 +121,11 @@ public class MonitorWorker : BackgroundService
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    private static bool IsAutoTicketPaused(MonitorTarget t)
+    {
+        var notes = t.Notes ?? string.Empty;
+        return notes.IndexOf(AutoTicketPauseMarker, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }
