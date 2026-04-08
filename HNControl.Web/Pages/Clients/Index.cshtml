@@ -17,6 +17,15 @@
     }
 </div>
 
+@if (TempData["Success"] is string ok && !string.IsNullOrWhiteSpace(ok))
+{
+    <div class="alert alert-success py-2">@ok</div>
+}
+@if (TempData["Error"] is string err && !string.IsNullOrWhiteSpace(err))
+{
+    <div class="alert alert-danger py-2">@err</div>
+}
+
 @if (isLeads && Model.CanCreateLead)
 {
     <div class="card shadow-soft hn-hover mb-3">
@@ -127,14 +136,17 @@ else
                                 <a class="btn btn-sm btn-outline-secondary" asp-page="/Clients/Edit" asp-route-id="@c.Id">Editar</a>
                                 @if (c.IsTemporaryLead)
                                 {
-                                    <form method="post" asp-page-handler="ConvertLeadToFormal" class="d-inline">
-                                        <input type="hidden" name="id" value="@c.Id" />
-                                        <input type="hidden" name="name" value="@Model.Name" />
-                                        <input type="hidden" name="view" value="@Model.View" />
-                                        <input type="hidden" name="page" value="@Model.Page" />
-                                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                                        <button class="btn btn-sm btn-outline-info" type="submit">Convertir a cliente</button>
-                                    </form>
+                                    @if (Model.IsSuperAdmin)
+                                    {
+                                        <form method="post" asp-page-handler="ConvertLeadToFormal" class="d-inline">
+                                            <input type="hidden" name="id" value="@c.Id" />
+                                            <input type="hidden" name="name" value="@Model.Name" />
+                                            <input type="hidden" name="view" value="@Model.View" />
+                                            <input type="hidden" name="page" value="@Model.Page" />
+                                            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                            <button class="btn btn-sm btn-outline-info" type="submit">Convertir a cliente</button>
+                                        </form>
+                                    }
                                 }
                                 <form method="post" asp-page-handler="ToggleActive" class="d-inline">
                                     <input type="hidden" name="id" value="@c.Id" />
@@ -146,6 +158,17 @@ else
                                         @(c.IsActive ? "Desactivar" : "Activar")
                                     </button>
                                 </form>
+                                @if (Model.CanDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar este cliente?');">
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <input type="hidden" name="name" value="@Model.Name" />
+                                        <input type="hidden" name="view" value="@Model.View" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                                    </form>
+                                }
                             }
                         </div>
                     </div>

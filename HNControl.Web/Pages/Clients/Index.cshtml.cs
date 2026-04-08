@@ -29,6 +29,8 @@ public class IndexModel : PageModel
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
     public bool CanEdit { get; set; }
     public bool CanCreateLead { get; set; }
+    public bool CanDelete { get; set; }
+    public bool IsSuperAdmin { get; set; }
 
     public record Row(
         Guid Id,
@@ -56,17 +58,20 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
         var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
         if (showLeads)
         {
-            CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsEdit);
-            CanCreateLead = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
+            CanEdit = IsSuperAdmin || await _actions.HasActionAsync(User, AppActions.SalesProspectsEdit);
+            CanCreateLead = IsSuperAdmin || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
+            CanDelete = CanEdit;
         }
         else
         {
-            CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+            CanEdit = IsSuperAdmin || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
             CanCreateLead = false;
+            CanDelete = CanEdit;
         }
 
         await EnsureClientCodesAsync();
@@ -195,8 +200,8 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostConvertLeadToFormalAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
     {
-        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesProspectsConvert);
-        if (!canEdit) return Forbid();
+        // Convertir prospecto a cliente: exclusivo super admin.
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
 
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
         if (lead == null)
@@ -211,6 +216,41 @@ public class IndexModel : PageModel
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
+    {
+        var leads = string.Equals(view, "leads", StringComparison.OrdinalIgnoreCase);
+        var action = leads ? AppActions.SalesProspectsEdit : AppActions.ClientsEdit;
+        var canDelete = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, action);
+        if (!canDelete) return Forbid();
+
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
+        if (client == null)
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
+
+        // Evitar borrado si ya tiene operación histórica ligada.
+        var hasBlockingRelations =
+            await _db.ClientServiceContracts.AnyAsync(x => x.ClientId == id) ||
+            await _db.Projects.AnyAsync(x => x.ClientId == id) ||
+            await _db.Tickets.AnyAsync(x => x.ClientId == id) ||
+            await _db.ServiceOrders.AnyAsync(x => x.ClientId == id) ||
+            await _db.QuoteRequests.AnyAsync(x => x.ClientId == id) ||
+            await _db.MonitorTargets.AnyAsync(x => x.ClientId == id) ||
+            await _db.BillingInvoicePlans.AnyAsync(x => x.ClientId == id) ||
+            await _db.ClientCarrierServices.AnyAsync(x => x.ClientId == id) ||
+            await _db.ProjectDeliveryFormats.AnyAsync(x => x.ClientId == id);
+
+        if (hasBlockingRelations)
+        {
+            TempData["Error"] = "No se puede eliminar el cliente porque tiene contratos/proyectos/tickets u operación ligada.";
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
+        }
+
+        _db.Clients.Remove(client);
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "Cliente eliminado.";
+        return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
     }
 
     private async Task EnsureClientCodesAsync()

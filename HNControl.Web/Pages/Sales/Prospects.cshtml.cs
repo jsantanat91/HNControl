@@ -33,6 +33,7 @@ public class ProspectsModel : PageModel
     public bool CanCreate { get; set; }
     public bool CanEdit { get; set; }
     public bool CanConvert { get; set; }
+    public bool IsSuperAdmin { get; set; }
 
     public record Row(Guid Id, string ClientCode, string Name, string ContactName, string Email, string Phone, string Location, DateTime CreatedAt, bool IsActive);
     public List<Row> Rows { get; set; } = [];
@@ -164,7 +165,7 @@ public class ProspectsModel : PageModel
 
     public async Task<IActionResult> OnPostConvertAsync(Guid id)
     {
-        if (!await EnsurePermissionsAsync() || !CanConvert)
+        if (!await EnsurePermissionsAsync() || !IsSuperAdmin)
             return Forbid();
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
@@ -185,14 +186,16 @@ public class ProspectsModel : PageModel
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        CanViewAll = AppRoles.IsGlobalAdmin(User);
+        IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
+        CanViewAll = IsSuperAdmin;
         var canView = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesProspectsView);
         if (!canView)
             return false;
 
         CanCreate = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesProspectsCreate);
         CanEdit = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesProspectsEdit);
-        CanConvert = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesProspectsConvert);
+        // Convertir a cliente: exclusivo super admin.
+        CanConvert = IsSuperAdmin;
         return true;
     }
 
