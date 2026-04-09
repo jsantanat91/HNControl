@@ -60,7 +60,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        IsSuperAdmin = User.IsInRole(AppRoles.SuperAdmin);
+        IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
@@ -121,7 +121,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
-        if (!User.IsInRole(AppRoles.SuperAdmin))
+        if (!AppRoles.IsGlobalAdmin(User))
             return Forbid();
 
         var order = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
