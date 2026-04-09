@@ -104,7 +104,7 @@
                     <a class="btn btn-sm btn-outline-dark" href="/Ventas?quoteId=@r.Id">Ventas</a>
                     @if (canManage && r.Status != "Accepted" && r.Status != "Rejected")
                     {
-                        <a class="btn btn-sm btn-outline-secondary" href="/Ventas?quoteId=@r.Id">Editar</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-page="./Requests" asp-route-q="@r.Folio" asp-route-view="active">Editar</a>
                     }
                     @if (r.HasPdf)
                     {

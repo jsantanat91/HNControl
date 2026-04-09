@@ -319,7 +319,7 @@
 
                                 @if (det.QuoteRequestId.HasValue)
                                 {
-                                    <a class="btn btn-sm btn-outline-secondary" href="/Ventas?quoteId=@det.QuoteRequestId">Editar cotización</a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="/Ventas/Cotizaciones?q=@det.Folio">Editar cotización</a>
                                 }
 
                                 <form method="post" asp-page-handler="DeleteDeal" onsubmit="return confirm('¿Eliminar trato y cotización? Esta acción no se puede deshacer.');">
