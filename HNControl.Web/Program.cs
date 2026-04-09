@@ -193,6 +193,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Templates", "/Ventas/Plantillas");
     options.Conventions.AddPageRoute("/Sales/Prospects", "/Ventas/Prospectos");
     options.Conventions.AddPageRoute("/Sales/Calls", "/Ventas/Llamadas");
+    options.Conventions.AddPageRoute("/Sales/Feasibility", "/Ventas/Factibilidad");
     options.Conventions.AddPageRoute("/Admin/Quotes/Requests", "/Ventas/Cotizaciones");
     options.Conventions.AddPageRoute("/Sales/My", "/Ventas/MisCotizaciones");
     options.Conventions.AddPageRoute("/Projects/Sales/Index", "/Ventas/Gestion");
@@ -262,6 +263,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureClientProspectsSchemaAsync(db);
     await EnsureSalesSchemaAsync(db);
     await EnsureSalesTelephonySchemaAsync(db);
+    await EnsureSalesFeasibilitySchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await EnsureEmployeeNumbersAsync(db);
@@ -735,7 +737,10 @@ CREATE TABLE IF NOT EXISTS public."SalesSipAccounts" (
     "Id" uuid NOT NULL,
     "UserId" character varying(64) NOT NULL,
     "Host" character varying(220) NOT NULL DEFAULT '',
+    "WsUrl" character varying(300) NOT NULL DEFAULT '',
+    "SipDomain" character varying(180) NOT NULL DEFAULT '',
     "SipUser" character varying(180) NOT NULL DEFAULT '',
+    "AuthUser" character varying(180) NOT NULL DEFAULT '',
     "SipPasswordProtected" character varying(2000) NOT NULL DEFAULT '',
     "IsActive" boolean NOT NULL DEFAULT TRUE,
     "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -787,7 +792,13 @@ ALTER TABLE IF EXISTS public."SalesSipAccounts"
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "Host" character varying(220) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "WsUrl" character varying(300) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "SipDomain" character varying(180) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "SipUser" character varying(180) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesSipAccounts"
+    ADD COLUMN IF NOT EXISTS "AuthUser" character varying(180) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
     ADD COLUMN IF NOT EXISTS "SipPasswordProtected" character varying(2000) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SalesSipAccounts"
@@ -807,6 +818,53 @@ WHERE COALESCE("EmployeeUserId", '') = '' AND COALESCE("UserId", '') <> '';
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureSalesTelephonySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureSalesFeasibilitySchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."ServiceFeasibilities" (
+    "Id" uuid NOT NULL,
+    "ClientId" uuid NOT NULL,
+    "ProjectId" uuid NULL,
+    "Title" character varying(200) NOT NULL DEFAULT '',
+    "SiteAddress" character varying(400) NOT NULL DEFAULT '',
+    "Coordinates" character varying(64) NULL,
+    "SiteContactName" character varying(160) NOT NULL DEFAULT '',
+    "SiteContactPhone" character varying(60) NOT NULL DEFAULT '',
+    "Notes" character varying(2000) NOT NULL DEFAULT '',
+    "Status" integer NOT NULL DEFAULT 1,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "AcceptedAt" timestamp with time zone NULL,
+    "CreatedByUserId" character varying(64) NULL,
+    "ConvertedServiceOrderId" uuid NULL,
+    CONSTRAINT "PK_ServiceFeasibilities" PRIMARY KEY ("Id")
+);
+
+ALTER TABLE IF EXISTS public."ServiceFeasibilities"
+    ADD COLUMN IF NOT EXISTS "ProjectId" uuid NULL;
+ALTER TABLE IF EXISTS public."ServiceFeasibilities"
+    ADD COLUMN IF NOT EXISTS "Coordinates" character varying(64) NULL;
+ALTER TABLE IF EXISTS public."ServiceFeasibilities"
+    ADD COLUMN IF NOT EXISTS "AcceptedAt" timestamp with time zone NULL;
+ALTER TABLE IF EXISTS public."ServiceFeasibilities"
+    ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64) NULL;
+ALTER TABLE IF EXISTS public."ServiceFeasibilities"
+    ADD COLUMN IF NOT EXISTS "ConvertedServiceOrderId" uuid NULL;
+
+CREATE INDEX IF NOT EXISTS "IX_ServiceFeasibilities_ClientId_Status_CreatedAt"
+    ON public."ServiceFeasibilities" ("ClientId", "Status", "CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_ServiceFeasibilities_ConvertedServiceOrderId"
+    ON public."ServiceFeasibilities" ("ConvertedServiceOrderId");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureSalesFeasibilitySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
     }
 }
 

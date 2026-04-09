@@ -93,8 +93,20 @@ public class SalesSipAccount
     [MaxLength(220)]
     public string Host { get; set; } = "";
 
+    // Explicit WSS endpoint (e.g. wss://pbx.domain:7443/ws). If empty, Host fallbacks are used.
+    [MaxLength(300)]
+    public string WsUrl { get; set; } = "";
+
+    // SIP realm/domain used in From/To URI (e.g. sip.domain.com).
+    [MaxLength(180)]
+    public string SipDomain { get; set; } = "";
+
     [MaxLength(180)]
     public string SipUser { get; set; } = "";
+
+    // Optional auth user (when different from SipUser).
+    [MaxLength(180)]
+    public string AuthUser { get; set; } = "";
 
     [MaxLength(2000)]
     public string SipPasswordProtected { get; set; } = "";

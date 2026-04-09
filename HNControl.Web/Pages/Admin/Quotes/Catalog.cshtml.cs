@@ -23,6 +23,8 @@ public class CatalogModel : PageModel
     public CatalogInput Input { get; set; } = new();
     [BindProperty]
     public RuleInput Rule { get; set; } = new();
+    [BindProperty]
+    public EditCatalogInput EditInput { get; set; } = new();
 
     [TempData]
     public string? Message { get; set; }
@@ -140,6 +142,46 @@ public class CatalogModel : PageModel
         Message = items.Count > 1
             ? $"Items eliminados: {items.Count} (incluye variantes/hijos)."
             : "Item eliminado.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostUpdateAsync()
+    {
+        if (!await CanManageAsync()) return Forbid();
+        if (EditInput.Id == Guid.Empty)
+        {
+            Message = "Item inválido.";
+            return RedirectToPage();
+        }
+
+        var item = await _db.QuoteCatalogItems.FirstOrDefaultAsync(x => x.Id == EditInput.Id);
+        if (item == null)
+        {
+            Message = "No se encontró el item para editar.";
+            return RedirectToPage();
+        }
+
+        var name = (EditInput.Name ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Message = "Nombre requerido.";
+            return RedirectToPage();
+        }
+
+        item.Name = name;
+        item.Description = string.IsNullOrWhiteSpace(EditInput.Description) ? null : EditInput.Description.Trim();
+        item.ImageUrl = string.IsNullOrWhiteSpace(EditInput.ImageUrl) ? null : EditInput.ImageUrl.Trim();
+        item.ReferenceUrl = string.IsNullOrWhiteSpace(EditInput.ReferenceUrl) ? null : EditInput.ReferenceUrl.Trim();
+        item.VariantGroup = string.IsNullOrWhiteSpace(EditInput.VariantGroup) ? null : EditInput.VariantGroup.Trim();
+        item.VariantValue = string.IsNullOrWhiteSpace(EditInput.VariantValue) ? null : EditInput.VariantValue.Trim();
+        item.OfferType = EditInput.OfferType;
+        item.UnitPrice = EditInput.IsManualPrice ? null : EditInput.UnitPrice;
+        item.UnitPriceIncludesVat = EditInput.UnitPriceIncludesVat;
+        item.IsManualPrice = EditInput.IsManualPrice;
+        item.IsActive = EditInput.IsActive;
+
+        await _db.SaveChangesAsync();
+        Message = "Item actualizado.";
         return RedirectToPage();
     }
 
@@ -522,6 +564,22 @@ public class CatalogModel : PageModel
         public string TargetName { get; set; } = string.Empty;
         public string RequiredName { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+    }
+
+    public class EditCatalogInput
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public bool UnitPriceIncludesVat { get; set; }
+        public bool IsManualPrice { get; set; }
+        public QuoteOfferType OfferType { get; set; } = QuoteOfferType.Sale;
+        public string? VariantGroup { get; set; }
+        public string? VariantValue { get; set; }
+        public string? ReferenceUrl { get; set; }
+        public bool IsActive { get; set; } = true;
     }
     private async Task<bool> CanViewAsync()
     {

@@ -1,4 +1,4 @@
-锘緻using HNControl.Web.Models
+@using HNControl.Web.Models
 @using HNControl.Web.Data
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
@@ -50,10 +50,11 @@
     var canSalesProspects = CanAction(HNControl.Web.Models.AppActions.SalesProspectsView);
     var canSalesQuotes = CanAction(HNControl.Web.Models.AppActions.SalesQuotesView) || CanAction(HNControl.Web.Models.AppActions.SalesQuotesManage);
     var canSalesCalls = CanAction(HNControl.Web.Models.AppActions.SalesCallsView);
+    var canSalesFeasibility = canSalesWorkflow;
     var canSalesTemplates = CanAction(HNControl.Web.Models.AppActions.TemplatesManage);
     var canSalesCatalog = CanAction(HNControl.Web.Models.AppActions.SalesCatalogView) || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage);
     var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales) && canSalesViewOwn;
-    var hasEmployeeSalesLinks = canSalesProspects || canMyQuotes || canSalesWorkflow || canSalesGestion || canSalesDashboard || canSalesCalls || canSalesTemplates || canSalesCatalog;
+    var hasEmployeeSalesLinks = canSalesProspects || canMyQuotes || canSalesWorkflow || canSalesGestion || canSalesDashboard || canSalesCalls || canSalesFeasibility || canSalesTemplates || canSalesCatalog;
     var currentUserId = UserManager.GetUserId(User);
     var newServiceOrdersCount = 0;
     var ticketsBadgeCount = 0;
@@ -225,7 +226,7 @@
                     </a>
                     <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index">
                         <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
-                        <span class="hn-side-text">Vi谩ticos</span>
+                        <span class="hn-side-text">Vi醫icos</span>
                         @if (viaticosBadgeCount > 0)
                         {
                             <span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>
@@ -281,24 +282,28 @@
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                             <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
-                            <a class="hn-side-sublink @((path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">Cotizaci贸n</a>
+                            <a class="hn-side-sublink @((path.StartsWith("/Admin/Quotes/Requests", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Ventas/Cotizaciones", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Ventas/Cotizaciones">Cotizaci髇</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                            <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti贸n</a>
+                            <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti髇</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCallsView))
                             {
                                 <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                            }
+                            @if (canSalesFeasibility)
+                            {
+                                <a class="hn-side-sublink @Active("/Ventas/Factibilidad")" href="/Ventas/Factibilidad">Factibilidad</a>
                             }
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                 || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                             {
-                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat谩logo</a>
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat醠ogo</a>
                             }
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion">
                         <span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span>
-                        <span class="hn-side-text">Facturaci贸n</span>
+                        <span class="hn-side-text">Facturaci髇</span>
                     </a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index">
                         <span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span>
@@ -322,7 +327,7 @@
                             <span class="hn-side-text">Sistema</span>
                         </summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuraci贸n</a>
+                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuraci髇</a>
                             <a class="hn-side-sublink @(isSystemBackupPath ? "active" : "")" asp-page="/Admin/System/Backup">Respaldo DB</a>
                             <a class="hn-side-sublink @(isSecurityPath ? "active" : "")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
                         </div>
@@ -381,13 +386,17 @@
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
                                 }
+                                @if (canSalesFeasibility)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Factibilidad")" href="/Ventas/Factibilidad">Factibilidad</a>
+                                }
                                 @if (canSalesTemplates)
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
                                 }
                                 @if (canSalesCatalog)
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat谩logo</a>
+                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat醠ogo</a>
                                 }
                             </div>
                         </details>
@@ -408,7 +417,7 @@
                     {
                         <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index">
                             <span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span>
-                            <span class="hn-side-text">Mis vi谩ticos</span>
+                            <span class="hn-side-text">Mis vi醫icos</span>
                             @if (viaticosBadgeCount > 0)
                             {
                                 <span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>
@@ -531,7 +540,7 @@
                 <div class="hn-side-user">@User.Identity?.Name</div>
                 <div class="hn-side-user-sub">Sesi&oacute;n activa</div>
                 <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword">
-                    <i class="bi bi-key me-1"></i> Cambiar contrase帽a
+                    <i class="bi bi-key me-1"></i> Cambiar contrase馻
                 </a>
 
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
@@ -612,7 +621,7 @@
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">&Oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a>
-                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Vi谩ticos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a>
+                    <a class="hn-side-link @Active("/Admin/Viaticos")" asp-page="/Admin/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Vi醫icos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a>
                     <a class="hn-side-link @Active("/Admin/Performance")" asp-page="/Admin/Performance/Dashboard"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">KPI (80/20)</span></a>
                     <a class="hn-side-link @Active("/Admin/Eval360")" asp-page="/Admin/Eval360/Campaigns/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a>
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a>
@@ -638,24 +647,32 @@
                         <div class="hn-side-sub">
                             <a class="hn-side-sublink @ActiveExact("/Ventas")" href="/Ventas">Dashboard</a>
                             <a class="hn-side-sublink @((path.StartsWith("/Ventas/Prospectos", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Sales/Prospects", StringComparison.OrdinalIgnoreCase) || isProspectsBridge) ? "active" : "")" href="/Ventas/Prospectos">Prospecto</a>
-                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaci贸n</a>
+                            <a class="hn-side-sublink @Active("/Admin/Quotes/Requests")" asp-page="/Admin/Quotes/Requests">Cotizaci髇</a>
                             <a class="hn-side-sublink @Active("/Ventas/Workflow")" href="/Ventas/Workflow">Workflow</a>
-                            <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti贸n</a>
+                            <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti髇</a>
+                            @if (CanAction(HNControl.Web.Models.AppActions.SalesCallsView))
+                            {
+                                <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                            }
+                            @if (canSalesFeasibility)
+                            {
+                                <a class="hn-side-sublink @Active("/Ventas/Factibilidad")" href="/Ventas/Factibilidad">Factibilidad</a>
+                            }
                             <a class="hn-side-sublink @Active("/Ventas/Plantillas")" href="/Ventas/Plantillas">Plantillas</a>
                             @if (CanAction(HNControl.Web.Models.AppActions.SalesCatalogView)
                                 || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage))
                             {
-                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat谩logo</a>
+                                <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat醠ogo</a>
                             }
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturaci贸n</span></a>
+                    <a class="hn-side-link @Active("/Facturacion")" href="/Facturacion"><span class="hn-side-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="hn-side-text">Facturaci髇</span></a>
                     <a class="hn-side-link @Active("/Admin/Leaves")" asp-page="/Admin/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span>@if (leavesBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>}</a>
                     <a class="hn-side-link @Active("/Admin/Exams")" asp-page="/Admin/Exams/Index"><span class="hn-side-icon"><i class="bi bi-ui-checks"></i></span><span class="hn-side-text">Ex&aacute;menes</span>@if (examsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@examsBadgeCount</span>}</a>
                     <details class="hn-side-group" @(isSystemPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Admin/System")"><span class="hn-side-icon"><i class="bi bi-database"></i></span><span class="hn-side-text">Sistema</span></summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuraci贸n</a>
+                            <a class="hn-side-sublink @(isSystemConfigPath ? "active" : "")" asp-page="/Admin/System/Configuration">Configuraci髇</a>
                             <a class="hn-side-sublink @(isSystemBackupPath ? "active" : "")" asp-page="/Admin/System/Backup">Respaldo DB</a>
                             <a class="hn-side-sublink @(isSecurityPath ? "active" : "")" asp-page="/Admin/Security/Roles/Index">Seguridad</a>
                         </div>
@@ -691,11 +708,15 @@
                                 }
                                 @if (canSalesGestion)
                                 {
-                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti贸n</a>
+                                    <a class="hn-side-sublink @Active("/Ventas/Gestion")" href="/Ventas/Gestion">Gesti髇</a>
                                 }
                                 @if (canSalesCalls)
                                 {
                                     <a class="hn-side-sublink @Active("/Ventas/Llamadas")" href="/Ventas/Llamadas">Llamadas</a>
+                                }
+                                @if (canSalesFeasibility)
+                                {
+                                    <a class="hn-side-sublink @Active("/Ventas/Factibilidad")" href="/Ventas/Factibilidad">Factibilidad</a>
                                 }
                                 @if (canSalesTemplates)
                                 {
@@ -703,7 +724,7 @@
                                 }
                                 @if (canSalesCatalog)
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat谩logo</a>
+                                    <a class="hn-side-sublink @Active("/Admin/Quotes/Catalog")" asp-page="/Admin/Quotes/Catalog">Cat醠ogo</a>
                                 }
                             </div>
                         </details>
@@ -711,7 +732,7 @@
                     @if (Has(AppModules.ServiceOrders))
                     { <a class="hn-side-link @Active("/ServiceOrders")" asp-page="/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">Mis &oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a> }
                     @if (Has(AppModules.Viaticos))
-                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis vi谩ticos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a> }
+                    { <a class="hn-side-link @Active("/Viaticos")" asp-page="/Viaticos/Index"><span class="hn-side-icon"><i class="bi bi-cash-stack"></i></span><span class="hn-side-text">Mis vi醫icos</span>@if (viaticosBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@viaticosBadgeCount</span>}</a> }
                     @if (Has(AppModules.Eval360))
                     { <a class="hn-side-link @Active("/Eval360")" asp-page="/Eval360/Index"><span class="hn-side-icon"><i class="bi bi-diagram-3"></i></span><span class="hn-side-text">Evaluaci&oacute;n 360</span></a> }
                     @if (Has(AppModules.Projects))
@@ -780,7 +801,7 @@
                 <hr class="border-light opacity-25 my-3" />
 
                 <div class="hn-side-user">@User.Identity?.Name</div>
-                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword"><i class="bi bi-key me-1"></i> Cambiar contrase帽a</a>
+                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword"><i class="bi bi-key me-1"></i> Cambiar contrase馻</a>
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
                     <button class="btn btn-sm btn-danger w-100" type="submit"><i class="bi bi-box-arrow-right me-1"></i> Salir</button>
                 </form>
@@ -800,7 +821,7 @@ else
     <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 94vw;">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Nueva cotizaci贸n</h5>
+                <h5 class="modal-title">Nueva cotizaci髇</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body p-0" style="height: 84vh;">
@@ -838,6 +859,9 @@ else
     @RenderSection("Scripts", required: false)
 </body>
 </html>
+
+
+
 
 
 

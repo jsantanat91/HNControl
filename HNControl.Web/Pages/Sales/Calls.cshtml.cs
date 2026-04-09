@@ -82,10 +82,13 @@ public class CallsModel : PageModel
             return Forbid();
 
         Sip.Host = (Sip.Host ?? "").Trim();
+        Sip.WsUrl = (Sip.WsUrl ?? "").Trim();
+        Sip.Domain = (Sip.Domain ?? "").Trim();
         Sip.User = (Sip.User ?? "").Trim();
+        Sip.AuthUser = (Sip.AuthUser ?? "").Trim();
 
-        if (string.IsNullOrWhiteSpace(Sip.Host))
-            ModelState.AddModelError("Sip.Host", "Host es requerido.");
+        if (string.IsNullOrWhiteSpace(Sip.Host) && string.IsNullOrWhiteSpace(Sip.WsUrl))
+            ModelState.AddModelError("Sip.Host", "Host o WSS URL es requerido.");
         if (string.IsNullOrWhiteSpace(Sip.User))
             ModelState.AddModelError("Sip.User", "Usuario SIP es requerido.");
 
@@ -106,7 +109,10 @@ public class CallsModel : PageModel
             {
                 UserId = userId,
                 Host = Sip.Host,
+                WsUrl = Sip.WsUrl,
+                SipDomain = Sip.Domain,
                 SipUser = Sip.User,
+                AuthUser = Sip.AuthUser,
                 SipPasswordProtected = string.IsNullOrWhiteSpace(Sip.Password) ? "" : _protector.Protect(Sip.Password),
                 IsActive = true,
                 UpdatedAt = DateTime.UtcNow
@@ -116,7 +122,10 @@ public class CallsModel : PageModel
         else
         {
             account.Host = Sip.Host;
+            account.WsUrl = Sip.WsUrl;
+            account.SipDomain = Sip.Domain;
             account.SipUser = Sip.User;
+            account.AuthUser = Sip.AuthUser;
             account.IsActive = true;
             account.UpdatedAt = DateTime.UtcNow;
             if (!string.IsNullOrWhiteSpace(Sip.Password))
@@ -149,7 +158,10 @@ public class CallsModel : PageModel
         {
             ok = true,
             host = account.Host ?? "",
+            wsUrl = account.WsUrl ?? "",
+            domain = account.SipDomain ?? "",
             user = account.SipUser ?? "",
+            authUser = account.AuthUser ?? "",
             password
         });
     }
@@ -255,7 +267,10 @@ public class CallsModel : PageModel
         if (account != null)
         {
             Sip.Host = account.Host;
+            Sip.WsUrl = account.WsUrl;
+            Sip.Domain = account.SipDomain;
             Sip.User = account.SipUser;
+            Sip.AuthUser = account.AuthUser;
             HasStoredPassword = !string.IsNullOrWhiteSpace(account.SipPasswordProtected);
         }
 
@@ -328,8 +343,17 @@ public class CallsModel : PageModel
         [Required, MaxLength(220)]
         public string Host { get; set; } = "";
 
+        [MaxLength(300)]
+        public string WsUrl { get; set; } = "";
+
+        [MaxLength(180)]
+        public string Domain { get; set; } = "";
+
         [Required, MaxLength(180)]
         public string User { get; set; } = "";
+
+        [MaxLength(180)]
+        public string AuthUser { get; set; } = "";
 
         [MaxLength(180)]
         public string Password { get; set; } = "";

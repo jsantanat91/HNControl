@@ -101,6 +101,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Eval360Comment> Eval360Comments => Set<Eval360Comment>();
 
     public DbSet<ServiceOrder> ServiceOrders => Set<ServiceOrder>();
+    public DbSet<ServiceFeasibility> ServiceFeasibilities => Set<ServiceFeasibility>();
     public DbSet<ServiceOrderWorkItem> ServiceOrderWorkItems => Set<ServiceOrderWorkItem>();
     public DbSet<ServiceOrderChecklistItem> ServiceOrderChecklistItems => Set<ServiceOrderChecklistItem>();
     public DbSet<ServiceOrderEvidence> ServiceOrderEvidences => Set<ServiceOrderEvidence>();
@@ -236,7 +237,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
             e.Property(x => x.UserId).HasMaxLength(64);
             e.Property(x => x.Host).HasMaxLength(220);
+            e.Property(x => x.WsUrl).HasMaxLength(300);
+            e.Property(x => x.SipDomain).HasMaxLength(180);
             e.Property(x => x.SipUser).HasMaxLength(180);
+            e.Property(x => x.AuthUser).HasMaxLength(180);
             e.Property(x => x.SipPasswordProtected).HasMaxLength(2000);
             e.HasIndex(x => x.UserId).IsUnique();
             e.HasOne(x => x.Employee)
@@ -259,6 +263,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .HasForeignKey(x => x.UserId)
                 .HasPrincipalKey(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ServiceFeasibility>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.SiteAddress).HasMaxLength(400);
+            e.Property(x => x.Coordinates).HasMaxLength(64);
+            e.Property(x => x.SiteContactName).HasMaxLength(160);
+            e.Property(x => x.SiteContactPhone).HasMaxLength(60);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.HasIndex(x => new { x.ClientId, x.Status, x.CreatedAt });
+            e.HasIndex(x => x.ConvertedServiceOrderId);
         });
 
         b.Entity<ViaticWeek>(w =>

@@ -155,7 +155,9 @@ public class CreateModel : PageModel
 
         await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
 
-        return RedirectToPage("/Projects/Details", new { id = p.Id });
+        // Evita caídas por rutas/handlers de detalle en despliegues con esquema mixto:
+        // al crear, volvemos al listado general donde el proyecto ya aparece.
+        return RedirectToPage("/Projects/Index");
     }
 
     public async Task<IActionResult> OnGetContractsAsync(Guid clientId)

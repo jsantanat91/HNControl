@@ -40,7 +40,7 @@
                     <dd class="col-8">@Model.Item.Type</dd>
 
                     <dt class="col-4 text-muted">Fechas</dt>
-                    <dd class="col-8">@Model.Item.StartDate:yyyy-MM-dd → @Model.Item.EndDate:yyyy-MM-dd</dd>
+                    <dd class="col-8">@(Model.Item.StartDate.ToString("dd/MM/yyyy")) - @(Model.Item.EndDate.ToString("dd/MM/yyyy"))</dd>
 
                     <dt class="col-4 text-muted">Días</dt>
                     <dd class="col-8 fw-semibold">@Model.Item.TotalDays</dd>

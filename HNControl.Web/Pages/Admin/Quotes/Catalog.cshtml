@@ -50,7 +50,11 @@
         unitPrice = x.UnitPrice,
         unitPriceIncludesVat = x.UnitPriceIncludesVat,
         isManualPrice = x.IsManualPrice,
-        isActive = x.IsActive
+        isActive = x.IsActive,
+        imageUrl = x.ImageUrl,
+        referenceUrl = x.ReferenceUrl,
+        variantGroup = x.VariantGroup,
+        variantValue = x.VariantValue
     }));
 }
 
@@ -95,12 +99,20 @@
                                                     data-category-id="@cat.Id"
                                                     data-category-name="@cat.Name"
                                                     data-category-segment="@cat.Segment">Abrir</button>
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    type="button"
+                                                    data-item-edit-open="true"
+                                                    data-item-id="@cat.Id">Editar</button>
                                             <button class="btn btn-sm btn-primary"
                                                     type="button"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#nuevoItemCatalogoModal"
                                                     data-parent-prefill="@cat.Id"
                                                     data-segment-prefill="@cat.Segment">Nuevo item</button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    type="button"
+                                                    data-item-delete="true"
+                                                    data-item-id="@cat.Id">Eliminar</button>
                                         </div>
                                     </div>
                                 </div>
@@ -418,6 +430,80 @@
     </div>
 </div>
 
+<form method="post" asp-page-handler="Delete" id="catalogDeleteForm" class="d-none">
+    <input type="hidden" name="id" id="catalogDeleteId" />
+</form>
+
+<div class="modal fade" id="editCatalogItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="Update" id="editCatalogItemForm" class="row g-3">
+                    <input type="hidden" asp-for="EditInput.Id" id="editItemId" />
+                    <div class="col-md-8">
+                        <label class="form-label">Nombre</label>
+                        <input class="form-control" asp-for="EditInput.Name" id="editItemName" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo comercial</label>
+                        <select class="form-select" asp-for="EditInput.OfferType" id="editItemOfferType">
+                            <option value="Sale">Venta</option>
+                            <option value="MonthlyRent">Renta mensual</option>
+                            <option value="Lease">Arrendamiento</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripcion</label>
+                        <input class="form-control" asp-for="EditInput.Description" id="editItemDescription" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Imagen (URL)</label>
+                        <input class="form-control" asp-for="EditInput.ImageUrl" id="editItemImageUrl" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Referencia (URL)</label>
+                        <input class="form-control" asp-for="EditInput.ReferenceUrl" id="editItemReferenceUrl" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Costo unitario</label>
+                        <input class="form-control" asp-for="EditInput.UnitPrice" id="editItemUnitPrice" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Atributo variante</label>
+                        <input class="form-control" asp-for="EditInput.VariantGroup" id="editItemVariantGroup" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Opcion variante</label>
+                        <input class="form-control" asp-for="EditInput.VariantValue" id="editItemVariantValue" />
+                    </div>
+                    <div class="col-12 d-flex gap-3 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="EditInput.UnitPriceIncludesVat" id="editItemUnitPriceIncludesVat" />
+                            <label class="form-check-label" asp-for="EditInput.UnitPriceIncludesVat">Costo con IVA</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="EditInput.IsManualPrice" id="editItemIsManualPrice" />
+                            <label class="form-check-label" asp-for="EditInput.IsManualPrice">Costo manual</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="EditInput.IsActive" id="editItemIsActive" />
+                            <label class="form-check-label" asp-for="EditInput.IsActive">Activo</label>
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="nuevoItemCatalogoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -580,10 +666,55 @@
     const createModalEl = document.getElementById('nuevoItemCatalogoModal');
     const createParent = document.getElementById('modalParentSelect');
     const createNode = document.getElementById('modalNodeType');
+    const deleteForm = document.getElementById('catalogDeleteForm');
+    const deleteId = document.getElementById('catalogDeleteId');
+    const editModalEl = document.getElementById('editCatalogItemModal');
+    const editItemId = document.getElementById('editItemId');
+    const editItemName = document.getElementById('editItemName');
+    const editItemDescription = document.getElementById('editItemDescription');
+    const editItemOfferType = document.getElementById('editItemOfferType');
+    const editItemUnitPrice = document.getElementById('editItemUnitPrice');
+    const editItemUnitPriceIncludesVat = document.getElementById('editItemUnitPriceIncludesVat');
+    const editItemIsManualPrice = document.getElementById('editItemIsManualPrice');
+    const editItemIsActive = document.getElementById('editItemIsActive');
+    const editItemImageUrl = document.getElementById('editItemImageUrl');
+    const editItemReferenceUrl = document.getElementById('editItemReferenceUrl');
+    const editItemVariantGroup = document.getElementById('editItemVariantGroup');
+    const editItemVariantValue = document.getElementById('editItemVariantValue');
 
     if (!detailModalEl || !detailBody || !detailTitle || typeof bootstrap === 'undefined') return;
     const detailModal = new bootstrap.Modal(detailModalEl);
     const createModal = createModalEl ? new bootstrap.Modal(createModalEl) : null;
+    const editModal = editModalEl ? new bootstrap.Modal(editModalEl) : null;
+
+    function findItem(id){
+        return catalog.find(x => String(x.id) === String(id));
+    }
+
+    function openEdit(itemId){
+        const row = findItem(itemId);
+        if (!row || !editModal) return;
+        if (editItemId) editItemId.value = row.id || '';
+        if (editItemName) editItemName.value = row.name || '';
+        if (editItemDescription) editItemDescription.value = row.description || '';
+        if (editItemOfferType) editItemOfferType.value = row.offerType || 'Sale';
+        if (editItemUnitPrice) editItemUnitPrice.value = row.unitPrice ?? '';
+        if (editItemUnitPriceIncludesVat) editItemUnitPriceIncludesVat.checked = !!row.unitPriceIncludesVat;
+        if (editItemIsManualPrice) editItemIsManualPrice.checked = !!row.isManualPrice;
+        if (editItemIsActive) editItemIsActive.checked = !!row.isActive;
+        if (editItemImageUrl) editItemImageUrl.value = row.imageUrl || '';
+        if (editItemReferenceUrl) editItemReferenceUrl.value = row.referenceUrl || '';
+        if (editItemVariantGroup) editItemVariantGroup.value = row.variantGroup || '';
+        if (editItemVariantValue) editItemVariantValue.value = row.variantValue || '';
+        editModal.show();
+    }
+
+    function deleteItem(itemId){
+        if (!deleteForm || !deleteId || !itemId) return;
+        if (!confirm('¿Eliminar este item y sus hijos/variantes?')) return;
+        deleteId.value = itemId;
+        deleteForm.submit();
+    }
 
     function openCreate(parentId){
         if (!createModal || !createParent) return;
@@ -598,7 +729,7 @@
         const serviceIds = new Set(services.map(s => s.id));
         const subs = catalog.filter(x => x.nodeType === 'Subproduct' && x.segment === categorySegment && x.parentId && serviceIds.has(x.parentId));
 
-        let html = `<div class="mb-3"><div class="fw-semibold">${categoryName}</div><div class="small text-muted">Servicios: ${services.length} · Subservicios: ${subs.length}</div></div>`;
+        let html = `<div class="mb-3 d-flex justify-content-between align-items-start gap-2"><div><div class="fw-semibold">${categoryName}</div><div class="small text-muted">Servicios: ${services.length} · Subservicios: ${subs.length}</div></div><div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-item-edit-open="true" data-item-id="${categoryId}">Editar categoría</button><button type="button" class="btn btn-sm btn-outline-danger" data-item-delete="true" data-item-id="${categoryId}">Eliminar categoría</button></div></div>`;
 
         if (services.length === 0 && subs.length === 0) {
             html += `<div class="text-muted">Sin servicios registrados en esta categoria.</div>`;
@@ -606,15 +737,15 @@
             html += `<div class="row g-3">`;
             services.forEach(s => {
                 const price = s.isManualPrice ? 'Manual' : (s.unitPrice == null ? '-' : `$${Number(s.unitPrice).toFixed(2)} ${(s.unitPriceIncludesVat ? '(IVA incl.)' : '+ IVA')}`);
-                html += `<div class="col-12 col-md-6"><div class="border rounded p-2 h-100"><div class="fw-semibold">${s.name}</div><div class="small text-muted">${s.description || 'Sin descripcion'}</div><div class="small mt-1">Tipo: ${s.offerType} · Costo: ${price}</div></div></div>`;
+                html += `<div class="col-12 col-md-6"><div class="border rounded p-2 h-100"><div class="fw-semibold">${s.name}</div><div class="small text-muted">${s.description || 'Sin descripcion'}</div><div class="small mt-1">Tipo: ${s.offerType} · Costo: ${price}</div><div class="mt-2 d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-item-edit-open="true" data-item-id="${s.id}">Editar</button><button type="button" class="btn btn-sm btn-outline-danger" data-item-delete="true" data-item-id="${s.id}">Eliminar</button></div></div></div>`;
             });
             html += `</div>`;
 
             if (subs.length > 0) {
-                html += `<hr /><div class="fw-semibold mb-2">Subservicios</div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Nombre</th><th>Padre</th><th>Costo</th><th>Estado</th></tr></thead><tbody>`;
+                html += `<hr /><div class="fw-semibold mb-2">Subservicios</div><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Nombre</th><th>Padre</th><th>Costo</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody>`;
                 subs.forEach(s => {
                     const price = s.isManualPrice ? 'Manual' : (s.unitPrice == null ? '-' : `$${Number(s.unitPrice).toFixed(2)}`);
-                    html += `<tr><td>${s.name}</td><td>${s.parentName || '-'}</td><td>${price}</td><td>${s.isActive ? 'Activo' : 'Inactivo'}</td></tr>`;
+                    html += `<tr><td>${s.name}</td><td>${s.parentName || '-'}</td><td>${price}</td><td>${s.isActive ? 'Activo' : 'Inactivo'}</td><td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-item-edit-open="true" data-item-id="${s.id}">Editar</button> <button type="button" class="btn btn-sm btn-outline-danger" data-item-delete="true" data-item-id="${s.id}">Eliminar</button></td></tr>`;
                 });
                 html += `</tbody></table></div>`;
             }
@@ -648,6 +779,30 @@
             const modalSegment = document.getElementById('modalSegment');
             if (modalSegment && seg) modalSegment.value = seg;
         });
+    });
+
+    document.querySelectorAll('[data-item-edit-open="true"]').forEach(btn => {
+        btn.addEventListener('click', function(){
+            openEdit(this.getAttribute('data-item-id') || '');
+        });
+    });
+
+    document.querySelectorAll('[data-item-delete="true"]').forEach(btn => {
+        btn.addEventListener('click', function(){
+            deleteItem(this.getAttribute('data-item-id') || '');
+        });
+    });
+
+    detailBody.addEventListener('click', function(e){
+        const editBtn = e.target.closest('[data-item-edit-open="true"]');
+        if (editBtn) {
+            openEdit(editBtn.getAttribute('data-item-id') || '');
+            return;
+        }
+        const delBtn = e.target.closest('[data-item-delete="true"]');
+        if (delBtn) {
+            deleteItem(delBtn.getAttribute('data-item-id') || '');
+        }
     });
 
     const newParentCategoryBtn = document.getElementById('newParentCategoryBtn');

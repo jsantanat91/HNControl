@@ -7,6 +7,7 @@
     var canWorkflow = canDashboard;
     var canGestion = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesManage);
     var canCalls = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCallsView);
+    var canFeasibility = canDashboard;
     var canProspects = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesProspectsView);
     var canQuotes = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesView) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage);
     var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && canDashboard;
@@ -53,6 +54,10 @@
         @if (canCalls)
         {
             <a href="/Ventas/Llamadas" class="@Btn("/ventas/llamadas","Llamadas","danger")">Llamadas</a>
+        }
+        @if (canFeasibility)
+        {
+            <a href="/Ventas/Factibilidad" class="@Btn("/ventas/factibilidad","Factibilidad","warning")">Factibilidad</a>
         }
         @if (canTemplates)
         {
