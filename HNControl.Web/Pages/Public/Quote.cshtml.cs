@@ -297,6 +297,10 @@ public class QuoteModel : PageModel
                 var desc = string.IsNullOrWhiteSpace(m.Description)
                     ? $"{(string.IsNullOrWhiteSpace(m.ServiceName) ? "Concepto libre" : m.ServiceName.Trim())} ({(string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim())})"
                     : m.Description.Trim();
+                var hasUnitPrice = m.UnitPrice.HasValue && m.UnitPrice.Value > 0m;
+                var baseAmount = hasUnitPrice ? Math.Round(m.UnitPrice!.Value * qty, 2) : (decimal?)null;
+                var vatAmount = hasUnitPrice ? Math.Round(baseAmount!.Value * 0.16m, 2) : (decimal?)null;
+                var lineTotal = hasUnitPrice ? Math.Round(baseAmount!.Value + vatAmount!.Value, 2) : (decimal?)null;
                 request.Lines.Add(new QuoteRequestLine
                 {
                     CategoryName = string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim(),
@@ -307,12 +311,12 @@ public class QuoteModel : PageModel
                     UnitPrice = m.UnitPrice,
                     PriceIncludesVat = false,
                     VatRate = 0.16m,
-                    IsManualPrice = true,
+                    IsManualPrice = !hasUnitPrice,
                     OfferType = QuoteOfferType.Sale,
                     ItemImageUrl = null,
-                    BaseAmount = null,
-                    VatAmount = null,
-                    LineTotal = null
+                    BaseAmount = baseAmount,
+                    VatAmount = vatAmount,
+                    LineTotal = lineTotal
                     ,
                     Recurrence = NormalizeRecurrence(m.Recurrence)
                 });

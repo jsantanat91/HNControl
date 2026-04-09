@@ -240,6 +240,27 @@ public class IndexModel : PageModel
         return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
     }
 
+    public async Task<IActionResult> OnPostRevertToLeadAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
+    {
+        // Regresar cliente a prospecto: exclusivo super admin (proceso manual).
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
+        if (client == null)
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
+        if (client.IsTemporaryLead)
+            return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
+
+        client.IsTemporaryLead = true;
+        client.IsActive = true;
+        client.ConvertedToFormalAt = null;
+        client.ClientCode = await NextLeadCodeAsync();
+
+        await _db.SaveChangesAsync();
+        TempData["Success"] = "Cliente regresado a prospecto.";
+        return RedirectToPage("/Clients/Index", new { Name = name, View = "normal", Page = page, PageSize = pageSize });
+    }
+
     public async Task<IActionResult> OnPostDeleteAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)
     {
         var leads = string.Equals(view, "leads", StringComparison.OrdinalIgnoreCase);

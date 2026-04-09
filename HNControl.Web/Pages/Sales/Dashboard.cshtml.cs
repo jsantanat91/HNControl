@@ -60,9 +60,12 @@ public class DashboardModel : PageModel
         var userId = _userMgr.GetUserId(User);
         if (string.IsNullOrWhiteSpace(userId)) return Forbid();
 
+        var canDashboard = AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesDashboardView);
+        if (!canDashboard) return Forbid();
+
         var hasViewAll = AppRoles.IsGlobalAdmin(User)
-            || await _actions.HasActionAsync(User, AppActions.SalesViewAll)
-            || await _actions.HasActionAsync(User, AppActions.SalesManage);
+            || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!hasViewOwn) return Forbid();
 

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -48,6 +49,8 @@ public class FeasibilityModel : PageModel
         public string SiteAddress { get; set; } = "";
         [MaxLength(64)]
         public string? Coordinates { get; set; }
+        [MaxLength(4000)]
+        public string? MultiSites { get; set; }
         [Required, MaxLength(160)]
         public string SiteContactName { get; set; } = "";
         [Required, MaxLength(60)]
@@ -63,6 +66,7 @@ public class FeasibilityModel : PageModel
         string Title,
         string SiteAddress,
         string Coordinates,
+        string MultiSites,
         string SiteContactName,
         string SiteContactPhone,
         string Notes,
@@ -108,7 +112,7 @@ public class FeasibilityModel : PageModel
             Coordinates = string.IsNullOrWhiteSpace(Input.Coordinates) ? null : Input.Coordinates.Trim(),
             SiteContactName = (Input.SiteContactName ?? "").Trim(),
             SiteContactPhone = (Input.SiteContactPhone ?? "").Trim(),
-            Notes = (Input.Notes ?? "").Trim(),
+            Notes = BuildNotesWithSites((Input.Notes ?? "").Trim(), Input.MultiSites, Request.Form.Files["SitesExcel"]),
             Status = ServiceFeasibilityStatus.Open,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -225,13 +229,11 @@ public class FeasibilityModel : PageModel
 
     private async Task<bool> ResolvePermissionsAsync()
     {
-        var canViewAll = AppRoles.IsGlobalAdmin(User)
-            || await _actions.HasActionAsync(User, AppActions.SalesViewAll)
-            || await _actions.HasActionAsync(User, AppActions.SalesManage);
-        var canViewOwn = canViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
-        CanManage = canViewAll || await _actions.HasActionAsync(User, AppActions.SalesManage);
-        CanViewAll = canViewAll;
-        return canViewOwn;
+        var canView = AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesFeasibilityView);
+        CanViewAll = AppRoles.IsGlobalAdmin(User);
+        CanManage = canView;
+        return canView;
     }
 
     private async Task LoadAsync()
@@ -265,6 +267,7 @@ public class FeasibilityModel : PageModel
                 x.Title,
                 x.SiteAddress,
                 x.Coordinates ?? "-",
+                ExtractMultiSites(x.Notes),
                 x.SiteContactName,
                 x.SiteContactPhone,
                 x.Notes,
@@ -273,5 +276,71 @@ public class FeasibilityModel : PageModel
                 x.ConvertedServiceOrderId))
             .ToListAsync();
     }
-}
 
+    private static string BuildNotesWithSites(string baseNotes, string? multiSites, IFormFile? excelFile)
+    {
+        var chunks = new List<string>();
+        if (!string.IsNullOrWhiteSpace(baseNotes))
+            chunks.Add(baseNotes.Trim());
+
+        var manualRows = (multiSites ?? "")
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Take(30)
+            .ToList();
+        if (manualRows.Count > 0)
+            chunks.Add("[SITIOS]\n" + string.Join('\n', manualRows));
+
+        if (excelFile != null && excelFile.Length > 0)
+        {
+            try
+            {
+                using var stream = excelFile.OpenReadStream();
+                using var wb = new XLWorkbook(stream);
+                var ws = wb.Worksheets.FirstOrDefault();
+                if (ws != null)
+                {
+                    var excelRows = new List<string>();
+                    foreach (var row in ws.RowsUsed().Skip(1).Take(50))
+                    {
+                        var address = row.Cell(1).GetString().Trim();
+                        var coords = row.Cell(2).GetString().Trim();
+                        var mb = row.Cell(3).GetString().Trim();
+                        if (string.IsNullOrWhiteSpace(address) && string.IsNullOrWhiteSpace(coords) && string.IsNullOrWhiteSpace(mb))
+                            continue;
+                        excelRows.Add($"{address} | {coords} | {mb} MB");
+                    }
+
+                    if (excelRows.Count > 0)
+                        chunks.Add("[EXCEL SITIOS]\n" + string.Join('\n', excelRows));
+                }
+            }
+            catch
+            {
+                chunks.Add("[EXCEL SITIOS]\nNo se pudo leer el archivo cargado.");
+            }
+        }
+
+        var text = string.Join("\n\n", chunks);
+        return text.Length <= 2000 ? text : text[..2000];
+    }
+
+    private static string ExtractMultiSites(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "-";
+
+        var sitIdx = notes.IndexOf("[SITIOS]", StringComparison.OrdinalIgnoreCase);
+        var excelIdx = notes.IndexOf("[EXCEL SITIOS]", StringComparison.OrdinalIgnoreCase);
+        var idx = sitIdx >= 0 ? sitIdx : excelIdx;
+        if (idx < 0) return "-";
+
+        var block = notes[idx..];
+        var lines = block
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => !l.StartsWith("[", StringComparison.OrdinalIgnoreCase))
+            .Take(4)
+            .ToList();
+
+        return lines.Count == 0 ? "-" : string.Join(" · ", lines);
+    }
+}

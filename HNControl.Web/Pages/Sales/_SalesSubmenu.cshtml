@@ -3,11 +3,10 @@
     var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
     var isQuotesActive = path.StartsWith("/admin/quotes/requests") || path.StartsWith("/ventas/cotizaciones");
     var isCatalogActive = path.StartsWith("/admin/quotes/catalog");
-    var canDashboard = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewOwn) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesViewAll);
+    var canDashboard = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesDashboardView);
     var canWorkflow = canDashboard;
     var canGestion = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesManage);
     var canCalls = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCallsView);
-    var canFeasibility = canDashboard;
     var canProspects = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesProspectsView);
     var canQuotes = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesView) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage);
     var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && canDashboard;
@@ -37,7 +36,7 @@
         }
         @if (HNControl.Web.Models.AppRoles.IsGlobalAdmin(User) && canQuotes)
         {
-            <a href="/Ventas/Cotizaciones" class="btn btn-sm px-3 py-2 fw-semibold @(isQuotesActive ? "btn-info text-white" : "btn-outline-info")">Cotización</a>
+            <a href="/Ventas/Cotizaciones" class="btn btn-sm px-3 py-2 fw-semibold @(isQuotesActive ? "btn-info text-white" : "btn-outline-info")">Cotizaci&oacute;n</a>
         }
         @if (canMyQuotes)
         {
@@ -49,15 +48,11 @@
         }
         @if (canGestion)
         {
-            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gestion</a>
+            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gesti&oacute;n</a>
         }
         @if (canCalls)
         {
             <a href="/Ventas/Llamadas" class="@Btn("/ventas/llamadas","Llamadas","danger")">Llamadas</a>
-        }
-        @if (canFeasibility)
-        {
-            <a href="/Ventas/Factibilidad" class="@Btn("/ventas/factibilidad","Factibilidad","warning")">Factibilidad</a>
         }
         @if (canTemplates)
         {
@@ -65,7 +60,8 @@
         }
         @if (canCatalog)
         {
-            <a href="/Admin/Quotes/Catalog" class="btn btn-sm px-3 py-2 fw-semibold @(isCatalogActive ? "btn-dark text-white" : "btn-outline-dark")">Catálogo</a>
+            <a href="/Admin/Quotes/Catalog" class="btn btn-sm px-3 py-2 fw-semibold @(isCatalogActive ? "btn-dark text-white" : "btn-outline-dark")">Cat&aacute;logo</a>
         }
     </div>
 </div>
+

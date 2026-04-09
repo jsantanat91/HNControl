@@ -2,7 +2,8 @@
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Projects.Sales.IndexModel
 @{
-    Layout = "_Layout";
+    var isEmbed = string.Equals(Request.Query["embed"], "1", StringComparison.OrdinalIgnoreCase);
+    Layout = isEmbed ? "_AuthLayout" : "_Layout";
     ViewData["Title"] = "Ventas · Gestión";
 }
 
@@ -12,12 +13,18 @@
         <div class="text-muted small">Alta de vendedor, creación de oportunidades y seguimiento comercial.</div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        @if (Model.CanManage)
+        @if (Model.CanManageSellers)
         {
             <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAltaVendedor">+ Alta de vendedor</button>
+        }
+        @if (Model.CanManage)
+        {
             <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalCrearOportunidad">+ Crear oportunidad</button>
         }
-        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalVendedoresActivos">Vendedores</button>
+        @if (Model.CanManageSellers)
+        {
+            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalVendedoresActivos">Vendedores</button>
+        }
     </div>
 </div>
 
@@ -85,7 +92,7 @@
                                 <span class="badge text-bg-info">Comisión base: @((s.DefaultCommissionPercent * 100m).ToString("0.##"))%</span>
                                 <span class="badge @(s.IsActive ? "text-bg-success" : "text-bg-secondary")">@(s.IsActive ? "Activo" : "Inactivo")</span>
                             </div>
-                            @if (Model.CanManage)
+                            @if (Model.CanManageSellers)
                             {
                                 <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
                                     <form method="post" asp-page-handler="UpdateSeller" class="d-flex gap-2 align-items-center">
@@ -195,7 +202,7 @@
     </nav>
 }
 
-@if (Model.CanManage)
+@if (Model.CanManageSellers)
 {
     <div class="modal fade" id="modalAltaVendedor" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -224,6 +231,9 @@
         </div>
     </div>
 
+}
+@if (Model.CanManage)
+{
     <div class="modal fade" id="modalCrearOportunidad" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
@@ -267,6 +277,8 @@
     </div>
 }
 
+@if (Model.CanManageSellers)
+{
 <div class="modal fade" id="modalVendedoresActivos" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -297,4 +309,28 @@
         </div>
     </div>
 </div>
+}
+
+@if (isEmbed)
+{
+    <style>
+        .hn-auth-wrap { background: #f3f6ff !important; }
+        .hn-auth-wrap .container.py-4 > * { display: none; }
+        .hn-auth-wrap .container.py-4 > #modalCrearOportunidad { display: block !important; }
+        #modalCrearOportunidad { position: static; }
+        #modalCrearOportunidad .modal-dialog { margin: 0; max-width: 100%; }
+        #modalCrearOportunidad .modal-content { border: 0; box-shadow: none; }
+        #modalCrearOportunidad .btn-close { display: none; }
+    </style>
+    <script>
+        window.addEventListener('load', function () {
+            const modalEl = document.getElementById('modalCrearOportunidad');
+            if (!modalEl) return;
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+            modalEl.removeAttribute('aria-hidden');
+            document.body.classList.remove('modal-open');
+        });
+    </script>
+}
 

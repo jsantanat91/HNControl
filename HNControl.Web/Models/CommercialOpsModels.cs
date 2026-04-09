@@ -112,6 +112,9 @@ public static class AppActions
     public const string SalesViewOwn = "Sales.ViewOwn";
     public const string SalesViewAll = "Sales.ViewAll";
     public const string SalesManage = "Sales.Manage";
+    public const string SalesDashboardView = "Sales.Dashboard.View";
+    public const string SalesFeasibilityView = "Sales.Feasibility.View";
+    public const string SalesFeasibilityManage = "Sales.Feasibility.Manage";
     public const string SalesWorkflowMove = "Sales.Workflow.Move";
     public const string SalesWorkflowAssign = "Sales.Workflow.Assign";
     public const string BillingViewOwn = "Billing.ViewOwn";
@@ -159,6 +162,9 @@ public static class AppActions
         SalesViewOwn,
         SalesViewAll,
         SalesManage,
+        SalesDashboardView,
+        SalesFeasibilityView,
+        SalesFeasibilityManage,
         SalesWorkflowMove,
         SalesWorkflowAssign,
         BillingViewOwn,
@@ -192,6 +198,8 @@ public static class AppActions
         InventoryView,
         TicketsView,
         SalesViewOwn,
+        SalesDashboardView,
+        SalesFeasibilityView,
         SalesWorkflowMove,
         SalesCallsView,
         SalesCallsUse,
@@ -206,7 +214,10 @@ public static class AppActions
         [ProjectsInvestmentsEdit] = [ProjectsInvestmentsView],
         [ProjectsResellersEdit] = [ProjectsResellersView],
         [ProjectsDeliveryEdit] = [ProjectsDeliveryView],
-        [SalesManage] = [SalesViewAll],
+        [SalesManage] = [SalesViewOwn],
+        [SalesDashboardView] = [SalesViewOwn],
+        [SalesFeasibilityView] = [SalesViewOwn],
+        [SalesFeasibilityManage] = [SalesFeasibilityView],
         [SalesWorkflowMove] = [SalesViewOwn],
         [SalesWorkflowAssign] = [SalesWorkflowMove, SalesViewOwn],
         [SalesQuotesManage] = [SalesQuotesView],
@@ -280,6 +291,9 @@ public static class AppActions
         SalesViewOwn => "Ventas: ver solo lo mio",
         SalesViewAll => "Ventas: ver todo",
         SalesManage => "Ventas: gestion comercial",
+        SalesDashboardView => "Ventas/Dashboard: ver",
+        SalesFeasibilityView => "Factibilidad: ver",
+        SalesFeasibilityManage => "Factibilidad: gestionar",
         SalesWorkflowMove => "Workflow: mover etapas",
         SalesWorkflowAssign => "Workflow: asignar propietario",
         BillingViewOwn => "Facturacion: ver propia",

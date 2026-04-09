@@ -46,6 +46,7 @@
                             <div class="small mt-2"><b>Dirección:</b> @x.SiteAddress</div>
                             <div class="small"><b>Coordenadas:</b> @x.Coordinates</div>
                             <div class="small"><b>Contacto sitio:</b> @x.SiteContactName · @x.SiteContactPhone</div>
+                            <div class="small"><b>Sitios/Capacidad:</b> @x.MultiSites</div>
                             <div class="small text-muted mt-2">Alta: @x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                             @if (!string.IsNullOrWhiteSpace(x.Notes))
                             {
@@ -91,7 +92,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <form method="post" asp-page-handler="Create" class="row g-3" id="feasibilityForm">
+                <form method="post" asp-page-handler="Create" class="row g-3" id="feasibilityForm" enctype="multipart/form-data">
                     <div class="col-md-7">
                         <label class="form-label">Título</label>
                         <input class="form-control" asp-for="Input.Title" placeholder="Ej: Factibilidad FO - Plaza Norte" />
@@ -109,6 +110,16 @@
                     <div class="col-md-6">
                         <label class="form-label">Coordenadas</label>
                         <input class="form-control" asp-for="Input.Coordinates" placeholder="19.4326,-99.1332" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Sitios múltiples (coordenadas/capacidad MB)</label>
+                        <textarea class="form-control" asp-for="Input.MultiSites" rows="3" placeholder="Sitio A | 19.4326,-99.1332 | 200 MB&#10;Sitio B | 19.5200,-99.2300 | 100 MB"></textarea>
+                        <div class="text-muted small mt-1">Formato por línea: Dirección | Coordenadas | Capacidad MB.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Cargar Excel de sitios (opcional)</label>
+                        <input class="form-control" type="file" name="SitesExcel" accept=".xlsx,.xls" />
+                        <div class="text-muted small mt-1">Columnas esperadas: A=Dirección, B=Coordenadas, C=Capacidad MB.</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Dirección en sitio</label>
@@ -168,4 +179,3 @@
 })();
 </script>
 }
-

@@ -249,6 +249,64 @@ public class RequestsModel : PageModel
         return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
     }
 
+    public async Task<IActionResult> OnPostReopenAsync(Guid id)
+    {
+        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        if (!canManage)
+            return Forbid();
+
+        var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
+        if (req == null)
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
+
+        req.Status = QuoteRequestStatus.New;
+        req.AcceptedAt = null;
+        req.AcceptedByUserId = null;
+
+        var opp = await _db.SalesOpportunities.FirstOrDefaultAsync(x => x.QuoteRequestId == id);
+        if (opp != null)
+        {
+            opp.WorkflowStage = SalesWorkflowStage.Closing;
+            opp.Status = SalesOpportunityStatus.Prospect;
+            opp.ClosedAt = null;
+            opp.StageChangedAt = DateTime.UtcNow;
+            opp.StageDueAt = DateTime.UtcNow.Date.AddDays(HNControl.Web.Pages.Sales.WorkflowModel.SlaDays(SalesWorkflowStage.Closing));
+            opp.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        Message = $"Cotizacion {req.Folio} reabierta para edicion.";
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = "active", month = Month, from = From, to = To, page = PageNumber });
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        if (!canManage)
+            return Forbid();
+
+        var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
+        if (req == null)
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
+
+        if (req.Status == QuoteRequestStatus.Accepted || req.Status == QuoteRequestStatus.Rejected)
+        {
+            Message = $"La cotizacion {req.Folio} esta cerrada. Reabrela antes de eliminar.";
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
+        }
+
+        var pdfPath = req.PdfStoragePath;
+        _db.QuoteRequests.Remove(req);
+        await _db.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(pdfPath))
+            await _storage.DeleteIfExistsAsync(pdfPath);
+
+        Message = $"Cotizacion {req.Folio} eliminada.";
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
+    }
+
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)
     {
         var req = await _db.QuoteRequests.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);

@@ -102,6 +102,10 @@
                 <div class="d-flex gap-2 mt-3 flex-wrap">
                     <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="modal" data-bs-target="#quoteDetailModal-@r.Id">Ver detalle</button>
                     <a class="btn btn-sm btn-outline-dark" href="/Ventas?quoteId=@r.Id">Ventas</a>
+                    @if (canManage && r.Status != "Accepted" && r.Status != "Rejected")
+                    {
+                        <a class="btn btn-sm btn-outline-secondary" href="/Ventas?quoteId=@r.Id">Editar</a>
+                    }
                     @if (r.HasPdf)
                     {
                         <a class="btn btn-sm btn-outline-primary" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">PDF</a>
@@ -117,6 +121,19 @@
                             <input type="hidden" name="id" value="@r.Id" />
                             <input type="hidden" name="page" value="@Model.PageNumber" />
                             <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                        </form>
+                        <form method="post" asp-page-handler="Delete" onsubmit="return confirm('¿Eliminar esta cotización?');">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <input type="hidden" name="page" value="@Model.PageNumber" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                        </form>
+                    }
+                    else if (canManage && (r.Status == "Accepted" || r.Status == "Rejected"))
+                    {
+                        <form method="post" asp-page-handler="Reopen">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <input type="hidden" name="page" value="@Model.PageNumber" />
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Reabrir</button>
                         </form>
                     }
                 </div>

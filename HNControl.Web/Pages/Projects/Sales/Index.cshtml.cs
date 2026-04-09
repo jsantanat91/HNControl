@@ -71,6 +71,7 @@ public class IndexModel : PageModel
     public int TotalPages { get; set; } = 1;
     public bool CanViewAll { get; set; }
     public bool CanManage { get; set; }
+    public bool CanManageSellers { get; set; }
     public bool CanAssign { get; set; }
     public Guid? CurrentSellerProfileId { get; set; }
     public string CurrentSellerName { get; set; } = "";
@@ -85,7 +86,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnPostAddSellerAsync()
     {
         await EnsurePermissionsAsync();
-        if (!CanManage)
+        if (!CanManageSellers)
         {
             Flash = "No tienes permiso para alta de vendedores.";
             FlashType = "warning";
@@ -132,7 +133,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnPostUpdateSellerAsync(Guid sellerId, decimal commissionPercent)
     {
         await EnsurePermissionsAsync();
-        if (!CanManage)
+        if (!CanManageSellers)
         {
             Flash = "No tienes permiso para editar vendedores.";
             FlashType = "warning";
@@ -157,7 +158,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnPostSuspendSellerAsync(Guid sellerId)
     {
         await EnsurePermissionsAsync();
-        if (!CanManage)
+        if (!CanManageSellers)
         {
             Flash = "No tienes permiso para suspender vendedores.";
             FlashType = "warning";
@@ -182,7 +183,7 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnPostActivateSellerAsync(Guid sellerId)
     {
         await EnsurePermissionsAsync();
-        if (!CanManage)
+        if (!CanManageSellers)
         {
             Flash = "No tienes permiso para activar vendedores.";
             FlashType = "warning";
@@ -316,14 +317,6 @@ public class IndexModel : PageModel
         opp.StageChangedAt = DateTime.UtcNow;
         opp.StageDueAt = null;
         opp.UpdatedAt = DateTime.UtcNow;
-
-        if (opp.Client != null && opp.Client.IsTemporaryLead)
-        {
-            opp.Client.IsTemporaryLead = false;
-            opp.Client.IsActive = true;
-            opp.Client.ConvertedToFormalAt = DateTime.UtcNow;
-            opp.Client.ClientCode = await NextFormalClientCodeAsync();
-        }
 
         if (opp.QuoteRequest != null)
         {
@@ -459,16 +452,18 @@ public class IndexModel : PageModel
 
         var quotesQuery = _db.QuoteRequests
             .AsNoTracking()
+            .Include(x => x.Client)
             .Where(x => x.Status != QuoteRequestStatus.Rejected)
             .OrderByDescending(x => x.CreatedAt)
             .AsQueryable();
 
         if (!CanViewAll)
         {
-            var allowedQuoteIds = _db.SalesOpportunities
-                .Where(o => o.OwnerUserId == userId || (o.SellerProfile != null && o.SellerProfile.EmployeeUserId == userId))
-                .Select(o => o.QuoteRequestId);
-            quotesQuery = quotesQuery.Where(x => allowedQuoteIds.Contains(x.Id));
+            quotesQuery = quotesQuery.Where(x =>
+                (x.Client != null && x.Client.OwnerUserId == userId)
+                || _db.SalesOpportunities.Any(o =>
+                    o.QuoteRequestId == x.Id &&
+                    (o.OwnerUserId == userId || (o.SellerProfile != null && o.SellerProfile.EmployeeUserId == userId))));
         }
 
         var quotes = await quotesQuery
@@ -536,17 +531,21 @@ public class IndexModel : PageModel
 
     private async Task EnsurePermissionsAsync()
     {
-        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesManage);
-        CanViewAll = canManage || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        var canManage = AppRoles.IsGlobalAdmin(User)
+            || await _actions.HasActionAsync(User, AppActions.SalesManage)
+            || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
+        CanViewAll = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
         var canViewOwn = CanViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         if (!canViewOwn)
         {
             CanManage = false;
+            CanManageSellers = false;
             CanAssign = false;
             return;
         }
 
         CanManage = canManage;
+        CanManageSellers = AppRoles.IsGlobalAdmin(User);
         CanAssign = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
     }
 
@@ -561,23 +560,6 @@ public class IndexModel : PageModel
 
         var next = today.AddMonths(1);
         return (new DateTime(next.Year, next.Month, 1), new DateTime(next.Year, next.Month, 15));
-    }
-
-    private async Task<string> NextFormalClientCodeAsync()
-    {
-        var codes = await _db.Clients
-            .AsNoTracking()
-            .Where(c => !c.IsTemporaryLead && !string.IsNullOrWhiteSpace(c.ClientCode) && c.ClientCode.StartsWith("HN-") && !c.ClientCode.StartsWith("HN-VENTA-"))
-            .Select(c => c.ClientCode)
-            .ToListAsync();
-
-        var max = 0;
-        foreach (var code in codes)
-        {
-            if (int.TryParse(code.AsSpan(3), out var n) && n > max)
-                max = n;
-        }
-        return $"HN-{max + 1:0000}";
     }
 
     private async Task AddSalesAuditAsync(Guid opportunityId, string eventType, string details)

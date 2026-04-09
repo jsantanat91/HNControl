@@ -229,8 +229,7 @@ public class CallsModel : PageModel
     private async Task<bool> ResolvePermissionsAsync()
     {
         var hasViewAll = AppRoles.IsGlobalAdmin(User)
-            || await _actions.HasActionAsync(User, AppActions.SalesViewAll)
-            || await _actions.HasActionAsync(User, AppActions.SalesManage);
+            || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
         var canViewCalls = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesCallsView);
 
         CanViewAll = hasViewAll;

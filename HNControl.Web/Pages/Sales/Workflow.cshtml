@@ -18,7 +18,6 @@
         <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#lostDealsModal">
             Perdidos (@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost].Count : 0)))
         </button>
-        <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
         <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#newDealModal">Nuevo trato</button>
     </div>
 </div>
@@ -187,6 +186,16 @@
                                         {
                                             <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
                                         }
+                                        @if (Model.CanMove)
+                                        {
+                                            <form method="post" asp-page-handler="ReopenToClosing" class="d-inline">
+                                                <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                                <input type="hidden" asp-for="StageFilter" />
+                                                <input type="hidden" asp-for="OwnerFilterUserId" />
+                                                <input type="hidden" asp-for="Month" />
+                                                <button class="btn btn-sm btn-outline-warning" type="submit">Cancelar cierre</button>
+                                            </form>
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -228,6 +237,16 @@
                                         @if (Model.CanCall)
                                         {
                                             <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                        }
+                                        @if (Model.CanMove)
+                                        {
+                                            <form method="post" asp-page-handler="ReopenToClosing" class="d-inline">
+                                                <input type="hidden" name="OpportunityId" value="@d.Id" />
+                                                <input type="hidden" asp-for="StageFilter" />
+                                                <input type="hidden" asp-for="OwnerFilterUserId" />
+                                                <input type="hidden" asp-for="Month" />
+                                                <button class="btn btn-sm btn-outline-warning" type="submit">Cancelar cierre</button>
+                                            </form>
                                         }
                                     </div>
                                 </div>
@@ -274,6 +293,45 @@
                             </div>
                         </div>
                     </div>
+
+                    @if (Model.CanMove)
+                    {
+                        <div class="border rounded-3 p-2 mb-3">
+                            <div class="fw-semibold mb-2">Correcciones administrativas</div>
+                            <div class="d-flex flex-wrap gap-2 align-items-end">
+                                <form method="post" asp-page-handler="ChangeClient" class="d-flex flex-wrap gap-2 align-items-end">
+                                    <input type="hidden" asp-for="OpportunityId" value="@det.OpportunityId" />
+                                    <input type="hidden" asp-for="StageFilter" />
+                                    <input type="hidden" asp-for="OwnerFilterUserId" />
+                                    <input type="hidden" asp-for="Month" />
+                                    <div>
+                                        <label class="form-label form-label-sm mb-1">Cambiar cliente</label>
+                                        <select class="form-select form-select-sm" name="NewClientId" style="min-width:280px">
+                                            @foreach (var item in Model.ClientItems)
+                                            {
+                                                var selected = string.Equals(item.Value, det.CurrentClientId?.ToString(), StringComparison.OrdinalIgnoreCase);
+                                                <option value="@item.Value" selected="@selected">@item.Text</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Guardar cliente</button>
+                                </form>
+
+                                @if (det.QuoteRequestId.HasValue)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" href="/Ventas?quoteId=@det.QuoteRequestId">Editar cotización</a>
+                                }
+
+                                <form method="post" asp-page-handler="DeleteDeal" onsubmit="return confirm('¿Eliminar trato y cotización? Esta acción no se puede deshacer.');">
+                                    <input type="hidden" asp-for="OpportunityId" value="@det.OpportunityId" />
+                                    <input type="hidden" asp-for="StageFilter" />
+                                    <input type="hidden" asp-for="OwnerFilterUserId" />
+                                    <input type="hidden" asp-for="Month" />
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar cotización</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
 
                     <div class="fw-semibold mb-2">Bitácora de seguimiento</div>
                     <form method="post" asp-page-handler="AddNote" class="mb-3">
@@ -324,7 +382,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0" style="height:82vh;">
-                <iframe id="newDealFrame" src="/Ventas/Gestion?openCreateOpportunity=1" style="width:100%;height:100%;border:0;"></iframe>
+                <iframe id="newDealFrame" src="/Ventas/Gestion?openCreateOpportunity=1&embed=1" style="width:100%;height:100%;border:0;"></iframe>
             </div>
         </div>
     </div>
