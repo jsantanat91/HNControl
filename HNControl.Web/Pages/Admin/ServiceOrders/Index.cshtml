@@ -17,6 +17,15 @@
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.Flash))
+{
+    var alertClass = Model.Flash.Contains("No se pudo", StringComparison.OrdinalIgnoreCase)
+        || Model.Flash.Contains("No se encontr", StringComparison.OrdinalIgnoreCase)
+            ? "alert-warning"
+            : "alert-success";
+    <div class="alert @alertClass mb-3">@Model.Flash</div>
+}
+
 <form method="get" class="card shadow-soft hn-hover mb-3">
     <div class="card-body row g-2 align-items-end mx-0">
         <div class="col-6 col-xl-2"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
@@ -98,9 +107,22 @@ else
                         {
                             <div class="small text-muted">@o.ClaimedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                         }
-                        <div class="mt-auto pt-3 d-flex gap-2">
+                        <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
                             <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/ServiceOrders/DownloadPdf" asp-route-id="@o.Id" asp-route-inline="false">Orden PDF</a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@o.Id">Admin</a>
+                            @if (Model.IsSuperAdmin)
+                            {
+                                <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Eliminar esta orden de servicio? Esta acción no se puede deshacer.');">
+                                    <input type="hidden" name="id" value="@o.Id" />
+                                    <input type="hidden" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
+                                    <input type="hidden" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
+                                    <input type="hidden" name="Type" value="@Model.Type?.ToString()" />
+                                    <input type="hidden" name="Status" value="@Model.Status?.ToString()" />
+                                    <input type="hidden" name="Page" value="@Model.Page" />
+                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
+                            }
                         </div>
                     </div>
                 </div>

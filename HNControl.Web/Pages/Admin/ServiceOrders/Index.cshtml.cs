@@ -19,6 +19,8 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public ServiceOrderStatus? Status { get; set; }
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+    public bool IsSuperAdmin { get; private set; }
+    [TempData] public string? Flash { get; set; }
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
@@ -58,6 +60,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        IsSuperAdmin = User.IsInRole(AppRoles.SuperAdmin);
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
@@ -114,5 +117,47 @@ public class IndexModel : PageModel
             o.ClaimedAt,
             o.CreatedAt
         )).ToList();
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        if (!User.IsInRole(AppRoles.SuperAdmin))
+            return Forbid();
+
+        var order = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null)
+        {
+            Flash = "No se encontr\u00f3 la orden a eliminar.";
+            return RedirectToPage("/Admin/ServiceOrders/Index", new
+            {
+                DateFrom = DateFrom?.ToString("yyyy-MM-dd"),
+                DateTo = DateTo?.ToString("yyyy-MM-dd"),
+                Type = Type?.ToString(),
+                Status = Status?.ToString(),
+                Page,
+                PageSize
+            });
+        }
+
+        _db.ServiceOrders.Remove(order);
+        try
+        {
+            await _db.SaveChangesAsync();
+            Flash = "Orden eliminada correctamente.";
+        }
+        catch (DbUpdateException)
+        {
+            Flash = "No se pudo eliminar la orden por dependencias relacionadas.";
+        }
+
+        return RedirectToPage("/Admin/ServiceOrders/Index", new
+        {
+            DateFrom = DateFrom?.ToString("yyyy-MM-dd"),
+            DateTo = DateTo?.ToString("yyyy-MM-dd"),
+            Type = Type?.ToString(),
+            Status = Status?.ToString(),
+            Page,
+            PageSize
+        });
     }
 }
