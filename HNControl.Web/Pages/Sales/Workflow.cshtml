@@ -118,7 +118,11 @@
                                 <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
                                 @if (Model.CanCall)
                                 {
-                                    <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       asp-page="/Sales/Calls"
+                                       asp-route-opportunityId="@d.Id"
+                                       asp-route-folio="@d.Folio"
+                                       asp-route-customer="@d.Customer">Llamar</a>
                                 }
                                 @if ((User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)) && d.ClientId.HasValue)
                                 {
@@ -184,7 +188,11 @@
                                         <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
                                         @if (Model.CanCall)
                                         {
-                                            <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               asp-page="/Sales/Calls"
+                                               asp-route-opportunityId="@d.Id"
+                                               asp-route-folio="@d.Folio"
+                                               asp-route-customer="@d.Customer">Llamar</a>
                                         }
                                         @if (Model.CanMove)
                                         {
@@ -236,7 +244,11 @@
                                         <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
                                         @if (Model.CanCall)
                                         {
-                                            <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               asp-page="/Sales/Calls"
+                                               asp-route-opportunityId="@d.Id"
+                                               asp-route-folio="@d.Folio"
+                                               asp-route-customer="@d.Customer">Llamar</a>
                                         }
                                         @if (Model.CanMove)
                                         {

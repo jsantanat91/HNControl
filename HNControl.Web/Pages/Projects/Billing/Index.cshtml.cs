@@ -590,7 +590,6 @@ public class IndexModel : PageModel
         }
 
         var plan = await _db.BillingInvoicePlans
-            .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == planId);
         if (plan == null)
         {
@@ -668,11 +667,13 @@ public class IndexModel : PageModel
         var vat = rebuiltLines.Sum(x => x.VatAmount);
         var total = rebuiltLines.Sum(x => x.Total);
 
-        var existingLines = plan.Lines.ToList();
-        _db.RemoveRange(existingLines);
-        plan.Lines.Clear();
+        await _db.BillingInvoiceLines
+            .Where(x => x.BillingInvoicePlanId == plan.Id)
+            .ExecuteDeleteAsync();
+
         foreach (var rebuiltLine in rebuiltLines)
-            plan.Lines.Add(rebuiltLine);
+            rebuiltLine.BillingInvoicePlanId = plan.Id;
+        _db.BillingInvoiceLines.AddRange(rebuiltLines);
 
         plan.Concept = string.IsNullOrWhiteSpace(concept) ? plan.Concept : concept.Trim();
         plan.Periodicity = periodicity;
