@@ -42,6 +42,8 @@ public class IndexModel : PageModel
     [BindProperty] public Guid QuoteId { get; set; }
     [BindProperty] public Guid SellerProfileId { get; set; }
     [BindProperty] public string OpportunityNotes { get; set; } = "";
+    [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
+    [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
 
     public SelectList EmployeeItems { get; set; } = default!;
     public SelectList SellerItems { get; set; } = default!;
@@ -65,6 +67,8 @@ public class IndexModel : PageModel
         Guid QuoteRequestId,
         Guid? BonusDeductionId);
     public List<OpportunityRow> Opportunities { get; set; } = new();
+    public int TotalOpportunities { get; set; }
+    public int TotalPages { get; set; } = 1;
     public bool CanViewAll { get; set; }
     public bool CanManage { get; set; }
     public bool CanAssign { get; set; }
@@ -483,15 +487,25 @@ public class IndexModel : PageModel
         if (!CanViewAll)
             oppQuery = oppQuery.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
 
+        var (fromUtc, toUtc) = ResolveMonthRange(Month);
+        oppQuery = oppQuery.Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
+
+        const int pageSize = 20;
+        Page = Page < 1 ? 1 : Page;
+        TotalOpportunities = await oppQuery.CountAsync();
+        TotalPages = Math.Max(1, (int)Math.Ceiling(TotalOpportunities / (double)pageSize));
+        if (Page > TotalPages) Page = TotalPages;
+
         Opportunities = await oppQuery
             .OrderByDescending(x => x.CreatedAt)
-            .Take(400)
+            .Skip((Page - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new OpportunityRow(
                 x.Id,
                 x.QuoteRequest != null ? x.QuoteRequest.Folio : "-",
                 x.QuoteRequest != null ? x.QuoteRequest.CustomerName : "-",
                 x.SellerProfile != null && x.SellerProfile.Employee != null ? x.SellerProfile.Employee.FullName : "-",
-                x.Status.ToString(),
+                NormalizeOpportunityStatus(x.Status, x.WorkflowStage),
                 x.QuoteRequest != null ? (x.QuoteRequest.EstimatedTotal ?? x.QuoteRequest.SubtotalAuto) : 0m,
                 x.CommissionPercent,
                 x.CommissionAmount,
@@ -502,6 +516,22 @@ public class IndexModel : PageModel
                 x.BonusDeductionId
             ))
             .ToListAsync();
+    }
+
+    private static string NormalizeOpportunityStatus(SalesOpportunityStatus status, SalesWorkflowStage stage)
+        => stage switch
+        {
+            SalesWorkflowStage.ClosedWon => nameof(SalesOpportunityStatus.ClosedWon),
+            SalesWorkflowStage.ClosedLost => nameof(SalesOpportunityStatus.ClosedLost),
+            _ => status.ToString()
+        };
+
+    private static (DateTime fromUtc, DateTime toUtc) ResolveMonthRange(string? month)
+    {
+        if (!DateTime.TryParse($"{month}-01", out var parsed))
+            parsed = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var from = DateTime.SpecifyKind(new DateTime(parsed.Year, parsed.Month, 1), DateTimeKind.Utc);
+        return (from, from.AddMonths(1));
     }
 
     private async Task EnsurePermissionsAsync()

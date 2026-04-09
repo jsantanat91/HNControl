@@ -100,6 +100,17 @@ else if (!isTable)
                         <div class="mt-auto pt-3 d-flex flex-wrap gap-2">
                             <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
+                            @if (Model.CanResetPasswords)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-dark"
+                                        data-reset-pass
+                                        data-user-id="@r.UserId"
+                                        data-user-name="@r.FullName"
+                                        data-user-email="@r.Email"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#resetPasswordModal">Password</button>
+                            }
                             @if (r.IsActive)
                             {
                                 <form method="post" asp-page-handler="Deactivate" class="d-inline">
@@ -188,6 +199,17 @@ else
                                 <td class="text-end">
                                     <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
                                     <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
+                                    @if (Model.CanResetPasswords)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-dark"
+                                                data-reset-pass
+                                                data-user-id="@r.UserId"
+                                                data-user-name="@r.FullName"
+                                                data-user-email="@r.Email"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#resetPasswordModal">Password</button>
+                                    }
                                     @if (r.IsActive)
                                     {
                                         <form method="post" asp-page-handler="Deactivate" class="d-inline">
@@ -215,6 +237,44 @@ else
                         }
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.CanResetPasswords)
+{
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Actualizar contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" asp-page-handler="ResetPassword">
+                    <div class="modal-body">
+                        <input type="hidden" id="reset-user-id" name="userId" />
+                        <input type="hidden" name="includeInactive" value="@includeInactive.ToString().ToLowerInvariant()" />
+                        <input type="hidden" name="view" value="@(isTable ? "table" : "cards")" />
+
+                        <div class="small text-muted mb-2">Empleado</div>
+                        <div class="fw-semibold" id="reset-user-name">-</div>
+                        <div class="small text-muted mb-3" id="reset-user-email">-</div>
+
+                        <div class="mb-2">
+                            <label class="form-label">Nueva contraseña</label>
+                            <input class="form-control" type="password" name="newPassword" autocomplete="new-password" required />
+                        </div>
+                        <div>
+                            <label class="form-label">Confirmar contraseña</label>
+                            <input class="form-control" type="password" name="confirmPassword" autocomplete="new-password" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Actualizar</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -251,4 +311,25 @@ else
             flex: 0 0 auto;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const modal = document.getElementById('resetPasswordModal');
+            if (!modal) return;
+
+            const inputUserId = document.getElementById('reset-user-id');
+            const lblName = document.getElementById('reset-user-name');
+            const lblEmail = document.getElementById('reset-user-email');
+
+            document.querySelectorAll('[data-reset-pass]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (inputUserId) inputUserId.value = btn.getAttribute('data-user-id') || '';
+                    if (lblName) lblName.textContent = btn.getAttribute('data-user-name') || '-';
+                    if (lblEmail) lblEmail.textContent = btn.getAttribute('data-user-email') || '-';
+                });
+            });
+        })();
+    </script>
 }

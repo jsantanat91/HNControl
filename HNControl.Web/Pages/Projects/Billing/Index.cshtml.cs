@@ -44,10 +44,14 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public int PlansPage { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int RunsPage { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int AuditPage { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int EmittedPage { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public string BillingView { get; set; } = "recurrentes";
+    [BindProperty(SupportsGet = true)] public string? EmittedMonth { get; set; }
     [BindProperty(SupportsGet = true)] public string? OpenModal { get; set; }
     public int PlansTotalPages { get; set; } = 1;
     public int RunsTotalPages { get; set; } = 1;
     public int AuditsTotalPages { get; set; } = 1;
+    public int EmittedTotalPages { get; set; } = 1;
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList OpportunityItems { get; set; } = default!;
@@ -81,10 +85,12 @@ public class IndexModel : PageModel
         string Concept,
         decimal Total,
         string Periodicity,
+        string PeriodicityValue,
         string Status,
         DateTime StartDate,
         DateTime NextRunDate,
         DateTime InvoiceIssueDate,
+        int InvoiceDay,
         string SendToEmail,
         string SatSummary,
         string CcEmails,
@@ -130,7 +136,7 @@ public class IndexModel : PageModel
 
         [Required] public BillingPeriodicity Periodicity { get; set; } = BillingPeriodicity.Monthly;
         [Required] public DateTime StartDate { get; set; } = DateTime.Today;
-        [Required] public DateTime InvoiceIssueDate { get; set; } = DateTime.Today;
+        [Range(1, 31)] public int InvoiceDay { get; set; } = 1;
         [Range(1, 120)] public int? ContractMonths { get; set; } = 12;
 
         [Required, EmailAddress, MaxLength(256)]
@@ -169,6 +175,9 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync(Guid? opportunityId = null, Guid? quoteId = null, Guid? contractId = null)
     {
+        if (string.IsNullOrWhiteSpace(EmittedMonth))
+            EmittedMonth = DateTime.Today.ToString("yyyy-MM");
+        BillingView = NormalizeBillingView(BillingView);
         if (opportunityId.HasValue) Input.SalesOpportunityId = opportunityId;
         if (quoteId.HasValue) Input.QuoteRequestId = quoteId;
         if (contractId.HasValue) Input.ContractId = contractId;
@@ -262,6 +271,8 @@ public class IndexModel : PageModel
         var subtotal = billingLines.Sum(x => x.Subtotal);
         var vat = billingLines.Sum(x => x.VatAmount);
         var total = billingLines.Sum(x => x.Total);
+        var invoiceDay = Math.Clamp(Input.InvoiceDay, 1, 31);
+        var firstIssueDate = ResolveFirstIssueDate(Input.StartDate.Date, invoiceDay);
 
         var plan = new BillingInvoicePlan
         {
@@ -282,8 +293,8 @@ public class IndexModel : PageModel
             PaymentFormCode = (Input.PaymentFormCode ?? "03").Trim().ToUpperInvariant(),
             Periodicity = Input.Periodicity,
             StartDate = Input.StartDate.Date,
-            InvoiceIssueDate = Input.InvoiceIssueDate.Date,
-            NextRunDate = Input.InvoiceIssueDate.Date,
+            InvoiceIssueDate = firstIssueDate,
+            NextRunDate = firstIssueDate,
             RemainingRuns = Input.ContractMonths.HasValue && Input.ContractMonths.Value > 0 ? Input.ContractMonths.Value : null,
             SendToEmail = (Input.SendToEmail ?? "").Trim(),
             CcEmails = (Input.CcEmails ?? "").Trim(),
@@ -501,14 +512,14 @@ public class IndexModel : PageModel
         {
             Flash = BillingSchemaMessage ?? "Falta actualizar esquema de facturación.";
             FlashType = "warning";
-            return RedirectToPage(new { openModal = "emitted" });
+            return RedirectToPage(new { billingView = "emitidas", emittedMonth = EmittedMonth, emittedPage = EmittedPage });
         }
 
         if (!ModelState.IsValid)
         {
             Flash = "Datos de pago incompletos.";
             FlashType = "danger";
-            return RedirectToPage(new { openModal = "emitted" });
+            return RedirectToPage(new { billingView = "emitidas", emittedMonth = EmittedMonth, emittedPage = EmittedPage });
         }
 
         var run = await _db.BillingInvoiceRuns
@@ -516,7 +527,7 @@ public class IndexModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == PaymentInput.RunId);
 
         if (run == null || run.Plan == null)
-            return RedirectToPage(new { openModal = "emitted" });
+            return RedirectToPage(new { billingView = "emitidas", emittedMonth = EmittedMonth, emittedPage = EmittedPage });
 
         run.IsPaid = true;
         run.PaidAt = PaymentInput.PaidAt.Date;
@@ -530,7 +541,7 @@ public class IndexModel : PageModel
 
         Flash = "Factura marcada como pagada.";
         FlashType = "success";
-        return RedirectToPage(new { openModal = "emitted" });
+        return RedirectToPage(new { billingView = "emitidas", emittedMonth = EmittedMonth, emittedPage = EmittedPage });
     }
 
     public async Task<IActionResult> OnPostToggleStatusAsync(Guid planId)
@@ -564,7 +575,7 @@ public class IndexModel : PageModel
         string? concept,
         BillingPeriodicity periodicity,
         DateTime startDate,
-        DateTime invoiceIssueDate,
+        int invoiceDay,
         int? contractMonths,
         string? sendToEmail,
         string? ccEmails,
@@ -666,7 +677,9 @@ public class IndexModel : PageModel
         plan.Concept = string.IsNullOrWhiteSpace(concept) ? plan.Concept : concept.Trim();
         plan.Periodicity = periodicity;
         plan.StartDate = startDate.Date;
-        plan.InvoiceIssueDate = invoiceIssueDate.Date;
+        var normalizedDay = Math.Clamp(invoiceDay, 1, 31);
+        var nextIssueDate = ResolveFirstIssueDate(startDate.Date, normalizedDay);
+        plan.InvoiceIssueDate = nextIssueDate;
         plan.RemainingRuns = contractMonths.HasValue && contractMonths.Value > 0 ? contractMonths.Value : null;
         plan.SendToEmail = sendToEmail.Trim();
         plan.CcEmails = (ccEmails ?? "").Trim();
@@ -677,8 +690,9 @@ public class IndexModel : PageModel
         plan.VatRate = subtotal > 0 ? vat / subtotal : plan.VatRate;
         plan.UpdatedAt = DateTime.UtcNow;
 
-        if (plan.NextRunDate < DateTime.Today)
-            plan.NextRunDate = invoiceIssueDate.Date;
+        if (nextIssueDate < DateTime.Today)
+            nextIssueDate = ResolveNextIssueDate(DateTime.Today, normalizedDay);
+        plan.NextRunDate = nextIssueDate;
 
         await _db.SaveChangesAsync();
         await AddBillingAuditAsync(plan.Id, "billing.plan.update", "Plan actualizado desde dashboard.");
@@ -738,9 +752,14 @@ public class IndexModel : PageModel
     {
         const int cardPageSize = 12;
         const int historyPageSize = 20;
+        const int emittedPageSize = 20;
         PlansPage = Math.Max(1, PlansPage);
         RunsPage = Math.Max(1, RunsPage);
         AuditPage = Math.Max(1, AuditPage);
+        EmittedPage = Math.Max(1, EmittedPage);
+        BillingView = NormalizeBillingView(BillingView);
+        var monthRef = ParseMonthOrDefault(EmittedMonth);
+        EmittedMonth = monthRef.ToString("yyyy-MM");
 
         var clients = await _db.Clients
             .AsNoTracking()
@@ -830,10 +849,12 @@ public class IndexModel : PageModel
             x.Concept,
             x.Total,
             LabelPeriodicity(x.Periodicity),
+            x.Periodicity.ToString(),
             x.Status.ToString(),
             x.StartDate,
             x.NextRunDate,
             x.InvoiceIssueDate,
+            x.InvoiceIssueDate.Day,
             x.SendToEmail,
             $"Tipo {MapInvoiceType(x.InvoiceType)} · Uso {x.CfdiUseCode} · Régimen {x.FiscalRegimeCode}",
             x.CcEmails ?? "",
@@ -887,12 +908,22 @@ public class IndexModel : PageModel
                 x.PaymentMethodCode))
             .ToListAsync();
 
-        EmittedRuns = await _db.BillingInvoiceRuns
+        var emittedBase = _db.BillingInvoiceRuns
             .AsNoTracking()
             .Include(x => x.Plan!).ThenInclude(x => x.Client)
-            .Where(x => x.Status == BillingRunStatus.Sent)
+            .Where(x =>
+                x.Status == BillingRunStatus.Sent
+                && x.ScheduledFor.Year == monthRef.Year
+                && x.ScheduledFor.Month == monthRef.Month)
             .OrderByDescending(x => x.ScheduledFor)
-            .Take(80)
+            .AsQueryable();
+
+        var emittedTotal = await emittedBase.CountAsync();
+        EmittedTotalPages = Math.Max(1, (int)Math.Ceiling(emittedTotal / (double)emittedPageSize));
+        if (EmittedPage > EmittedTotalPages) EmittedPage = EmittedTotalPages;
+        EmittedRuns = await emittedBase
+            .Skip((EmittedPage - 1) * emittedPageSize)
+            .Take(emittedPageSize)
             .Select(x => new RunVm(
                 x.Id,
                 x.PlanId,
@@ -1059,7 +1090,7 @@ SELECT EXISTS (
                 if (contract.ContractStartDate.HasValue)
                 {
                     Input.StartDate = contract.ContractStartDate.Value.Date;
-                    Input.InvoiceIssueDate = contract.ContractStartDate.Value.Date;
+                    Input.InvoiceDay = contract.ContractStartDate.Value.Day;
                 }
             }
         }
@@ -1107,6 +1138,46 @@ SELECT EXISTS (
             }
         }
     }
+
+    private static string NormalizeBillingView(string? view)
+    {
+        if (string.Equals(view, "emitidas", StringComparison.OrdinalIgnoreCase))
+            return "emitidas";
+        return "recurrentes";
+    }
+
+    private static DateTime ParseMonthOrDefault(string? month)
+    {
+        if (!string.IsNullOrWhiteSpace(month)
+            && DateTime.TryParseExact(month + "-01", "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var parsed))
+        {
+            return parsed.Date;
+        }
+
+        var now = DateTime.Today;
+        return new DateTime(now.Year, now.Month, 1);
+    }
+
+    private static DateTime ResolveFirstIssueDate(DateTime startDate, int dayOfMonth)
+    {
+        var normalizedDay = Math.Clamp(dayOfMonth, 1, 31);
+        var sameMonthDate = new DateTime(
+            startDate.Year,
+            startDate.Month,
+            Math.Min(normalizedDay, DateTime.DaysInMonth(startDate.Year, startDate.Month)));
+
+        if (sameMonthDate >= startDate.Date)
+            return sameMonthDate;
+
+        var nextMonth = startDate.AddMonths(1);
+        return new DateTime(
+            nextMonth.Year,
+            nextMonth.Month,
+            Math.Min(normalizedDay, DateTime.DaysInMonth(nextMonth.Year, nextMonth.Month)));
+    }
+
+    private static DateTime ResolveNextIssueDate(DateTime fromDate, int dayOfMonth)
+        => ResolveFirstIssueDate(fromDate.Date, dayOfMonth);
 
     private void AdvancePlan(BillingInvoicePlan plan)
     {

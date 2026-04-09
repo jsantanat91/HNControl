@@ -40,7 +40,7 @@ public class QuoteModel : PageModel
     public string ClientName { get; set; } = string.Empty;
     public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
 
-    public record ProspectOptionVm(Guid Id, string Name, string Email, string Phone, string Location, string? CompanyName);
+    public record ProspectOptionVm(Guid Id, string Name, string Email, string Phone, string Location, string? CompanyName, bool IsTemporaryLead);
 
     public async Task<IActionResult> OnGetAsync(string? token)
     {
@@ -190,6 +190,30 @@ public class QuoteModel : PageModel
 
         if (boundClient != null)
             request.ClientId = boundClient.Id;
+
+        if (!request.ClientId.HasValue && Input.SelectedClientId.HasValue)
+        {
+            var selectedClient = await ResolveSelectableClientAsync(Input.SelectedClientId.Value);
+            if (selectedClient == null)
+                return (null, "El cliente/prospecto seleccionado no esta disponible para tu usuario.");
+
+            request.ClientId = selectedClient.Id;
+            request.CustomerName = string.IsNullOrWhiteSpace(request.CustomerName)
+                ? (selectedClient.ContactName ?? selectedClient.Name)
+                : request.CustomerName;
+            request.CustomerEmail = string.IsNullOrWhiteSpace(request.CustomerEmail)
+                ? (selectedClient.Email ?? string.Empty)
+                : request.CustomerEmail;
+            request.CustomerPhone = string.IsNullOrWhiteSpace(request.CustomerPhone)
+                ? (selectedClient.Phone ?? string.Empty)
+                : request.CustomerPhone;
+            request.CustomerLocation = string.IsNullOrWhiteSpace(request.CustomerLocation)
+                ? (selectedClient.Address ?? string.Empty)
+                : request.CustomerLocation;
+            request.CompanyName = string.IsNullOrWhiteSpace(request.CompanyName)
+                ? selectedClient.Name
+                : request.CompanyName;
+        }
 
         foreach (var p in picks)
         {
@@ -358,19 +382,31 @@ public class QuoteModel : PageModel
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
-        ProspectOptions = await _db.Clients
+
+        var leads = _db.Clients
             .AsNoTracking()
             .Where(x => x.IsTemporaryLead && x.IsActive)
-            .Where(x => isGlobalAdmin || x.CreatedByUserId == currentUserId)
-            .OrderBy(x => x.Name)
-            .Take(400)
+            .Where(x => isGlobalAdmin || x.CreatedByUserId == currentUserId);
+
+        var clients = _db.Clients
+            .AsNoTracking()
+            .Where(x => !x.IsTemporaryLead && x.IsActive)
+            .Where(x => isGlobalAdmin || x.OwnerUserId == currentUserId);
+
+        ProspectOptions = await leads
+            .Concat(clients)
+            .OrderBy(x => x.IsTemporaryLead ? 0 : 1)
+            .ThenBy(x => x.Name)
+            .Take(500)
             .Select(x => new ProspectOptionVm(
                 x.Id,
                 string.IsNullOrWhiteSpace(x.ContactName) ? x.Name : x.ContactName!,
                 x.Email ?? "",
                 x.Phone ?? "",
                 x.Address ?? "",
-                x.Name))
+                x.Name,
+                x.IsTemporaryLead))
+            .Distinct()
             .ToListAsync();
     }
 
@@ -420,6 +456,7 @@ public class QuoteModel : PageModel
     public class QuoteInput
     {
         public string? ClientToken { get; set; }
+        public Guid? SelectedClientId { get; set; }
         public QuoteSegment Segment { get; set; } = QuoteSegment.Residential;
         public string LinesJson { get; set; } = "[]";
         public string ManualLinesJson { get; set; } = "[]";
@@ -536,6 +573,7 @@ public class QuoteModel : PageModel
             lead.Address = location.Trim();
             lead.IsActive = true;
             lead.CreatedByUserId ??= currentUserId;
+            lead.OwnerUserId ??= currentUserId;
             await _db.SaveChangesAsync();
             return lead;
         }
@@ -553,6 +591,7 @@ public class QuoteModel : PageModel
             IsTemporaryLead = true,
             IsActive = true,
             CreatedByUserId = currentUserId,
+            OwnerUserId = currentUserId,
             CreatedAt = DateTime.UtcNow
         };
         _db.Clients.Add(client);
@@ -576,6 +615,20 @@ public class QuoteModel : PageModel
                 max = n;
         }
         return $"HN-VENTA-{max + 1:00}";
+    }
+
+    private async Task<Client?> ResolveSelectableClientAsync(Guid clientId)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
+
+        return await _db.Clients
+            .AsNoTracking()
+            .Where(x => x.Id == clientId && x.IsActive)
+            .Where(x => isGlobalAdmin
+                        || (x.IsTemporaryLead && x.CreatedByUserId == currentUserId)
+                        || (!x.IsTemporaryLead && x.OwnerUserId == currentUserId))
+            .FirstOrDefaultAsync();
     }
 
     private async Task<bool> CanUseInternalQuoteAsync(bool requireCreate)

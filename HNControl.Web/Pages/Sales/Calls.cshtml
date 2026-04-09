@@ -69,6 +69,13 @@
                         <input id="dialNumber" class="form-control form-control-lg" placeholder="Ingrese número" />
                     </div>
                     <div class="col-12 col-md-4">
+                        <label class="form-label">Modo de llamada</label>
+                        <select id="dialMode" class="form-select">
+                            <option value="webrtc">WebPhone (WebRTC)</option>
+                            <option value="external">Softphone externo (SIP URI)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
                         <label class="form-label">Oportunidad</label>
                         <select id="dialOpportunity" class="form-select">
                             <option value="">-- sin ligar --</option>
@@ -107,6 +114,7 @@
 
                 <div class="d-flex flex-wrap gap-2">
                     <button id="btnCall" class="btn btn-success" type="button" @(Model.CanUseCalls ? null : "disabled")>Marcar</button>
+                    <button id="btnExternalDial" class="btn btn-outline-success" type="button" @(Model.CanUseCalls ? null : "disabled")>Marcar externo</button>
                     <button id="btnHangup" class="btn btn-outline-danger" type="button" disabled>Colgar</button>
                     <button id="btnSaveCallLog" class="btn btn-outline-primary" type="button" @(Model.CanUseCalls ? null : "disabled")>Guardar seguimiento</button>
                 </div>
@@ -190,11 +198,13 @@
     const sipStatus = document.getElementById('sipStatus');
     const callStatus = document.getElementById('callStatus');
     const dialInput = document.getElementById('dialNumber');
+    const dialMode = document.getElementById('dialMode');
     const dialOpportunity = document.getElementById('dialOpportunity');
     const dialNote = document.getElementById('dialNote');
     const dialResult = document.getElementById('dialResult');
     const callDuration = document.getElementById('callDuration');
     const btnCall = document.getElementById('btnCall');
+    const btnExternalDial = document.getElementById('btnExternalDial');
     const btnHangup = document.getElementById('btnHangup');
     const btnSaveCallLog = document.getElementById('btnSaveCallLog');
     const dialKeys = document.querySelectorAll('.dial-key');
@@ -289,7 +299,40 @@
 
     const setButtonsForCall = active => {
         btnCall.disabled = !canUse || active;
+        if (btnExternalDial) btnExternalDial.disabled = !canUse || active;
         btnHangup.disabled = !active;
+    };
+
+    const buildExternalSipUri = (numberRaw, domainRaw) => {
+        const number = (numberRaw || '').trim();
+        if (!number) return '';
+        if (number.toLowerCase().startsWith('sip:')) return number;
+        if (number.includes(atSign)) return `sip:${number}`;
+        const domain = (domainRaw || '').trim();
+        return domain ? `sip:${number}${atSign}${domain}` : `sip:${number}`;
+    };
+
+    const dialExternalSoftphone = () => {
+        const number = (dialInput.value || '').trim();
+        if (!number) {
+            setCallStatus('Captura un número para marcar externo.', 'text-danger');
+            return;
+        }
+        const domain = (sipDomainInput?.value || sipConfig?.domain || '').trim() || getDomainFromServer(activeSipServer || normalizeServer(sipHostInput?.value || ''));
+        const targetUri = buildExternalSipUri(number, domain);
+        if (!targetUri) {
+            setCallStatus('No se pudo construir URI SIP.', 'text-danger');
+            return;
+        }
+
+        try {
+            window.location.href = targetUri;
+            if (dialResult.value === 'initiated') dialResult.value = 'connected';
+            setCallStatus(`Lanzando softphone externo: ${targetUri}`, 'text-success');
+        } catch (e) {
+            if (dialResult.value === 'initiated') dialResult.value = 'failed';
+            setCallStatus(`No se pudo abrir softphone externo: ${e?.message || e}`, 'text-danger');
+        }
     };
 
     const loadSipLibrary = async () => {
@@ -498,7 +541,11 @@
             if (!registered) {
                 const detail = lastError || 'No se pudo conectar a ningun endpoint WSS/WS del host.';
                 const tried = servers.join(', ');
-                setSipStatus(`No se pudo registrar SIP: ${detail} | Endpoints probados: ${tried}`, 'text-danger');
+                if ((detail || '').toLowerCase().includes('insecure')) {
+                    setSipStatus(`No se pudo registrar SIP: ${detail}. Si usas HTTPS, tu PBX debe exponer WSS con certificado válido; como alternativa usa "Modo externo (SIP URI)". Endpoints probados: ${tried}`, 'text-danger');
+                } else {
+                    setSipStatus(`No se pudo registrar SIP: ${detail} | Endpoints probados: ${tried}`, 'text-danger');
+                }
                 return;
             }
 
@@ -526,6 +573,12 @@
     });
 
     btnCall.addEventListener('click', async () => {
+        const mode = (dialMode?.value || 'webrtc').trim().toLowerCase();
+        if (mode === 'external') {
+            dialExternalSoftphone();
+            return;
+        }
+
         try {
             const SIP = await loadSipLibrary();
             if (!userAgent) {
@@ -578,6 +631,12 @@
             setCallStatus(`Error de llamada: ${e?.message || e}`, 'text-danger');
         }
     });
+
+    if (btnExternalDial) {
+        btnExternalDial.addEventListener('click', () => {
+            dialExternalSoftphone();
+        });
+    }
 
     btnHangup.addEventListener('click', async () => {
         try {

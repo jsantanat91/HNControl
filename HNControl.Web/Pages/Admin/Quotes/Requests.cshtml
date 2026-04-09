@@ -23,44 +23,61 @@
     </div>
 </div>
 
+@{
+    var activeSelected = string.IsNullOrWhiteSpace(Model.Status) && string.Equals(Model.ViewMode, "active", StringComparison.OrdinalIgnoreCase);
+    var acceptedSelected = string.IsNullOrWhiteSpace(Model.Status) && string.Equals(Model.ViewMode, "accepted", StringComparison.OrdinalIgnoreCase);
+    var rejectedSelected = string.IsNullOrWhiteSpace(Model.Status) && string.Equals(Model.ViewMode, "rejected", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="d-flex gap-2 flex-wrap mb-3">
+    <a class="btn btn-sm @(activeSelected ? "btn-primary" : "btn-outline-primary")"
+       asp-page="./Requests"
+       asp-route-view="active"
+       asp-route-month="@Model.Month"
+       asp-route-q="@Model.Q"
+       asp-route-segment="@Model.Segment">Activas</a>
+    <a class="btn btn-sm @(acceptedSelected ? "btn-success" : "btn-outline-success")"
+       asp-page="./Requests"
+       asp-route-view="accepted"
+       asp-route-month="@Model.Month"
+       asp-route-q="@Model.Q"
+       asp-route-segment="@Model.Segment">Aceptadas</a>
+    <a class="btn btn-sm @(rejectedSelected ? "btn-danger" : "btn-outline-danger")"
+       asp-page="./Requests"
+       asp-route-view="rejected"
+       asp-route-month="@Model.Month"
+       asp-route-q="@Model.Q"
+       asp-route-segment="@Model.Segment">Rechazadas</a>
+    <span class="text-muted small align-self-center ms-2">Mostrando @Model.TotalCount cotizaciones del mes.</span>
+</div>
+
 @if (!string.IsNullOrWhiteSpace(Model.Message))
 {
     <div class="alert alert-success">@Model.Message</div>
 }
 
-@if (canManage)
-{
-    <form method="get" class="card shadow-sm mb-3">
-        <div class="card-body row g-2 align-items-end">
-            <div class="col-md-4"><label class="form-label">Buscar</label><input class="form-control" name="q" value="@Model.Q" placeholder="Folio, nombre o correo" /></div>
-            <div class="col-md-3">
-                <label class="form-label">Segmento</label>
-                <select class="form-select" name="segment">
-                    <option value="">Todos</option>
-                    <option value="Residential" selected="@(Model.Segment == "Residential")">Residencial</option>
-                    <option value="Business" selected="@(Model.Segment == "Business")">Empresarial</option>
-                    <option value="Events" selected="@(Model.Segment == "Events")">Eventos</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Estado</label>
-                <select class="form-select" name="status">
-                    <option value="">Todos</option>
-                    <option value="New" selected="@(Model.Status == "New")">Nueva</option>
-                    <option value="Emailed" selected="@(Model.Status == "Emailed")">Enviada</option>
-                    <option value="EmailError" selected="@(Model.Status == "EmailError")">Error envío</option>
-                    <option value="Accepted" selected="@(Model.Status == "Accepted")">Aceptada</option>
-                    <option value="Rejected" selected="@(Model.Status == "Rejected")">Rechazada</option>
-                </select>
-            </div>
-            <div class="col-md-2"><label class="form-label">Desde</label><input class="form-control" type="date" name="from" value="@Model.From" /></div>
-            <div class="col-md-1"><label class="form-label">Hasta</label><input class="form-control" type="date" name="to" value="@Model.To" /></div>
-            <div class="col-md-12 d-flex gap-2">
-                <button class="btn btn-primary" type="submit">Filtrar</button>
-            </div>
+<form method="get" class="card shadow-sm mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <input type="hidden" name="view" value="@Model.ViewMode" />
+        <div class="col-md-4"><label class="form-label">Buscar</label><input class="form-control" name="q" value="@Model.Q" placeholder="Folio, nombre o correo" /></div>
+        <div class="col-md-3">
+            <label class="form-label">Segmento</label>
+            <select class="form-select" name="segment">
+                <option value="">Todos</option>
+                <option value="Residential" selected="@(Model.Segment == "Residential")">Residencial</option>
+                <option value="Business" selected="@(Model.Segment == "Business")">Empresarial</option>
+                <option value="Events" selected="@(Model.Segment == "Events")">Eventos</option>
+            </select>
         </div>
-    </form>
-}
+        <div class="col-md-3">
+            <label class="form-label">Mes</label>
+            <input class="form-control" type="month" name="month" value="@Model.Month" />
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+        </div>
+    </div>
+</form>
 
 <div class="row g-2">
 @foreach (var r in Model.Rows)
@@ -155,7 +172,14 @@
         @for (var i = 1; i <= Model.TotalPages; i++)
         {
             <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                <a class="page-link" asp-page="./Requests" asp-route-page="@i" asp-route-q="@Model.Q" asp-route-segment="@Model.Segment" asp-route-status="@Model.Status" asp-route-from="@Model.From" asp-route-to="@Model.To">@i</a>
+                <a class="page-link"
+                   asp-page="./Requests"
+                   asp-route-page="@i"
+                   asp-route-q="@Model.Q"
+                   asp-route-segment="@Model.Segment"
+                   asp-route-view="@Model.ViewMode"
+                   asp-route-month="@Model.Month"
+                   asp-route-status="@Model.Status">@i</a>
             </li>
         }
     </ul></nav>

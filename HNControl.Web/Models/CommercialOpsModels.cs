@@ -89,6 +89,7 @@ public class PermissionRoleAction
 public static class AppActions
 {
     public const string ClientsView = "Clients.View";
+    public const string ClientsViewOwn = "Clients.ViewOwn";
     public const string ClientsEdit = "Clients.Edit";
     public const string ProjectsView = "Projects.View";
     public const string ProjectsEdit = "Projects.Edit";
@@ -135,6 +136,7 @@ public static class AppActions
     public static readonly string[] AllKnown =
     [
         ClientsView,
+        ClientsViewOwn,
         ClientsEdit,
         ProjectsView,
         ProjectsEdit,
@@ -255,6 +257,7 @@ public static class AppActions
     public static string Label(string key) => key switch
     {
         ClientsView => "Clientes: ver",
+        ClientsViewOwn => "Clientes: ver mis clientes",
         ClientsEdit => "Clientes: editar",
         ProjectsView => "Proyectos: ver",
         ProjectsEdit => "Proyectos: editar",

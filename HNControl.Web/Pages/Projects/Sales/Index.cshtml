@@ -26,6 +26,18 @@
     <div class="alert alert-@(Model.FlashType ?? "info")">@Model.Flash</div>
 }
 
+<form method="get" class="card shadow-soft border-0 mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-12 col-md-3">
+            <label class="form-label mb-1">Mes</label>
+            <input class="form-control" type="month" asp-for="Month" />
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button class="btn btn-primary" type="submit">Aplicar</button>
+        </div>
+    </div>
+</form>
+
 <div class="row g-3 mb-3">
     <div class="col-12 col-md-4">
         <div class="card shadow-soft border-0 h-100 bg-primary-subtle">
@@ -39,7 +51,7 @@
         <div class="card shadow-soft border-0 h-100 bg-info-subtle">
             <div class="card-body">
                 <div class="text-muted small">Oportunidades visibles</div>
-                <div class="fs-3 fw-bold">@Model.Opportunities.Count</div>
+                <div class="fs-3 fw-bold">@Model.TotalOpportunities</div>
             </div>
         </div>
     </div>
@@ -119,8 +131,12 @@
                 {
                     var badge = o.Status == nameof(SalesOpportunityStatus.CommissionApplied) ? "text-bg-success"
                         : o.Status == nameof(SalesOpportunityStatus.ContractSigned) ? "text-bg-primary"
-                        : o.Status == nameof(SalesOpportunityStatus.ClosedWon) ? "text-bg-warning"
+                        : o.Status == nameof(SalesOpportunityStatus.ClosedWon) ? "text-bg-success"
+                        : o.Status == nameof(SalesOpportunityStatus.ClosedLost) ? "text-bg-danger"
                         : "text-bg-secondary";
+                    var statusLabel = o.Status == nameof(SalesOpportunityStatus.ClosedWon) ? "Ganada"
+                        : o.Status == nameof(SalesOpportunityStatus.ClosedLost) ? "Perdida"
+                        : o.Status;
                     <div class="col-12 col-lg-6">
                         <article class="border rounded-3 p-3 h-100">
                             <div class="d-flex justify-content-between align-items-start gap-2">
@@ -128,7 +144,7 @@
                                     <div class="fw-semibold">@o.Folio</div>
                                     <div class="small text-muted">@o.Customer</div>
                                 </div>
-                                <span class="badge @badge">@o.Status</span>
+                                <span class="badge @badge">@statusLabel</span>
                             </div>
                             <div class="small mt-2">Vendedor: <b>@o.Seller</b></div>
                             <div class="small">Total: <b>@o.Total.ToString("C")</b></div>
@@ -164,6 +180,20 @@
         }
     </div>
 </div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link" asp-page="./Index" asp-route-Month="@Model.Month" asp-route-Page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
 
 @if (Model.CanManage)
 {

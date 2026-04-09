@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Sales.ProspectsModel
 @{
     Layout = "_Layout";
@@ -18,9 +18,13 @@
 
 <form method="get" class="card shadow-soft border-0 mb-3">
     <div class="card-body row g-2 align-items-end">
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-5">
             <label class="form-label">Buscar</label>
             <input class="form-control" name="Name" value="@Model.Name" placeholder="Nombre, contacto o correo" />
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label">Mes</label>
+            <input class="form-control" type="month" name="Month" value="@Model.Month" />
         </div>
         <div class="col-12 col-md-2">
             <label class="form-label">Por página</label>
@@ -31,7 +35,7 @@
                 }
             </select>
         </div>
-        <div class="col-12 col-md-4 d-flex gap-2">
+        <div class="col-12 col-md-2 d-flex gap-2">
             <button class="btn btn-primary" type="submit">Filtrar</button>
             <a class="btn btn-outline-secondary" asp-page="./Prospects">Limpiar</a>
         </div>
@@ -65,7 +69,17 @@ else
                         <div class="small text-muted">@p.Location</div>
                         <div class="small text-muted mt-1">Alta: @p.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
 
-                        <div class="d-flex gap-2 mt-3">
+                        <div class="d-flex gap-2 mt-3 flex-wrap">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-dark"
+                                    data-prospect-quote-btn="true"
+                                    data-prospect-id="@p.Id"
+                                    data-prospect-name="@p.Name"
+                                    data-prospect-code="@p.ClientCode"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#prospectQuotesModal">
+                                Cotizaciones
+                            </button>
                             @if (Model.CanEdit)
                             {
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditarProspecto-@p.Id">
@@ -79,6 +93,7 @@ else
                                     <input type="hidden" name="Name" value="@Model.Name" />
                                     <input type="hidden" name="Page" value="@Model.Page" />
                                     <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <input type="hidden" name="Month" value="@Model.Month" />
                                     <button class="btn btn-sm btn-outline-secondary" type="submit">@(p.IsActive ? "Desactivar" : "Activar")</button>
                                 </form>
                             }
@@ -89,6 +104,7 @@ else
                                     <input type="hidden" name="Name" value="@Model.Name" />
                                     <input type="hidden" name="Page" value="@Model.Page" />
                                     <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <input type="hidden" name="Month" value="@Model.Month" />
                                     <button class="btn btn-sm btn-outline-primary" type="submit">Convertir a cliente</button>
                                 </form>
                             }
@@ -140,6 +156,7 @@ else
                                     <input type="hidden" name="Name" value="@Model.Name" />
                                     <input type="hidden" name="Page" value="@Model.Page" />
                                     <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <input type="hidden" name="Month" value="@Model.Month" />
                                     <button class="btn btn-primary" type="submit">Guardar cambios</button>
                                 </div>
                             </form>
@@ -158,7 +175,7 @@ else
             @for (var i = 1; i <= Model.TotalPages; i++)
             {
                 <li class="page-item @(i == Model.Page ? "active" : "")">
-                    <a class="page-link" asp-page="./Prospects" asp-route-Name="@Model.Name" asp-route-PageSize="@Model.PageSize" asp-route-Page="@i">@i</a>
+                    <a class="page-link" asp-page="./Prospects" asp-route-Name="@Model.Name" asp-route-PageSize="@Model.PageSize" asp-route-Month="@Model.Month" asp-route-Page="@i">@i</a>
                 </li>
             }
         </ul>
@@ -201,6 +218,7 @@ else
                         <input type="hidden" name="Name" value="@Model.Name" />
                         <input type="hidden" name="Page" value="@Model.Page" />
                         <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                        <input type="hidden" name="Month" value="@Model.Month" />
                         <button class="btn btn-primary" type="submit">Guardar prospecto</button>
                     </div>
                 </form>
@@ -208,3 +226,135 @@ else
         </div>
     </div>
 }
+
+<div class="modal fade" id="prospectQuotesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="prospectQuotesTitle">Cotizaciones del prospecto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Mes</label>
+                        <input type="month" class="form-control" id="prospectQuotesMonth" value="@Model.Month" />
+                    </div>
+                    <div class="col-12 col-md-8 d-flex gap-2">
+                        <button class="btn btn-primary" type="button" id="prospectQuotesApply">Aplicar</button>
+                        <div class="small text-muted align-self-center" id="prospectQuotesMeta"></div>
+                    </div>
+                </div>
+                <div id="prospectQuotesLoading" class="text-muted small d-none">Cargando cotizaciones...</div>
+                <div id="prospectQuotesEmpty" class="text-muted small d-none">Sin cotizaciones para ese mes.</div>
+                <div id="prospectQuotesError" class="alert alert-warning d-none"></div>
+                <div class="row g-2" id="prospectQuotesList"></div>
+                <div class="d-flex justify-content-end gap-2 mt-3 d-none" id="prospectQuotesPager">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="prospectQuotesPrev">Anterior</button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="prospectQuotesNext">Siguiente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const modal = document.getElementById('prospectQuotesModal');
+    if (!modal) return;
+
+    const title = document.getElementById('prospectQuotesTitle');
+    const monthInput = document.getElementById('prospectQuotesMonth');
+    const btnApply = document.getElementById('prospectQuotesApply');
+    const loading = document.getElementById('prospectQuotesLoading');
+    const empty = document.getElementById('prospectQuotesEmpty');
+    const error = document.getElementById('prospectQuotesError');
+    const meta = document.getElementById('prospectQuotesMeta');
+    const list = document.getElementById('prospectQuotesList');
+    const pager = document.getElementById('prospectQuotesPager');
+    const prev = document.getElementById('prospectQuotesPrev');
+    const next = document.getElementById('prospectQuotesNext');
+
+    let currentProspectId = null;
+    let currentProspectName = '';
+    let currentPage = 1;
+    let totalPages = 1;
+
+    function setState({ isLoading = false, hasError = false, errorText = '', isEmpty = false }) {
+        loading.classList.toggle('d-none', !isLoading);
+        error.classList.toggle('d-none', !hasError);
+        error.textContent = errorText || '';
+        empty.classList.toggle('d-none', !isEmpty);
+        list.classList.toggle('d-none', isLoading || hasError || isEmpty);
+    }
+
+    async function loadQuotes(page = 1) {
+        if (!currentProspectId) return;
+        setState({ isLoading: true });
+        pager.classList.add('d-none');
+        list.innerHTML = '';
+
+        try {
+            const month = monthInput.value || '@Model.Month';
+            const url = `/Ventas/Prospectos?handler=ProspectQuotes&prospectId=${encodeURIComponent(currentProspectId)}&month=${encodeURIComponent(month)}&page=${page}`;
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (!data.ok) {
+                setState({ hasError: true, errorText: data.message || 'No se pudieron cargar cotizaciones.' });
+                return;
+            }
+
+            currentPage = data.pagination.page;
+            totalPages = data.pagination.totalPages;
+            title.textContent = `Cotizaciones · ${data.prospect.code} · ${currentProspectName}`;
+            meta.textContent = `Página ${currentPage} de ${totalPages} · Total: ${data.pagination.total}`;
+
+            if (!data.quotes || data.quotes.length === 0) {
+                setState({ isEmpty: true });
+                return;
+            }
+
+            const html = data.quotes.map(q => `
+                <div class="col-12 col-lg-6">
+                    <article class="border rounded-3 p-2 h-100">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div>
+                                <div class="fw-semibold">${q.folio}</div>
+                                <div class="small text-muted">${q.createdAt}</div>
+                            </div>
+                            <span class="badge text-bg-light border">${q.statusLabel}</span>
+                        </div>
+                        <div class="small mt-2">Monto: <b>${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(q.total || 0)}</b></div>
+                        <div class="mt-2">
+                            <a class="btn btn-sm btn-outline-primary" href="/Ventas/Cotizaciones?q=${encodeURIComponent(q.folio)}">Ver en cotizaciones</a>
+                        </div>
+                    </article>
+                </div>`).join('');
+            list.innerHTML = html;
+            setState({});
+
+            if (totalPages > 1) {
+                pager.classList.remove('d-none');
+                prev.disabled = currentPage <= 1;
+                next.disabled = currentPage >= totalPages;
+            }
+        } catch {
+            setState({ hasError: true, errorText: 'Error cargando cotizaciones del prospecto.' });
+        }
+    }
+
+    document.querySelectorAll('[data-prospect-quote-btn="true"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentProspectId = btn.getAttribute('data-prospect-id');
+            currentProspectName = btn.getAttribute('data-prospect-name') || '';
+            currentPage = 1;
+            monthInput.value = '@Model.Month';
+            loadQuotes(1);
+        });
+    });
+
+    btnApply?.addEventListener('click', () => loadQuotes(1));
+    prev?.addEventListener('click', () => { if (currentPage > 1) loadQuotes(currentPage - 1); });
+    next?.addEventListener('click', () => { if (currentPage < totalPages) loadQuotes(currentPage + 1); });
+})();
+</script>

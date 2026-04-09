@@ -107,6 +107,8 @@ public class Client
     public bool IsTemporaryLead { get; set; }
     [MaxLength(64)]
     public string? CreatedByUserId { get; set; }
+    [MaxLength(64)]
+    public string? OwnerUserId { get; set; }
     public DateTime? ConvertedToFormalAt { get; set; }
 
     // ✅ Contratos/servicios del cliente (múltiples por categoría)

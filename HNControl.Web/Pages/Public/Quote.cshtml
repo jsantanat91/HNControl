@@ -50,6 +50,7 @@
 
                 <form method="post" id="quoteForm" class="row g-3">
                     <input type="hidden" asp-for="Input.ClientToken" />
+                    <input type="hidden" asp-for="Input.SelectedClientId" id="selectedClientId" />
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
                     <input type="hidden" asp-for="Input.ManualLinesJson" id="manualLinesJson" />
                     <input type="hidden" asp-for="Input.GlobalDiscountType" id="globalDiscountTypeHidden" />
@@ -190,15 +191,15 @@
                         {
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <label class="form-label">Prospecto</label>
+                                    <label class="form-label">Prospecto / Cliente</label>
                                     <select class="form-select" id="prospectSelect">
                                         <option value="">Nuevo cliente</option>
                                         @foreach (var p in Model.ProspectOptions)
                                         {
-                                            <option value="@p.Id">@p.Name · @p.Email</option>
+                                            <option value="@p.Id">[@(p.IsTemporaryLead ? "Prospecto" : "Cliente")] @p.Name · @p.Email</option>
                                         }
                                     </select>
-                                    <div class="small text-muted">Selecciona un prospecto existente o usa "Nuevo cliente".</div>
+                                    <div class="small text-muted">Selecciona un prospecto o cliente propio, o usa "Nuevo cliente".</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre</label>
@@ -299,6 +300,7 @@
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
     const prospectSelect = document.getElementById('prospectSelect');
+    const selectedClientId = document.getElementById('selectedClientId');
     const inputCustomerName = document.getElementById('Input_CustomerName');
     const inputCustomerEmail = document.getElementById('Input_CustomerEmail');
     const inputCustomerPhone = document.getElementById('Input_CustomerPhone');
@@ -350,14 +352,17 @@
         if(!prospectSelect || skipClientDataStep) return;
         const selectedId = prospectSelect.value;
         if(!selectedId){
+            if(selectedClientId) selectedClientId.value = '';
             lockCustomerFields(false);
             return;
         }
         const p = (prospects || []).find(x => String(x.id || x.Id) === String(selectedId));
         if(!p){
+            if(selectedClientId) selectedClientId.value = '';
             lockCustomerFields(false);
             return;
         }
+        if(selectedClientId) selectedClientId.value = selectedId;
         if(inputCustomerName) inputCustomerName.value = p.name || p.Name || '';
         if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
         if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';

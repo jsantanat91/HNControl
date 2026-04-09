@@ -30,6 +30,8 @@ public class IndexModel : PageModel
     public bool CanEdit { get; set; }
     public bool CanCreateLead { get; set; }
     public bool CanDelete { get; set; }
+    public bool CanViewAllClients { get; set; }
+    public bool CanViewOwnClients { get; set; }
     public bool IsSuperAdmin { get; set; }
 
     public record Row(
@@ -59,6 +61,8 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
+        CanViewAllClients = IsSuperAdmin || await _actions.HasActionAsync(User, AppActions.ClientsView);
+        CanViewOwnClients = IsSuperAdmin || await _actions.HasActionAsync(User, AppActions.ClientsViewOwn);
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
         var showLeads = string.Equals(View, "leads", StringComparison.OrdinalIgnoreCase);
         if (showLeads)
@@ -89,6 +93,18 @@ public class IndexModel : PageModel
         q = q.Where(c => c.IsTemporaryLead == showLeads);
         if (showLeads && !AppRoles.IsGlobalAdmin(User))
             q = q.Where(c => c.CreatedByUserId == userId);
+
+        if (!showLeads && !CanViewAllClients)
+        {
+            if (CanViewOwnClients)
+            {
+                q = q.Where(c => c.OwnerUserId == userId);
+            }
+            else
+            {
+                q = q.Where(c => false);
+            }
+        }
 
         var name = (Name ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
@@ -140,6 +156,7 @@ public class IndexModel : PageModel
         var action = leads ? AppActions.SalesProspectsEdit : AppActions.ClientsEdit;
         var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, action);
         if (!canEdit) return Forbid();
+        if (!leads && !await CanAccessOwnClientForWriteAsync(id)) return Forbid();
 
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
         if (client == null) return RedirectToPage("/Clients/Index", new { Name = name, View = view, Page = page, PageSize = pageSize });
@@ -169,12 +186,15 @@ public class IndexModel : PageModel
 
         if (existing != null)
         {
+            if (!AppRoles.IsGlobalAdmin(User) && !string.Equals(existing.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+                return Forbid();
             existing.Name = company;
             existing.ContactName = contactName;
             existing.Phone = phone;
             existing.Address = location;
             existing.IsActive = true;
             existing.CreatedByUserId ??= userId;
+            existing.OwnerUserId ??= userId;
         }
         else
         {
@@ -190,6 +210,7 @@ public class IndexModel : PageModel
                 IsTemporaryLead = true,
                 IsActive = true,
                 CreatedByUserId = userId,
+                OwnerUserId = userId,
                 CreatedAt = DateTime.UtcNow
             });
         }
@@ -213,6 +234,7 @@ public class IndexModel : PageModel
         lead.IsActive = true;
         lead.ConvertedToFormalAt = DateTime.UtcNow;
         lead.ClientCode = await NextFormalClientCodeAsync();
+        lead.OwnerUserId ??= lead.CreatedByUserId;
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Clients/Index", new { Name = name, View = "leads", Page = page, PageSize = pageSize });
@@ -224,6 +246,7 @@ public class IndexModel : PageModel
         var action = leads ? AppActions.SalesProspectsEdit : AppActions.ClientsEdit;
         var canDelete = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, action);
         if (!canDelete) return Forbid();
+        if (!leads && !await CanAccessOwnClientForWriteAsync(id)) return Forbid();
 
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id);
         if (client == null)
@@ -317,6 +340,23 @@ public class IndexModel : PageModel
                 max = n;
         }
         return $"HN-{max + 1:0000}";
+    }
+
+    private async Task<bool> CanAccessOwnClientForWriteAsync(Guid clientId)
+    {
+        if (AppRoles.IsGlobalAdmin(User))
+            return true;
+
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        var canViewAll = await _actions.HasActionAsync(User, AppActions.ClientsView);
+        if (canViewAll) return true;
+
+        var canViewOwn = await _actions.HasActionAsync(User, AppActions.ClientsViewOwn);
+        if (!canViewOwn) return false;
+
+        return await _db.Clients
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == clientId && x.OwnerUserId == userId);
     }
 }
 

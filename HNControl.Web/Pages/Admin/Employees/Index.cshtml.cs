@@ -23,6 +23,7 @@ public class IndexModel : PageModel
 
     public record Row(string UserId, string FullName, string Email, string Position, string EmployeeNumber, decimal SalaryBase, bool IsInventoryManager, bool HasPhoto, bool IsActive);
     public List<Row> Rows { get; set; } = new();
+    public bool CanResetPasswords { get; set; }
 
     [TempData]
     public string? FlashOk { get; set; }
@@ -32,6 +33,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync(bool includeInactive = false)
     {
+        CanResetPasswords = AppRoles.IsGlobalAdmin(User);
         var inventoryRoleId = await _db.Roles
             .Where(r => r.Name == AppRoles.InventoryManager)
             .Select(r => r.Id)
@@ -61,6 +63,56 @@ public class IndexModel : PageModel
                 !string.IsNullOrWhiteSpace(e.ProfilePhotoStoragePath),
                 e.IsActive))
             .ToList();
+    }
+
+    public async Task<IActionResult> OnPostResetPasswordAsync(
+        string userId,
+        string? newPassword,
+        string? confirmPassword,
+        bool includeInactive = false,
+        string? view = null)
+    {
+        if (!AppRoles.IsGlobalAdmin(User))
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            FlashError = "Usuario inválido.";
+            return RedirectToPage(new { includeInactive, view });
+        }
+
+        newPassword = (newPassword ?? "").Trim();
+        confirmPassword = (confirmPassword ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            FlashError = "La nueva contraseña es obligatoria.";
+            return RedirectToPage(new { includeInactive, view });
+        }
+
+        if (!string.Equals(newPassword, confirmPassword, StringComparison.Ordinal))
+        {
+            FlashError = "La confirmación de contraseña no coincide.";
+            return RedirectToPage(new { includeInactive, view });
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            FlashError = "No se encontró el usuario del empleado.";
+            return RedirectToPage(new { includeInactive, view });
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            FlashError = "No se pudo actualizar la contraseña: " + string.Join("; ", result.Errors.Select(e => e.Description));
+            return RedirectToPage(new { includeInactive, view });
+        }
+
+        await _userManager.UpdateSecurityStampAsync(user);
+        FlashOk = $"Contraseña actualizada para {user.Email ?? user.UserName ?? user.Id}.";
+        return RedirectToPage(new { includeInactive, view });
     }
 
     public async Task<IActionResult> OnPostDeactivateAsync(string userId, bool includeInactive = false)

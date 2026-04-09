@@ -45,7 +45,7 @@
             </div>
 
             <div class="col-md-8">
-                <label class="form-label">Nombre</label>
+                <label class="form-label">Razón Social</label>
                 <input class="form-control" asp-for="Input.Name" />
             </div>
 
@@ -103,17 +103,21 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Domicilio fiscal</label>
-                <input class="form-control" asp-for="Input.FiscalAddress" />
+                <label class="form-label">Domicilio Fiscal</label>
+                <input class="form-control" asp-for="Input.FiscalAddress" id="fiscalAddressInput" />
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="copyAddressCheck" />
+                    <label class="form-check-label small" for="copyAddressCheck">Mismo que Domicilio</label>
+                </div>
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">CP fiscal</label>
+                <label class="form-label">Código Postal</label>
                 <input class="form-control" asp-for="Input.FiscalZipCode" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Regimen fiscal SAT</label>
+                <label class="form-label">Régimen Fiscal</label>
                 <select class="form-select" asp-for="Input.FiscalRegimeCode">
                     @foreach (var it in HNControl.Web.Models.SatCatalogs.RegimenFiscal)
                     {
@@ -123,13 +127,17 @@
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Uso CFDI por defecto</label>
+                <label class="form-label">Uso de CFDI</label>
                 <select class="form-select" asp-for="Input.CfdiUseCodeDefault">
                     @foreach (var it in HNControl.Web.Models.SatCatalogs.UsoCfdi)
                     {
                         <option value="@it.Code">@it.Code - @it.Label</option>
                     }
                 </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Vendedor (Owner)</label>
+                <select class="form-select" asp-for="Input.OwnerUserId" asp-items="Model.OwnerItems"></select>
             </div>
         </div>
     </div>
@@ -147,6 +155,9 @@
             const stateSelect = document.getElementById('Input_State');
             const municipalityInput = document.getElementById('Input_Municipality');
             const municipalityOptions = document.getElementById('municipalityOptions');
+            const check = document.getElementById('copyAddressCheck');
+            const address = document.getElementById('Input_Address');
+            const fiscal = document.getElementById('fiscalAddressInput');
             const map = @Html.Raw(Model.MunicipalitiesByStateJson);
 
             function fillMunicipalities() {
@@ -167,6 +178,24 @@
             if (stateSelect) {
                 stateSelect.addEventListener('change', fillMunicipalities);
                 fillMunicipalities();
+            }
+
+            if (check && address && fiscal) {
+                const syncFiscal = () => {
+                    if (!check.checked) return;
+                    fiscal.value = address.value || '';
+                };
+                check.addEventListener('change', () => {
+                    if (check.checked) {
+                        syncFiscal();
+                        fiscal.readOnly = true;
+                        fiscal.classList.add('bg-light');
+                    } else {
+                        fiscal.readOnly = false;
+                        fiscal.classList.remove('bg-light');
+                    }
+                });
+                address.addEventListener('input', syncFiscal);
             }
         })();
     </script>

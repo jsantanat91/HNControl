@@ -12,7 +12,7 @@
     var canQuotes = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesView) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage);
     var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && canDashboard;
     var canTemplates = await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.TemplatesManage);
-    var canCatalog = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin)
+    var canCatalog = HNControl.Web.Models.AppRoles.IsGlobalAdmin(User)
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogView)
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogManage);
 
@@ -35,7 +35,7 @@
         {
             <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
         }
-        @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) && canQuotes)
+        @if (HNControl.Web.Models.AppRoles.IsGlobalAdmin(User) && canQuotes)
         {
             <a href="/Ventas/Cotizaciones" class="btn btn-sm px-3 py-2 fw-semibold @(isQuotesActive ? "btn-info text-white" : "btn-outline-info")">Cotización</a>
         }

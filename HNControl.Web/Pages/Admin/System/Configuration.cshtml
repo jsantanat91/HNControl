@@ -1,14 +1,14 @@
-@page
+﻿@page
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Admin.SystemPages.ConfigurationModel
 @{
-    ViewData["Title"] = "Configuraci&oacute;n del sistema";
+    ViewData["Title"] = "Configuraci\u00F3n del sistema";
 }
 
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-        <h1 class="h4 m-0">Configuraci&oacute;n</h1>
-        <div class="text-muted small">General y Fiscal (SAT/PAC/SMTP) para operaci&oacute;n central y timbrado.</div>
+        <h1 class="h4 m-0">Configuración</h1>
+        <div class="text-muted small">General y Fiscal (SAT/PAC/SMTP) para operación central y timbrado.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Admin/System/Backup">Respaldo DB</a>
 </div>
@@ -41,11 +41,11 @@
                         <input class="form-control" asp-for="Input.CompanyName" />
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Raz&oacute;n social</label>
+                        <label class="form-label">Razón social</label>
                         <input class="form-control" asp-for="Input.CompanyLegalName" />
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">Correo de facturaci&oacute;n</label>
+                        <label class="form-label">Correo de facturación</label>
                         <input class="form-control" asp-for="Input.BillingEmail" />
                     </div>
 
@@ -230,3 +230,5 @@
         </div>
     </div>
 </div>
+
+

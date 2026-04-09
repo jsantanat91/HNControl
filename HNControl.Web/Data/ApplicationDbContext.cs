@@ -354,10 +354,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.CfdiUseCodeDefault).HasMaxLength(4);
             e.Property(x => x.PublicQuoteToken).HasMaxLength(80);
             e.Property(x => x.CreatedByUserId).HasMaxLength(64);
+            e.Property(x => x.OwnerUserId).HasMaxLength(64);
             e.HasIndex(x => x.ClientCode).IsUnique();
             e.HasIndex(x => x.PublicQuoteToken).IsUnique();
             e.HasIndex(x => new { x.IsTemporaryLead, x.IsActive, x.CreatedAt });
             e.HasIndex(x => new { x.IsTemporaryLead, x.CreatedByUserId, x.CreatedAt });
+            e.HasIndex(x => new { x.IsTemporaryLead, x.OwnerUserId, x.CreatedAt });
             e.HasMany(x => x.Contracts)
              .WithOne(s => s.Client!)
              .HasForeignKey(s => s.ClientId)

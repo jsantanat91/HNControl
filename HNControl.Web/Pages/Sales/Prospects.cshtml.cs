@@ -1,4 +1,4 @@
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +24,7 @@ public class ProspectsModel : PageModel
     [BindProperty(SupportsGet = true)] public string? Name { get; set; }
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+    [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
     [BindProperty] public LeadInput Lead { get; set; } = new();
     [BindProperty] public EditLeadInput EditLead { get; set; } = new();
 
@@ -53,6 +54,13 @@ public class ProspectsModel : PageModel
         public bool IsActive { get; set; } = true;
     }
 
+    public record ProspectQuoteVm(
+        Guid Id,
+        string Folio,
+        string Status,
+        decimal Total,
+        DateTime CreatedAtUtc);
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (!await EnsurePermissionsAsync())
@@ -69,7 +77,7 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var contactName = (Lead.ContactName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(contactName))
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
 
         var email = (Lead.Email ?? "").Trim().ToLowerInvariant();
         var phone = (Lead.Phone ?? "").Trim();
@@ -91,6 +99,7 @@ public class ProspectsModel : PageModel
             existing.Address = location;
             existing.IsActive = true;
             existing.CreatedByUserId ??= userId;
+            existing.OwnerUserId ??= userId;
         }
         else
         {
@@ -106,12 +115,13 @@ public class ProspectsModel : PageModel
                 IsTemporaryLead = true,
                 IsActive = true,
                 CreatedByUserId = userId,
+                OwnerUserId = userId,
                 CreatedAt = DateTime.UtcNow
             });
         }
 
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
     }
 
     public async Task<IActionResult> OnPostToggleAsync(Guid id)
@@ -122,13 +132,13 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id && x.IsTemporaryLead);
         if (lead == null)
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
 
         lead.IsActive = !lead.IsActive;
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
     }
 
     public async Task<IActionResult> OnPostEditAsync()
@@ -137,18 +147,18 @@ public class ProspectsModel : PageModel
             return Forbid();
 
         if (EditLead.Id == Guid.Empty)
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == EditLead.Id && x.IsTemporaryLead);
         if (lead == null)
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
 
         var contactName = (EditLead.ContactName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(contactName))
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
 
         var company = string.IsNullOrWhiteSpace(EditLead.CompanyName) ? contactName : EditLead.CompanyName!.Trim();
         lead.Name = company;
@@ -160,7 +170,7 @@ public class ProspectsModel : PageModel
         lead.CreatedByUserId ??= userId;
         await _db.SaveChangesAsync();
 
-        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
     }
 
     public async Task<IActionResult> OnPostConvertAsync(Guid id)
@@ -171,7 +181,7 @@ public class ProspectsModel : PageModel
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id && x.IsTemporaryLead);
         if (lead == null)
-            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
 
@@ -179,9 +189,72 @@ public class ProspectsModel : PageModel
         lead.IsActive = true;
         lead.ConvertedToFormalAt = DateTime.UtcNow;
         lead.ClientCode = await NextFormalClientCodeAsync();
+        lead.OwnerUserId ??= lead.CreatedByUserId;
 
         await _db.SaveChangesAsync();
-        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize });
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+    }
+
+    public async Task<IActionResult> OnGetProspectQuotesAsync(Guid prospectId, string? month, int page = 1)
+    {
+        if (!await EnsurePermissionsAsync())
+            return new JsonResult(new { ok = false, message = "Sin permiso." });
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var lead = await _db.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == prospectId && x.IsTemporaryLead);
+        if (lead == null)
+            return new JsonResult(new { ok = false, message = "Prospecto no encontrado." });
+        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            return new JsonResult(new { ok = false, message = "Sin acceso al prospecto." });
+
+        var (fromUtc, toUtc) = ResolveMonthRange(month);
+        const int modalPageSize = 20;
+        page = page < 1 ? 1 : page;
+
+        var quotesQuery = _db.QuoteRequests
+            .AsNoTracking()
+            .Where(x =>
+                x.ClientId == prospectId
+                && x.CreatedAt >= fromUtc
+                && x.CreatedAt < toUtc
+                && (x.Status == QuoteRequestStatus.New
+                    || x.Status == QuoteRequestStatus.Emailed
+                    || x.Status == QuoteRequestStatus.EmailError));
+
+        var total = await quotesQuery.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)modalPageSize));
+        if (page > totalPages) page = totalPages;
+
+        var items = await quotesQuery
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip((page - 1) * modalPageSize)
+            .Take(modalPageSize)
+            .Select(x => new ProspectQuoteVm(
+                x.Id,
+                x.Folio,
+                x.Status.ToString(),
+                x.EstimatedTotal ?? x.SubtotalAuto,
+                x.CreatedAt))
+            .ToListAsync();
+
+        return new JsonResult(new
+        {
+            ok = true,
+            prospect = new { id = lead.Id, name = lead.Name, code = lead.ClientCode },
+            month = fromUtc.ToString("yyyy-MM"),
+            pagination = new { page, pageSize = modalPageSize, total, totalPages },
+            quotes = items.Select(x => new
+            {
+                id = x.Id,
+                folio = x.Folio,
+                status = x.Status,
+                statusLabel = QuoteStatusLabel(x.Status),
+                total = x.Total,
+                createdAt = x.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            })
+        });
     }
 
     private async Task<bool> EnsurePermissionsAsync()
@@ -270,4 +343,22 @@ public class ProspectsModel : PageModel
         }
         return $"HN-{max + 1:0000}";
     }
+
+    private static (DateTime fromUtc, DateTime toUtc) ResolveMonthRange(string? month)
+    {
+        if (!DateTime.TryParse($"{month}-01", out var parsed))
+            parsed = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var from = DateTime.SpecifyKind(new DateTime(parsed.Year, parsed.Month, 1), DateTimeKind.Utc);
+        return (from, from.AddMonths(1));
+    }
+
+    private static string QuoteStatusLabel(string status) => status switch
+    {
+        nameof(QuoteRequestStatus.New) => "Activa",
+        nameof(QuoteRequestStatus.Emailed) => "Activa",
+        nameof(QuoteRequestStatus.EmailError) => "Activa (error envío)",
+        nameof(QuoteRequestStatus.Accepted) => "Aceptada",
+        nameof(QuoteRequestStatus.Rejected) => "Rechazada",
+        _ => status
+    };
 }

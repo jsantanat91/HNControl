@@ -12,6 +12,12 @@
         <div class="text-muted small">Oportunidad > Cotización > Cierre</div>
     </div>
     <div class="d-flex gap-2">
+        <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#wonDealsModal">
+            Ganados (@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedWon) ? Model.Board[SalesWorkflowStage.ClosedWon].Count : 0)))
+        </button>
+        <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#lostDealsModal">
+            Perdidos (@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost].Count : 0)))
+        </button>
         <a class="btn btn-outline-primary" href="/Ventas">Dashboard</a>
         <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#newDealModal">Nuevo trato</button>
     </div>
@@ -150,14 +156,14 @@
     }
 </div>
 
-<div class="row g-3 mt-1">
-    <div class="col-12 col-xl-6">
-        <div class="card shadow-soft border-0">
-            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-                <span>Ganados</span>
-                <span class="badge text-bg-success">@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedWon) ? Model.Board[SalesWorkflowStage.ClosedWon].Count : 0))</span>
+<div class="modal fade" id="wonDealsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tratos ganados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
+            <div class="modal-body">
                 @{
                     var wonItems = Model.Board.ContainsKey(SalesWorkflowStage.ClosedWon) ? Model.Board[SalesWorkflowStage.ClosedWon] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
                 }
@@ -167,18 +173,21 @@
                 }
                 else
                 {
-                    <div class="vstack gap-2">
+                    <div class="row g-2">
                         @foreach (var d in wonItems)
                         {
-                            <div class="border rounded-3 p-2 d-flex justify-content-between align-items-center">
-                                <div><span class="fw-semibold">@d.Folio</span> · <span>@d.Total.ToString("C")</span></div>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-success" disabled>Ganado</button>
-                                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
-                                    @if (Model.CanCall)
-                                    {
-                                        <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
-                                    }
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded-3 p-2 h-100">
+                                    <div class="fw-semibold">@d.Folio</div>
+                                    <div class="small">@d.Total.ToString("C")</div>
+                                    <div class="small text-muted">@d.Customer</div>
+                                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                                        <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
+                                        @if (Model.CanCall)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         }
@@ -187,13 +196,16 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-xl-6">
-        <div class="card shadow-soft border-0">
-            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-                <span>Perdidos</span>
-                <span class="badge text-bg-danger">@((Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost].Count : 0))</span>
+</div>
+
+<div class="modal fade" id="lostDealsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tratos perdidos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
+            <div class="modal-body">
                 @{
                     var lostItems = Model.Board.ContainsKey(SalesWorkflowStage.ClosedLost) ? Model.Board[SalesWorkflowStage.ClosedLost] : new List<HNControl.Web.Pages.Sales.WorkflowModel.DealVm>();
                 }
@@ -203,18 +215,21 @@
                 }
                 else
                 {
-                    <div class="vstack gap-2">
+                    <div class="row g-2">
                         @foreach (var d in lostItems)
                         {
-                            <div class="border rounded-3 p-2 d-flex justify-content-between align-items-center">
-                                <div><span class="fw-semibold">@d.Folio</span> · <span>@d.Total.ToString("C")</span></div>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-danger" disabled>Perdido</button>
-                                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
-                                    @if (Model.CanCall)
-                                    {
-                                        <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
-                                    }
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded-3 p-2 h-100">
+                                    <div class="fw-semibold">@d.Folio</div>
+                                    <div class="small">@d.Total.ToString("C")</div>
+                                    <div class="small text-muted">@d.Customer</div>
+                                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                                        <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>
+                                        @if (Model.CanCall)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" href="/Ventas/Llamadas?OpportunityId=@d.Id">Llamar</a>
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         }

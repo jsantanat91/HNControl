@@ -210,7 +210,8 @@ public class CreateModel : PageModel
 
         CrudMatrix = new List<CrudMatrixRow>
         {
-            new() { Area = "Clientes", Label = "Clientes", ViewKey = AppActions.ClientsView, CreateKey = AppActions.ClientsEdit, EditKey = AppActions.ClientsEdit },
+            new() { Area = "Clientes", Label = "Clientes (todo)", ViewKey = AppActions.ClientsView, CreateKey = AppActions.ClientsEdit, EditKey = AppActions.ClientsEdit },
+            new() { Area = "Clientes", Label = "Ver mis clientes", ViewKey = AppActions.ClientsViewOwn },
             new() { Area = "Proyectos", Label = "Proyectos base", ViewKey = AppActions.ProjectsView, CreateKey = AppActions.ProjectsEdit, EditKey = AppActions.ProjectsEdit },
             new() { Area = "Proyectos", Label = "Inversiones", ViewKey = AppActions.ProjectsInvestmentsView, CreateKey = AppActions.ProjectsInvestmentsEdit, EditKey = AppActions.ProjectsInvestmentsEdit },
             new() { Area = "Proyectos", Label = "Reseller", ViewKey = AppActions.ProjectsResellersView, CreateKey = AppActions.ProjectsResellersEdit, EditKey = AppActions.ProjectsResellersEdit },

@@ -694,15 +694,25 @@ ALTER TABLE IF EXISTS public."Clients"
     ADD COLUMN IF NOT EXISTS "State" character varying(80);
 ALTER TABLE IF EXISTS public."Clients"
     ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
+ALTER TABLE IF EXISTS public."Clients"
+    ADD COLUMN IF NOT EXISTS "OwnerUserId" character varying(64);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "State" character varying(80);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
+ALTER TABLE IF EXISTS public.clients
+    ADD COLUMN IF NOT EXISTS "OwnerUserId" character varying(64);
 
 CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_CreatedByUserId_CreatedAt"
     ON public."Clients" ("IsTemporaryLead", "CreatedByUserId", "CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_OwnerUserId_CreatedAt"
+    ON public."Clients" ("IsTemporaryLead", "OwnerUserId", "CreatedAt");
+
+UPDATE public."Clients"
+SET "OwnerUserId" = "CreatedByUserId"
+WHERE COALESCE("OwnerUserId", '') = '' AND COALESCE("CreatedByUserId", '') <> '';
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

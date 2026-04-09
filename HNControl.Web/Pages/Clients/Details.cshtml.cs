@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using HNControl.Web.Services;
+using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Clients;
 
@@ -23,6 +24,9 @@ public class DetailsModel : PageModel
 
     public Client? Client { get; set; }
     public bool CanEdit { get; set; }
+    public bool CanViewAllClients { get; set; }
+    public bool CanViewOwnClients { get; set; }
+    public string OwnerDisplayName { get; set; } = "-";
     public List<ClientContactRow> Contacts { get; set; } = new();
 
     [BindProperty]
@@ -71,12 +75,29 @@ public class DetailsModel : PageModel
 
     public async Task OnGetAsync(Guid id)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        CanViewAllClients = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsView);
+        CanViewOwnClients = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsViewOwn);
         CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
         Client = await _db.Clients
             .Include(c => c.Contracts)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (Client == null) return;
+        if (!CanViewAllClients && (!CanViewOwnClients || !string.Equals(Client.OwnerUserId, userId, StringComparison.OrdinalIgnoreCase)))
+        {
+            Client = null;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Client.OwnerUserId))
+        {
+            OwnerDisplayName = await _db.EmployeeProfiles
+                .AsNoTracking()
+                .Where(x => x.UserId == Client.OwnerUserId)
+                .Select(x => string.IsNullOrWhiteSpace(x.Email) ? x.FullName : $"{x.FullName} · {x.Email}")
+                .FirstOrDefaultAsync() ?? Client.OwnerUserId;
+        }
 
         if (string.IsNullOrWhiteSpace(Client.ClientCode))
         {
@@ -219,6 +240,7 @@ public class DetailsModel : PageModel
     {
         var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
         if (!canEdit) return Forbid();
+        if (!await CanAccessClientAsync(id)) return Forbid();
 
         var client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == id);
         if (client == null) return NotFound();
@@ -286,6 +308,7 @@ public class DetailsModel : PageModel
     {
         var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
         if (!canEdit) return Forbid();
+        if (!await CanAccessClientAsync(id)) return Forbid();
 
         ClientContact? contact;
         try
@@ -388,6 +411,23 @@ public class DetailsModel : PageModel
         };
 
         return (recurrence, termText, sale);
+    }
+
+    private async Task<bool> CanAccessClientAsync(Guid clientId)
+    {
+        if (AppRoles.IsGlobalAdmin(User))
+            return true;
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var canViewAll = await _actions.HasActionAsync(User, AppActions.ClientsView);
+        if (canViewAll) return true;
+
+        var canViewOwn = await _actions.HasActionAsync(User, AppActions.ClientsViewOwn);
+        if (!canViewOwn) return false;
+
+        return await _db.Clients
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == clientId && x.OwnerUserId == userId);
     }
 }
 

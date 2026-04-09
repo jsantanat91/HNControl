@@ -31,6 +31,10 @@ public class RequestsModel : PageModel
 
     [BindProperty(SupportsGet = true, Name = "status")]
     public string? Status { get; set; }
+    [BindProperty(SupportsGet = true, Name = "view")]
+    public string ViewMode { get; set; } = "active";
+    [BindProperty(SupportsGet = true, Name = "month")]
+    public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
 
     [BindProperty(SupportsGet = true, Name = "from")]
     public string? From { get; set; }
@@ -45,18 +49,19 @@ public class RequestsModel : PageModel
 
     public List<RowVm> Rows { get; set; } = [];
     public int TotalPages { get; set; } = 1;
+    public int TotalCount { get; set; }
     public bool CanManage { get; set; }
     public bool CanCreate { get; set; }
 
     public async Task OnGetAsync()
     {
-        var canView = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesView);
+        var canView = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesView);
         if (!canView)
         {
             Rows = [];
             return;
         }
-        CanManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        CanManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
         CanCreate = CanManage;
 
         await AutoRejectExpiredAsync();
@@ -106,7 +111,16 @@ public class RequestsModel : PageModel
             query = query.Where(x => x.Segment == seg);
 
         if (!string.IsNullOrWhiteSpace(Status) && Enum.TryParse<QuoteRequestStatus>(Status, out var st))
+        {
             query = query.Where(x => x.Status == st);
+        }
+        else
+        {
+            query = ApplyViewFilter(query, ViewMode);
+        }
+
+        var (fromUtc, toUtc) = ResolveMonthRange(Month);
+        query = query.Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
 
         if (DateOnly.TryParse(From, out var fromDate))
             query = query.Where(x => x.CreatedAt >= fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
@@ -116,8 +130,8 @@ public class RequestsModel : PageModel
 
         const int pageSize = 20;
         PageNumber = Math.Max(1, PageNumber);
-        var total = await query.CountAsync();
-        TotalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+        TotalCount = await query.CountAsync();
+        TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)pageSize));
         if (PageNumber > TotalPages) PageNumber = TotalPages;
 
         Rows = await query
@@ -199,13 +213,13 @@ public class RequestsModel : PageModel
 
     public async Task<IActionResult> OnPostAcceptAsync(Guid id)
     {
-        var canManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
         if (!canManage)
             return Forbid();
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Accepted;
         req.AcceptedAt = DateTime.UtcNow;
@@ -213,18 +227,18 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Aceptada.";
-        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnPostRejectAsync(Guid id)
     {
-        var canManage = User.IsInRole(AppRoles.SuperAdmin) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
+        var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
         if (!canManage)
             return Forbid();
 
         var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (req == null)
-            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
 
         req.Status = QuoteRequestStatus.Rejected;
         req.AcceptedAt = DateTime.UtcNow;
@@ -232,7 +246,7 @@ public class RequestsModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = $"Cotizacion {req.Folio} marcada como Rechazada.";
-        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, from = From, to = To, page = PageNumber });
+        return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(Guid id)
@@ -314,5 +328,27 @@ public class RequestsModel : PageModel
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private static IQueryable<QuoteRequest> ApplyViewFilter(IQueryable<QuoteRequest> query, string? viewMode)
+    {
+        var normalized = (viewMode ?? "active").Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "accepted" => query.Where(x => x.Status == QuoteRequestStatus.Accepted),
+            "rejected" => query.Where(x => x.Status == QuoteRequestStatus.Rejected),
+            _ => query.Where(x =>
+                x.Status == QuoteRequestStatus.New
+                || x.Status == QuoteRequestStatus.Emailed
+                || x.Status == QuoteRequestStatus.EmailError)
+        };
+    }
+
+    private static (DateTime fromUtc, DateTime toUtc) ResolveMonthRange(string? month)
+    {
+        if (!DateTime.TryParse($"{month}-01", out var parsed))
+            parsed = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var from = DateTime.SpecifyKind(new DateTime(parsed.Year, parsed.Month, 1), DateTimeKind.Utc);
+        return (from, from.AddMonths(1));
     }
 }

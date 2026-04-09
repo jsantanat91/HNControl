@@ -2,11 +2,13 @@
 using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Clients;
 
@@ -14,7 +16,12 @@ namespace HNControl.Web.Pages.Clients;
 public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    private readonly IActionAccessService _actions;
+    public CreateModel(ApplicationDbContext db, IActionAccessService actions)
+    {
+        _db = db;
+        _actions = actions;
+    }
 
     public SelectList KindItems =>
         new(Enum.GetValues<ClientKind>().Select(k => new { Id = k, Name = k.ToString() }), "Id", "Name");
@@ -23,6 +30,7 @@ public class CreateModel : PageModel
         new(MexicoGeoCatalog.States.Select(x => new { Id = x, Name = x }), "Id", "Name");
 
     public string MunicipalitiesByStateJson => JsonSerializer.Serialize(MexicoGeoCatalog.MunicipalitiesByState);
+    public SelectList OwnerItems { get; set; } = new(Enumerable.Empty<object>(), "Id", "Name");
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public string? Error { get; set; }
@@ -75,13 +83,29 @@ public class CreateModel : PageModel
 
         [MaxLength(4)]
         public string CfdiUseCodeDefault { get; set; } = "G03";
+
+        [MaxLength(64)]
+        public string? OwnerUserId { get; set; }
     }
 
-    public void OnGet() { }
+    public async Task<IActionResult> OnGetAsync()
+    {
+        if (!await CanEditAsync()) return Forbid();
+        await LoadOwnerItemsAsync();
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!await CanEditAsync()) return Forbid();
+        await LoadOwnerItemsAsync();
         if (!ModelState.IsValid) return Page();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
+        var ownerUserId = (Input.OwnerUserId ?? string.Empty).Trim();
+        if (!isGlobalAdmin || string.IsNullOrWhiteSpace(ownerUserId))
+            ownerUserId = userId;
 
         var client = new Client
         {
@@ -102,6 +126,7 @@ public class CreateModel : PageModel
             FiscalZipCode = (Input.FiscalZipCode ?? "").Trim(),
             FiscalRegimeCode = (Input.FiscalRegimeCode ?? "").Trim().ToUpperInvariant(),
             CfdiUseCodeDefault = (Input.CfdiUseCodeDefault ?? "").Trim().ToUpperInvariant(),
+            OwnerUserId = ownerUserId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -109,6 +134,35 @@ public class CreateModel : PageModel
         await _db.SaveChangesAsync();
 
         return RedirectToPage("/Clients/Details", new { id = client.Id });
+    }
+
+    private async Task<bool> CanEditAsync()
+    {
+        return AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+    }
+
+    private async Task LoadOwnerItemsAsync()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
+        var users = _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.IsActive);
+
+        if (!isGlobalAdmin)
+            users = users.Where(x => x.UserId == userId);
+
+        var rows = await users
+            .OrderBy(x => x.FullName)
+            .Select(x => new
+            {
+                Id = x.UserId,
+                Name = $"{x.FullName} · {x.Email}"
+            })
+            .ToListAsync();
+
+        Input.OwnerUserId ??= rows.FirstOrDefault()?.Id ?? userId;
+        OwnerItems = new SelectList(rows, "Id", "Name", Input.OwnerUserId);
     }
 
     private async Task<string> NextClientCodeAsync()

@@ -121,7 +121,7 @@ public class ActionAccessService : IActionAccessService
             result.Add(AppActions.MonitoringView);
 
         if (modules.Contains(AppModules.Clients))
-            result.Add(AppActions.ClientsView);
+            result.Add(AppActions.ClientsViewOwn);
 
         if (modules.Contains(AppModules.Projects))
         {
