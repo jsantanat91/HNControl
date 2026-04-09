@@ -86,6 +86,21 @@ public static class MexicoGeoCatalog
                 "Valle de Bravo",
                 "Valle de Chalco Solidaridad",
                 "Zinacantepec"
+            ],
+            ["Veracruz"] =
+            [
+                "Boca del Rio",
+                "Coatzacoalcos",
+                "Cordoba",
+                "Martinez de la Torre",
+                "Minatitlan",
+                "Orizaba",
+                "Papantla",
+                "Poza Rica de Hidalgo",
+                "San Andres Tuxtla",
+                "Tuxpan",
+                "Veracruz",
+                "Xalapa"
             ]
         };
 }

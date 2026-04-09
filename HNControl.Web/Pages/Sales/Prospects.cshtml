@@ -16,6 +16,11 @@
     }
 </div>
 
+@if (!string.IsNullOrWhiteSpace(Model.UiMessage))
+{
+    <div class="alert alert-info">@Model.UiMessage</div>
+}
+
 <form method="get" class="card shadow-soft border-0 mb-3">
     <div class="card-body row g-2 align-items-end">
         <div class="col-12 col-md-5">
@@ -95,6 +100,14 @@ else
                                     <input type="hidden" name="PageSize" value="@Model.PageSize" />
                                     <input type="hidden" name="Month" value="@Model.Month" />
                                     <button class="btn btn-sm btn-outline-secondary" type="submit">@(p.IsActive ? "Desactivar" : "Activar")</button>
+                                </form>
+                                <form method="post" asp-page-handler="Delete" onsubmit="return confirm('¿Eliminar este prospecto? Si tiene datos ligados se desactivará.');">
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <input type="hidden" name="Name" value="@Model.Name" />
+                                    <input type="hidden" name="Page" value="@Model.Page" />
+                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                    <input type="hidden" name="Month" value="@Model.Month" />
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
                                 </form>
                             }
                             @if (Model.CanConvert)

@@ -27,6 +27,7 @@ public class ProspectsModel : PageModel
     [BindProperty(SupportsGet = true)] public string Month { get; set; } = DateTime.UtcNow.ToString("yyyy-MM");
     [BindProperty] public LeadInput Lead { get; set; } = new();
     [BindProperty] public EditLeadInput EditLead { get; set; } = new();
+    [TempData] public string? UiMessage { get; set; }
 
     public int TotalCount { get; set; }
     public int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
@@ -192,6 +193,36 @@ public class ProspectsModel : PageModel
         lead.OwnerUserId ??= lead.CreatedByUserId;
 
         await _db.SaveChangesAsync();
+        return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        if (!await EnsurePermissionsAsync() || !CanEdit)
+            return Forbid();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == id && x.IsTemporaryLead);
+        if (lead == null)
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            return Forbid();
+
+        try
+        {
+            _db.Clients.Remove(lead);
+            await _db.SaveChangesAsync();
+            UiMessage = "Prospecto eliminado.";
+        }
+        catch (DbUpdateException)
+        {
+            // Si está ligado a cotizaciones/tickets u otras referencias, no tronamos:
+            // lo dejamos inactivo para evitar uso operativo.
+            lead.IsActive = false;
+            await _db.SaveChangesAsync();
+            UiMessage = "El prospecto tiene datos ligados; se desactivó en lugar de eliminarse.";
+        }
+
         return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
     }
 

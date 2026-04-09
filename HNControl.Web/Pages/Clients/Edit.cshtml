@@ -170,8 +170,13 @@
                     option.value = name;
                     municipalityOptions.appendChild(option);
                 });
-                if (municipalityInput && (!municipalityInput.value || !items.includes(municipalityInput.value))) {
-                    municipalityInput.value = '';
+                // Importante: no limpiar automáticamente el municipio capturado.
+                // Hay estados sin catálogo completo y el usuario puede escribir manualmente
+                // (ej. Papantla en Veracruz).
+                if (municipalityInput) {
+                    municipalityInput.placeholder = items.length === 0
+                        ? 'Escribe municipio'
+                        : 'Selecciona o escribe municipio';
                 }
             }
 

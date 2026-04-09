@@ -39,8 +39,10 @@ public class QuoteModel : PageModel
     public bool SkipClientDataStep { get; set; }
     public string ClientName { get; set; } = string.Empty;
     public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
+    public Dictionary<Guid, List<ContactOptionVm>> ClientContactsPayload { get; set; } = new();
 
     public record ProspectOptionVm(Guid Id, string Name, string Email, string Phone, string Location, string? CompanyName, bool IsTemporaryLead);
+    public record ContactOptionVm(Guid Id, string Name, string Email, string Phone, string? Role);
 
     public async Task<IActionResult> OnGetAsync(string? token)
     {
@@ -412,6 +414,38 @@ public class QuoteModel : PageModel
                 x.IsTemporaryLead))
             .Distinct()
             .ToListAsync();
+
+        var clientIds = ProspectOptions.Select(x => x.Id).Distinct().ToList();
+        if (clientIds.Count > 0)
+        {
+            var contacts = await _db.ClientContacts
+                .AsNoTracking()
+                .Where(c => clientIds.Contains(c.ClientId))
+                .OrderByDescending(c => c.IsPrimary)
+                .ThenBy(c => c.Name)
+                .Select(c => new
+                {
+                    c.ClientId,
+                    c.Id,
+                    c.Name,
+                    c.Email,
+                    c.Phone,
+                    c.Role
+                })
+                .ToListAsync();
+
+            ClientContactsPayload = contacts
+                .GroupBy(x => x.ClientId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => new ContactOptionVm(
+                        x.Id,
+                        x.Name ?? string.Empty,
+                        x.Email ?? string.Empty,
+                        x.Phone ?? string.Empty,
+                        x.Role))
+                    .ToList());
+        }
     }
 
     private static object ToNode(QuoteCatalogItem x) => new

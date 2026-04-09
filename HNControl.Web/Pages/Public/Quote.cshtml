@@ -7,6 +7,7 @@
 
     var catalogJson = JsonSerializer.Serialize(Model.CatalogPayload);
     var prospectsJson = JsonSerializer.Serialize(Model.ProspectOptions);
+    var contactsJson = JsonSerializer.Serialize(Model.ClientContactsPayload);
 }
 
 <div class="row justify-content-center">
@@ -201,6 +202,14 @@
                                     </select>
                                     <div class="small text-muted">Selecciona un prospecto o cliente propio, o usa "Nuevo cliente".</div>
                                 </div>
+                                <div class="col-12 d-none" id="clientContactWrap">
+                                    <label class="form-label">Contacto de envío</label>
+                                    <select class="form-select" id="clientContactSelect">
+                                        <option value="">Contacto principal del cliente</option>
+                                        <option value="__manual__">Otro contacto (captura manual)</option>
+                                    </select>
+                                    <div class="small text-muted">Si el cliente tiene varios contactos, selecciona aquí a quién enviar la cotización.</div>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre</label>
                                     <input class="form-control" asp-for="Input.CustomerName" />
@@ -279,6 +288,7 @@
 (() => {
     const payload = @Html.Raw(catalogJson);
     const prospects = @Html.Raw(prospectsJson);
+    const contactsByClient = @Html.Raw(contactsJson);
     const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
     const IVA = 0.16;
     const lines = [];
@@ -300,6 +310,8 @@
     const manualQty = document.getElementById('manualQty');
     const manualPrice = document.getElementById('manualPrice');
     const prospectSelect = document.getElementById('prospectSelect');
+    const clientContactWrap = document.getElementById('clientContactWrap');
+    const clientContactSelect = document.getElementById('clientContactSelect');
     const selectedClientId = document.getElementById('selectedClientId');
     const inputCustomerName = document.getElementById('Input_CustomerName');
     const inputCustomerEmail = document.getElementById('Input_CustomerEmail');
@@ -353,12 +365,16 @@
         const selectedId = prospectSelect.value;
         if(!selectedId){
             if(selectedClientId) selectedClientId.value = '';
+            if(clientContactWrap) clientContactWrap.classList.add('d-none');
+            if(clientContactSelect) clientContactSelect.value = '';
             lockCustomerFields(false);
             return;
         }
         const p = (prospects || []).find(x => String(x.id || x.Id) === String(selectedId));
         if(!p){
             if(selectedClientId) selectedClientId.value = '';
+            if(clientContactWrap) clientContactWrap.classList.add('d-none');
+            if(clientContactSelect) clientContactSelect.value = '';
             lockCustomerFields(false);
             return;
         }
@@ -368,11 +384,73 @@
         if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
         if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
         if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
+        const clientContacts = contactsByClient?.[selectedId] || contactsByClient?.[String(selectedId)] || [];
+        if(clientContactSelect){
+            const keepFirst = clientContactSelect.options[0]?.outerHTML || '<option value="">Contacto principal del cliente</option>';
+            const keepManual = '<option value="__manual__">Otro contacto (captura manual)</option>';
+            clientContactSelect.innerHTML = keepFirst + keepManual;
+            (clientContacts || []).forEach(c => {
+                const id = c.id || c.Id;
+                const name = c.name || c.Name || 'Contacto';
+                const email = c.email || c.Email || '';
+                const phone = c.phone || c.Phone || '';
+                const role = c.role || c.Role || 'Contacto';
+                const opt = document.createElement('option');
+                opt.value = String(id);
+                opt.textContent = `${name} · ${role}${email ? ' · ' + email : ''}`;
+                opt.dataset.name = name;
+                opt.dataset.email = email;
+                opt.dataset.phone = phone;
+                clientContactSelect.appendChild(opt);
+            });
+            clientContactSelect.value = '';
+        }
+        if(clientContactWrap){
+            if((clientContacts || []).length > 0) clientContactWrap.classList.remove('d-none');
+            else clientContactWrap.classList.add('d-none');
+        }
+        lockCustomerFields(true);
+    }
+
+    function onClientContactChange(){
+        if(!clientContactSelect || skipClientDataStep) return;
+        const v = clientContactSelect.value;
+        if(v === '__manual__'){
+            lockCustomerFields(false);
+            return;
+        }
+        if(!v){
+            if(!prospectSelect || !prospectSelect.value){
+                lockCustomerFields(false);
+                return;
+            }
+            const p = (prospects || []).find(x => String(x.id || x.Id) === String(prospectSelect.value));
+            if(p){
+                if(inputCustomerName) inputCustomerName.value = p.name || p.Name || '';
+                if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
+                if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
+                if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
+                if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
+            }
+            lockCustomerFields(true);
+            return;
+        }
+        const opt = clientContactSelect.options[clientContactSelect.selectedIndex];
+        if(!opt){
+            lockCustomerFields(true);
+            return;
+        }
+        if(inputCustomerName) inputCustomerName.value = opt.dataset.name || inputCustomerName.value;
+        if(inputCustomerEmail) inputCustomerEmail.value = opt.dataset.email || inputCustomerEmail.value;
+        if(inputCustomerPhone) inputCustomerPhone.value = opt.dataset.phone || inputCustomerPhone.value;
         lockCustomerFields(true);
     }
 
     if(prospectSelect && !skipClientDataStep){
         prospectSelect.addEventListener('change', onProspectChange);
+    }
+    if(clientContactSelect && !skipClientDataStep){
+        clientContactSelect.addEventListener('change', onClientContactChange);
     }
     if(discountType){
         discountType.addEventListener('change', recalc);
