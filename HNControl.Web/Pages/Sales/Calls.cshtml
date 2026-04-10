@@ -3,6 +3,7 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Ventas - Llamadas";
+    const string softphoneDownloadUrl = "https://cm.ucc.systems/connect";
 }
 
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -35,6 +36,7 @@
         <div class="d-flex gap-2">
             <a class="btn btn-primary" href="@Model.ExternalSoftphoneUrl" target="_blank" rel="noopener noreferrer">Abrir webphone</a>
             <button class="btn btn-outline-secondary" type="button" onclick="window.open('@Model.ExternalSoftphoneUrl','_blank','noopener,noreferrer');">Abrir en ventana nueva</button>
+            <a class="btn btn-outline-success" href="@softphoneDownloadUrl" target="_blank" rel="noopener noreferrer">Descargar softphone</a>
         </div>
     </div>
 </div>

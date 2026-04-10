@@ -41,7 +41,17 @@ public class QuoteModel : PageModel
     public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
     public Dictionary<Guid, List<ContactOptionVm>> ClientContactsPayload { get; set; } = new();
 
-    public record ProspectOptionVm(Guid Id, string Name, string Email, string Phone, string Location, string? CompanyName, bool IsTemporaryLead);
+    public record ProspectOptionVm(
+        Guid Id,
+        string Name,
+        string Email,
+        string Phone,
+        string Location,
+        string? CompanyName,
+        bool IsTemporaryLead,
+        string? MainContactName,
+        string? MainContactEmail,
+        string? MainContactPhone);
     public record ContactOptionVm(Guid Id, string Name, string Email, string Phone, string? Role);
 
     public async Task<IActionResult> OnGetAsync(string? token)
@@ -392,28 +402,37 @@ public class QuoteModel : PageModel
         var leads = _db.Clients
             .AsNoTracking()
             .Where(x => x.IsTemporaryLead && x.IsActive)
-            .Where(x => isGlobalAdmin || x.CreatedByUserId == currentUserId);
+            .Where(x => isGlobalAdmin || x.OwnerUserId == currentUserId || x.CreatedByUserId == currentUserId);
 
         var clients = _db.Clients
             .AsNoTracking()
             .Where(x => !x.IsTemporaryLead && x.IsActive)
             .Where(x => isGlobalAdmin || x.OwnerUserId == currentUserId);
 
-        ProspectOptions = await leads
+        var options = await leads
             .Concat(clients)
             .OrderBy(x => x.IsTemporaryLead ? 0 : 1)
             .ThenBy(x => x.Name)
             .Take(500)
             .Select(x => new ProspectOptionVm(
                 x.Id,
-                string.IsNullOrWhiteSpace(x.ContactName) ? x.Name : x.ContactName!,
+                x.Name,
                 x.Email ?? "",
                 x.Phone ?? "",
                 x.Address ?? "",
                 x.Name,
-                x.IsTemporaryLead))
-            .Distinct()
+                x.IsTemporaryLead,
+                string.IsNullOrWhiteSpace(x.ContactName) ? null : x.ContactName!.Trim(),
+                string.IsNullOrWhiteSpace(x.Email) ? null : x.Email!.Trim(),
+                string.IsNullOrWhiteSpace(x.Phone) ? null : x.Phone!.Trim()))
             .ToListAsync();
+
+        ProspectOptions = options
+            .GroupBy(x => x.Id)
+            .Select(g => g.First())
+            .OrderBy(x => x.IsTemporaryLead ? 0 : 1)
+            .ThenBy(x => x.Name)
+            .ToList();
 
         var clientIds = ProspectOptions.Select(x => x.Id).Distinct().ToList();
         if (clientIds.Count > 0)
@@ -434,17 +453,61 @@ public class QuoteModel : PageModel
                 })
                 .ToListAsync();
 
-            ClientContactsPayload = contacts
+            var contactLookup = contacts
                 .GroupBy(x => x.ClientId)
                 .ToDictionary(
                     g => g.Key,
                     g => g.Select(x => new ContactOptionVm(
-                        x.Id,
-                        x.Name ?? string.Empty,
-                        x.Email ?? string.Empty,
-                        x.Phone ?? string.Empty,
-                        x.Role))
-                    .ToList());
+                            x.Id,
+                            x.Name ?? string.Empty,
+                            x.Email ?? string.Empty,
+                            x.Phone ?? string.Empty,
+                            x.Role))
+                        .ToList());
+
+            ClientContactsPayload = new Dictionary<Guid, List<ContactOptionVm>>();
+            foreach (var option in ProspectOptions)
+            {
+                var rows = new List<ContactOptionVm>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                static string ContactKey(string? name, string? email, string? phone)
+                    => $"{(name ?? string.Empty).Trim().ToLowerInvariant()}|{(email ?? string.Empty).Trim().ToLowerInvariant()}|{(phone ?? string.Empty).Trim()}";
+
+                var hasPrimary =
+                    !string.IsNullOrWhiteSpace(option.MainContactName) ||
+                    !string.IsNullOrWhiteSpace(option.MainContactEmail) ||
+                    !string.IsNullOrWhiteSpace(option.MainContactPhone);
+
+                if (hasPrimary)
+                {
+                    var key = ContactKey(option.MainContactName, option.MainContactEmail, option.MainContactPhone);
+                    if (seen.Add(key))
+                    {
+                        rows.Add(new ContactOptionVm(
+                            Guid.NewGuid(),
+                            option.MainContactName?.Trim() ?? string.Empty,
+                            option.MainContactEmail?.Trim() ?? string.Empty,
+                            option.MainContactPhone?.Trim() ?? string.Empty,
+                            "Principal"));
+                    }
+                }
+
+                if (contactLookup.TryGetValue(option.Id, out var extras))
+                {
+                    foreach (var extra in extras)
+                    {
+                        var key = ContactKey(extra.Name, extra.Email, extra.Phone);
+                        if (!seen.Add(key))
+                            continue;
+
+                        rows.Add(extra);
+                    }
+                }
+
+                if (rows.Count > 0)
+                    ClientContactsPayload[option.Id] = rows;
+            }
         }
     }
 
@@ -664,7 +727,7 @@ public class QuoteModel : PageModel
             .AsNoTracking()
             .Where(x => x.Id == clientId && x.IsActive)
             .Where(x => isGlobalAdmin
-                        || (x.IsTemporaryLead && x.CreatedByUserId == currentUserId)
+                        || (x.IsTemporaryLead && (x.OwnerUserId == currentUserId || x.CreatedByUserId == currentUserId))
                         || (!x.IsTemporaryLead && x.OwnerUserId == currentUserId))
             .FirstOrDefaultAsync();
     }

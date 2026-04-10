@@ -292,7 +292,17 @@
                             <div class="small text-muted">Total: @latestQuote.Total.ToString("C")</div>
                         }
                         <div class="mt-auto pt-3">
-                            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#quotesModal">Abrir</button>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#quotesModal">Abrir</button>
+                                <button class="btn btn-sm btn-outline-primary"
+                                        type="button"
+                                        data-quote-modal-open="true"
+                                        data-quote-modal-size="xl"
+                                        href="@Model.PublicQuoteUrl"
+                                        onclick="return false;">
+                                    + Nueva
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -197,7 +197,17 @@
                                         <option value="">Nuevo cliente</option>
                                         @foreach (var p in Model.ProspectOptions)
                                         {
-                                            <option value="@p.Id">[@(p.IsTemporaryLead ? "Prospecto" : "Cliente")] @p.Name · @p.Email</option>
+                                            <option value="@p.Id">
+                                                [@(p.IsTemporaryLead ? "Prospecto" : "Cliente")] @p.Name
+                                                @if (!string.IsNullOrWhiteSpace(p.MainContactName))
+                                                {
+                                                    <text> · Contacto: @p.MainContactName</text>
+                                                }
+                                                else if (!string.IsNullOrWhiteSpace(p.Email))
+                                                {
+                                                    <text> · @p.Email</text>
+                                                }
+                                            </option>
                                         }
                                     </select>
                                     <div class="small text-muted">Selecciona un prospecto o cliente propio, o usa "Nuevo cliente".</div>
@@ -379,14 +389,20 @@
             return;
         }
         if(selectedClientId) selectedClientId.value = selectedId;
-        if(inputCustomerName) inputCustomerName.value = p.name || p.Name || '';
-        if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
-        if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
+        const mainContactName = p.mainContactName || p.MainContactName || '';
+        const mainContactEmail = p.mainContactEmail || p.MainContactEmail || '';
+        const mainContactPhone = p.mainContactPhone || p.MainContactPhone || '';
+        if(inputCustomerName) inputCustomerName.value = mainContactName || p.name || p.Name || '';
+        if(inputCustomerEmail) inputCustomerEmail.value = mainContactEmail || p.email || p.Email || '';
+        if(inputCustomerPhone) inputCustomerPhone.value = mainContactPhone || p.phone || p.Phone || '';
         if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
         if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
         const clientContacts = contactsByClient?.[selectedId] || contactsByClient?.[String(selectedId)] || [];
         if(clientContactSelect){
-            const keepFirst = clientContactSelect.options[0]?.outerHTML || '<option value="">Contacto principal del cliente</option>';
+            const principalLabel = mainContactName || mainContactEmail || mainContactPhone
+                ? `Principal: ${mainContactName || '-'}${mainContactEmail ? ' · ' + mainContactEmail : ''}`
+                : 'Contacto principal del cliente';
+            const keepFirst = `<option value="">${principalLabel}</option>`;
             const keepManual = '<option value="__manual__">Otro contacto (captura manual)</option>';
             clientContactSelect.innerHTML = keepFirst + keepManual;
             (clientContacts || []).forEach(c => {
@@ -406,8 +422,7 @@
             clientContactSelect.value = '';
         }
         if(clientContactWrap){
-            if((clientContacts || []).length > 0) clientContactWrap.classList.remove('d-none');
-            else clientContactWrap.classList.add('d-none');
+            clientContactWrap.classList.remove('d-none');
         }
         lockCustomerFields(true);
     }
@@ -426,9 +441,12 @@
             }
             const p = (prospects || []).find(x => String(x.id || x.Id) === String(prospectSelect.value));
             if(p){
-                if(inputCustomerName) inputCustomerName.value = p.name || p.Name || '';
-                if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
-                if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
+                const mainContactName = p.mainContactName || p.MainContactName || '';
+                const mainContactEmail = p.mainContactEmail || p.MainContactEmail || '';
+                const mainContactPhone = p.mainContactPhone || p.MainContactPhone || '';
+                if(inputCustomerName) inputCustomerName.value = mainContactName || p.name || p.Name || '';
+                if(inputCustomerEmail) inputCustomerEmail.value = mainContactEmail || p.email || p.Email || '';
+                if(inputCustomerPhone) inputCustomerPhone.value = mainContactPhone || p.phone || p.Phone || '';
                 if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
                 if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
             }
