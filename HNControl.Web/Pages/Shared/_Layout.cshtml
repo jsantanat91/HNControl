@@ -53,6 +53,9 @@
     var canSalesFeasibility = CanAction(HNControl.Web.Models.AppActions.SalesFeasibilityView);
     var canSalesTemplates = CanAction(HNControl.Web.Models.AppActions.TemplatesManage);
     var canSalesCatalog = CanAction(HNControl.Web.Models.AppActions.SalesCatalogView) || CanAction(HNControl.Web.Models.AppActions.SalesCatalogManage);
+    var canClientsOwn = CanAction(HNControl.Web.Models.AppActions.ClientsViewOwn);
+    var canClientsAll = CanAction(HNControl.Web.Models.AppActions.ClientsView);
+    var canClientsMenu = canClientsOwn || canClientsAll;
     var canMyQuotes = User.IsInRole(HNControl.Web.Models.AppRoles.Seller) && Has(HNControl.Web.Models.AppModules.Sales) && canSalesViewOwn;
     var hasEmployeeSalesLinks = canSalesProspects || canMyQuotes || canSalesWorkflow || canSalesGestion || canSalesDashboard || canSalesCalls || canSalesFeasibility || canSalesTemplates || canSalesCatalog;
     var currentUserId = UserManager.GetUserId(User);
@@ -350,7 +353,7 @@
                             <span class="hn-side-text">Organigrama</span>
                         </a>
                     }
-                    @if (Has(AppModules.Clients))
+                    @if (Has(AppModules.Clients) && canClientsMenu)
                     {
                         <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index">
                             <span class="hn-side-icon"><i class="bi bi-person-badge"></i></span>
@@ -689,7 +692,7 @@
                     <a class="hn-side-link @Active("/Employees/MyProfile")" asp-page="/Employees/MyProfile"><span class="hn-side-icon"><i class="bi bi-person-lines-fill"></i></span><span class="hn-side-text">Mi ficha</span></a>
                     @if (CanAction(HNControl.Web.Models.AppActions.EmployeesOrgChartView))
                     { <a class="hn-side-link @Active("/Employees/OrgChart")" asp-page="/Employees/OrgChart"><span class="hn-side-icon"><i class="bi bi-diagram-2"></i></span><span class="hn-side-text">Organigrama</span></a> }
-                    @if (Has(AppModules.Clients))
+                    @if (Has(AppModules.Clients) && canClientsMenu)
                     { <a class="hn-side-link @Active("/Clients")" asp-page="/Clients/Index"><span class="hn-side-icon"><i class="bi bi-person-badge"></i></span><span class="hn-side-text">Clientes</span></a> }
                     @if (Has(HNControl.Web.Models.AppModules.Sales) && hasEmployeeSalesLinks)
                     {

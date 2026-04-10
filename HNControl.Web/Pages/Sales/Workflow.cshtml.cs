@@ -385,8 +385,8 @@ public class WorkflowModel : PageModel
 
     private async Task<bool> EnsurePermissionsAsync()
     {
-        var hasViewAll = AppRoles.IsGlobalAdmin(User)
-            || await _actions.HasActionAsync(User, AppActions.SalesViewAll);
+        // Regla comercial: en Workflow solo SuperAdmin puede ver global.
+        var hasViewAll = AppRoles.IsGlobalAdmin(User);
         var hasViewOwn = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesViewOwn);
         CanMove = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowMove);
         CanAssign = hasViewAll || await _actions.HasActionAsync(User, AppActions.SalesWorkflowAssign);
@@ -537,7 +537,7 @@ public class WorkflowModel : PageModel
     {
         var q = _db.SalesOpportunities.AsQueryable();
         if (!viewAll)
-            q = q.Where(x => x.OwnerUserId == userId || (x.SellerProfile != null && x.SellerProfile.EmployeeUserId == userId));
+            q = q.Where(x => x.OwnerUserId == userId);
         return q;
     }
 

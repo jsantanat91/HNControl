@@ -67,6 +67,14 @@ public class ModulePermissionPageFilter : IAsyncPageFilter
         if (!string.IsNullOrWhiteSpace(actionKey))
         {
             var hasAction = await _actions.HasActionAsync(user, actionKey);
+            if (!hasAction
+                && string.Equals(moduleKey, AppModules.Clients, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(actionKey, AppActions.ClientsView, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(context.HttpContext.Request.Method, "GET", StringComparison.OrdinalIgnoreCase))
+            {
+                // Para lectura en Clientes, "Ver mis clientes" tambien habilita acceso.
+                hasAction = await _actions.HasActionAsync(user, AppActions.ClientsViewOwn);
+            }
             if (!hasAction)
             {
                 context.Result = new ForbidResult();

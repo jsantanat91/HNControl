@@ -186,14 +186,6 @@
                                         {
                                             <option value="@p.Id">
                                                 [@(p.IsTemporaryLead ? "Prospecto" : "Cliente")] @p.Name
-                                                @if (!string.IsNullOrWhiteSpace(p.MainContactName))
-                                                {
-                                                    <text> · Contacto: @p.MainContactName</text>
-                                                }
-                                                else if (!string.IsNullOrWhiteSpace(p.Email))
-                                                {
-                                                    <text> · @p.Email</text>
-                                                }
                                             </option>
                                         }
                                     </select>
