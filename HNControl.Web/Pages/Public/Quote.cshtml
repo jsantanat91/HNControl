@@ -26,14 +26,7 @@
                 {
                     <div class="alert alert-info py-2">
                         Cliente detectado: <strong>@Model.ClientName</strong>.
-                        @if (Model.SkipClientDataStep)
-                        {
-                            <span>Datos precargados desde el link.</span>
-                        }
-                        else
-                        {
-                            <span>Faltan datos de contacto, completalos en el paso 3.</span>
-                        }
+                        <span>Puedes ajustar los datos de contacto en el paso 3.</span>
                     </div>
                 }
 
@@ -184,13 +177,7 @@
                     </section>
 
                     <section class="quote-step-panel d-none" data-step="3">
-                        @if (Model.SkipClientDataStep)
-                        {
-                            <div class="alert alert-success mb-0">Los datos del cliente ya vienen cargados por el link publico. Este paso se omite automaticamente.</div>
-                        }
-                        else
-                        {
-                            <div class="row g-3">
+                        <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label">Prospecto / Cliente</label>
                                     <select class="form-select" id="prospectSelect">
@@ -215,7 +202,7 @@
                                 <div class="col-12 d-none" id="clientContactWrap">
                                     <label class="form-label">Contacto de envío</label>
                                     <select class="form-select" id="clientContactSelect">
-                                        <option value="">Contacto principal del cliente</option>
+                                        <option value="">Selecciona contacto</option>
                                         <option value="__manual__">Otro contacto (captura manual)</option>
                                     </select>
                                     <div class="small text-muted">Si el cliente tiene varios contactos, selecciona aquí a quién enviar la cotización.</div>
@@ -259,7 +246,6 @@
                                     </select>
                                 </div>
                             </div>
-                        }
                     </section>
 
                     <section class="quote-step-panel d-none" data-step="4">
@@ -299,7 +285,8 @@
     const payload = @Html.Raw(catalogJson);
     const prospects = @Html.Raw(prospectsJson);
     const contactsByClient = @Html.Raw(contactsJson);
-    const skipClientDataStep = document.getElementById('skipClientDataStep')?.value === '1';
+    // Nunca saltar el paso de datos del cliente, aunque llegue token precargado.
+    const skipClientDataStep = false;
     const IVA = 0.16;
     const lines = [];
     const manualLines = [];
@@ -389,20 +376,14 @@
             return;
         }
         if(selectedClientId) selectedClientId.value = selectedId;
-        const mainContactName = p.mainContactName || p.MainContactName || '';
-        const mainContactEmail = p.mainContactEmail || p.MainContactEmail || '';
-        const mainContactPhone = p.mainContactPhone || p.MainContactPhone || '';
-        if(inputCustomerName) inputCustomerName.value = mainContactName || p.name || p.Name || '';
-        if(inputCustomerEmail) inputCustomerEmail.value = mainContactEmail || p.email || p.Email || '';
-        if(inputCustomerPhone) inputCustomerPhone.value = mainContactPhone || p.phone || p.Phone || '';
+        if(inputCustomerName) inputCustomerName.value = '';
+        if(inputCustomerEmail) inputCustomerEmail.value = '';
+        if(inputCustomerPhone) inputCustomerPhone.value = '';
         if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
         if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
         const clientContacts = contactsByClient?.[selectedId] || contactsByClient?.[String(selectedId)] || [];
         if(clientContactSelect){
-            const principalLabel = mainContactName || mainContactEmail || mainContactPhone
-                ? `Principal: ${mainContactName || '-'}${mainContactEmail ? ' · ' + mainContactEmail : ''}`
-                : 'Contacto principal del cliente';
-            const keepFirst = `<option value="">${principalLabel}</option>`;
+            const keepFirst = '<option value="">Selecciona contacto</option>';
             const keepManual = '<option value="__manual__">Otro contacto (captura manual)</option>';
             clientContactSelect.innerHTML = keepFirst + keepManual;
             (clientContacts || []).forEach(c => {
@@ -419,12 +400,16 @@
                 opt.dataset.phone = phone;
                 clientContactSelect.appendChild(opt);
             });
-            clientContactSelect.value = '';
+            if((clientContacts || []).length > 0){
+                clientContactSelect.value = String(clientContacts[0].id || clientContacts[0].Id || '');
+            } else {
+                clientContactSelect.value = '__manual__';
+            }
         }
         if(clientContactWrap){
             clientContactWrap.classList.remove('d-none');
         }
-        lockCustomerFields(true);
+        onClientContactChange();
     }
 
     function onClientContactChange(){
@@ -435,22 +420,7 @@
             return;
         }
         if(!v){
-            if(!prospectSelect || !prospectSelect.value){
-                lockCustomerFields(false);
-                return;
-            }
-            const p = (prospects || []).find(x => String(x.id || x.Id) === String(prospectSelect.value));
-            if(p){
-                const mainContactName = p.mainContactName || p.MainContactName || '';
-                const mainContactEmail = p.mainContactEmail || p.MainContactEmail || '';
-                const mainContactPhone = p.mainContactPhone || p.MainContactPhone || '';
-                if(inputCustomerName) inputCustomerName.value = mainContactName || p.name || p.Name || '';
-                if(inputCustomerEmail) inputCustomerEmail.value = mainContactEmail || p.email || p.Email || '';
-                if(inputCustomerPhone) inputCustomerPhone.value = mainContactPhone || p.phone || p.Phone || '';
-                if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
-                if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
-            }
-            lockCustomerFields(true);
+            lockCustomerFields(false);
             return;
         }
         const opt = clientContactSelect.options[clientContactSelect.selectedIndex];

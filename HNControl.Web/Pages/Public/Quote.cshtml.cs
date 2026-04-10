@@ -468,45 +468,10 @@ public class QuoteModel : PageModel
             ClientContactsPayload = new Dictionary<Guid, List<ContactOptionVm>>();
             foreach (var option in ProspectOptions)
             {
-                var rows = new List<ContactOptionVm>();
-                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                static string ContactKey(string? name, string? email, string? phone)
-                    => $"{(name ?? string.Empty).Trim().ToLowerInvariant()}|{(email ?? string.Empty).Trim().ToLowerInvariant()}|{(phone ?? string.Empty).Trim()}";
-
-                var hasPrimary =
-                    !string.IsNullOrWhiteSpace(option.MainContactName) ||
-                    !string.IsNullOrWhiteSpace(option.MainContactEmail) ||
-                    !string.IsNullOrWhiteSpace(option.MainContactPhone);
-
-                if (hasPrimary)
-                {
-                    var key = ContactKey(option.MainContactName, option.MainContactEmail, option.MainContactPhone);
-                    if (seen.Add(key))
-                    {
-                        rows.Add(new ContactOptionVm(
-                            Guid.NewGuid(),
-                            option.MainContactName?.Trim() ?? string.Empty,
-                            option.MainContactEmail?.Trim() ?? string.Empty,
-                            option.MainContactPhone?.Trim() ?? string.Empty,
-                            "Principal"));
-                    }
-                }
-
-                if (contactLookup.TryGetValue(option.Id, out var extras))
-                {
-                    foreach (var extra in extras)
-                    {
-                        var key = ContactKey(extra.Name, extra.Email, extra.Phone);
-                        if (!seen.Add(key))
-                            continue;
-
-                        rows.Add(extra);
-                    }
-                }
-
-                if (rows.Count > 0)
-                    ClientContactsPayload[option.Id] = rows;
+                // Solo contactos del modulo "Contactos del cliente"
+                // (sin mezclar representante/facturacion/principal del cliente).
+                if (contactLookup.TryGetValue(option.Id, out var extras) && extras.Count > 0)
+                    ClientContactsPayload[option.Id] = extras;
             }
         }
     }
@@ -652,11 +617,9 @@ public class QuoteModel : PageModel
         Input.CustomerLocation = client.Address ?? string.Empty;
         Input.CompanyName = client.Name;
 
-        SkipClientDataStep =
-            !string.IsNullOrWhiteSpace(Input.CustomerName) &&
-            !string.IsNullOrWhiteSpace(Input.CustomerEmail) &&
-            !string.IsNullOrWhiteSpace(Input.CustomerPhone) &&
-            !string.IsNullOrWhiteSpace(Input.CustomerLocation);
+        // Mantener datos precargados, pero no saltar el paso 3:
+        // el usuario siempre debe poder seleccionar/ajustar cliente y contacto.
+        SkipClientDataStep = false;
         return client;
     }
 
