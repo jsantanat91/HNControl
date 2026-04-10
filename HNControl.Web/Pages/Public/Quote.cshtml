@@ -570,11 +570,21 @@
         return arr.find(x => String(readProp(x, 'id', 'Id')) === String(id));
     }
 
+    function toNumber(value){
+        if (value == null) return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const normalized = String(value).replace(/,/g, '').trim();
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
     function totals(){
         const catalogBase = lines.filter(x => !x.isManual).reduce((a,b) => a + b.base, 0);
         const catalogVat = lines.filter(x => !x.isManual).reduce((a,b) => a + b.vat, 0);
         const catalogTotal = lines.filter(x => !x.isManual).reduce((a,b) => a + b.total, 0);
-        const manualTotal = manualLines.reduce((a, b) => a + (Number(b.unitPrice || 0) * Number(b.quantity || 0)), 0);
+        const manualBase = manualLines.reduce((a, b) => a + (toNumber(b.unitPrice) * Math.max(1, toNumber(b.quantity))), 0);
+        const manualVat = manualBase * IVA;
+        const manualTotal = manualBase + manualVat;
         const manual = lines.filter(x => x.isManual).length + manualLines.length;
         const preDiscountTotal = catalogTotal + manualTotal;
         const mode = String(discountType?.value || 'none').toLowerCase();
@@ -586,8 +596,8 @@
             discount = Math.min(preDiscountTotal, value);
         }
         return {
-            base: (catalogBase + manualTotal) - discount,
-            vat: catalogVat,
+            base: (catalogBase + manualBase) - discount,
+            vat: catalogVat + manualVat,
             total: preDiscountTotal - discount,
             manual,
             discount,
@@ -678,7 +688,7 @@
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del-manual="${idx}">Quitar</button>
                 </div>
-                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity}</span><span>${toMoney((l.unitPrice || 0) * l.quantity)}</span></div>
+                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity} · + IVA</span><span>${toMoney((toNumber(l.unitPrice) * Math.max(1, toNumber(l.quantity))) * (1 + IVA))}</span></div>
             `;
             cartLines.appendChild(div);
         });
