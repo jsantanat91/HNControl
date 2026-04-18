@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Viaticos;
 
-[Authorize(Roles = AppRoles.Employee + "," + AppRoles.Admin)]
+[Authorize(Roles = AppRoles.Employee + "," + AppRoles.Admin + "," + AppRoles.SuperAdmin)]
 public class DownloadModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -33,7 +33,7 @@ public class DownloadModel : PageModel
         if (att?.Entry?.Week == null) return NotFound();
 
         var userId = _userMgr.GetUserId(User)!;
-        var isAdmin = User.IsInRole(AppRoles.Admin);
+        var isAdmin = User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.SuperAdmin);
         var isOwner = att.Entry.Week.UserId == userId;
 
         if (!isAdmin && !isOwner) return Forbid();

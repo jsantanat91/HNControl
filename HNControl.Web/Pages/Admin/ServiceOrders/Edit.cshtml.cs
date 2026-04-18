@@ -420,6 +420,7 @@ public class EditModel : PageModel
             {
                 id = c.Id,
                 text = $"{c.ServiceType} - {c.Label}" +
+                       (!string.IsNullOrWhiteSpace(c.Branch) ? $" - Sucursal: {c.Branch}" : "") +
                        (c.ContractEndDate.HasValue ? $" - vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
             })
             .ToListAsync();

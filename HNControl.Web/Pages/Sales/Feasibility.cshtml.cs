@@ -28,6 +28,8 @@ public class FeasibilityModel : PageModel
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
+    [BindProperty]
+    public EditInputModel EditInput { get; set; } = new();
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList ProjectItems { get; set; } = default!;
@@ -59,11 +61,36 @@ public class FeasibilityModel : PageModel
         public string Notes { get; set; } = "";
     }
 
+    public class EditInputModel
+    {
+        [Required]
+        public Guid Id { get; set; }
+        [Required]
+        public Guid ClientId { get; set; }
+        public Guid? ProjectId { get; set; }
+        [Required, MaxLength(200)]
+        public string Title { get; set; } = "";
+        [Required, MaxLength(400)]
+        public string SiteAddress { get; set; } = "";
+        [MaxLength(64)]
+        public string? Coordinates { get; set; }
+        [MaxLength(4000)]
+        public string? MultiSites { get; set; }
+        [Required, MaxLength(160)]
+        public string SiteContactName { get; set; } = "";
+        [Required, MaxLength(60)]
+        public string SiteContactPhone { get; set; } = "";
+        [MaxLength(2000)]
+        public string Notes { get; set; } = "";
+    }
+
     public record RowVm(
         Guid Id,
         string ClientName,
         bool IsProspect,
+        Guid ClientId,
         string ProjectName,
+        Guid? ProjectId,
         string Title,
         string SiteAddress,
         string Coordinates,
@@ -71,6 +98,7 @@ public class FeasibilityModel : PageModel
         string SiteContactName,
         string SiteContactPhone,
         string Notes,
+        string NotesBase,
         ServiceFeasibilityStatus Status,
         DateTime CreatedAt,
         Guid? ConvertedServiceOrderId,
@@ -197,6 +225,68 @@ public class FeasibilityModel : PageModel
         row.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         Message = "Factibilidad reabierta.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostUpdateAsync()
+    {
+        if (!await ResolvePermissionsAsync())
+            return Forbid();
+        if (!CanManage)
+            return Forbid();
+
+        ModelState.Clear();
+        TryValidateModel(EditInput, nameof(EditInput));
+        if (!ModelState.IsValid)
+        {
+            Error = "No se pudo guardar cambios de factibilidad. Revisa los campos requeridos.";
+            return RedirectToPage();
+        }
+
+        var userId = _userMgr.GetUserId(User) ?? string.Empty;
+        var row = await QueryScopedRows(userId).FirstOrDefaultAsync(x => x.Id == EditInput.Id);
+        if (row == null)
+        {
+            Error = "No se encontro la factibilidad.";
+            return RedirectToPage();
+        }
+        if (row.Status != ServiceFeasibilityStatus.Open)
+        {
+            Error = "Solo se puede editar cuando esta abierta/reabierta.";
+            return RedirectToPage();
+        }
+        if (row.Status == ServiceFeasibilityStatus.ConvertedToOrder || row.ConvertedServiceOrderId.HasValue)
+        {
+            Error = "No se puede editar una factibilidad ya convertida a orden.";
+            return RedirectToPage();
+        }
+
+        var validClientQuery = _db.Clients
+            .Where(c => c.Id == EditInput.ClientId && c.IsActive);
+        if (!CanViewAll)
+            validClientQuery = validClientQuery.Where(c => c.OwnerUserId == userId);
+        var validClient = await validClientQuery.AnyAsync();
+        if (!validClient)
+        {
+            Error = "Cliente/prospecto invalido para tu alcance.";
+            return RedirectToPage();
+        }
+
+        row.ClientId = EditInput.ClientId;
+        row.ProjectId = EditInput.ProjectId;
+        row.Title = (EditInput.Title ?? "").Trim();
+        row.SiteAddress = (EditInput.SiteAddress ?? "").Trim();
+        row.Coordinates = string.IsNullOrWhiteSpace(EditInput.Coordinates) ? null : EditInput.Coordinates.Trim();
+        row.SiteContactName = (EditInput.SiteContactName ?? "").Trim();
+        row.SiteContactPhone = (EditInput.SiteContactPhone ?? "").Trim();
+        row.Notes = BuildNotesWithSites(
+            (EditInput.Notes ?? "").Trim(),
+            EditInput.MultiSites,
+            Request.Form.Files["EditSitesExcel"]);
+        row.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        Message = "Factibilidad actualizada.";
         return RedirectToPage();
     }
 
@@ -342,26 +432,50 @@ public class FeasibilityModel : PageModel
         if (!CanViewAll)
             q = q.Where(x => (x.Client != null && x.Client.OwnerUserId == userId) || x.CreatedByUserId == userId);
 
-        Rows = await q
+        var rawRows = await q
             .OrderByDescending(x => x.CreatedAt)
             .Take(200)
-            .Select(x => new RowVm(
+            .Select(x => new
+            {
                 x.Id,
-                x.Client != null ? x.Client.Name : "-",
-                x.Client != null && x.Client.IsTemporaryLead,
-                x.Project != null ? x.Project.Title : "-",
+                ClientName = x.Client != null ? x.Client.Name : "-",
+                IsProspect = x.Client != null && x.Client.IsTemporaryLead,
+                x.ClientId,
+                ProjectName = x.Project != null ? x.Project.Title : "-",
+                x.ProjectId,
                 x.Title,
                 x.SiteAddress,
-                x.Coordinates ?? "-",
-                ExtractMultiSites(x.Notes),
+                Coordinates = x.Coordinates ?? "-",
                 x.SiteContactName,
                 x.SiteContactPhone,
                 x.Notes,
                 x.Status,
                 x.CreatedAt,
+                x.ConvertedServiceOrderId
+            })
+            .ToListAsync();
+
+        Rows = rawRows
+            .Select(x => new RowVm(
+                x.Id,
+                x.ClientName,
+                x.IsProspect,
+                x.ClientId,
+                x.ProjectName,
+                x.ProjectId,
+                x.Title,
+                x.SiteAddress,
+                x.Coordinates,
+                ExtractMultiSites(x.Notes),
+                x.SiteContactName,
+                x.SiteContactPhone,
+                x.Notes,
+                ExtractBaseNotes(x.Notes),
+                x.Status,
+                x.CreatedAt,
                 x.ConvertedServiceOrderId,
                 HasExcelSites(x.Notes)))
-            .ToListAsync();
+            .ToList();
     }
 
     private IQueryable<ServiceFeasibility> QueryScopedRows(string userId)
@@ -439,6 +553,24 @@ public class FeasibilityModel : PageModel
             .ToList();
 
         return lines.Count == 0 ? "-" : string.Join(" · ", lines);
+    }
+
+    private static string ExtractBaseNotes(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes))
+            return "";
+
+        var text = notes!;
+        var tags = new[] { "[SITIOS]", "[EXCEL SITIOS]" };
+        var cutAt = text.Length;
+        foreach (var tag in tags)
+        {
+            var idx = text.IndexOf(tag, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0 && idx < cutAt)
+                cutAt = idx;
+        }
+
+        return (cutAt <= 0 ? "" : text[..cutAt]).Trim();
     }
 
     private static bool HasExcelSites(string notes)

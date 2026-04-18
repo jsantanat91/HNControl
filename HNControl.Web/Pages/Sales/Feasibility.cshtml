@@ -52,9 +52,9 @@
                             <div class="small"><b>Contacto sitio:</b> @x.SiteContactName · @x.SiteContactPhone</div>
                             <div class="small"><b>Sitios/Capacidad:</b> @x.MultiSites</div>
                             <div class="small text-muted mt-2">Alta: @x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                            @if (!string.IsNullOrWhiteSpace(x.Notes))
+                            @if (!string.IsNullOrWhiteSpace(x.NotesBase))
                             {
-                                <div class="small mt-2">@x.Notes</div>
+                                <div class="small mt-2">@x.NotesBase</div>
                             }
 
                             <div class="mt-3 d-flex gap-2 flex-wrap">
@@ -78,6 +78,22 @@
 
                                 @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Open)
                                 {
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editFeasibilityModal"
+                                            data-id="@x.Id"
+                                            data-client-id="@x.ClientId"
+                                            data-project-id="@x.ProjectId"
+                                            data-title="@x.Title"
+                                            data-address="@x.SiteAddress"
+                                            data-coordinates="@x.Coordinates"
+                                            data-contact-name="@x.SiteContactName"
+                                            data-contact-phone="@x.SiteContactPhone"
+                                            data-multi-sites="@x.MultiSites"
+                                            data-notes="@x.NotesBase">
+                                        Editar
+                                    </button>
                                     <form method="post" asp-page-handler="Accept" class="d-inline">
                                         <input type="hidden" name="id" value="@x.Id" />
                                         <button class="btn btn-sm btn-outline-success" type="submit">Aceptar</button>
@@ -180,6 +196,69 @@
     </div>
 </div>
 
+<div class="modal fade" id="editFeasibilityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar factibilidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" asp-page-handler="Update" class="row g-3" id="editFeasibilityForm" enctype="multipart/form-data">
+                    <input type="hidden" asp-for="EditInput.Id" id="editFeasId" />
+                    <div class="col-md-7">
+                        <label class="form-label">Titulo</label>
+                        <input class="form-control" asp-for="EditInput.Title" id="editFeasTitle" />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Cliente / Prospecto</label>
+                        <select class="form-select" asp-for="EditInput.ClientId" asp-items="Model.ClientItems" id="editFeasClient"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Proyecto (opcional)</label>
+                        <select class="form-select" asp-for="EditInput.ProjectId" id="editFeasProject">
+                            <option value="">-- Sin proyecto --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Coordenadas</label>
+                        <input class="form-control" asp-for="EditInput.Coordinates" id="editFeasCoords" placeholder="19.4326,-99.1332" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Sitios multiples (coordenadas/capacidad MB)</label>
+                        <textarea class="form-control" asp-for="EditInput.MultiSites" id="editFeasSites" rows="3"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Cargar Excel de sitios (opcional)</label>
+                        <input class="form-control" type="file" name="EditSitesExcel" accept=".xlsx,.xls" />
+                        <div class="text-muted small mt-1">Si subes archivo, se actualizan los sitios del bloque Excel.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Direccion en sitio</label>
+                        <input class="form-control" asp-for="EditInput.SiteAddress" id="editFeasAddress" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contacto en sitio</label>
+                        <input class="form-control" asp-for="EditInput.SiteContactName" id="editFeasContactName" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Telefono contacto</label>
+                        <input class="form-control" asp-for="EditInput.SiteContactPhone" id="editFeasContactPhone" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control" asp-for="EditInput.Notes" id="editFeasNotes" rows="3" maxlength="2000"></textarea>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -228,6 +307,59 @@
 
     client.addEventListener('change', loadProjects);
     loadProjects();
+})();
+
+(() => {
+    const modal = document.getElementById('editFeasibilityModal');
+    const client = document.getElementById('editFeasClient');
+    const project = document.getElementById('editFeasProject');
+    if (!modal || !client || !project) return;
+
+    async function loadProjects(clientId, selectedProjectId) {
+        if (!clientId) return;
+        const url = `?handler=Projects&clientId=${encodeURIComponent(clientId)}`;
+        try {
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            const rows = await resp.json();
+            project.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
+            rows.forEach(x => {
+                const opt = document.createElement('option');
+                opt.value = x.id;
+                opt.textContent = x.text;
+                project.appendChild(opt);
+            });
+            if (selectedProjectId) {
+                project.value = selectedProjectId;
+            }
+        } catch {}
+    }
+
+    modal.addEventListener('show.bs.modal', async (ev) => {
+        const btn = ev.relatedTarget;
+        if (!btn) return;
+
+        const id = btn.getAttribute('data-id') || '';
+        const clientId = btn.getAttribute('data-client-id') || '';
+        const projectId = btn.getAttribute('data-project-id') || '';
+
+        document.getElementById('editFeasId').value = id;
+        document.getElementById('editFeasTitle').value = btn.getAttribute('data-title') || '';
+        document.getElementById('editFeasAddress').value = btn.getAttribute('data-address') || '';
+        const coordsRaw = btn.getAttribute('data-coordinates') || '';
+        document.getElementById('editFeasCoords').value = coordsRaw === '-' ? '' : coordsRaw;
+        document.getElementById('editFeasContactName').value = btn.getAttribute('data-contact-name') || '';
+        document.getElementById('editFeasContactPhone').value = btn.getAttribute('data-contact-phone') || '';
+        const sitesRaw = btn.getAttribute('data-multi-sites') || '';
+        document.getElementById('editFeasSites').value = sitesRaw === '-' ? '' : sitesRaw;
+        document.getElementById('editFeasNotes').value = btn.getAttribute('data-notes') || '';
+
+        client.value = clientId;
+        await loadProjects(clientId, projectId);
+    });
+
+    client.addEventListener('change', async () => {
+        await loadProjects(client.value, '');
+    });
 })();
 
 (() => {
