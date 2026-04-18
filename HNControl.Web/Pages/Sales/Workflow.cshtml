@@ -113,6 +113,7 @@
                                  data-opportunity-id="@d.Id"
                                  data-current-stage="@d.Stage">
                             <div class="fw-semibold">@d.Folio</div>
+                            <div class="small text-muted">@d.Customer</div>
                             <div class="small">Monto: <b>@d.Total.ToString("C")</b></div>
                             <div class="mt-2 d-flex gap-2 flex-wrap">
                                 <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#wfDetail-@d.Id">Detalle</button>

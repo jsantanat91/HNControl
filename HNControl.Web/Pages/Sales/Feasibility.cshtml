@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Sales.FeasibilityModel
 @{
     Layout = "_Layout";
@@ -8,7 +8,7 @@
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Factibilidad en sitio</h1>
-        <div class="text-muted small">Selecciona cliente, registra dirección/coordenadas/contacto y convierte a orden si el cliente acepta.</div>
+        <div class="text-muted small">Selecciona cliente/prospecto, registra direccion/coordenadas/contacto y convierte a orden si el cliente acepta.</div>
     </div>
     <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newFeasibilityModal">+ Nueva factibilidad</button>
 </div>
@@ -27,7 +27,7 @@
     <div class="card-body">
         @if (!Model.Rows.Any())
         {
-            <div class="text-muted">Sin factibilidades aún.</div>
+            <div class="text-muted">Sin factibilidades aun.</div>
         }
         else
         {
@@ -39,11 +39,15 @@
                             <div class="d-flex justify-content-between align-items-start gap-2">
                                 <div>
                                     <div class="fw-semibold">@x.Title</div>
-                                    <div class="small text-muted">@x.ClientName · @x.ProjectName</div>
+                                    <div class="small text-muted">
+                                        <span class="badge text-bg-light border me-1">@(x.IsProspect ? "Prospecto" : "Cliente")</span>
+                                        @x.ClientName · @x.ProjectName
+                                    </div>
                                 </div>
                                 <span class="badge @(x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.ConvertedToOrder ? "text-bg-success" : x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Rejected ? "text-bg-danger" : x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted ? "text-bg-info" : "text-bg-secondary")">@x.Status</span>
                             </div>
-                            <div class="small mt-2"><b>Dirección:</b> @x.SiteAddress</div>
+
+                            <div class="small mt-2"><b>Direccion:</b> @x.SiteAddress</div>
                             <div class="small"><b>Coordenadas:</b> @x.Coordinates</div>
                             <div class="small"><b>Contacto sitio:</b> @x.SiteContactName · @x.SiteContactPhone</div>
                             <div class="small"><b>Sitios/Capacidad:</b> @x.MultiSites</div>
@@ -52,7 +56,26 @@
                             {
                                 <div class="small mt-2">@x.Notes</div>
                             }
+
                             <div class="mt-3 d-flex gap-2 flex-wrap">
+                                @if (!string.IsNullOrWhiteSpace(x.Coordinates) && x.Coordinates != "-")
+                                {
+                                    <button class="btn btn-sm btn-outline-dark"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#mapModal"
+                                            data-title="@x.Title"
+                                            data-coords="@x.Coordinates"
+                                            data-address="@x.SiteAddress">
+                                        Mapa
+                                    </button>
+                                }
+
+                                @if (x.HasSitesExcel)
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="ExportSites" asp-route-id="@x.Id">Excel sitios</a>
+                                }
+
                                 @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Open)
                                 {
                                     <form method="post" asp-page-handler="Accept" class="d-inline">
@@ -64,6 +87,15 @@
                                         <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar</button>
                                     </form>
                                 }
+
+                                @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted || x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Rejected)
+                                {
+                                    <form method="post" asp-page-handler="Reopen" class="d-inline">
+                                        <input type="hidden" name="id" value="@x.Id" />
+                                        <button class="btn btn-sm btn-outline-warning" type="submit">Reabrir</button>
+                                    </form>
+                                }
+
                                 @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted)
                                 {
                                     <form method="post" asp-page-handler="Convert" class="d-inline">
@@ -71,6 +103,7 @@
                                         <button class="btn btn-sm btn-primary" type="submit">Convertir a orden</button>
                                     </form>
                                 }
+
                                 @if (x.ConvertedServiceOrderId.HasValue)
                                 {
                                     <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@x.ConvertedServiceOrderId.Value">Ver orden</a>
@@ -94,11 +127,11 @@
             <div class="modal-body">
                 <form method="post" asp-page-handler="Create" class="row g-3" id="feasibilityForm" enctype="multipart/form-data">
                     <div class="col-md-7">
-                        <label class="form-label">Título</label>
+                        <label class="form-label">Titulo</label>
                         <input class="form-control" asp-for="Input.Title" placeholder="Ej: Factibilidad FO - Plaza Norte" />
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label">Cliente</label>
+                        <label class="form-label">Cliente / Prospecto</label>
                         <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="feasClient"></select>
                     </div>
                     <div class="col-md-6">
@@ -112,17 +145,17 @@
                         <input class="form-control" asp-for="Input.Coordinates" placeholder="19.4326,-99.1332" />
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Sitios múltiples (coordenadas/capacidad MB)</label>
+                        <label class="form-label">Sitios multiples (coordenadas/capacidad MB)</label>
                         <textarea class="form-control" asp-for="Input.MultiSites" rows="3" placeholder="Sitio A | 19.4326,-99.1332 | 200 MB&#10;Sitio B | 19.5200,-99.2300 | 100 MB"></textarea>
-                        <div class="text-muted small mt-1">Formato por línea: Dirección | Coordenadas | Capacidad MB.</div>
+                        <div class="text-muted small mt-1">Formato por linea: Direccion | Coordenadas | Capacidad MB.</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Cargar Excel de sitios (opcional)</label>
                         <input class="form-control" type="file" name="SitesExcel" accept=".xlsx,.xls" />
-                        <div class="text-muted small mt-1">Columnas esperadas: A=Dirección, B=Coordenadas, C=Capacidad MB.</div>
+                        <div class="text-muted small mt-1">Columnas esperadas: A=Direccion, B=Coordenadas, C=Capacidad MB.</div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Dirección en sitio</label>
+                        <label class="form-label">Direccion en sitio</label>
                         <input class="form-control" asp-for="Input.SiteAddress" />
                     </div>
                     <div class="col-md-6">
@@ -130,7 +163,7 @@
                         <input class="form-control" asp-for="Input.SiteContactName" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Teléfono contacto</label>
+                        <label class="form-label">Telefono contacto</label>
                         <input class="form-control" asp-for="Input.SiteContactPhone" />
                     </div>
                     <div class="col-12">
@@ -142,6 +175,25 @@
                         <button class="btn btn-primary" type="submit">Guardar factibilidad</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalTitle">Ubicacion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted mb-2" id="mapModalAddress"></div>
+                <iframe id="mapIframe" title="Mapa de coordenadas" style="width:100%;height:430px;border:1px solid #d7dde8;border-radius:.5rem;" loading="lazy"></iframe>
+            </div>
+            <div class="modal-footer">
+                <a id="mapOpenExternal" class="btn btn-outline-primary" href="#" target="_blank" rel="noopener">Abrir en mapa</a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -176,6 +228,48 @@
 
     client.addEventListener('change', loadProjects);
     loadProjects();
+})();
+
+(() => {
+    const modal = document.getElementById('mapModal');
+    if (!modal) return;
+    const title = document.getElementById('mapModalTitle');
+    const addr = document.getElementById('mapModalAddress');
+    const iframe = document.getElementById('mapIframe');
+    const external = document.getElementById('mapOpenExternal');
+
+    function parseCoords(raw) {
+        if (!raw) return null;
+        const parts = String(raw).split(',').map(x => x.trim());
+        if (parts.length < 2) return null;
+        const lat = Number(parts[0]);
+        const lon = Number(parts[1]);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+        return { lat, lon };
+    }
+
+    modal.addEventListener('show.bs.modal', (ev) => {
+        const btn = ev.relatedTarget;
+        const coords = btn?.getAttribute('data-coords') || '';
+        const t = btn?.getAttribute('data-title') || 'Ubicacion';
+        const a = btn?.getAttribute('data-address') || '';
+        const p = parseCoords(coords);
+
+        title.textContent = t;
+        addr.textContent = `${a}${coords ? ` · ${coords}` : ''}`;
+
+        if (!p) {
+            iframe.removeAttribute('src');
+            external.href = '#';
+            external.classList.add('disabled');
+            return;
+        }
+
+        const bbox = `${p.lon - 0.01}%2C${p.lat - 0.01}%2C${p.lon + 0.01}%2C${p.lat + 0.01}`;
+        iframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${p.lat}%2C${p.lon}`;
+        external.href = `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=17/${p.lat}/${p.lon}`;
+        external.classList.remove('disabled');
+    });
 })();
 </script>
 }

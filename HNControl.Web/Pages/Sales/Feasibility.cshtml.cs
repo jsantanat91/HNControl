@@ -62,6 +62,7 @@ public class FeasibilityModel : PageModel
     public record RowVm(
         Guid Id,
         string ClientName,
+        bool IsProspect,
         string ProjectName,
         string Title,
         string SiteAddress,
@@ -72,7 +73,8 @@ public class FeasibilityModel : PageModel
         string Notes,
         ServiceFeasibilityStatus Status,
         DateTime CreatedAt,
-        Guid? ConvertedServiceOrderId);
+        Guid? ConvertedServiceOrderId,
+        bool HasSitesExcel);
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -95,11 +97,16 @@ public class FeasibilityModel : PageModel
             return Page();
         }
 
-        var validClient = await _db.Clients
-            .AnyAsync(c => c.Id == Input.ClientId && c.IsActive && !c.IsTemporaryLead);
+        var userId = _userMgr.GetUserId(User);
+        var validClientQuery = _db.Clients
+            .Where(c => c.Id == Input.ClientId && c.IsActive);
+        if (!CanViewAll)
+            validClientQuery = validClientQuery.Where(c => c.OwnerUserId == userId);
+
+        var validClient = await validClientQuery.AnyAsync();
         if (!validClient)
         {
-            Error = "Solo se permiten clientes activos (no prospectos).";
+            Error = "Selecciona un cliente/prospecto activo que te pertenezca.";
             return RedirectToPage();
         }
 
@@ -132,7 +139,7 @@ public class FeasibilityModel : PageModel
         if (!CanManage)
             return Forbid();
 
-        var row = await _db.ServiceFeasibilities.FirstOrDefaultAsync(x => x.Id == id);
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty).FirstOrDefaultAsync(x => x.Id == id);
         if (row == null) return RedirectToPage();
         if (row.Status == ServiceFeasibilityStatus.ConvertedToOrder)
         {
@@ -155,7 +162,7 @@ public class FeasibilityModel : PageModel
         if (!CanManage)
             return Forbid();
 
-        var row = await _db.ServiceFeasibilities.FirstOrDefaultAsync(x => x.Id == id);
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty).FirstOrDefaultAsync(x => x.Id == id);
         if (row == null) return RedirectToPage();
         if (row.Status == ServiceFeasibilityStatus.ConvertedToOrder)
         {
@@ -170,6 +177,29 @@ public class FeasibilityModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostReopenAsync(Guid id)
+    {
+        if (!await ResolvePermissionsAsync())
+            return Forbid();
+        if (!CanManage)
+            return Forbid();
+
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty).FirstOrDefaultAsync(x => x.Id == id);
+        if (row == null) return RedirectToPage();
+        if (row.Status == ServiceFeasibilityStatus.ConvertedToOrder)
+        {
+            Error = "No se puede revertir una factibilidad ya convertida a orden.";
+            return RedirectToPage();
+        }
+
+        row.Status = ServiceFeasibilityStatus.Open;
+        row.AcceptedAt = null;
+        row.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        Message = "Factibilidad reabierta.";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostConvertAsync(Guid id)
     {
         if (!await ResolvePermissionsAsync())
@@ -177,7 +207,7 @@ public class FeasibilityModel : PageModel
         if (!CanManage)
             return Forbid();
 
-        var row = await _db.ServiceFeasibilities.FirstOrDefaultAsync(x => x.Id == id);
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty).FirstOrDefaultAsync(x => x.Id == id);
         if (row == null) return RedirectToPage();
         if (row.ConvertedServiceOrderId.HasValue)
         {
@@ -218,13 +248,59 @@ public class FeasibilityModel : PageModel
 
     public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
     {
-        var rows = await _db.Projects
+        var userId = _userMgr.GetUserId(User) ?? string.Empty;
+        var projects = _db.Projects
             .AsNoTracking()
-            .Where(x => x.ClientId == clientId)
+            .Where(x => x.ClientId == clientId);
+        if (!CanViewAll)
+            projects = projects.Where(x => x.Client.OwnerUserId == userId);
+
+        var rows = await projects
             .OrderByDescending(x => x.StartDate)
             .Select(x => new { id = x.Id, text = x.Title })
             .ToListAsync();
         return new JsonResult(rows);
+    }
+
+    public async Task<IActionResult> OnGetExportSitesAsync(Guid id)
+    {
+        if (!await ResolvePermissionsAsync())
+            return Forbid();
+
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id);
+        if (row == null) return NotFound();
+
+        var lines = ExtractSitesForExport(row.Notes);
+        if (lines.Count == 0)
+        {
+            Error = "Esta factibilidad no tiene sitios capturados para exportar.";
+            return RedirectToPage();
+        }
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("Sitios");
+        ws.Cell(1, 1).Value = "Direccion";
+        ws.Cell(1, 2).Value = "Coordenadas";
+        ws.Cell(1, 3).Value = "CapacidadMB";
+        ws.Row(1).Style.Font.Bold = true;
+
+        var r = 2;
+        foreach (var line in lines)
+        {
+            ws.Cell(r, 1).Value = line.Address;
+            ws.Cell(r, 2).Value = line.Coordinates;
+            ws.Cell(r, 3).Value = line.CapacityMb;
+            r++;
+        }
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        ms.Position = 0;
+        var fileName = $"factibilidad-sitios-{row.Id:N}.xlsx";
+        return File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 
     private async Task<bool> ResolvePermissionsAsync()
@@ -240,12 +316,21 @@ public class FeasibilityModel : PageModel
     {
         var userId = _userMgr.GetUserId(User) ?? string.Empty;
 
-        var clients = await _db.Clients
+        var clientsQuery = _db.Clients
             .AsNoTracking()
-            .Where(c => c.IsActive && !c.IsTemporaryLead)
+            .Where(c => c.IsActive);
+        if (!CanViewAll)
+            clientsQuery = clientsQuery.Where(c => c.OwnerUserId == userId);
+
+        var clients = await clientsQuery
             .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                c.Id,
+                Label = $"[{(c.IsTemporaryLead ? "Prospecto" : "Cliente")}] {c.Name}"
+            })
             .ToListAsync();
-        ClientItems = new SelectList(clients, "Id", "Name");
+        ClientItems = new SelectList(clients, "Id", "Label");
         ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
 
         var q = _db.ServiceFeasibilities
@@ -255,7 +340,7 @@ public class FeasibilityModel : PageModel
             .AsQueryable();
 
         if (!CanViewAll)
-            q = q.Where(x => x.CreatedByUserId == userId);
+            q = q.Where(x => (x.Client != null && x.Client.OwnerUserId == userId) || x.CreatedByUserId == userId);
 
         Rows = await q
             .OrderByDescending(x => x.CreatedAt)
@@ -263,6 +348,7 @@ public class FeasibilityModel : PageModel
             .Select(x => new RowVm(
                 x.Id,
                 x.Client != null ? x.Client.Name : "-",
+                x.Client != null && x.Client.IsTemporaryLead,
                 x.Project != null ? x.Project.Title : "-",
                 x.Title,
                 x.SiteAddress,
@@ -273,8 +359,19 @@ public class FeasibilityModel : PageModel
                 x.Notes,
                 x.Status,
                 x.CreatedAt,
-                x.ConvertedServiceOrderId))
+                x.ConvertedServiceOrderId,
+                HasExcelSites(x.Notes)))
             .ToListAsync();
+    }
+
+    private IQueryable<ServiceFeasibility> QueryScopedRows(string userId)
+    {
+        var q = _db.ServiceFeasibilities
+            .Include(x => x.Client)
+            .AsQueryable();
+        if (!CanViewAll)
+            q = q.Where(x => (x.Client != null && x.Client.OwnerUserId == userId) || x.CreatedByUserId == userId);
+        return q;
     }
 
     private static string BuildNotesWithSites(string baseNotes, string? multiSites, IFormFile? excelFile)
@@ -342,5 +439,36 @@ public class FeasibilityModel : PageModel
             .ToList();
 
         return lines.Count == 0 ? "-" : string.Join(" · ", lines);
+    }
+
+    private static bool HasExcelSites(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return false;
+        return notes.Contains("[EXCEL SITIOS]", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<(string Address, string Coordinates, string CapacityMb)> ExtractSitesForExport(string notes)
+    {
+        var result = new List<(string Address, string Coordinates, string CapacityMb)>();
+        if (string.IsNullOrWhiteSpace(notes)) return result;
+
+        var lines = notes
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => !l.StartsWith("[", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var line in lines)
+        {
+            var parts = line.Split('|', StringSplitOptions.TrimEntries);
+            if (parts.Length == 0) continue;
+            var address = parts.ElementAtOrDefault(0) ?? "";
+            var coords = parts.ElementAtOrDefault(1) ?? "";
+            var cap = parts.ElementAtOrDefault(2) ?? "";
+            if (string.IsNullOrWhiteSpace(address) && string.IsNullOrWhiteSpace(coords) && string.IsNullOrWhiteSpace(cap))
+                continue;
+            result.Add((address, coords, cap));
+        }
+
+        return result;
     }
 }
