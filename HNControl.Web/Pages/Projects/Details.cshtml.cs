@@ -36,6 +36,8 @@ public class DetailsModel : PageModel
     }
 
     public Project? Project { get; set; }
+    [TempData] public string? Message { get; set; }
+    [TempData] public string? Error { get; set; }
     public string ClientName { get; set; } = "";
     public string Responsible { get; set; } = "";
     public bool IsOverdue { get; set; }
@@ -46,7 +48,7 @@ public class DetailsModel : PageModel
     public int GanttElapsedDays { get; set; }
     public double GanttProgressPercent { get; set; }
     public record ActivityRow(Guid Id, string AssignedTo, string Description, int PlannedHours, string DurationLabel, int StartHour, int EndHour, string StartText, string EndText, double WidthPercent, double OffsetPercent, string ColorHex, bool IsCompleted, string CompletedText);
-    public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Hours, string DurationLabel, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex);
+    public record PdfGanttRow(string Task, string AssignedTo, DateTime StartDate, DateTime EndDate, int Hours, string DurationLabel, double ProgressPercent, double OffsetPercent, double WidthPercent, int ColorIndex, bool IsCompleted, string CompletedText);
     public List<ActivityRow> Activities { get; set; } = new();
     public List<EmployeeOptionVm> EmployeeOptions { get; set; } = new();
 
@@ -237,7 +239,11 @@ public class DetailsModel : PageModel
             return Forbid();
 
         await EnsureProjectActivityColumnsAsync();
-        await UpdateProjectActivityDoneSafeAsync(id, activityId, done);
+        var affected = await UpdateProjectActivityDoneSafeAsync(id, activityId, done);
+        if (affected <= 0)
+            Error = "No se pudo actualizar la actividad. Recarga la página e intenta nuevamente.";
+        else
+            Message = done ? "Actividad marcada como realizada." : "Actividad marcada como pendiente.";
         return RedirectToPage(new { id });
     }
 
@@ -386,6 +392,8 @@ public class DetailsModel : PageModel
                                     {
                                         task.Item().Text(row.Task).FontSize(8.5f);
                                         task.Item().Text(row.AssignedTo).FontSize(7.5f).FontColor(Colors.Grey.Darken2);
+                                        if (row.IsCompleted)
+                                            task.Item().Text($"Terminado: {row.CompletedText}").FontSize(7).FontColor(Colors.Green.Darken2);
                                     });
 
                                     r.ConstantItem(timelineWidth).Height(16).Border(0.6f).BorderColor(Colors.Grey.Lighten2).Background(Colors.Grey.Lighten5).Layers(l =>
@@ -781,7 +789,7 @@ public class DetailsModel : PageModel
         }
     }
 
-    private async Task UpdateProjectActivityDoneSafeAsync(Guid projectId, Guid activityId, bool done)
+    private async Task<int> UpdateProjectActivityDoneSafeAsync(Guid projectId, Guid activityId, bool done)
     {
         var schema = await GetProjectActivitySchemaAsync();
         var conn = _db.Database.GetDbConnection();
@@ -816,7 +824,7 @@ public class DetailsModel : PageModel
             AddParam(cmd, "nowUtc", DateTime.UtcNow);
             AddParam(cmd, "activityId", activityId);
             AddParam(cmd, "projectId", projectId);
-            await cmd.ExecuteNonQueryAsync();
+            return await cmd.ExecuteNonQueryAsync();
         }
         finally
         {
@@ -979,7 +987,7 @@ public class DetailsModel : PageModel
 
             var finalStart = a.StartAtUtc.HasValue ? a.StartAtUtc.Value.ToLocalTime() : startDate;
             var finalEnd = a.EndAtUtc.HasValue ? a.EndAtUtc.Value.ToLocalTime() : endDate;
-            var progress = CalcProgress(nowLocal, finalStart, finalEnd);
+            var progress = a.IsCompleted ? 100d : CalcProgress(nowLocal, finalStart, finalEnd);
             rows.Add(new PdfGanttRow(
                 string.IsNullOrWhiteSpace(a.Description) ? "-" : a.Description.Trim(),
                 string.IsNullOrWhiteSpace(a.AssignedToName) ? "-" : a.AssignedToName.Trim(),
@@ -990,7 +998,9 @@ public class DetailsModel : PageModel
                 progress,
                 Math.Round(offset, 2),
                 Math.Round(width, 2),
-                colorIndex++));
+                colorIndex++,
+                a.IsCompleted,
+                a.CompletedAtUtc.HasValue ? a.CompletedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-"));
         }
 
         return rows;
