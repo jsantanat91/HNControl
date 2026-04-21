@@ -118,11 +118,22 @@
                                         <input type="hidden" name="id" value="@x.Id" />
                                         <button class="btn btn-sm btn-primary" type="submit">Convertir a orden</button>
                                     </form>
+                                    @if (!x.ConvertedContractId.HasValue)
+                                    {
+                                        <form method="post" asp-page-handler="ConvertContract" class="d-inline">
+                                            <input type="hidden" name="id" value="@x.Id" />
+                                            <button class="btn btn-sm btn-outline-success" type="submit">Convertir a contrato</button>
+                                        </form>
+                                    }
                                 }
 
                                 @if (x.ConvertedServiceOrderId.HasValue)
                                 {
                                     <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@x.ConvertedServiceOrderId.Value">Ver orden</a>
+                                }
+                                @if (x.ConvertedContractId.HasValue)
+                                {
+                                    <a class="btn btn-sm btn-outline-success" asp-page="/Clients/Services/Details" asp-route-id="@x.ConvertedContractId.Value">Ver contrato</a>
                                 }
                             </div>
                         </article>

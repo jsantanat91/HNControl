@@ -28,6 +28,8 @@ public class CreateModel : PageModel
 
     [BindProperty(SupportsGet = true)]
     public Guid ClientId { get; set; }
+    [BindProperty(SupportsGet = true)]
+    public Guid? FeasibilityId { get; set; }
 
     public string ClientName { get; set; } = "";
     public string ClientCode { get; set; } = "";
@@ -108,6 +110,7 @@ public class CreateModel : PageModel
         await LoadProjectsAsync();
         await LoadServicePackagesAsync();
         await LoadSalesOpportunitiesAsync();
+        await PrefillFromFeasibilityAsync();
 
         if (Input.ContractStartDate == null)
             Input.ContractStartDate = DateTime.Today;
@@ -181,7 +184,7 @@ public class CreateModel : PageModel
             ContractStartDate = Input.ContractStartDate?.Date,
             ContractEndDate = Input.ContractEndDate?.Date,
             Notes = ComposeNotesMetadata(
-                (Input.Notes ?? "").Trim(),
+                ComposeFeasibilityMetadata((Input.Notes ?? "").Trim(), FeasibilityId),
                 Input.BillingRecurrence,
                 Input.ContractTermOption,
                 Input.SalesOpportunityId),
@@ -218,6 +221,26 @@ public class CreateModel : PageModel
             {
                 Error = ex.Message;
                 return Page();
+            }
+        }
+
+        if (FeasibilityId.HasValue)
+        {
+            var feasibility = await _db.ServiceFeasibilities
+                .FirstOrDefaultAsync(x => x.Id == FeasibilityId.Value && x.ClientId == ClientId);
+            if (feasibility != null)
+            {
+                var note = feasibility.Notes ?? "";
+                var marker = $"[META] ContratoId={contract.Id}";
+                if (!note.Contains(marker, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(note))
+                        note += Environment.NewLine;
+                    note += marker;
+                    feasibility.Notes = note.Length <= 2000 ? note : note[..2000];
+                    feasibility.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                }
             }
         }
 
@@ -299,6 +322,52 @@ public class CreateModel : PageModel
         if (salesOpportunityId.HasValue)
             lines.Add($"[META] VentaId={salesOpportunityId.Value}");
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private async Task PrefillFromFeasibilityAsync()
+    {
+        if (!FeasibilityId.HasValue)
+            return;
+
+        var feasibility = await _db.ServiceFeasibilities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == FeasibilityId.Value && x.ClientId == ClientId);
+        if (feasibility == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(Input.Label))
+            Input.Label = feasibility.Title;
+        if (!Input.ProjectId.HasValue)
+            Input.ProjectId = feasibility.ProjectId;
+        if (string.IsNullOrWhiteSpace(Input.Notes))
+        {
+            var lines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(feasibility.SiteAddress))
+                lines.Add($"Direccion en sitio: {feasibility.SiteAddress}");
+            if (!string.IsNullOrWhiteSpace(feasibility.Coordinates))
+                lines.Add($"Coordenadas: {feasibility.Coordinates}");
+            if (!string.IsNullOrWhiteSpace(feasibility.SiteContactName) || !string.IsNullOrWhiteSpace(feasibility.SiteContactPhone))
+                lines.Add($"Contacto sitio: {feasibility.SiteContactName} {feasibility.SiteContactPhone}".Trim());
+            var baseNotes = StripNotesMetadata(feasibility.Notes ?? "");
+            if (!string.IsNullOrWhiteSpace(baseNotes))
+                lines.Add(baseNotes);
+            Input.Notes = string.Join(Environment.NewLine, lines);
+        }
+    }
+
+    private static string ComposeFeasibilityMetadata(string rawNotes, Guid? feasibilityId)
+    {
+        if (!feasibilityId.HasValue)
+            return rawNotes;
+
+        var cleaned = rawNotes
+            .Split('\n')
+            .Select(x => x.TrimEnd('\r'))
+            .Where(x => !x.StartsWith("[META] FactibilidadId=", StringComparison.OrdinalIgnoreCase));
+        var baseNotes = string.Join(Environment.NewLine, cleaned).Trim();
+        if (string.IsNullOrWhiteSpace(baseNotes))
+            return $"[META] FactibilidadId={feasibilityId.Value}";
+        return $"{baseNotes}{Environment.NewLine}[META] FactibilidadId={feasibilityId.Value}";
     }
 
     private static string StripNotesMetadata(string raw)

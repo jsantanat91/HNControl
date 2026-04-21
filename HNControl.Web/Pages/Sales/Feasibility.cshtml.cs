@@ -102,6 +102,7 @@ public class FeasibilityModel : PageModel
         ServiceFeasibilityStatus Status,
         DateTime CreatedAt,
         Guid? ConvertedServiceOrderId,
+        Guid? ConvertedContractId,
         bool HasSitesExcel);
 
     public async Task<IActionResult> OnGetAsync()
@@ -336,6 +337,32 @@ public class FeasibilityModel : PageModel
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
+    public async Task<IActionResult> OnPostConvertContractAsync(Guid id)
+    {
+        if (!await ResolvePermissionsAsync())
+            return Forbid();
+        if (!CanManage)
+            return Forbid();
+
+        var row = await QueryScopedRows(_userMgr.GetUserId(User) ?? string.Empty).FirstOrDefaultAsync(x => x.Id == id);
+        if (row == null) return RedirectToPage();
+        if (row.Status != ServiceFeasibilityStatus.Accepted)
+        {
+            Error = "Primero acepta la factibilidad para convertirla en contrato.";
+            return RedirectToPage();
+        }
+
+        var linkedContractId = ExtractConvertedContractId(row.Notes);
+        if (linkedContractId.HasValue)
+            return RedirectToPage("/Clients/Services/Details", new { id = linkedContractId.Value });
+
+        return RedirectToPage("/Clients/Services/Create", new
+        {
+            clientId = row.ClientId,
+            feasibilityId = row.Id
+        });
+    }
+
     public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
     {
         var userId = _userMgr.GetUserId(User) ?? string.Empty;
@@ -474,6 +501,7 @@ public class FeasibilityModel : PageModel
                 x.Status,
                 x.CreatedAt,
                 x.ConvertedServiceOrderId,
+                ExtractConvertedContractId(x.Notes),
                 HasExcelSites(x.Notes)))
             .ToList();
     }
@@ -577,6 +605,25 @@ public class FeasibilityModel : PageModel
     {
         if (string.IsNullOrWhiteSpace(notes)) return false;
         return notes.Contains("[EXCEL SITIOS]", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Guid? ExtractConvertedContractId(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes))
+            return null;
+
+        var lines = notes.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            if (!line.StartsWith("[META] ContratoId=", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var raw = line["[META] ContratoId=".Length..].Trim();
+            if (Guid.TryParse(raw, out var id))
+                return id;
+        }
+
+        return null;
     }
 
     private static List<(string Address, string Coordinates, string CapacityMb)> ExtractSitesForExport(string notes)
