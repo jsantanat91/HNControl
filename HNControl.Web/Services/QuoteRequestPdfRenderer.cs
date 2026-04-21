@@ -125,8 +125,8 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 h.Cell().Element(CellHead).AlignCenter().Text("Cant");
                                 h.Cell().Element(CellHead).AlignCenter().Text("Recurr.");
                                 h.Cell().Element(CellHead).AlignCenter().Text("Modalidad");
-                                h.Cell().Element(CellHead).AlignRight().Text("Costo");
-                                h.Cell().Element(CellHead).AlignRight().Text("Total");
+                                h.Cell().Element(CellHead).AlignRight().Text("Costo unit. (sin IVA)");
+                                h.Cell().Element(CellHead).AlignRight().Text("Subtotal (sin IVA)");
                             });
 
                             foreach (var line in q.Lines)
@@ -138,9 +138,15 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                                 t.Cell().Element(CellBody).AlignCenter().Text(string.IsNullOrWhiteSpace(line.Recurrence) ? "Unica" : line.Recurrence);
                                 t.Cell().Element(CellBody).AlignCenter().Text(LabelOffer(line.OfferType));
                                 t.Cell().Element(CellBody).AlignRight()
-                                    .Text(line.IsManualPrice ? "Manual" : $"{Money(line.UnitPrice)} {(line.PriceIncludesVat ? "(IVA incl.)" : "+ IVA")}");
+                                    .Text(line.IsManualPrice
+                                        ? "Manual"
+                                        : (line.PriceIncludesVat
+                                            ? Money(((line.UnitPrice ?? 0m) / 1.16m))
+                                            : Money(line.UnitPrice)));
                                 t.Cell().Element(CellBody).AlignRight()
-                                    .Text(line.IsManualPrice ? "Por validar" : Money(line.LineTotal));
+                                    .Text(line.IsManualPrice
+                                        ? "Por validar"
+                                        : Money(line.BaseAmount ?? 0m));
                             }
                         });
                     });
@@ -165,7 +171,6 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                         {
                             x.Item().AlignRight().Text($"Subtotal sin IVA: {Money(q.SubtotalBeforeVat)}");
                             x.Item().AlignRight().Text($"IVA 16%: {Money(q.VatAmount)}");
-                            x.Item().AlignRight().Text($"Subtotal automatico: {Money(q.SubtotalAuto)}");
                             x.Item().AlignRight().Text($"Total estimado: {Money(q.EstimatedTotal)}").SemiBold();
                         });
                     });
