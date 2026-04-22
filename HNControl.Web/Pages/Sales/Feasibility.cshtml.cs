@@ -36,6 +36,7 @@ public class FeasibilityModel : PageModel
     public List<RowVm> Rows { get; set; } = [];
     public bool CanViewAll { get; set; }
     public bool CanManage { get; set; }
+    public bool OpenCreateModal { get; set; }
 
     [TempData] public string? Message { get; set; }
     [TempData] public string? Error { get; set; }
@@ -120,8 +121,18 @@ public class FeasibilityModel : PageModel
         if (!CanManage)
             return Forbid();
 
+        if (Input.ClientId == Guid.Empty)
+        {
+            Error = "Selecciona un cliente/prospecto valido.";
+            OpenCreateModal = true;
+            await LoadAsync();
+            return Page();
+        }
+
         if (!ModelState.IsValid)
         {
+            Error = "No se pudo guardar la factibilidad. Revisa los campos obligatorios.";
+            OpenCreateModal = true;
             await LoadAsync();
             return Page();
         }
@@ -136,7 +147,9 @@ public class FeasibilityModel : PageModel
         if (!validClient)
         {
             Error = "Selecciona un cliente/prospecto activo que te pertenezca.";
-            return RedirectToPage();
+            OpenCreateModal = true;
+            await LoadAsync();
+            return Page();
         }
 
         var row = new ServiceFeasibility
@@ -155,10 +168,20 @@ public class FeasibilityModel : PageModel
             CreatedByUserId = _userMgr.GetUserId(User)
         };
 
-        _db.ServiceFeasibilities.Add(row);
-        await _db.SaveChangesAsync();
-        Message = "Factibilidad creada.";
-        return RedirectToPage();
+        try
+        {
+            _db.ServiceFeasibilities.Add(row);
+            await _db.SaveChangesAsync();
+            Message = "Factibilidad creada.";
+            return RedirectToPage();
+        }
+        catch (Exception ex)
+        {
+            Error = $"No se pudo guardar la factibilidad: {ex.Message}";
+            OpenCreateModal = true;
+            await LoadAsync();
+            return Page();
+        }
     }
 
     public async Task<IActionResult> OnPostAcceptAsync(Guid id)

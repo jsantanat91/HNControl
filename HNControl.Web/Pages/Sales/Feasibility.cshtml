@@ -153,6 +153,7 @@
             </div>
             <div class="modal-body">
                 <form method="post" asp-page-handler="Create" class="row g-3" id="feasibilityForm" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
                     <div class="col-md-7">
                         <label class="form-label">Titulo</label>
                         <input class="form-control" asp-for="Input.Title" placeholder="Ej: Factibilidad FO - Plaza Norte" />
@@ -414,5 +415,17 @@
         external.classList.remove('disabled');
     });
 })();
+
+@if (Model.OpenCreateModal)
+{
+<text>
+(() => {
+    const modalEl = document.getElementById('newFeasibilityModal');
+    if (!modalEl || !window.bootstrap) return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+})();
+</text>
+}
 </script>
 }
