@@ -121,6 +121,10 @@ public class FeasibilityModel : PageModel
         if (!CanManage)
             return Forbid();
 
+        // Validar solo el formulario de alta (Input), no el modelo de edición.
+        ModelState.Clear();
+        TryValidateModel(Input, nameof(Input));
+
         if (Input.ClientId == Guid.Empty)
         {
             Error = "Selecciona un cliente/prospecto valido.";
@@ -131,7 +135,11 @@ public class FeasibilityModel : PageModel
 
         if (!ModelState.IsValid)
         {
-            Error = "No se pudo guardar la factibilidad. Revisa los campos obligatorios.";
+            var firstError = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+            Error = $"No se pudo guardar la factibilidad. {(string.IsNullOrWhiteSpace(firstError) ? "Revisa los campos obligatorios." : firstError)}";
             OpenCreateModal = true;
             await LoadAsync();
             return Page();
