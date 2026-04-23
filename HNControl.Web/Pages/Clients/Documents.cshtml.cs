@@ -41,6 +41,7 @@ public class DocumentsModel : PageModel
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
     public List<LegalDocRow> Docs { get; set; } = new();
+    public List<SignContactOption> SignContacts { get; set; } = new();
 
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
@@ -56,6 +57,13 @@ public class DocumentsModel : PageModel
         string? SignedAt,
         string? SignedBy,
         Guid? ContractId);
+
+    public record SignContactOption(
+        Guid Id,
+        string Label,
+        string? Email,
+        string? Phone,
+        bool IsPrimary);
 
     public async Task<IActionResult> OnGetAsync(Guid clientId)
     {
@@ -120,7 +128,7 @@ public class DocumentsModel : PageModel
         return RedirectToPage(new { clientId });
     }
 
-    public async Task<IActionResult> OnPostSendForSignatureAsync(Guid clientId, Guid docId)
+    public async Task<IActionResult> OnPostSendForSignatureAsync(Guid clientId, Guid docId, Guid? contactId)
     {
         var doc = await _db.ClientLegalDocuments
             .Include(x => x.Client)
@@ -141,10 +149,24 @@ public class DocumentsModel : PageModel
             }
         }
 
-        var recipient = FirstNonEmpty(doc.Client?.BillingEmail, doc.Client?.Email);
+        ClientContact? selectedContact = null;
+        if (contactId.HasValue && contactId.Value != Guid.Empty)
+        {
+            selectedContact = await _db.ClientContacts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ClientId == clientId && x.Id == contactId.Value);
+            if (selectedContact == null)
+            {
+                Flash = "El contacto seleccionado no pertenece al cliente.";
+                FlashType = "danger";
+                return RedirectToPage(new { clientId });
+            }
+        }
+
+        var recipient = FirstNonEmpty(selectedContact?.Email, doc.Client?.BillingEmail, doc.Client?.Email);
         if (string.IsNullOrWhiteSpace(recipient))
         {
-            Flash = "El cliente no tiene correo de facturación o principal para enviar firma.";
+            Flash = "El contacto seleccionado no tiene correo (o el cliente no tiene correo de facturacion/principal).";
             FlashType = "danger";
             return RedirectToPage(new { clientId });
         }
@@ -176,11 +198,18 @@ public class DocumentsModel : PageModel
             }
         }
 
+        var recipientName = FirstNonEmpty(
+            selectedContact?.Name,
+            doc.Client?.LegalRepresentative,
+            doc.Client?.ContactName,
+            doc.Client?.Name,
+            "cliente");
+
         await _email.SendAsync(
             recipient,
             $"Firma requerida: {doc.Title}",
             $"""
-            <p>Hola {System.Net.WebUtility.HtmlEncode(doc.Client?.LegalRepresentative ?? doc.Client?.Name ?? "cliente")},</p>
+            <p>Hola {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
             <p>Ya puedes revisar y firmar digitalmente el siguiente documento:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
             <p>Al firmarlo, recibirás el PDF actualizado con la firma digital.</p>
@@ -234,6 +263,21 @@ public class DocumentsModel : PageModel
             .AsNoTracking()
             .Where(x => x.ClientId == clientId)
             .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
+
+        SignContacts = await _db.ClientContacts
+            .AsNoTracking()
+            .Where(x => x.ClientId == clientId)
+            .OrderByDescending(x => x.IsPrimary)
+            .ThenBy(x => x.Name)
+            .Select(x => new SignContactOption(
+                x.Id,
+                string.IsNullOrWhiteSpace(x.Role)
+                    ? x.Name
+                    : $"{x.Name} ({x.Role})",
+                x.Email,
+                x.Phone,
+                x.IsPrimary))
             .ToListAsync();
 
         Docs = await _db.ClientLegalDocuments

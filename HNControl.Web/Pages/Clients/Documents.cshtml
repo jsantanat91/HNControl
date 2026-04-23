@@ -132,11 +132,13 @@
                                             <input type="hidden" name="docId" value="@d.Id" />
                                             <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerar PDF</button>
                                         </form>
-                                        <form method="post" asp-page-handler="SendForSignature">
-                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
-                                            <input type="hidden" name="docId" value="@d.Id" />
-                                            <button class="btn btn-sm btn-outline-primary" type="submit">Enviar firma</button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary js-open-sign-modal"
+                                            data-doc-id="@d.Id"
+                                            data-doc-title="@d.Title">
+                                            Enviar firma
+                                        </button>
                                         <form method="post" asp-page-handler="Download">
                                             <input type="hidden" name="clientId" value="@Model.Client.Id" />
                                             <input type="hidden" name="docId" value="@d.Id" />
@@ -152,3 +154,64 @@
         }
     </div>
 </div>
+
+<div class="modal fade" id="sendSignatureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="SendForSignature">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enviar firma digital</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                    <input type="hidden" name="docId" id="signDocId" />
+
+                    <div class="small text-muted mb-2" id="signDocTitle"></div>
+
+                    <label class="form-label" for="signContactId">Contacto que firmar&aacute;</label>
+                    <select class="form-select" id="signContactId" name="contactId">
+                        <option value="">Contacto principal del cliente (ficha)</option>
+                        @foreach (var c in Model.SignContacts)
+                        {
+                            var hint = string.IsNullOrWhiteSpace(c.Email) ? "sin correo" : c.Email;
+                            <option value="@c.Id">
+                                @(c.IsPrimary ? "Principal: " : "")@c.Label - @hint
+                            </option>
+                        }
+                    </select>
+                    <div class="form-text">
+                        Si eliges un contacto sin correo, se usar&aacute; el correo del cliente (facturaci&oacute;n/principal).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Enviar firma</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const modalEl = document.getElementById("sendSignatureModal");
+            if (!modalEl || !window.bootstrap) return;
+
+            const modal = new bootstrap.Modal(modalEl);
+            const docIdInput = document.getElementById("signDocId");
+            const docTitle = document.getElementById("signDocTitle");
+
+            document.querySelectorAll(".js-open-sign-modal").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const docId = btn.getAttribute("data-doc-id") || "";
+                    const title = btn.getAttribute("data-doc-title") || "";
+                    if (docIdInput) docIdInput.value = docId;
+                    if (docTitle) docTitle.textContent = `Documento: ${title}`;
+                    modal.show();
+                });
+            });
+        })();
+    </script>
+}

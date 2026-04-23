@@ -42,9 +42,17 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
             .Include(x => x.AssignedEmployee)
             .Include(x => x.ClaimedByEmployee)
             .FirstAsync(x => x.Id == order.Id);
+        // Nota: algunas instalaciones pueden no tener columnas nuevas de SystemConfigurations
+        // (por ejemplo MercadoPagoAccessTokenProtected). Proyectamos solo campos necesarios
+        // para evitar SELECT * implícito y no depender del esquema completo.
         var sys = await _db.SystemConfigurations
             .AsNoTracking()
             .OrderByDescending(x => x.UpdatedAt)
+            .Select(x => new
+            {
+                x.CompanyName,
+                x.CompanyLogoStoragePath
+            })
             .FirstOrDefaultAsync();
 
         // --------------------
