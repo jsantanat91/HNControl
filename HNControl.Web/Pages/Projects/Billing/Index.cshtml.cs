@@ -1064,9 +1064,16 @@ SELECT EXISTS (
 
     private async Task PrefillFromOriginAsync()
     {
+        // Query only stable columns to avoid runtime crashes when optional new
+        // schema columns (e.g. MercadoPago protected fields) are not deployed yet.
         var sys = await _db.SystemConfigurations
             .AsNoTracking()
             .OrderByDescending(x => x.UpdatedAt)
+            .Select(x => new
+            {
+                x.CompanyFiscalRegimeCode,
+                x.BillingEmail
+            })
             .FirstOrDefaultAsync();
 
         if (sys != null)
