@@ -92,10 +92,12 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
         var status = o.Status == ServiceOrderStatus.Completed ? ServiceOrderStatus.Finalized : o.Status;
         var statusLabel = GetDisplayName(status);
 
-        var doc = Document.Create(container =>
+        try
         {
-            container.Page(page =>
+            var doc = Document.Create(container =>
             {
+                container.Page(page =>
+                {
                 page.Size(PageSizes.A4);
                 page.Margin(26);
                 page.DefaultTextStyle(x => x.FontSize(10));
@@ -370,10 +372,15 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
                     f.Item().AlignCenter().Text($"Firma digital: {digitalHash}")
                         .FontSize(8).FontColor(Colors.Grey.Darken1);
                 });
+                });
             });
-        });
 
-        return doc.GeneratePdf();
+            return doc.GeneratePdf();
+        }
+        catch (Exception ex)
+        {
+            return BuildFallbackPdf(o, company, footer, digitalHash, ex.Message);
+        }
     }
 
     // ===== LOGO loader (robusto para publish/docker) =====
@@ -509,6 +516,51 @@ public class ServiceOrderPdfRenderer : IServiceOrderPdfRenderer
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         return Convert.ToHexString(bytes)[..16];
+    }
+
+    private static byte[] BuildFallbackPdf(ServiceOrder o, string company, string footer, string hash, string? error)
+    {
+        var doc = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(24);
+                page.DefaultTextStyle(x => x.FontSize(10));
+
+                page.Header().Column(c =>
+                {
+                    c.Item().Text(company).FontSize(16).SemiBold();
+                    c.Item().Text("Orden de Servicio (respaldo)").FontSize(12).FontColor(Colors.Grey.Darken2);
+                });
+
+                page.Content().PaddingTop(10).Column(c =>
+                {
+                    c.Spacing(6);
+                    c.Item().Text($"Folio interno: {o.Id}").SemiBold();
+                    c.Item().Text($"Cliente: {o.Client?.Name ?? "-"}");
+                    c.Item().Text($"Título: {o.Title}");
+                    c.Item().Text($"Tipo: {o.Type}");
+                    c.Item().Text($"Estatus: {o.Status}");
+                    c.Item().Text($"Creada: {o.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm}");
+                    c.Item().Text($"Descripción: {(string.IsNullOrWhiteSpace(o.Description) ? "-" : o.Description)}");
+                    if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        c.Item().PaddingTop(8).Text("Nota técnica: se aplicó plantilla de respaldo para este PDF.")
+                            .FontColor(Colors.Grey.Darken2);
+                    }
+                });
+
+                page.Footer().Column(f =>
+                {
+                    f.Item().AlignCenter().Text($"{footer} - {DateTime.Now:yyyy-MM-dd HH:mm}")
+                        .FontSize(9).FontColor(Colors.Grey.Darken2);
+                    f.Item().AlignCenter().Text($"Firma digital: {hash}")
+                        .FontSize(8).FontColor(Colors.Grey.Darken1);
+                });
+            });
+        });
+        return doc.GeneratePdf();
     }
 }
 

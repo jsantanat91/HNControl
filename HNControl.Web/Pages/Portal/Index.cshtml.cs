@@ -8,6 +8,7 @@ using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Portal;
@@ -18,17 +19,20 @@ public class IndexModel : PageModel
     private readonly ITicketFlowService _tickets;
     private readonly IMercadoPagoService _mercadoPago;
     private readonly IFileStorage _storage;
+    private readonly IClientPortalAccessService _portalAccess;
 
     public IndexModel(
         ApplicationDbContext db,
         ITicketFlowService tickets,
         IMercadoPagoService mercadoPago,
-        IFileStorage storage)
+        IFileStorage storage,
+        IClientPortalAccessService portalAccess)
     {
         _db = db;
         _tickets = tickets;
         _mercadoPago = mercadoPago;
         _storage = storage;
+        _portalAccess = portalAccess;
     }
 
     public Client? Client { get; set; }
@@ -40,6 +44,7 @@ public class IndexModel : PageModel
     public List<ContactVm> Contacts { get; set; } = new();
     public List<DomiciliationVm> Domiciliations { get; set; } = new();
     public string PayerEmailHint { get; set; } = "";
+    public string PublicQuoteUrl { get; set; } = "";
 
     [BindProperty]
     public TicketInput TicketForm { get; set; } = new();
@@ -47,7 +52,11 @@ public class IndexModel : PageModel
     [BindProperty]
     public DomiciliationInput DomiciliationForm { get; set; } = new();
 
-    public record AccountRunVm(Guid Id, string Concepto, string Periodo, string Fecha, decimal Total, bool Pagada, string Estado);
+    [BindProperty]
+    [ValidateNever]
+    public ChangePasswordInput PasswordForm { get; set; } = new();
+
+    public record AccountRunVm(Guid Id, string Concepto, string Periodo, string Fecha, decimal Total, bool Pagada, string Estado, bool HasPdf);
     public record ContractVm(Guid Id, string Tipo, string Nombre, string Sucursal, string Vigencia, bool HasFile);
     public record ContactVm(Guid Id, string Nombre, string Correo, string Telefono, bool Principal);
     public record DomiciliationVm(Guid Id, string Fecha, string Estado, string UrlPago);
@@ -82,6 +91,15 @@ public class IndexModel : PageModel
         [MaxLength(256)]
         [EmailAddress]
         public string CorreoPagador { get; set; } = "";
+    }
+
+    public class ChangePasswordInput
+    {
+        public string CurrentPassword { get; set; } = "";
+
+        public string NewPassword { get; set; } = "";
+
+        public string ConfirmPassword { get; set; } = "";
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -159,7 +177,7 @@ public class IndexModel : PageModel
 
         if (string.IsNullOrWhiteSpace(payerEmail))
         {
-            TempData["PortalInfo"] = "Define un correo pagador para crear el enlace de domiciliaciÃ³n.";
+            TempData["PortalInfo"] = "Define un correo pagador para crear el enlace de domiciliación.";
             TempData["PortalInfoType"] = "warning";
             return RedirectToPage();
         }
@@ -226,17 +244,79 @@ public class IndexModel : PageModel
         return File(stream, string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType, downloadName);
     }
 
+    public async Task<IActionResult> OnGetDownloadInvoiceAsync(Guid id)
+    {
+        var auth = await EnsureClientAuthAsync();
+        if (!auth.ok) return auth.redirect!;
+
+        var run = await _db.BillingInvoiceRuns
+            .AsNoTracking()
+            .Include(x => x.Plan)
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                x.Plan != null &&
+                x.Plan.ClientId == auth.clientId!.Value);
+        if (run == null || string.IsNullOrWhiteSpace(run.PdfStoragePath))
+            return NotFound();
+
+        var downloadName = $"factura_{run.ScheduledFor:yyyyMMdd}.pdf";
+        var (stream, contentType, name) = await _storage.OpenAsync(run.PdfStoragePath, downloadName);
+        return File(stream, string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType, name);
+    }
+
     public async Task<IActionResult> OnPostLogoutAsync()
     {
         await HttpContext.SignOutAsync("ClientPortal");
         return RedirectToPage("/Portal/Login");
     }
 
+    public async Task<IActionResult> OnPostChangePasswordAsync()
+    {
+        var auth = await EnsureClientAuthAsync();
+        if (!auth.ok) return auth.redirect!;
+
+        var current = (PasswordForm.CurrentPassword ?? "").Trim();
+        var next = (PasswordForm.NewPassword ?? "").Trim();
+        var confirm = (PasswordForm.ConfirmPassword ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(current) || string.IsNullOrWhiteSpace(next) || next.Length < 10 || !string.Equals(next, confirm, StringComparison.Ordinal))
+        {
+            TempData["PortalInfo"] = "Verifica la contraseña actual y la nueva contraseña.";
+            TempData["PortalInfoType"] = "danger";
+            return RedirectToPage();
+        }
+
+        var accessIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(accessIdRaw, out var accessId))
+        {
+            TempData["PortalInfo"] = "No fue posible validar tu sesión de portal.";
+            TempData["PortalInfoType"] = "danger";
+            return RedirectToPage("/Portal/Login");
+        }
+
+        var changed = await _portalAccess.ChangePasswordAsync(
+            accessId,
+            current,
+            next,
+            updatedByUserId: accessId.ToString());
+
+        TempData["PortalInfo"] = changed
+            ? "Contraseña actualizada correctamente."
+            : "No fue posible actualizar la contraseña. Verifica tu contraseña actual.";
+        TempData["PortalInfoType"] = changed ? "success" : "danger";
+        return RedirectToPage();
+    }
+
     private async Task LoadPageDataAsync(Guid clientId)
     {
-        Client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.Id == clientId);
+        Client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (Client == null) return;
         ClientCode = Client.ClientCode ?? "";
+        if (string.IsNullOrWhiteSpace(Client.PublicQuoteToken))
+        {
+            Client.PublicQuoteToken = Convert.ToHexString(Guid.NewGuid().ToByteArray()).ToLowerInvariant();
+            await _db.SaveChangesAsync();
+        }
+        PublicQuoteUrl = $"{Request.Scheme}://{Request.Host}/cotizar/{Client.PublicQuoteToken}";
 
         TicketForm.ContactoNombre = Client.ContactName ?? "";
         TicketForm.ContactoCorreo = Client.Email ?? "";
@@ -258,7 +338,8 @@ public class IndexModel : PageModel
                 r.ScheduledFor.ToString("yyyy-MM-dd"),
                 r.Plan?.Total ?? 0m,
                 r.IsPaid,
-                r.IsPaid ? "Pagada" : "Pendiente"))
+                r.IsPaid ? "Pagada" : "Pendiente",
+                !string.IsNullOrWhiteSpace(r.PdfStoragePath)))
             .ToList();
 
         TotalPendiente = AccountRuns.Where(x => !x.Pagada).Sum(x => x.Total);

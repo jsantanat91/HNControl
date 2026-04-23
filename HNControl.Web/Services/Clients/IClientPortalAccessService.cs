@@ -8,6 +8,7 @@ public interface IClientPortalAccessService
     Task<ClientPortalCredentialResult?> GetForClientAsync(Guid clientId, CancellationToken ct = default);
     Task<ClientPortalValidateResult> ValidateAsync(string username, string password, CancellationToken ct = default);
     Task MarkLoginAsync(Guid accessId, CancellationToken ct = default);
+    Task<bool> ChangePasswordAsync(Guid accessId, string currentPassword, string newPassword, string? updatedByUserId = null, CancellationToken ct = default);
 }
 
 public sealed class ClientPortalCredentialResult

@@ -8,7 +8,7 @@
 @if (Model.Client == null)
 {
     <div class="container py-4">
-        <div class="alert alert-warning">No fue posible cargar tu informaciÃ³n de cliente.</div>
+        <div class="alert alert-warning">No fue posible cargar tu información de cliente.</div>
     </div>
     return;
 }
@@ -17,11 +17,14 @@
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
         <div>
             <h1 class="h4 m-0">Portal cliente</h1>
-            <div class="text-muted small">@Model.Client.Name Â· @Model.Client.ClientCode</div>
+            <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
         </div>
-        <form method="post" asp-page-handler="Logout">
-            <button class="btn btn-outline-danger" type="submit">Cerrar sesiÃ³n</button>
-        </form>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Cambiar contraseña</button>
+            <form method="post" asp-page-handler="Logout">
+                <button class="btn btn-outline-danger" type="submit">Cerrar sesión</button>
+            </form>
+        </div>
     </div>
 
     @if (TempData["PortalInfo"] is string info)
@@ -40,6 +43,10 @@
                     <div class="small text-muted text-uppercase fw-semibold">Pagado</div>
                     <div class="h5 fw-bold text-success">@Model.TotalPagado.ToString("C")</div>
                     <div class="text-muted small mt-2">Facturas ligadas a planes recurrentes del cliente.</div>
+                    <div class="d-flex gap-2 flex-wrap mt-3">
+                        <span class="hn-status-badge is-pending">Pendiente</span>
+                        <span class="hn-status-badge is-paid">Pagada</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -67,7 +74,10 @@
                         <div class="small fw-semibold mb-1">Intentos recientes</div>
                         @foreach (var d in Model.Domiciliations.Take(3))
                         {
-                            <div class="small text-muted">@d.Fecha Â· @d.Estado</div>
+                            <div class="small text-muted d-flex align-items-center gap-2">
+                                <span>@d.Fecha</span>
+                                <span class="hn-status-badge @(d.Estado.Equals("Approved", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Authorized", StringComparison.OrdinalIgnoreCase) ? "is-paid" : d.Estado.Equals("Rejected", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Failed", StringComparison.OrdinalIgnoreCase) ? "is-rejected" : "is-pending")">@d.Estado</span>
+                            </div>
                         }
                     }
                 </div>
@@ -84,7 +94,7 @@
                             <input asp-for="TicketForm.Titulo" class="form-control" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label small mb-1">DescripciÃ³n</label>
+                            <label class="form-label small mb-1">Descripción</label>
                             <textarea asp-for="TicketForm.Descripcion" rows="3" class="form-control"></textarea>
                         </div>
                         <div class="col-12">
@@ -113,7 +123,7 @@
                             <input asp-for="TicketForm.ContactoNombre" id="portalTicketName" class="form-control" />
                         </div>
                         <div class="col-6">
-                            <label class="form-label small mb-1">TelÃ©fono</label>
+                            <label class="form-label small mb-1">Teléfono</label>
                             <input asp-for="TicketForm.ContactoTelefono" id="portalTicketPhone" class="form-control" />
                         </div>
                         <div class="col-12">
@@ -152,6 +162,7 @@
                                         <th>Fecha</th>
                                         <th class="text-end">Total</th>
                                         <th class="text-center">Estado</th>
+                                        <th class="text-center">PDF</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -163,13 +174,21 @@
                                             <td>@run.Fecha</td>
                                             <td class="text-end">@run.Total.ToString("C")</td>
                                             <td class="text-center">
-                                                @if (run.Pagada)
+                                                <span class="hn-status-badge @(run.Pagada ? "is-paid" : "is-pending")">@run.Estado</span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if (run.HasPdf)
                                                 {
-                                                    <span class="badge text-bg-success">Pagada</span>
+                                                    <a class="btn btn-sm btn-outline-primary"
+                                                       asp-page="/Portal/Index"
+                                                       asp-page-handler="DownloadInvoice"
+                                                       asp-route-id="@run.Id">
+                                                        Descargar
+                                                    </a>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge text-bg-warning">Pendiente</span>
+                                                    <span class="text-muted small">-</span>
                                                 }
                                             </td>
                                         </tr>
@@ -185,10 +204,18 @@
         <div class="col-12 col-xl-5">
             <div class="card shadow-soft hn-hover">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Contratos activos</div>
-                    <span class="text-muted small">@Model.ActiveContracts.Count registro(s)</span>
+                    <div class="fw-semibold">Contratos y cotización</div>
+                    <span class="text-muted small">@Model.ActiveContracts.Count contrato(s)</span>
                 </div>
                 <div class="card-body">
+                    <div class="border rounded p-2 mb-2">
+                        <div class="fw-semibold">Liga pública para cotizar</div>
+                        <div class="small text-muted">Comparte esta liga para capturar cotizaciones del cliente.</div>
+                        <div class="input-group input-group-sm mt-2">
+                            <input class="form-control" readonly value="@Model.PublicQuoteUrl" />
+                            <a class="btn btn-outline-primary" href="@Model.PublicQuoteUrl" target="_blank" rel="noopener">Abrir</a>
+                        </div>
+                    </div>
                     @if (!Model.ActiveContracts.Any())
                     {
                         <div class="text-muted small">Sin contratos activos.</div>
@@ -200,7 +227,7 @@
                             {
                                 <div class="border rounded p-2">
                                     <div class="fw-semibold">@c.Nombre</div>
-                                    <div class="small text-muted">@c.Tipo Â· @c.Sucursal</div>
+                                    <div class="small text-muted">@c.Tipo · @c.Sucursal</div>
                                     <div class="small text-muted">Vigencia: @c.Vigencia</div>
                                     @if (c.HasFile)
                                     {
@@ -217,6 +244,38 @@
                     }
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="ChangePassword">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Cambiar contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Contraseña actual</label>
+                        <input asp-for="PasswordForm.CurrentPassword" type="password" class="form-control" autocomplete="current-password" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nueva contraseña</label>
+                        <input asp-for="PasswordForm.NewPassword" type="password" class="form-control" autocomplete="new-password" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Confirmar contraseña</label>
+                        <input asp-for="PasswordForm.ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+                    </div>
+                    <div class="text-muted small">La nueva contraseña debe tener al menos 10 caracteres.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar contraseña</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -242,6 +301,38 @@
             contact.addEventListener('change', syncFields);
         })();
     </script>
+}
+
+@section Styles {
+    <style>
+        .hn-status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            padding: .2rem .65rem;
+            font-size: .72rem;
+            font-weight: 700;
+            line-height: 1;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .hn-status-badge.is-paid {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+        }
+        .hn-status-badge.is-pending {
+            background: #fef9c3;
+            color: #854d0e;
+            border-color: #fde68a;
+        }
+        .hn-status-badge.is-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+    </style>
 }
 
 

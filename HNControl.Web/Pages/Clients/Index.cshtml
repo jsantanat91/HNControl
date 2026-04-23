@@ -214,11 +214,29 @@ else
             font-size: .70rem;
             line-height: 1rem;
             border-radius: .6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .client-action-btn {
             white-space: nowrap;
             letter-spacing: -.01em;
+        }
+
+        .client-actions .btn-outline-primary:hover,
+        .client-actions .btn-outline-primary:focus-visible {
+            color: #fff;
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .client-actions .btn-outline-secondary:hover,
+        .client-actions .btn-outline-secondary:focus-visible {
+            color: #fff;
+            background: #64748b;
+            border-color: #64748b;
         }
     </style>
 }

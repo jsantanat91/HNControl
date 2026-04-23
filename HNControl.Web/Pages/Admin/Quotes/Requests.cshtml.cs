@@ -216,17 +216,7 @@ public class RequestsModel : PageModel
         var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
         if (!canManage)
             return Forbid();
-
-        var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
-        if (req == null)
-            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
-
-        req.Status = QuoteRequestStatus.Accepted;
-        req.AcceptedAt = DateTime.UtcNow;
-        req.AcceptedByUserId = User.Identity?.Name;
-        await _db.SaveChangesAsync();
-
-        Message = $"Cotizacion {req.Folio} marcada como Aceptada.";
+        Message = "La aceptación/rechazo se controla desde Workflow comercial.";
         return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
     }
 
@@ -235,17 +225,7 @@ public class RequestsModel : PageModel
         var canManage = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.SalesQuotesManage);
         if (!canManage)
             return Forbid();
-
-        var req = await _db.QuoteRequests.FirstOrDefaultAsync(x => x.Id == id);
-        if (req == null)
-            return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
-
-        req.Status = QuoteRequestStatus.Rejected;
-        req.AcceptedAt = DateTime.UtcNow;
-        req.AcceptedByUserId = User.Identity?.Name;
-        await _db.SaveChangesAsync();
-
-        Message = $"Cotizacion {req.Folio} marcada como Rechazada.";
+        Message = "La aceptación/rechazo se controla desde Workflow comercial.";
         return RedirectToPage("/Admin/Quotes/Requests", new { q = Q, segment = Segment, status = Status, view = ViewMode, month = Month, from = From, to = To, page = PageNumber });
     }
 

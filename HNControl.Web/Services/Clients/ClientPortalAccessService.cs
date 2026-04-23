@@ -77,10 +77,9 @@ public class ClientPortalAccessService : IClientPortalAccessService
             plainPassword = _secretProtector.Unprotect(existing.PasswordProtected);
             if (string.IsNullOrWhiteSpace(plainPassword))
             {
-                plainPassword = GeneratePassword();
-                existing.PasswordHash = _hasher.HashPassword(existing, plainPassword);
-                existing.PasswordProtected = _secretProtector.Protect(plainPassword);
-                changed = true;
+                // No regenerar automáticamente cuando no se puede desencriptar
+                // (p.ej. cambio de llaves DataProtection entre despliegues).
+                plainPassword = "";
             }
         }
 
@@ -142,6 +141,33 @@ public class ClientPortalAccessService : IClientPortalAccessService
         access.LastLoginAt = DateTime.UtcNow;
         access.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> ChangePasswordAsync(
+        Guid accessId,
+        string currentPassword,
+        string newPassword,
+        string? updatedByUserId = null,
+        CancellationToken ct = default)
+    {
+        currentPassword = (currentPassword ?? "").Trim();
+        newPassword = (newPassword ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+            return false;
+
+        var access = await _db.ClientPortalAccesses.FirstOrDefaultAsync(x => x.Id == accessId && x.IsActive, ct);
+        if (access == null) return false;
+
+        var verify = _hasher.VerifyHashedPassword(access, access.PasswordHash ?? "", currentPassword);
+        var valid = verify == PasswordVerificationResult.Success || verify == PasswordVerificationResult.SuccessRehashNeeded;
+        if (!valid) return false;
+
+        access.PasswordHash = _hasher.HashPassword(access, newPassword);
+        access.PasswordProtected = _secretProtector.Protect(newPassword);
+        access.UpdatedAt = DateTime.UtcNow;
+        access.UpdatedByUserId = updatedByUserId;
+        await _db.SaveChangesAsync(ct);
+        return true;
     }
 
     private ClientPortalCredentialResult ToResult(ClientPortalAccess access, string password) => new()
