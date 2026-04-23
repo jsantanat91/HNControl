@@ -129,7 +129,7 @@ else
                         <div class="small mt-2 text-muted">RFC: @(string.IsNullOrWhiteSpace(c.Rfc) ? "-" : c.Rfc)</div>
                         <div class="small text-muted">Correo: @(string.IsNullOrWhiteSpace(c.Email) ? "-" : c.Email)</div>
                         <div class="small mt-2">@c.ContractsSummary</div>
-                        <div class="mt-auto pt-3 d-flex gap-2">
+                        <div class="mt-auto pt-3 d-flex flex-wrap gap-1 client-actions">
                             <a class="btn btn-sm btn-outline-primary" asp-page="/Clients/Details" asp-route-id="@c.Id">Ver</a>
                             @if (Model.CanEdit)
                             {
@@ -144,7 +144,7 @@ else
                                             <input type="hidden" name="view" value="@Model.View" />
                                             <input type="hidden" name="page" value="@Model.Page" />
                                             <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                                            <button class="btn btn-sm btn-outline-info" type="submit">Convertir a cliente</button>
+                                            <button class="btn btn-sm btn-outline-info client-action-btn" type="submit">Convertir a cliente</button>
                                         </form>
                                     }
                                 }
@@ -154,7 +154,7 @@ else
                                     <input type="hidden" name="view" value="@Model.View" />
                                     <input type="hidden" name="page" value="@Model.Page" />
                                     <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                                    <button class="btn btn-sm @(c.IsActive ? "btn-outline-warning" : "btn-outline-success")" type="submit">
+                                    <button class="btn btn-sm client-action-btn @(c.IsActive ? "btn-outline-warning" : "btn-outline-success")" type="submit">
                                         @(c.IsActive ? "Desactivar" : "Activar")
                                     </button>
                                 </form>
@@ -166,7 +166,7 @@ else
                                         <input type="hidden" name="view" value="@Model.View" />
                                         <input type="hidden" name="page" value="@Model.Page" />
                                         <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                                        <button class="btn btn-sm btn-outline-danger client-action-btn" type="submit">Eliminar</button>
                                     </form>
                                 }
                                 @if (Model.IsSuperAdmin && !c.IsTemporaryLead)
@@ -177,7 +177,7 @@ else
                                         <input type="hidden" name="view" value="@Model.View" />
                                         <input type="hidden" name="page" value="@Model.Page" />
                                         <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                            <button class="btn btn-sm btn-outline-info" type="submit">Prospecto</button>
+                            <button class="btn btn-sm btn-outline-info client-action-btn" type="submit">Prospecto</button>
                         </form>
                     }
                             }
@@ -206,3 +206,18 @@ else
            asp-route-Page="@(Model.Page + 1)">Siguiente</a>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .client-actions .btn {
+            padding: .28rem .55rem;
+            font-size: .78rem;
+            line-height: 1.12rem;
+            border-radius: .6rem;
+        }
+
+        .client-action-btn {
+            white-space: nowrap;
+        }
+    </style>
+}

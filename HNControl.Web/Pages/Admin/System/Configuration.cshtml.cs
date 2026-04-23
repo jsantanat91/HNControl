@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HNControl.Web.Pages.Admin.SystemPages;
 
@@ -97,7 +98,17 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostSaveGeneralAsync()
     {
-        var entity = await GetOrCreateAsync();
+        SystemConfiguration entity;
+        try
+        {
+            entity = await GetOrCreateAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Flash = ex.Message;
+            FlashType = "warning";
+            return RedirectToPage();
+        }
 
         entity.CompanyName = (Input.CompanyName ?? "").Trim();
         entity.CompanyLegalName = (Input.CompanyLegalName ?? "").Trim();
@@ -129,7 +140,17 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostSaveSmtpAsync()
     {
-        var entity = await GetOrCreateAsync();
+        SystemConfiguration entity;
+        try
+        {
+            entity = await GetOrCreateAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Flash = ex.Message;
+            FlashType = "warning";
+            return RedirectToPage();
+        }
 
         entity.SmtpHost = (Input.SmtpHost ?? "").Trim();
         entity.SmtpPort = Input.SmtpPort is > 0 and <= 65535 ? Input.SmtpPort : 587;
@@ -153,10 +174,7 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostValidateSmtpAsync()
     {
-        var cfg = await _db.SystemConfigurations
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
+        var cfg = await GetLatestConfigSafeAsync();
 
         var host = string.IsNullOrWhiteSpace(Input.SmtpHost) ? (cfg?.SmtpHost ?? "").Trim() : Input.SmtpHost.Trim();
         var port = Input.SmtpPort > 0 ? Input.SmtpPort : (cfg?.SmtpPort > 0 ? cfg.SmtpPort : 587);
@@ -198,7 +216,17 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostSaveFiscalAsync()
     {
-        var entity = await GetOrCreateAsync();
+        SystemConfiguration entity;
+        try
+        {
+            entity = await GetOrCreateAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Flash = ex.Message;
+            FlashType = "warning";
+            return RedirectToPage();
+        }
 
         entity.CompanyRfc = (Input.CompanyRfc ?? "").Trim().ToUpperInvariant();
         entity.CompanyFiscalRegimeCode = (Input.CompanyFiscalRegimeCode ?? "").Trim().ToUpperInvariant();
@@ -261,7 +289,17 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostSaveApiAsync()
     {
-        var entity = await GetOrCreateAsync();
+        SystemConfiguration entity;
+        try
+        {
+            entity = await GetOrCreateAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Flash = ex.Message;
+            FlashType = "warning";
+            return RedirectToPage();
+        }
 
         entity.PublicBaseUrl = (Input.PublicBaseUrl ?? "").Trim();
         entity.MercadoPagoPublicKey = (Input.MercadoPagoPublicKey ?? "").Trim();
@@ -282,10 +320,7 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnPostValidateFiscalAsync()
     {
-        var cfg = await _db.SystemConfigurations
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
+        var cfg = await GetLatestConfigSafeAsync();
 
         if (cfg == null)
         {
@@ -324,7 +359,7 @@ public class ConfigurationModel : PageModel
 
     public async Task<IActionResult> OnGetDownloadLogoAsync()
     {
-        var cfg = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        var cfg = await GetLatestConfigSafeAsync();
         if (cfg == null || string.IsNullOrWhiteSpace(cfg.CompanyLogoStoragePath))
             return NotFound();
 
@@ -336,10 +371,7 @@ public class ConfigurationModel : PageModel
 
     private async Task LoadAsync()
     {
-        var cfg = await _db.SystemConfigurations
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
+        var cfg = await GetLatestConfigSafeAsync();
 
         if (cfg == null)
         {
@@ -397,9 +429,73 @@ public class ConfigurationModel : PageModel
         HasMercadoPagoWebhookSecret = !string.IsNullOrWhiteSpace(cfg.MercadoPagoWebhookSecretProtected);
     }
 
+    private async Task<SystemConfiguration?> GetLatestConfigSafeAsync()
+    {
+        try
+        {
+            return await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            Flash = "La configuracion API de Mercado Pago aun no esta en el esquema de BD. Se cargo modo compatible sin esos campos.";
+            FlashType = "warning";
+
+            return await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .Select(x => new SystemConfiguration
+                {
+                    Id = x.Id,
+                    CompanyName = x.CompanyName,
+                    CompanyLegalName = x.CompanyLegalName,
+                    CompanyRfc = x.CompanyRfc,
+                    CompanyFiscalRegimeCode = x.CompanyFiscalRegimeCode,
+                    CompanyFiscalZipCode = x.CompanyFiscalZipCode,
+                    CompanyFiscalAddress = x.CompanyFiscalAddress,
+                    BillingEmail = x.BillingEmail,
+                    CompanyLogoStoragePath = x.CompanyLogoStoragePath,
+                    CompanyLogoOriginalFileName = x.CompanyLogoOriginalFileName,
+                    SmtpHost = x.SmtpHost,
+                    SmtpPort = x.SmtpPort,
+                    SmtpUser = x.SmtpUser,
+                    SmtpPasswordProtected = x.SmtpPasswordProtected,
+                    SmtpFromEmail = x.SmtpFromEmail,
+                    SmtpFromName = x.SmtpFromName,
+                    SmtpSecurity = x.SmtpSecurity,
+                    SmtpHeloDomain = x.SmtpHeloDomain,
+                    SmtpTimeoutMs = x.SmtpTimeoutMs,
+                    BillingPacProvider = x.BillingPacProvider,
+                    BillingPacApiBaseUrl = x.BillingPacApiBaseUrl,
+                    BillingPacApiKey = x.BillingPacApiKey,
+                    BillingPacApiSecretProtected = x.BillingPacApiSecretProtected,
+                    BillingPacUsername = x.BillingPacUsername,
+                    BillingPacPasswordProtected = x.BillingPacPasswordProtected,
+                    CfdiVersion = x.CfdiVersion,
+                    CfdiSerieDefault = x.CfdiSerieDefault,
+                    CsdCerStoragePath = x.CsdCerStoragePath,
+                    CsdKeyStoragePath = x.CsdKeyStoragePath,
+                    CsdPasswordProtected = x.CsdPasswordProtected,
+                    Notes = x.Notes,
+                    UpdatedAt = x.UpdatedAt
+                })
+                .FirstOrDefaultAsync();
+        }
+    }
+
     private async Task<SystemConfiguration> GetOrCreateAsync()
     {
-        var entity = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        SystemConfiguration? entity;
+        try
+        {
+            entity = await _db.SystemConfigurations.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            throw new InvalidOperationException("Configuración requiere actualización de esquema en BD (faltan columnas de API). Ejecuta el script de actualización con usuario OWNER y vuelve a intentar.", ex);
+        }
         if (entity != null) return entity;
 
         entity = new SystemConfiguration();
