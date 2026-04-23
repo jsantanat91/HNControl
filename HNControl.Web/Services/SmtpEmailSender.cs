@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MimeKit;
+using Npgsql;
 
 namespace HNControl.Web.Services;
 
@@ -41,10 +42,7 @@ public class SmtpEmailSender : IEmailSender
         string? attachmentName = null,
         string? attachmentContentType = null)
     {
-        var dbCfg = await _db.SystemConfigurations
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync();
+        var dbCfg = await LoadDbSmtpConfigSafeAsync();
 
         var legacyUseSsl = bool.TryParse(_cfg["Smtp:UseSsl"], out var ussl) && ussl;
         var legacyStartTls = bool.TryParse(_cfg["Smtp:UseStartTls"], out var st) ? st : true;
@@ -93,6 +91,23 @@ public class SmtpEmailSender : IEmailSender
         throw new InvalidOperationException(
             "No se pudo enviar correo SMTP con los perfiles configurados (codigo y DB). Revisa conectividad de red/DNS y puerto SMTP.",
             lastError);
+    }
+
+    private async Task<SystemConfiguration?> LoadDbSmtpConfigSafeAsync()
+    {
+        try
+        {
+            return await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _log.LogWarning(ex,
+                "Esquema de SystemConfigurations desactualizado (falta columna). Se omite config SMTP en DB y se usa appsettings.");
+            return null;
+        }
     }
 
     private SmtpProfile BuildAppProfile(bool legacyUseSsl, bool legacyStartTls)

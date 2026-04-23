@@ -97,64 +97,75 @@
                 <div class="text-muted small">Ver, Crear, Editar y Aprobar por submodulo. Si marcas Editar/Crear/Aprobar, se marca Ver en automático.</div>
             </div>
 
-            <div class="table-responsive mb-3">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>Area</th>
-                            <th>Submodulo</th>
-                            <th class="text-center">Ver</th>
-                            <th class="text-center">Crear</th>
-                            <th class="text-center">Editar</th>
-                            <th class="text-center">Aprobar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var row in Model.CrudMatrix)
-                    {
-                        <tr>
-                            <td class="text-muted small">@row.Area</td>
-                            <td>@row.Label</td>
-                            <td class="text-center">
-                                @if (!string.IsNullOrWhiteSpace(row.ViewKey))
-                                {
-                                    var key = row.ViewKey!;
-                                    var chk = Model.Input.SelectedActions?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
-                                    <input class="form-check-input perm-action-check" type="checkbox" name="Input.SelectedActions" value="@key" @(chk ? "checked" : "") />
+            <div class="row g-3 mb-3">
+                @foreach (var row in Model.CrudMatrix)
+                {
+                    <div class="col-12 col-xl-6">
+                        <div class="permission-crud-card border rounded-4 p-3 h-100">
+                            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                <div>
+                                    <div class="fw-semibold fs-5">@row.Label</div>
+                                    <div class="text-muted small">@row.Area.ToLowerInvariant()</div>
+                                </div>
+                            </div>
+
+                            <hr class="my-2" />
+
+                            <div class="d-flex flex-column gap-2">
+                                @{
+                                    var viewChecked = !string.IsNullOrWhiteSpace(row.ViewKey)
+                                        && Model.Input.SelectedActions?.Any(x => string.Equals(x, row.ViewKey, StringComparison.OrdinalIgnoreCase)) == true;
+                                    var createChecked = !string.IsNullOrWhiteSpace(row.CreateKey)
+                                        && Model.Input.SelectedActions?.Any(x => string.Equals(x, row.CreateKey, StringComparison.OrdinalIgnoreCase)) == true;
+                                    var editChecked = !string.IsNullOrWhiteSpace(row.EditKey)
+                                        && Model.Input.SelectedActions?.Any(x => string.Equals(x, row.EditKey, StringComparison.OrdinalIgnoreCase)) == true;
+                                    var approveChecked = !string.IsNullOrWhiteSpace(row.ApproveKey)
+                                        && Model.Input.SelectedActions?.Any(x => string.Equals(x, row.ApproveKey, StringComparison.OrdinalIgnoreCase)) == true;
                                 }
-                                else { <span class="text-muted">-</span> }
-                            </td>
-                            <td class="text-center">
-                                @if (!string.IsNullOrWhiteSpace(row.CreateKey))
-                                {
-                                    var key = row.CreateKey!;
-                                    var chk = Model.Input.SelectedActions?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
-                                    <input class="form-check-input perm-action-check" type="checkbox" name="Input.SelectedActions" value="@key" @(chk ? "checked" : "") />
-                                }
-                                else { <span class="text-muted">-</span> }
-                            </td>
-                            <td class="text-center">
-                                @if (!string.IsNullOrWhiteSpace(row.EditKey))
-                                {
-                                    var key = row.EditKey!;
-                                    var chk = Model.Input.SelectedActions?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
-                                    <input class="form-check-input perm-action-check" type="checkbox" name="Input.SelectedActions" value="@key" @(chk ? "checked" : "") />
-                                }
-                                else { <span class="text-muted">-</span> }
-                            </td>
-                            <td class="text-center">
-                                @if (!string.IsNullOrWhiteSpace(row.ApproveKey))
-                                {
-                                    var key = row.ApproveKey!;
-                                    var chk = Model.Input.SelectedActions?.Any(x => string.Equals(x, key, StringComparison.OrdinalIgnoreCase)) == true;
-                                    <input class="form-check-input perm-action-check" type="checkbox" name="Input.SelectedActions" value="@key" @(chk ? "checked" : "") />
-                                }
-                                else { <span class="text-muted">-</span> }
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+
+                                <label class="permission-action-row d-flex align-items-center justify-content-between gap-3">
+                                    <span>@(string.IsNullOrWhiteSpace(row.ViewKey) ? "Ver (no aplica)" : $"Ver ({row.ViewKey})")</span>
+                                    <input class="form-check-input perm-action-check"
+                                           type="checkbox"
+                                           name="Input.SelectedActions"
+                                           value="@row.ViewKey"
+                                           @(viewChecked ? "checked" : "")
+                                           @(string.IsNullOrWhiteSpace(row.ViewKey) ? "disabled" : "") />
+                                </label>
+
+                                <label class="permission-action-row d-flex align-items-center justify-content-between gap-3">
+                                    <span>@(string.IsNullOrWhiteSpace(row.CreateKey) ? "Crear (no aplica)" : $"Crear ({row.CreateKey})")</span>
+                                    <input class="form-check-input perm-action-check"
+                                           type="checkbox"
+                                           name="Input.SelectedActions"
+                                           value="@row.CreateKey"
+                                           @(createChecked ? "checked" : "")
+                                           @(string.IsNullOrWhiteSpace(row.CreateKey) ? "disabled" : "") />
+                                </label>
+
+                                <label class="permission-action-row d-flex align-items-center justify-content-between gap-3">
+                                    <span>@(string.IsNullOrWhiteSpace(row.EditKey) ? "Editar (no aplica)" : $"Editar ({row.EditKey})")</span>
+                                    <input class="form-check-input perm-action-check"
+                                           type="checkbox"
+                                           name="Input.SelectedActions"
+                                           value="@row.EditKey"
+                                           @(editChecked ? "checked" : "")
+                                           @(string.IsNullOrWhiteSpace(row.EditKey) ? "disabled" : "") />
+                                </label>
+
+                                <label class="permission-action-row d-flex align-items-center justify-content-between gap-3">
+                                    <span>@(string.IsNullOrWhiteSpace(row.ApproveKey) ? "Aprobar (no aplica)" : $"Aprobar ({row.ApproveKey})")</span>
+                                    <input class="form-check-input perm-action-check"
+                                           type="checkbox"
+                                           name="Input.SelectedActions"
+                                           value="@row.ApproveKey"
+                                           @(approveChecked ? "checked" : "")
+                                           @(string.IsNullOrWhiteSpace(row.ApproveKey) ? "disabled" : "") />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
 
             <details class="mb-3">
@@ -286,5 +297,25 @@
     .role-module-item:hover, .role-action-item:hover {
         box-shadow: 0 .25rem .75rem rgba(0,0,0,.08);
         transition: box-shadow .15s ease-in-out;
+    }
+
+    .permission-crud-card {
+        border-color: rgba(46, 93, 196, .25) !important;
+        background: #fff;
+    }
+
+    .permission-crud-card:hover {
+        box-shadow: 0 .45rem 1.1rem rgba(32, 77, 166, .12);
+        transition: box-shadow .15s ease-in-out;
+    }
+
+    .permission-action-row {
+        min-height: 2rem;
+        padding: .125rem 0;
+        cursor: pointer;
+    }
+
+    .permission-action-row span {
+        font-size: 1.03rem;
     }
 </style>
