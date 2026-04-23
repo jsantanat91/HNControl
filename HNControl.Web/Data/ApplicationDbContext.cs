@@ -21,6 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ClientContact> ClientContacts => Set<ClientContact>();
     public DbSet<ClientServiceContract> ClientServiceContracts => Set<ClientServiceContract>();
     public DbSet<ClientLegalDocument> ClientLegalDocuments => Set<ClientLegalDocument>();
+    public DbSet<ClientPortalAccess> ClientPortalAccesses => Set<ClientPortalAccess>();
+    public DbSet<ClientCardDomiciliation> ClientCardDomiciliations => Set<ClientCardDomiciliation>();
 
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectAccess> ProjectAccesses => Set<ProjectAccess>();
@@ -437,6 +439,35 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany()
                 .HasForeignKey(x => x.ClientServiceContractId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<ClientPortalAccess>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Username).HasMaxLength(40);
+            e.Property(x => x.PasswordHash).HasMaxLength(512);
+            e.Property(x => x.PasswordProtected).HasMaxLength(4000);
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(64);
+            e.HasIndex(x => x.ClientId).IsUnique();
+            e.HasIndex(x => x.Username).IsUnique();
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ClientCardDomiciliation>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.MercadoPagoPreferenceId).HasMaxLength(120);
+            e.Property(x => x.MercadoPagoExternalReference).HasMaxLength(120);
+            e.Property(x => x.InitPointUrl).HasMaxLength(500);
+            e.Property(x => x.ReferenceAmount).HasColumnType("numeric(12,2)");
+            e.HasIndex(x => new { x.ClientId, x.CreatedAt });
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Project>(e =>
@@ -897,6 +928,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.CsdCerStoragePath).HasMaxLength(500);
             e.Property(x => x.CsdKeyStoragePath).HasMaxLength(500);
             e.Property(x => x.CsdPasswordProtected).HasMaxLength(2200);
+            e.Property(x => x.MercadoPagoAccessTokenProtected).HasMaxLength(2200);
+            e.Property(x => x.MercadoPagoPublicKey).HasMaxLength(220);
+            e.Property(x => x.MercadoPagoWebhookSecretProtected).HasMaxLength(2200);
+            e.Property(x => x.PublicBaseUrl).HasMaxLength(220);
             e.Property(x => x.Notes).HasMaxLength(400);
             e.HasIndex(x => x.UpdatedAt);
         });

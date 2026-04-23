@@ -1,6 +1,7 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using HNControl.Web.Services.Clients;
 using HNControl.Web.Services.Monitoring;
 using HNControl.Web.Services.Mobile;
 using HNControl.Web.Services.Tickets;
@@ -52,6 +53,14 @@ builder.Services.ConfigureApplicationCookie(opt =>
 });
 
 builder.Services.AddAuthentication()
+    .AddCookie("ClientPortal", opt =>
+    {
+        opt.LoginPath = "/Portal/Login";
+        opt.AccessDeniedPath = "/Portal/Login";
+        opt.Cookie.Name = "HNControl.ClientPortal";
+        opt.ExpireTimeSpan = TimeSpan.FromDays(30);
+        opt.SlidingExpiration = true;
+    })
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opt =>
     {
         var issuer = builder.Configuration["Jwt:Issuer"] ?? "HNControl.Mobile";
@@ -134,6 +143,7 @@ builder.Services.AddRazorPages(options =>
 
     // Público (links token órdenes)
     options.Conventions.AllowAnonymousToFolder("/Public");
+    options.Conventions.AllowAnonymousToFolder("/Portal");
 
     // Admin
     options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");
@@ -227,6 +237,9 @@ builder.Services.AddScoped<IBillingFiscalService, BillingFiscalService>();
 builder.Services.AddScoped<IEventEmailTemplateService, EventEmailTemplateService>();
 builder.Services.AddScoped<IPayrollReceiptService, PayrollReceiptService>();
 builder.Services.AddScoped<ITicketFlowService, TicketFlowService>();
+builder.Services.AddScoped<IClientPortalAccessService, ClientPortalAccessService>();
+builder.Services.AddScoped<IMercadoPagoService, MercadoPagoService>();
+builder.Services.AddScoped<IPasswordHasher<ClientPortalAccess>, PasswordHasher<ClientPortalAccess>>();
 builder.Services.AddHostedService<PayrollReceiptDispatchWorker>();
 builder.Services.AddHostedService<CommercialReminderWorker>();
 
@@ -264,6 +277,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureSalesSchemaAsync(db);
     await EnsureSalesTelephonySchemaAsync(db);
     await EnsureSalesFeasibilitySchemaAsync(db);
+    await EnsureClientPortalSchemaAsync(db);
+    await EnsureSystemConfigurationSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await EnsureEmployeeNumbersAsync(db);
@@ -875,6 +890,83 @@ CREATE INDEX IF NOT EXISTS "IX_ServiceFeasibilities_ConvertedServiceOrderId"
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureSalesFeasibilitySchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureClientPortalSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."ClientPortalAccesses" (
+    "Id" uuid NOT NULL,
+    "ClientId" uuid NOT NULL,
+    "Username" character varying(40) NOT NULL DEFAULT '',
+    "PasswordHash" character varying(512) NOT NULL DEFAULT '',
+    "PasswordProtected" character varying(4000) NOT NULL DEFAULT '',
+    "IsActive" boolean NOT NULL DEFAULT TRUE,
+    "LastLoginAt" timestamp with time zone NULL,
+    "UpdatedByUserId" character varying(64) NULL,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_ClientPortalAccesses" PRIMARY KEY ("Id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_ClientPortalAccesses_ClientId"
+    ON public."ClientPortalAccesses" ("ClientId");
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_ClientPortalAccesses_Username"
+    ON public."ClientPortalAccesses" ("Username");
+
+CREATE TABLE IF NOT EXISTS public."ClientCardDomiciliations" (
+    "Id" uuid NOT NULL,
+    "ClientId" uuid NOT NULL,
+    "MercadoPagoPreferenceId" character varying(120) NOT NULL DEFAULT '',
+    "MercadoPagoExternalReference" character varying(120) NOT NULL DEFAULT '',
+    "InitPointUrl" character varying(500) NOT NULL DEFAULT '',
+    "ReferenceAmount" numeric(12,2) NOT NULL DEFAULT 0,
+    "Status" integer NOT NULL DEFAULT 2,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_ClientCardDomiciliations" PRIMARY KEY ("Id")
+);
+
+CREATE INDEX IF NOT EXISTS "IX_ClientCardDomiciliations_ClientId_CreatedAt"
+    ON public."ClientCardDomiciliations" ("ClientId", "CreatedAt");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureClientPortalSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureSystemConfigurationSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "MercadoPagoAccessTokenProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "MercadoPagoPublicKey" character varying(220) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "MercadoPagoWebhookSecretProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "PublicBaseUrl" character varying(220) NOT NULL DEFAULT '';
+
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "MercadoPagoAccessTokenProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "MercadoPagoPublicKey" character varying(220) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "MercadoPagoWebhookSecretProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "PublicBaseUrl" character varying(220) NOT NULL DEFAULT '';
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureSystemConfigurationSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
     }
 }
 

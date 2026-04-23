@@ -1,0 +1,226 @@
+@page
+@model HNControl.Web.Pages.Portal.IndexModel
+@{
+    Layout = "_LayoutPublic";
+    ViewData["Title"] = "Portal del cliente";
+}
+
+@if (Model.Client == null)
+{
+    <div class="container py-4">
+        <div class="alert alert-warning">No fue posible cargar tu información de cliente.</div>
+    </div>
+    return;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h1 class="h4 m-0">Portal cliente</h1>
+            <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
+        </div>
+        <form method="post" asp-page-handler="Logout">
+            <button class="btn btn-outline-danger" type="submit">Cerrar sesión</button>
+        </form>
+    </div>
+
+    @if (TempData["PortalInfo"] is string info)
+    {
+        var infoType = (TempData["PortalInfoType"] as string) ?? "info";
+        <div class="alert alert-@infoType py-2">@info</div>
+    }
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-soft hn-hover h-100">
+                <div class="card-header fw-semibold">Estado de cuenta</div>
+                <div class="card-body">
+                    <div class="small text-muted">Pendiente</div>
+                    <div class="h5 text-danger mb-2">@Model.TotalPendiente.ToString("C")</div>
+                    <div class="small text-muted">Pagado</div>
+                    <div class="h6 text-success">@Model.TotalPagado.ToString("C")</div>
+                    <div class="text-muted small mt-2">Facturas ligadas a planes recurrentes del cliente.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-soft hn-hover h-100">
+                <div class="card-header fw-semibold">Domiciliar tarjeta</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="CreateDomiciliation" class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Correo pagador</label>
+                            <input asp-for="DomiciliationForm.CorreoPagador" class="form-control" placeholder="correo@cliente.com" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Monto referencia</label>
+                            <input asp-for="DomiciliationForm.MontoReferencia" class="form-control" />
+                        </div>
+                        <div class="col-12 d-grid">
+                            <button type="submit" class="btn btn-primary">Ir a Mercado Pago</button>
+                        </div>
+                    </form>
+                    @if (Model.Domiciliations.Any())
+                    {
+                        <hr />
+                        <div class="small fw-semibold mb-1">Intentos recientes</div>
+                        @foreach (var d in Model.Domiciliations.Take(3))
+                        {
+                            <div class="small text-muted">@d.Fecha · @d.Estado</div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-soft hn-hover h-100">
+                <div class="card-header fw-semibold">Abrir ticket directo</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="CreateTicket" class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Asunto</label>
+                            <input asp-for="TicketForm.Titulo" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Descripción</label>
+                            <textarea asp-for="TicketForm.Descripcion" rows="3" class="form-control"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Contrato (opcional)</label>
+                            <select asp-for="TicketForm.ContractId" class="form-select">
+                                <option value="">-- Sin contrato --</option>
+                                @foreach (var c in Model.ActiveContracts)
+                                {
+                                    <option value="@c.Id">@c.Tipo - @c.Nombre - @c.Sucursal</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Contacto (opcional)</label>
+                            <select asp-for="TicketForm.ClientContactId" class="form-select">
+                                <option value="">-- Captura manual --</option>
+                                @foreach (var contact in Model.Contacts)
+                                {
+                                    var label = contact.Principal ? $"Principal: {contact.Nombre}" : contact.Nombre;
+                                    <option value="@contact.Id">@label · @contact.Correo</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Nombre</label>
+                            <input asp-for="TicketForm.ContactoNombre" class="form-control" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Teléfono</label>
+                            <input asp-for="TicketForm.ContactoTelefono" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Correo</label>
+                            <input asp-for="TicketForm.ContactoCorreo" class="form-control" />
+                        </div>
+                        <div class="col-12 d-grid">
+                            <button type="submit" class="btn btn-success">Crear ticket</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-soft hn-hover">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">Facturas recurrentes</div>
+                    <span class="text-muted small">@Model.AccountRuns.Count registro(s)</span>
+                </div>
+                <div class="card-body">
+                    @if (!Model.AccountRuns.Any())
+                    {
+                        <div class="text-muted small">Sin facturas registradas.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Periodo</th>
+                                        <th>Concepto</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var run in Model.AccountRuns.Take(20))
+                                    {
+                                        <tr>
+                                            <td>@run.Periodo</td>
+                                            <td>@run.Concepto</td>
+                                            <td>@run.Fecha</td>
+                                            <td class="text-end">@run.Total.ToString("C")</td>
+                                            <td class="text-center">
+                                                @if (run.Pagada)
+                                                {
+                                                    <span class="badge text-bg-success">Pagada</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge text-bg-warning">Pendiente</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-soft hn-hover">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">Contratos activos</div>
+                    <span class="text-muted small">@Model.ActiveContracts.Count registro(s)</span>
+                </div>
+                <div class="card-body">
+                    @if (!Model.ActiveContracts.Any())
+                    {
+                        <div class="text-muted small">Sin contratos activos.</div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var c in Model.ActiveContracts)
+                            {
+                                <div class="border rounded p-2">
+                                    <div class="fw-semibold">@c.Nombre</div>
+                                    <div class="small text-muted">@c.Tipo · @c.Sucursal</div>
+                                    <div class="small text-muted">Vigencia: @c.Vigencia</div>
+                                    @if (c.HasFile)
+                                    {
+                                        <a class="btn btn-sm btn-outline-primary mt-2"
+                                           asp-page="/Portal/Index"
+                                           asp-page-handler="DownloadContract"
+                                           asp-route-id="@c.Id">
+                                            Descargar contrato
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

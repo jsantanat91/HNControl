@@ -98,6 +98,18 @@ public class SystemConfiguration
     [MaxLength(2200)]
     public string CsdPasswordProtected { get; set; } = "";
 
+    [MaxLength(2200)]
+    public string MercadoPagoAccessTokenProtected { get; set; } = "";
+
+    [MaxLength(220)]
+    public string MercadoPagoPublicKey { get; set; } = "";
+
+    [MaxLength(2200)]
+    public string MercadoPagoWebhookSecretProtected { get; set; } = "";
+
+    [MaxLength(220)]
+    public string PublicBaseUrl { get; set; } = "";
+
     [MaxLength(400)]
     public string Notes { get; set; } = "";
 

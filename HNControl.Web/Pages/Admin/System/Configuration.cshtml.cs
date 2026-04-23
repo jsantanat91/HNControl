@@ -39,6 +39,8 @@ public class ConfigurationModel : PageModel
     public bool HasPacSecret { get; set; }
     public bool HasPacPassword { get; set; }
     public bool HasCsdPassword { get; set; }
+    public bool HasMercadoPagoToken { get; set; }
+    public bool HasMercadoPagoWebhookSecret { get; set; }
     public string LogoName { get; set; } = "";
 
     public class InputModel
@@ -72,6 +74,10 @@ public class ConfigurationModel : PageModel
         [MaxLength(10)] public string CfdiVersion { get; set; } = "4.0";
         [MaxLength(20)] public string CfdiSerieDefault { get; set; } = "A";
         [MaxLength(200)] public string CsdPassword { get; set; } = "";
+        [MaxLength(220)] public string PublicBaseUrl { get; set; } = "";
+        [MaxLength(220)] public string MercadoPagoPublicKey { get; set; } = "";
+        [MaxLength(220)] public string MercadoPagoAccessToken { get; set; } = "";
+        [MaxLength(220)] public string MercadoPagoWebhookSecret { get; set; } = "";
 
         [MaxLength(400)] public string Notes { get; set; } = "";
         public IFormFile? CompanyLogo { get; set; }
@@ -253,6 +259,27 @@ public class ConfigurationModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostSaveApiAsync()
+    {
+        var entity = await GetOrCreateAsync();
+
+        entity.PublicBaseUrl = (Input.PublicBaseUrl ?? "").Trim();
+        entity.MercadoPagoPublicKey = (Input.MercadoPagoPublicKey ?? "").Trim();
+
+        if (!string.IsNullOrWhiteSpace(Input.MercadoPagoAccessToken))
+            entity.MercadoPagoAccessTokenProtected = _protector.Protect(Input.MercadoPagoAccessToken.Trim());
+
+        if (!string.IsNullOrWhiteSpace(Input.MercadoPagoWebhookSecret))
+            entity.MercadoPagoWebhookSecretProtected = _protector.Protect(Input.MercadoPagoWebhookSecret.Trim());
+
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Flash = "Configuracion API guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostValidateFiscalAsync()
     {
         var cfg = await _db.SystemConfigurations
@@ -324,7 +351,8 @@ public class ConfigurationModel : PageModel
                 CfdiSerieDefault = "A",
                 SmtpPort = 587,
                 SmtpSecurity = "StartTls",
-                SmtpTimeoutMs = 15000
+                SmtpTimeoutMs = 15000,
+                PublicBaseUrl = ""
             };
             HasLogo = false;
             return;
@@ -354,6 +382,8 @@ public class ConfigurationModel : PageModel
             BillingPacUsername = cfg.BillingPacUsername,
             CfdiVersion = cfg.CfdiVersion,
             CfdiSerieDefault = cfg.CfdiSerieDefault,
+            PublicBaseUrl = cfg.PublicBaseUrl,
+            MercadoPagoPublicKey = cfg.MercadoPagoPublicKey,
             Notes = cfg.Notes
         };
 
@@ -363,6 +393,8 @@ public class ConfigurationModel : PageModel
         HasPacSecret = !string.IsNullOrWhiteSpace(cfg.BillingPacApiSecretProtected);
         HasPacPassword = !string.IsNullOrWhiteSpace(cfg.BillingPacPasswordProtected);
         HasCsdPassword = !string.IsNullOrWhiteSpace(cfg.CsdPasswordProtected);
+        HasMercadoPagoToken = !string.IsNullOrWhiteSpace(cfg.MercadoPagoAccessTokenProtected);
+        HasMercadoPagoWebhookSecret = !string.IsNullOrWhiteSpace(cfg.MercadoPagoWebhookSecretProtected);
     }
 
     private async Task<SystemConfiguration> GetOrCreateAsync()

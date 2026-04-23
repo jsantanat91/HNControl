@@ -1,0 +1,53 @@
+@page
+@model HNControl.Web.Pages.Portal.LoginModel
+@{
+    Layout = "_LayoutPublic";
+    ViewData["Title"] = "Acceso clientes";
+    var returnUrl = (ViewData["ReturnUrl"] as string) ?? "";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-5">
+            <div class="card shadow-soft border-0 hn-hover">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="badge rounded-pill text-bg-primary px-3 py-2">Portal clientes</span>
+                    </div>
+                    <h1 class="h4 mb-1">Iniciar sesión</h1>
+                    <div class="text-muted small mb-4">Acceso con usuario de cliente y contraseña.</div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Error))
+                    {
+                        <div class="alert alert-danger py-2">@Model.Error</div>
+                    }
+
+                    <form method="post">
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Usuario cliente</label>
+                            <input asp-for="Input.Usuario" class="form-control text-uppercase" autocomplete="username" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input asp-for="Input.Password" type="password" class="form-control" autocomplete="current-password" />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" asp-for="Input.Recordarme" />
+                            <label class="form-check-label" asp-for="Input.Recordarme">Mantener sesión</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Entrar al portal</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

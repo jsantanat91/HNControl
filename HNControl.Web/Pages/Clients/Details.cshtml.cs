@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using HNControl.Web.Services;
+using HNControl.Web.Services.Clients;
 using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Clients;
@@ -15,18 +16,27 @@ public class DetailsModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _cfg;
     private readonly IActionAccessService _actions;
-    public DetailsModel(ApplicationDbContext db, IConfiguration cfg, IActionAccessService actions)
+    private readonly IClientPortalAccessService _portalAccess;
+    public DetailsModel(
+        ApplicationDbContext db,
+        IConfiguration cfg,
+        IActionAccessService actions,
+        IClientPortalAccessService portalAccess)
     {
         _db = db;
         _cfg = cfg;
         _actions = actions;
+        _portalAccess = portalAccess;
     }
 
     public Client? Client { get; set; }
     public bool CanEdit { get; set; }
     public bool CanViewAllClients { get; set; }
     public bool CanViewOwnClients { get; set; }
+    public bool IsSuperAdmin { get; set; }
     public string OwnerDisplayName { get; set; } = "-";
+    public ClientPortalCredentialResult? PortalCredentials { get; set; }
+    public string ClientPortalLoginUrl { get; set; } = "/Portal/Login";
     public List<ClientContactRow> Contacts { get; set; } = new();
 
     [BindProperty]
@@ -76,6 +86,7 @@ public class DetailsModel : PageModel
     public async Task OnGetAsync(Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
         CanViewAllClients = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsView);
         CanViewOwnClients = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsViewOwn);
         CanEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
@@ -118,6 +129,12 @@ public class DetailsModel : PageModel
         PublicTicketUrl = string.IsNullOrWhiteSpace(baseUrl)
             ? "/ticket-publico"
             : $"{baseUrl}/ticket-publico";
+        ClientPortalLoginUrl = string.IsNullOrWhiteSpace(baseUrl)
+            ? "/Portal/Login"
+            : $"{baseUrl}/Portal/Login";
+
+        if (IsSuperAdmin)
+            PortalCredentials = await _portalAccess.EnsureForClientAsync(Client.Id, userId, false);
 
         var projMap = await _db.Projects
             .Where(p => p.ClientId == id)
@@ -267,7 +284,7 @@ public class DetailsModel : PageModel
         }
         catch
         {
-            TempData["ClientDetailsInfo"] = "Falta aplicar migraciÃ³n de base de datos para contactos.";
+            TempData["ClientDetailsInfo"] = "Falta aplicar migracion de base de datos para contactos.";
             TempData["ClientDetailsInfoType"] = "danger";
             return RedirectToPage(new { id });
         }
@@ -317,7 +334,7 @@ public class DetailsModel : PageModel
         }
         catch
         {
-            TempData["ClientDetailsInfo"] = "Falta aplicar migraciÃ³n de base de datos para contactos.";
+            TempData["ClientDetailsInfo"] = "Falta aplicar migracion de base de datos para contactos.";
             TempData["ClientDetailsInfoType"] = "danger";
             return RedirectToPage(new { id });
         }
@@ -331,6 +348,28 @@ public class DetailsModel : PageModel
         _db.ClientContacts.Remove(contact);
         await _db.SaveChangesAsync();
         TempData["ClientDetailsInfo"] = "Contacto eliminado.";
+        TempData["ClientDetailsInfoType"] = "success";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostResetPortalAccessAsync(Guid id)
+    {
+        if (!AppRoles.IsGlobalAdmin(User))
+            return Forbid();
+
+        if (!await _db.Clients.AnyAsync(c => c.Id == id))
+            return NotFound();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var access = await _portalAccess.EnsureForClientAsync(id, userId, forceResetPassword: true);
+        if (access == null)
+        {
+            TempData["ClientDetailsInfo"] = "No fue posible regenerar acceso de portal. Verifica ClientCode.";
+            TempData["ClientDetailsInfoType"] = "danger";
+            return RedirectToPage(new { id });
+        }
+
+        TempData["ClientDetailsInfo"] = "Acceso de portal regenerado.";
         TempData["ClientDetailsInfoType"] = "success";
         return RedirectToPage(new { id });
     }

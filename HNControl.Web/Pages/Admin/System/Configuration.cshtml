@@ -31,6 +31,9 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabFiscal">Fiscal</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabApi">API</button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -224,6 +227,48 @@
                     <div class="col-12 d-flex flex-wrap gap-2">
                         <button class="btn btn-primary" type="submit">Guardar fiscal / PAC</button>
                         <button class="btn btn-outline-info" type="submit" formaction="?handler=ValidateFiscal" formmethod="post">Validar SAT / PAC</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane fade" id="tabApi">
+                <form method="post" asp-page-handler="SaveApi" class="row g-3">
+                    <div class="col-12">
+                        <div class="fw-semibold">Integraciones API</div>
+                        <div class="text-muted small">Configuracion central para integraciones externas del sistema.</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Base URL publica (opcional)</label>
+                        <input class="form-control" asp-for="Input.PublicBaseUrl" placeholder="https://tudominio.com" />
+                        <div class="form-text">Se usa para enlaces de retorno del portal cliente (si no esta, toma PublicLinks:BaseUrl).</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Mercado Pago - Public Key (opcional)</label>
+                        <input class="form-control" asp-for="Input.MercadoPagoPublicKey" placeholder="APP_USR-..." />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Mercado Pago - Access Token</label>
+                        <input class="form-control" asp-for="Input.MercadoPagoAccessToken" type="password" placeholder="Dejar vacio para conservar" />
+                        @if (Model.HasMercadoPagoToken)
+                        {
+                            <div class="small text-success">Access token guardado.</div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Mercado Pago - Webhook Secret (opcional)</label>
+                        <input class="form-control" asp-for="Input.MercadoPagoWebhookSecret" type="password" placeholder="Dejar vacio para conservar" />
+                        @if (Model.HasMercadoPagoWebhookSecret)
+                        {
+                            <div class="small text-success">Webhook secret guardado.</div>
+                        }
+                    </div>
+
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Guardar API</button>
                     </div>
                 </form>
             </div>

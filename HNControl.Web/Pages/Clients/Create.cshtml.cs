@@ -3,6 +3,7 @@ using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
+using HNControl.Web.Services.Clients;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -17,10 +18,15 @@ public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly IActionAccessService _actions;
-    public CreateModel(ApplicationDbContext db, IActionAccessService actions)
+    private readonly IClientPortalAccessService _portalAccess;
+    public CreateModel(
+        ApplicationDbContext db,
+        IActionAccessService actions,
+        IClientPortalAccessService portalAccess)
     {
         _db = db;
         _actions = actions;
+        _portalAccess = portalAccess;
     }
 
     public SelectList KindItems =>
@@ -132,6 +138,7 @@ public class CreateModel : PageModel
 
         _db.Clients.Add(client);
         await _db.SaveChangesAsync();
+        await _portalAccess.EnsureForClientAsync(client.Id, userId, forceResetPassword: false);
 
         return RedirectToPage("/Clients/Details", new { id = client.Id });
     }

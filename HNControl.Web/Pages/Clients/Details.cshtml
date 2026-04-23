@@ -231,6 +231,46 @@
             </div>
         </div>
 
+        @if (Model.IsSuperAdmin)
+        {
+            <div class="card shadow-sm hn-hover mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="fw-semibold">Acceso portal cliente</div>
+                    <span class="text-muted small">Solo superadmin</span>
+                </div>
+                <div class="card-body">
+                    @if (Model.PortalCredentials == null)
+                    {
+                        <div class="text-muted small">No hay credenciales disponibles para este cliente.</div>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mb-1">Usuario</div>
+                        <div class="fw-semibold mb-2">@Model.PortalCredentials.Username</div>
+                        <div class="small text-muted mb-1">Password</div>
+                        <div class="fw-semibold mb-2">@Model.PortalCredentials.Password</div>
+                        <div class="small text-muted mb-3">
+                            Último acceso:
+                            @(Model.PortalCredentials.LastLoginAt.HasValue ? Model.PortalCredentials.LastLoginAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Nunca")
+                        </div>
+                        <div class="input-group mb-2">
+                            <input id="portalLoginLink" class="form-control" value="@Model.ClientPortalLoginUrl" readonly />
+                            <button class="btn btn-outline-primary" type="button"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('portalLoginLink').value)">
+                                Copiar
+                            </button>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" href="@Model.ClientPortalLoginUrl" target="_blank" rel="noopener">Abrir portal</a>
+                            <form method="post" asp-page-handler="ResetPortalAccess" asp-route-id="@Model.Client.Id">
+                                <button class="btn btn-sm btn-primary" type="submit">Regenerar password</button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="card shadow-sm hn-hover mb-3">
             <div class="card-body">
                 <div class="fw-semibold mb-1">Link publico de tickets</div>
