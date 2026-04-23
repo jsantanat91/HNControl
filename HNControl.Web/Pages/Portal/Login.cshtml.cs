@@ -78,7 +78,7 @@ public class LoginModel : PageModel
 
         await _portalAccess.MarkLoginAsync(result.Access.Id);
 
-        if (!Url.IsLocalUrl(returnUrl))
+        if (!Url.IsLocalUrl(returnUrl) || !returnUrl.StartsWith("/Portal", StringComparison.OrdinalIgnoreCase))
             returnUrl = Url.Page("/Portal/Index");
 
         return LocalRedirect(returnUrl!);

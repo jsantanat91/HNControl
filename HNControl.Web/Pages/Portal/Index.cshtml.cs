@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -39,6 +39,7 @@ public class IndexModel : PageModel
     public List<ContractVm> ActiveContracts { get; set; } = new();
     public List<ContactVm> Contacts { get; set; } = new();
     public List<DomiciliationVm> Domiciliations { get; set; } = new();
+    public string PayerEmailHint { get; set; } = "";
 
     [BindProperty]
     public TicketInput TicketForm { get; set; } = new();
@@ -154,19 +155,11 @@ public class IndexModel : PageModel
         if (DomiciliationForm.MontoReferencia <= 0)
             DomiciliationForm.MontoReferencia = 1m;
 
-        var payerEmail = (DomiciliationForm.CorreoPagador ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(payerEmail))
-        {
-            payerEmail = (await _db.Clients
-                .AsNoTracking()
-                .Where(c => c.Id == auth.clientId.Value)
-                .Select(c => c.BillingEmail)
-                .FirstOrDefaultAsync()) ?? "";
-        }
+        var payerEmail = await ResolveBestPayerEmailAsync(auth.clientId.Value);
 
         if (string.IsNullOrWhiteSpace(payerEmail))
         {
-            TempData["PortalInfo"] = "Define un correo pagador para crear el enlace de domiciliación.";
+            TempData["PortalInfo"] = "Define un correo pagador para crear el enlace de domiciliaciÃ³n.";
             TempData["PortalInfoType"] = "warning";
             return RedirectToPage();
         }
@@ -175,12 +168,22 @@ public class IndexModel : PageModel
         if (client == null)
             return RedirectToPage("/Portal/Login");
 
-        var mp = await _mercadoPago.CreateCardDomiciliationCheckoutAsync(
-            client.ClientCode,
-            client.Name,
-            payerEmail,
-            DomiciliationForm.MontoReferencia,
-            "Domiciliación de tarjeta para servicios recurrentes");
+        MercadoPagoCheckoutResult mp;
+        try
+        {
+            mp = await _mercadoPago.CreateCardDomiciliationCheckoutAsync(
+                client.ClientCode,
+                client.Name,
+                payerEmail,
+                DomiciliationForm.MontoReferencia,
+                "Domiciliación de tarjeta para servicios recurrentes");
+        }
+        catch (Exception ex)
+        {
+            TempData["PortalInfo"] = $"No fue posible iniciar Mercado Pago: {ex.Message}";
+            TempData["PortalInfoType"] = "danger";
+            return RedirectToPage();
+        }
 
         if (!mp.Success)
         {
@@ -292,6 +295,8 @@ public class IndexModel : PageModel
                 c.IsPrimary))
             .ToListAsync();
 
+        PayerEmailHint = await ResolveBestPayerEmailAsync(clientId);
+
         Domiciliations = await _db.ClientCardDomiciliations
             .AsNoTracking()
             .Where(x => x.ClientId == clientId)
@@ -317,4 +322,38 @@ public class IndexModel : PageModel
 
         return (true, clientId, null);
     }
+
+    private async Task<string> ResolveBestPayerEmailAsync(Guid clientId)
+    {
+        var primaryContactEmail = (await _db.ClientContacts
+            .AsNoTracking()
+            .Where(c => c.ClientId == clientId && c.IsPrimary)
+            .OrderByDescending(c => c.UpdatedAt)
+            .Select(c => c.Email)
+            .FirstOrDefaultAsync()) ?? "";
+        if (!string.IsNullOrWhiteSpace(primaryContactEmail))
+            return primaryContactEmail.Trim();
+
+        var anyContactEmail = (await _db.ClientContacts
+            .AsNoTracking()
+            .Where(c => c.ClientId == clientId)
+            .OrderByDescending(c => c.UpdatedAt)
+            .Select(c => c.Email)
+            .FirstOrDefaultAsync()) ?? "";
+        if (!string.IsNullOrWhiteSpace(anyContactEmail))
+            return anyContactEmail.Trim();
+
+        var clientEmail = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.Id == clientId)
+            .Select(c => new { c.BillingEmail, c.Email })
+            .FirstOrDefaultAsync();
+        if (clientEmail == null) return "";
+
+        if (!string.IsNullOrWhiteSpace(clientEmail.BillingEmail))
+            return clientEmail.BillingEmail.Trim();
+
+        return (clientEmail.Email ?? "").Trim();
+    }
 }
+

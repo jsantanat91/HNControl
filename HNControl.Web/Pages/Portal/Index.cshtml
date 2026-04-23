@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Portal.IndexModel
 @{
     Layout = "_LayoutPublic";
@@ -8,7 +8,7 @@
 @if (Model.Client == null)
 {
     <div class="container py-4">
-        <div class="alert alert-warning">No fue posible cargar tu información de cliente.</div>
+        <div class="alert alert-warning">No fue posible cargar tu informaciÃ³n de cliente.</div>
     </div>
     return;
 }
@@ -17,10 +17,10 @@
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
         <div>
             <h1 class="h4 m-0">Portal cliente</h1>
-            <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
+            <div class="text-muted small">@Model.Client.Name Â· @Model.Client.ClientCode</div>
         </div>
         <form method="post" asp-page-handler="Logout">
-            <button class="btn btn-outline-danger" type="submit">Cerrar sesión</button>
+            <button class="btn btn-outline-danger" type="submit">Cerrar sesiÃ³n</button>
         </form>
     </div>
 
@@ -35,10 +35,10 @@
             <div class="card shadow-soft hn-hover h-100">
                 <div class="card-header fw-semibold">Estado de cuenta</div>
                 <div class="card-body">
-                    <div class="small text-muted">Pendiente</div>
-                    <div class="h5 text-danger mb-2">@Model.TotalPendiente.ToString("C")</div>
-                    <div class="small text-muted">Pagado</div>
-                    <div class="h6 text-success">@Model.TotalPagado.ToString("C")</div>
+                    <div class="small text-muted text-uppercase fw-semibold">Pendiente</div>
+                    <div class="h4 fw-bold text-danger mb-3">@Model.TotalPendiente.ToString("C")</div>
+                    <div class="small text-muted text-uppercase fw-semibold">Pagado</div>
+                    <div class="h5 fw-bold text-success">@Model.TotalPagado.ToString("C")</div>
                     <div class="text-muted small mt-2">Facturas ligadas a planes recurrentes del cliente.</div>
                 </div>
             </div>
@@ -50,8 +50,8 @@
                 <div class="card-body">
                     <form method="post" asp-page-handler="CreateDomiciliation" class="row g-2">
                         <div class="col-12">
-                            <label class="form-label small mb-1">Correo pagador</label>
-                            <input asp-for="DomiciliationForm.CorreoPagador" class="form-control" placeholder="correo@cliente.com" />
+                            <label class="form-label small mb-1">Correo pagador (autom&aacute;tico)</label>
+                            <input class="form-control" value="@Model.PayerEmailHint" readonly />
                         </div>
                         <div class="col-12">
                             <label class="form-label small mb-1">Monto referencia</label>
@@ -67,7 +67,7 @@
                         <div class="small fw-semibold mb-1">Intentos recientes</div>
                         @foreach (var d in Model.Domiciliations.Take(3))
                         {
-                            <div class="small text-muted">@d.Fecha · @d.Estado</div>
+                            <div class="small text-muted">@d.Fecha Â· @d.Estado</div>
                         }
                     }
                 </div>
@@ -84,7 +84,7 @@
                             <input asp-for="TicketForm.Titulo" class="form-control" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label small mb-1">Descripción</label>
+                            <label class="form-label small mb-1">DescripciÃ³n</label>
                             <textarea asp-for="TicketForm.Descripcion" rows="3" class="form-control"></textarea>
                         </div>
                         <div class="col-12">
@@ -99,26 +99,26 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label small mb-1">Contacto (opcional)</label>
-                            <select asp-for="TicketForm.ClientContactId" class="form-select">
+                            <select asp-for="TicketForm.ClientContactId" id="portalTicketContact" class="form-select">
                                 <option value="">-- Captura manual --</option>
                                 @foreach (var contact in Model.Contacts)
                                 {
                                     var label = contact.Principal ? $"Principal: {contact.Nombre}" : contact.Nombre;
-                                    <option value="@contact.Id">@label · @contact.Correo</option>
+                                    <option value="@contact.Id" data-name="@contact.Nombre" data-email="@contact.Correo" data-phone="@contact.Telefono">@label &middot; @contact.Correo</option>
                                 }
                             </select>
                         </div>
                         <div class="col-6">
                             <label class="form-label small mb-1">Nombre</label>
-                            <input asp-for="TicketForm.ContactoNombre" class="form-control" />
+                            <input asp-for="TicketForm.ContactoNombre" id="portalTicketName" class="form-control" />
                         </div>
                         <div class="col-6">
-                            <label class="form-label small mb-1">Teléfono</label>
-                            <input asp-for="TicketForm.ContactoTelefono" class="form-control" />
+                            <label class="form-label small mb-1">TelÃ©fono</label>
+                            <input asp-for="TicketForm.ContactoTelefono" id="portalTicketPhone" class="form-control" />
                         </div>
                         <div class="col-12">
                             <label class="form-label small mb-1">Correo</label>
-                            <input asp-for="TicketForm.ContactoCorreo" class="form-control" />
+                            <input asp-for="TicketForm.ContactoCorreo" id="portalTicketEmail" class="form-control" />
                         </div>
                         <div class="col-12 d-grid">
                             <button type="submit" class="btn btn-success">Crear ticket</button>
@@ -200,7 +200,7 @@
                             {
                                 <div class="border rounded p-2">
                                     <div class="fw-semibold">@c.Nombre</div>
-                                    <div class="small text-muted">@c.Tipo · @c.Sucursal</div>
+                                    <div class="small text-muted">@c.Tipo Â· @c.Sucursal</div>
                                     <div class="small text-muted">Vigencia: @c.Vigencia</div>
                                     @if (c.HasFile)
                                     {
@@ -223,4 +223,25 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const contact = document.getElementById('portalTicketContact');
+            const name = document.getElementById('portalTicketName');
+            const phone = document.getElementById('portalTicketPhone');
+            const email = document.getElementById('portalTicketEmail');
+            if (!contact || !name || !phone || !email) return;
+
+            const syncFields = () => {
+                const opt = contact.options[contact.selectedIndex];
+                if (!opt || !opt.value) return;
+                name.value = opt.dataset.name || '';
+                phone.value = opt.dataset.phone || '';
+                email.value = opt.dataset.email || '';
+            };
+
+            contact.addEventListener('change', syncFields);
+        })();
+    </script>
 }
+
+

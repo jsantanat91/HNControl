@@ -1,49 +1,66 @@
-@page
+﻿@page
 @model HNControl.Web.Pages.Portal.LoginModel
 @{
-    Layout = "_LayoutPublic";
-    ViewData["Title"] = "Acceso clientes";
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Portal de clientes";
     var returnUrl = (ViewData["ReturnUrl"] as string) ?? "";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-5">
-            <div class="card shadow-soft border-0 hn-hover">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <span class="badge rounded-pill text-bg-primary px-3 py-2">Portal clientes</span>
-                    </div>
-                    <h1 class="h4 mb-1">Iniciar sesión</h1>
-                    <div class="text-muted small mb-4">Acceso con usuario de cliente y contraseña.</div>
+<div class="row justify-content-between align-items-center g-4">
+    <div class="col-lg-6 d-none d-lg-flex">
+        <div class="w-100 p-4 p-xl-5 hn-auth-intro">
+            <span class="hn-auth-kicker mb-3">Acceso externo</span>
 
-                    @if (!string.IsNullOrWhiteSpace(Model.Error))
-                    {
-                        <div class="alert alert-danger py-2">@Model.Error</div>
-                    }
+            <h1 class="display-4 fw-bold lh-sm mb-3">
+                BIENVENIDO AL<br />
+                <span class="text-white">PORTAL DE CLIENTES</span>
+            </h1>
 
-                    <form method="post">
-                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+            <p class="fs-5 mb-2">Consulta tu estado de cuenta, contratos activos y abre tickets desde un solo lugar.</p>
+            <p class="mb-0">Gestion simple y segura para seguimiento de tus servicios.</p>
+        </div>
+    </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Usuario cliente</label>
-                            <input asp-for="Input.Usuario" class="form-control text-uppercase" autocomplete="username" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Contraseña</label>
-                            <input asp-for="Input.Password" type="password" class="form-control" autocomplete="current-password" />
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" asp-for="Input.Recordarme" />
-                            <label class="form-check-label" asp-for="Input.Recordarme">Mantener sesión</label>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">Entrar al portal</button>
-                    </form>
+    <div class="col-12 col-md-8 col-lg-5 col-xl-4">
+        <div class="card hn-auth-card">
+            <div class="card-body p-4 p-lg-5">
+                <div class="text-center mb-4">
+                    <h1 class="h2 m-0 fw-bold text-white">PORTAL DE CLIENTES</h1>
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Error))
+                {
+                    <div class="alert alert-danger">@Model.Error</div>
+                }
+
+                <form method="post">
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Usuario" class="form-control text-uppercase" placeholder="HN-CL-0001" autocomplete="username" />
+                        <label asp-for="Input.Usuario">Usuario cliente</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Password" type="password" class="form-control" placeholder="********" autocomplete="current-password" />
+                        <label asp-for="Input.Password">Contrasena</label>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2 mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="Input.Recordarme" />
+                            <label class="form-check-label" asp-for="Input.Recordarme">Mantener sesion</label>
+                        </div>
+                        <span class="text-muted small">Acceso seguro</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Entrar al portal</button>
+                </form>
             </div>
+        </div>
+
+        <div class="text-center text-light small mt-3">
+            &copy; @DateTime.Now.Year · Portal de clientes
         </div>
     </div>
 </div>

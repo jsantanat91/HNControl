@@ -2,8 +2,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using HNControl.Web.Data;
+using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HNControl.Web.Services.Clients;
 
@@ -34,10 +36,18 @@ public class MercadoPagoService : IMercadoPagoService
         string description,
         CancellationToken ct = default)
     {
-        var settings = await _db.SystemConfigurations
-            .AsNoTracking()
-            .OrderByDescending(x => x.UpdatedAt)
-            .FirstOrDefaultAsync(ct);
+        SystemConfiguration? settings = null;
+        try
+        {
+            settings = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            settings = null;
+        }
 
         var token = !string.IsNullOrWhiteSpace(settings?.MercadoPagoAccessTokenProtected)
             ? _protector.Unprotect(settings.MercadoPagoAccessTokenProtected)

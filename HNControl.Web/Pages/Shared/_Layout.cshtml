@@ -548,12 +548,12 @@
             <div class="hn-side-footer mt-auto">
                 <div class="hn-side-user">@User.Identity?.Name</div>
                 <div class="hn-side-user-sub">Sesi&oacute;n activa</div>
-                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword">
+                <a class="btn btn-sm w-100 mt-2 hn-side-btn-pass" asp-page="/Account/ChangePassword">
                     <i class="bi bi-key me-1"></i> Cambiar contrase&ntilde;a
                 </a>
 
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
-                    <button class="btn btn-sm hn-navbtn-danger w-100" type="submit">
+                    <button class="btn btn-sm w-100 hn-side-btn-logout" type="submit">
                         <i class="bi bi-box-arrow-right me-1"></i> Salir
                     </button>
                 </form>
@@ -808,9 +808,9 @@
                 <hr class="border-light opacity-25 my-3" />
 
                 <div class="hn-side-user">@User.Identity?.Name</div>
-                <a class="btn btn-sm btn-outline-light w-100 mt-2" asp-page="/Account/ChangePassword"><i class="bi bi-key me-1"></i> Cambiar contrase&ntilde;a</a>
+                <a class="btn btn-sm w-100 mt-2 hn-side-btn-pass" asp-page="/Account/ChangePassword"><i class="bi bi-key me-1"></i> Cambiar contrase&ntilde;a</a>
                 <form asp-page="/Account/Logout" method="post" class="mt-2">
-                    <button class="btn btn-sm btn-danger w-100" type="submit"><i class="bi bi-box-arrow-right me-1"></i> Salir</button>
+                    <button class="btn btn-sm w-100 hn-side-btn-logout" type="submit"><i class="bi bi-box-arrow-right me-1"></i> Salir</button>
                 </form>
             </div>
         </div>

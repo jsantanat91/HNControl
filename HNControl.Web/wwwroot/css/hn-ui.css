@@ -217,13 +217,47 @@ a:hover { color: var(--hn-blue-dark); text-decoration: underline; }
   color:#fff;
 }
 .hn-side-user{
-  font-weight: 750;
-  font-size: .92rem;
+  font-weight: 650;
+  font-size: .70rem;
+  line-height: 1.2;
   color: rgba(255,255,255,.92);
+  word-break: break-word;
 }
 .hn-side-user-sub{
-  font-size: .78rem;
+  font-size: .66rem;
   color: rgba(255,255,255,.70);
+}
+
+.hn-side-footer .hn-side-btn-pass.btn,
+.hn-offcanvas .hn-side-btn-pass.btn{
+  color: #fef3c7 !important;
+  border-color: #fbbf24 !important;
+  background: transparent !important;
+}
+
+.hn-side-footer .hn-side-btn-pass.btn:hover,
+.hn-side-footer .hn-side-btn-pass.btn:focus-visible,
+.hn-offcanvas .hn-side-btn-pass.btn:hover,
+.hn-offcanvas .hn-side-btn-pass.btn:focus-visible{
+  color: #7c2d12 !important;
+  border-color: #f59e0b !important;
+  background: #fde68a !important;
+}
+
+.hn-side-footer .hn-side-btn-logout.btn,
+.hn-offcanvas .hn-side-btn-logout.btn{
+  color: #fecaca !important;
+  border-color: #ef4444 !important;
+  background: transparent !important;
+}
+
+.hn-side-footer .hn-side-btn-logout.btn:hover,
+.hn-side-footer .hn-side-btn-logout.btn:focus-visible,
+.hn-offcanvas .hn-side-btn-logout.btn:hover,
+.hn-offcanvas .hn-side-btn-logout.btn:focus-visible{
+  color: #fff !important;
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
 }
 
 /* Offcanvas (móvil) */
