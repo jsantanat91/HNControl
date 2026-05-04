@@ -35,9 +35,17 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                 .FirstAsync(x => x.Id == request.Id);
         }
 
+        // Query only stable columns so older DB schemas (without new optional
+        // MercadoPago protected fields) do not break quote PDF generation.
         var sys = await _db.SystemConfigurations
             .AsNoTracking()
             .OrderByDescending(x => x.UpdatedAt)
+            .Select(x => new
+            {
+                x.CompanyName,
+                x.CompanyLegalName,
+                x.CompanyLogoStoragePath
+            })
             .FirstOrDefaultAsync();
 
         var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();

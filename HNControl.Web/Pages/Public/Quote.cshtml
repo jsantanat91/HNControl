@@ -8,6 +8,7 @@
     var catalogJson = JsonSerializer.Serialize(Model.CatalogPayload);
     var prospectsJson = JsonSerializer.Serialize(Model.ProspectOptions);
     var contactsJson = JsonSerializer.Serialize(Model.ClientContactsPayload);
+    var initialManualLinesJson = Model.InitialManualLinesJson;
 }
 
 <div class="row justify-content-center">
@@ -19,7 +20,7 @@
                         <h1 class="h3 mb-1">Cotizacion a la medida</h1>
                         <div class="text-muted">Flujo interno: arma cotizacion, genera PDF y envia por correo.</div>
                     </div>
-                    <span class="badge text-bg-light border">Nueva cotizacion</span>
+                    <span class="badge text-bg-light border">@(Model.IsEditMode ? $"Editando {Model.EditFolio}" : "Nueva cotizacion")</span>
                 </div>
 
                 @if (Model.HasClientContext)
@@ -44,6 +45,7 @@
 
                 <form method="post" id="quoteForm" class="row g-3">
                     <input type="hidden" asp-for="Input.ClientToken" />
+                    <input type="hidden" asp-for="Input.EditQuoteId" />
                     <input type="hidden" asp-for="Input.SelectedClientId" id="selectedClientId" />
                     <input type="hidden" asp-for="Input.LinesJson" id="linesJson" />
                     <input type="hidden" asp-for="Input.ManualLinesJson" id="manualLinesJson" />
@@ -277,11 +279,21 @@
     const payload = @Html.Raw(catalogJson);
     const prospects = @Html.Raw(prospectsJson);
     const contactsByClient = @Html.Raw(contactsJson);
+    const initialManual = @Html.Raw(initialManualLinesJson);
     // Nunca saltar el paso de datos del cliente, aunque llegue token precargado.
     const skipClientDataStep = false;
     const IVA = 0.16;
     const lines = [];
-    const manualLines = [];
+    const manualLines = Array.isArray(initialManual)
+        ? initialManual.map(x => ({
+            categoryName: x.categoryName ?? x.CategoryName ?? 'Libre',
+            serviceName: x.serviceName ?? x.ServiceName ?? 'Servicio',
+            description: x.description ?? x.Description ?? '',
+            quantity: x.quantity ?? x.Quantity ?? 1,
+            unitPrice: x.unitPrice ?? x.UnitPrice ?? 0,
+            recurrence: x.recurrence ?? x.Recurrence ?? 'Unica'
+        }))
+        : [];
 
     const allSteps = [1,2,3,4];
     const navSteps = skipClientDataStep ? [1,2,4] : allSteps;

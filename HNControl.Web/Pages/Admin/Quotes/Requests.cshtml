@@ -103,7 +103,12 @@
                     <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="modal" data-bs-target="#quoteDetailModal-@r.Id">Ver detalle</button>
                     @if (canManage && r.Status != "Accepted" && r.Status != "Rejected")
                     {
-                        <a class="btn btn-sm btn-outline-secondary" asp-page="./Requests" asp-route-q="@r.Folio" asp-route-view="active">Editar</a>
+                        <a class="btn btn-sm btn-outline-secondary"
+                           href="/cotizar?editId=@r.Id"
+                           data-quote-modal-open="true"
+                           data-quote-modal-size="xl">
+                            Editar
+                        </a>
                     }
                     @if (r.HasPdf)
                     {
@@ -139,6 +144,21 @@
                 </div>
                 <div class="modal-body">
                     <div class="small text-muted mb-2">@r.CustomerEmail · @r.CustomerPhone · @r.CustomerLocation</div>
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        @if (canManage && r.Status != "Accepted" && r.Status != "Rejected")
+                        {
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="/cotizar?editId=@r.Id"
+                               data-quote-modal-open="true"
+                               data-quote-modal-size="xl">
+                                Editar
+                            </a>
+                        }
+                        @if (r.HasPdf)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-page="./Requests" asp-page-handler="DownloadPdf" asp-route-id="@r.Id">Descargar PDF</a>
+                        }
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead>

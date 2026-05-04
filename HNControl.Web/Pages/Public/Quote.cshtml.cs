@@ -31,6 +31,8 @@ public class QuoteModel : PageModel
 
     [BindProperty]
     public QuoteInput Input { get; set; } = new();
+    [BindProperty(SupportsGet = true, Name = "editId")]
+    public Guid? EditId { get; set; }
 
     public object CatalogPayload { get; set; } = new { };
 
@@ -40,6 +42,9 @@ public class QuoteModel : PageModel
     public string ClientName { get; set; } = string.Empty;
     public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
     public Dictionary<Guid, List<ContactOptionVm>> ClientContactsPayload { get; set; } = new();
+    public bool IsEditMode { get; set; }
+    public string EditFolio { get; set; } = string.Empty;
+    public string InitialManualLinesJson { get; set; } = "[]";
 
     public record ProspectOptionVm(
         Guid Id,
@@ -54,13 +59,16 @@ public class QuoteModel : PageModel
         string? MainContactPhone);
     public record ContactOptionVm(Guid Id, string Name, string Email, string Phone, string? Role);
 
-    public async Task<IActionResult> OnGetAsync(string? token)
+    public async Task<IActionResult> OnGetAsync(string? token, Guid? editId)
     {
         if (!await CanUseInternalQuoteAsync(requireCreate: false))
             return RedirectToPage("/Account/Login");
 
+        EditId = editId;
         Input.ClientToken = token;
         await TryLoadClientContextAsync(token);
+        if (EditId.HasValue && EditId.Value != Guid.Empty)
+            await TryLoadEditContextAsync(EditId.Value);
         await LoadCatalogPayloadAsync();
         return Page();
     }
@@ -102,14 +110,60 @@ public class QuoteModel : PageModel
             request.ClientId = lead.Id;
         }
 
-        _db.QuoteRequests.Add(request);
-        await _db.SaveChangesAsync();
-        await EnsureOpportunityForCurrentUserAsync(request);
+        string? oldPdfPath = null;
+        var isEditing = Input.EditQuoteId.HasValue && Input.EditQuoteId.Value != Guid.Empty;
+        if (isEditing)
+        {
+            var existing = await ResolveEditableQuoteAsync(Input.EditQuoteId!.Value);
+            if (existing == null)
+            {
+                ErrorMessage = "La cotizacion ya no esta disponible para editar.";
+                await LoadCatalogPayloadAsync();
+                return Page();
+            }
+
+            oldPdfPath = existing.PdfStoragePath;
+            existing.ClientId = request.ClientId;
+            existing.Segment = request.Segment;
+            existing.Status = QuoteRequestStatus.New;
+            existing.CustomerName = request.CustomerName;
+            existing.CustomerEmail = request.CustomerEmail;
+            existing.CustomerPhone = request.CustomerPhone;
+            existing.CustomerLocation = request.CustomerLocation;
+            existing.CompanyName = request.CompanyName;
+            existing.Notes = request.Notes;
+            existing.GeneralTerms = request.GeneralTerms;
+            existing.ContractTermMonths = request.ContractTermMonths;
+            existing.SubtotalAuto = request.SubtotalAuto;
+            existing.SubtotalBeforeVat = request.SubtotalBeforeVat;
+            existing.VatAmount = request.VatAmount;
+            existing.ManualItemsCount = request.ManualItemsCount;
+            existing.EstimatedTotal = request.EstimatedTotal;
+            existing.AcceptedAt = null;
+            existing.AcceptedByUserId = null;
+            existing.PdfStoragePath = null;
+
+            _db.QuoteRequestLines.RemoveRange(existing.Lines);
+            existing.Lines = request.Lines;
+            foreach (var ln in existing.Lines)
+                ln.QuoteRequestId = existing.Id;
+
+            await _db.SaveChangesAsync();
+            request = existing;
+        }
+        else
+        {
+            _db.QuoteRequests.Add(request);
+            await _db.SaveChangesAsync();
+            await EnsureOpportunityForCurrentUserAsync(request);
+        }
 
         var pdfBytes = await _pdf.RenderAsync(request);
         var fileName = $"{request.Folio}.pdf";
         var save = await _storage.SaveBytesAsync(pdfBytes, "quotes", fileName, "application/pdf");
         request.PdfStoragePath = save.storagePath;
+        if (!string.IsNullOrWhiteSpace(oldPdfPath))
+            await _storage.DeleteIfExistsAsync(oldPdfPath);
 
         var subject = $"Cotizacion {request.Folio} - HN Control";
         var bodyCustomer = BuildEmailBody(request, true);
@@ -521,6 +575,7 @@ public class QuoteModel : PageModel
 
     public class QuoteInput
     {
+        public Guid? EditQuoteId { get; set; }
         public string? ClientToken { get; set; }
         public Guid? SelectedClientId { get; set; }
         public QuoteSegment Segment { get; set; } = QuoteSegment.Residential;
@@ -536,6 +591,77 @@ public class QuoteModel : PageModel
         public int? ContractTermMonths { get; set; }
         public string? GlobalDiscountType { get; set; } = "none";
         public decimal? GlobalDiscountValue { get; set; }
+    }
+
+    private async Task TryLoadEditContextAsync(Guid quoteId)
+    {
+        var quote = await ResolveEditableQuoteAsync(quoteId);
+        if (quote == null)
+        {
+            ErrorMessage = "No puedes editar esta cotizacion.";
+            return;
+        }
+
+        IsEditMode = true;
+        EditFolio = quote.Folio;
+        Input.EditQuoteId = quote.Id;
+        Input.SelectedClientId = quote.ClientId;
+        Input.Segment = quote.Segment;
+        Input.CustomerName = quote.CustomerName;
+        Input.CustomerEmail = quote.CustomerEmail;
+        Input.CustomerPhone = quote.CustomerPhone;
+        Input.CustomerLocation = quote.CustomerLocation;
+        Input.CompanyName = quote.CompanyName;
+        Input.Notes = quote.Notes;
+        Input.GeneralTerms = quote.GeneralTerms;
+        Input.ContractTermMonths = quote.ContractTermMonths;
+
+        var manual = quote.Lines
+            .OrderBy(x => x.ServiceName)
+            .Select(l => new ManualLineVm
+            {
+                CategoryName = string.IsNullOrWhiteSpace(l.CategoryName) ? "Libre" : l.CategoryName,
+                ServiceName = string.IsNullOrWhiteSpace(l.ServiceName) ? "Servicio" : l.ServiceName,
+                Description = l.Description ?? l.SubproductName ?? "",
+                Quantity = l.Quantity <= 0 ? 1 : l.Quantity,
+                UnitPrice = ResolveEditableUnitPrice(l),
+                Recurrence = NormalizeRecurrence(l.Recurrence)
+            })
+            .ToList();
+
+        InitialManualLinesJson = JsonSerializer.Serialize(manual);
+    }
+
+    private static decimal ResolveEditableUnitPrice(QuoteRequestLine line)
+    {
+        if (line.UnitPrice.HasValue && line.UnitPrice.Value > 0)
+            return Math.Round(line.UnitPrice.Value, 2);
+        if (line.BaseAmount.HasValue && line.Quantity > 0)
+            return Math.Round(line.BaseAmount.Value / line.Quantity, 2);
+        if (line.LineTotal.HasValue && line.Quantity > 0)
+            return Math.Round((line.PriceIncludesVat ? (line.LineTotal.Value / 1.16m) : line.LineTotal.Value) / line.Quantity, 2);
+        return 0m;
+    }
+
+    private async Task<QuoteRequest?> ResolveEditableQuoteAsync(Guid quoteId)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
+
+        var query = _db.QuoteRequests
+            .Include(x => x.Lines)
+            .Where(x => x.Id == quoteId);
+
+        if (!isGlobalAdmin)
+        {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return null;
+            query = query.Where(x => _db.SalesOpportunities.Any(o =>
+                o.QuoteRequestId == x.Id
+                && o.OwnerUserId == currentUserId));
+        }
+
+        return await query.FirstOrDefaultAsync();
     }
 
     public class LinePickVm
