@@ -370,7 +370,9 @@ public class QuoteModel : PageModel
                 request.Lines.Add(new QuoteRequestLine
                 {
                     CategoryName = string.IsNullOrWhiteSpace(m.CategoryName) ? "Libre" : m.CategoryName.Trim(),
-                    ServiceName = string.IsNullOrWhiteSpace(m.ServiceName) ? "Concepto libre" : m.ServiceName.Trim(),
+                    ServiceName = string.IsNullOrWhiteSpace(m.ServiceName)
+                        ? (string.IsNullOrWhiteSpace(m.Description) ? "Concepto libre" : m.Description.Trim())
+                        : m.ServiceName.Trim(),
                     SubproductName = null,
                     Description = desc,
                     Quantity = qty,
@@ -386,6 +388,40 @@ public class QuoteModel : PageModel
                     ,
                     Recurrence = NormalizeRecurrence(m.Recurrence)
                 });
+            }
+        }
+
+        // En modo edición, si no llega selección de catálogo desde UI,
+        // conservamos las líneas no-manuales existentes para no obligar a re-agregar.
+        if (Input.EditQuoteId.HasValue && Input.EditQuoteId.Value != Guid.Empty)
+        {
+            var hadCatalogSelection = picks.Any();
+            if (!hadCatalogSelection)
+            {
+                var existingCatalogLines = await _db.QuoteRequestLines
+                    .AsNoTracking()
+                    .Where(x => x.QuoteRequestId == Input.EditQuoteId.Value && !x.IsManualPrice)
+                    .Select(x => new QuoteRequestLine
+                    {
+                        CategoryName = x.CategoryName,
+                        ServiceName = x.ServiceName,
+                        SubproductName = x.SubproductName,
+                        Description = x.Description,
+                        Quantity = x.Quantity,
+                        UnitPrice = x.UnitPrice,
+                        PriceIncludesVat = x.PriceIncludesVat,
+                        VatRate = x.VatRate,
+                        IsManualPrice = x.IsManualPrice,
+                        OfferType = x.OfferType,
+                        ItemImageUrl = x.ItemImageUrl,
+                        BaseAmount = x.BaseAmount,
+                        VatAmount = x.VatAmount,
+                        LineTotal = x.LineTotal,
+                        Recurrence = x.Recurrence
+                    })
+                    .ToListAsync();
+
+                request.Lines.AddRange(existingCatalogLines);
             }
         }
 
@@ -617,11 +653,14 @@ public class QuoteModel : PageModel
         Input.ContractTermMonths = quote.ContractTermMonths;
 
         var manual = quote.Lines
+            .Where(x => x.IsManualPrice)
             .OrderBy(x => x.ServiceName)
             .Select(l => new ManualLineVm
             {
                 CategoryName = string.IsNullOrWhiteSpace(l.CategoryName) ? "Libre" : l.CategoryName,
-                ServiceName = string.IsNullOrWhiteSpace(l.ServiceName) ? "Servicio" : l.ServiceName,
+                ServiceName = string.IsNullOrWhiteSpace(l.ServiceName)
+                    ? (string.IsNullOrWhiteSpace(l.Description) ? "Servicio" : l.Description!)
+                    : l.ServiceName,
                 Description = l.Description ?? l.SubproductName ?? "",
                 Quantity = l.Quantity <= 0 ? 1 : l.Quantity,
                 UnitPrice = ResolveEditableUnitPrice(l),
