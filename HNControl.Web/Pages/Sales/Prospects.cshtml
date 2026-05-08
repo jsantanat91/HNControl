@@ -15,6 +15,7 @@
         <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalNuevoProspecto">+ Nuevo prospecto</button>
     }
 </div>
+<form id="prospectNoteAntiForgery">@Html.AntiForgeryToken()</form>
 
 @if (!string.IsNullOrWhiteSpace(Model.UiMessage))
 {
@@ -87,6 +88,16 @@ else
                             </button>
                             @if (Model.CanEdit)
                             {
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-success"
+                                        data-prospect-note-btn="true"
+                                        data-prospect-id="@p.Id"
+                                        data-prospect-name="@p.Name"
+                                        data-prospect-code="@p.ClientCode"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#prospectNotesModal">
+                                    Seguimiento
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditarProspecto-@p.Id">
                                     Editar
                                 </button>
@@ -271,6 +282,35 @@ else
     </div>
 </div>
 
+<div class="modal fade" id="prospectNotesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="prospectNotesTitle">Seguimiento del prospecto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="prospectNotesError" class="alert alert-warning d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">Nueva nota de seguimiento</label>
+                    <textarea class="form-control" id="prospectNoteText" rows="3" maxlength="2000" placeholder="Escribe seguimiento comercial (máx 2000 caracteres)"></textarea>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">Visible mientras sea prospecto.</small>
+                        <small class="text-muted"><span id="prospectNoteCount">0</span>/2000</small>
+                    </div>
+                    <div class="mt-2 d-flex justify-content-end">
+                        <button class="btn btn-primary btn-sm" type="button" id="prospectNoteSaveBtn">Guardar nota</button>
+                    </div>
+                </div>
+
+                <div id="prospectNotesLoading" class="text-muted small d-none">Cargando notas...</div>
+                <div id="prospectNotesEmpty" class="text-muted small d-none">Sin notas de seguimiento.</div>
+                <div class="vstack gap-2" id="prospectNotesList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (() => {
     const modal = document.getElementById('prospectQuotesModal');
@@ -369,5 +409,122 @@ else
     btnApply?.addEventListener('click', () => loadQuotes(1));
     prev?.addEventListener('click', () => { if (currentPage > 1) loadQuotes(currentPage - 1); });
     next?.addEventListener('click', () => { if (currentPage < totalPages) loadQuotes(currentPage + 1); });
+})();
+
+(() => {
+    const modal = document.getElementById('prospectNotesModal');
+    if (!modal) return;
+
+    const title = document.getElementById('prospectNotesTitle');
+    const err = document.getElementById('prospectNotesError');
+    const loading = document.getElementById('prospectNotesLoading');
+    const empty = document.getElementById('prospectNotesEmpty');
+    const list = document.getElementById('prospectNotesList');
+    const text = document.getElementById('prospectNoteText');
+    const saveBtn = document.getElementById('prospectNoteSaveBtn');
+    const count = document.getElementById('prospectNoteCount');
+    const anti = document.querySelector('#prospectNoteAntiForgery input[name="__RequestVerificationToken"]');
+
+    let currentProspectId = null;
+    let currentProspectName = '';
+    let currentProspectCode = '';
+
+    function esc(v){
+        return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function setState({ isLoading = false, errorText = '', isEmpty = false } = {}){
+        loading.classList.toggle('d-none', !isLoading);
+        err.classList.toggle('d-none', !errorText);
+        err.textContent = errorText || '';
+        empty.classList.toggle('d-none', !isEmpty);
+    }
+
+    async function loadNotes(){
+        if(!currentProspectId) return;
+        list.innerHTML = '';
+        setState({ isLoading: true });
+        try{
+            const url = `/Ventas/Prospectos?handler=ProspectNotes&prospectId=${encodeURIComponent(currentProspectId)}`;
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if(!data.ok){
+                setState({ errorText: data.message || 'No se pudieron cargar las notas.' });
+                return;
+            }
+            const notes = data.notes || [];
+            if(!notes.length){
+                setState({ isEmpty: true });
+                return;
+            }
+            list.innerHTML = notes.map(n => `
+                <article class="border rounded-3 p-2">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-semibold small">${esc(n.userName)}</div>
+                        <div class="small text-muted">${esc(n.createdAt)}</div>
+                    </div>
+                    <div class="small mt-1" style="white-space:pre-wrap;">${esc(n.note)}</div>
+                </article>
+            `).join('');
+            setState({});
+        }catch{
+            setState({ errorText: 'Error al cargar seguimiento.' });
+        }
+    }
+
+    async function saveNote(){
+        if(!currentProspectId) return;
+        const note = (text.value || '').trim();
+        if(!note){
+            setState({ errorText: 'Escribe una nota antes de guardar.' });
+            return;
+        }
+        if(note.length > 2000){
+            setState({ errorText: 'La nota excede 2000 caracteres.' });
+            return;
+        }
+        saveBtn.disabled = true;
+        try{
+            const res = await fetch('/Ventas/Prospectos?handler=AddProspectNote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': anti?.value || ''
+                },
+                body: JSON.stringify({ prospectId: currentProspectId, note })
+            });
+            const data = await res.json();
+            if(!data.ok){
+                setState({ errorText: data.message || 'No se pudo guardar la nota.' });
+                return;
+            }
+            text.value = '';
+            count.textContent = '0';
+            await loadNotes();
+        }catch{
+            setState({ errorText: 'Error guardando nota.' });
+        }finally{
+            saveBtn.disabled = false;
+        }
+    }
+
+    document.querySelectorAll('[data-prospect-note-btn="true"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentProspectId = btn.getAttribute('data-prospect-id');
+            currentProspectName = btn.getAttribute('data-prospect-name') || '';
+            currentProspectCode = btn.getAttribute('data-prospect-code') || '';
+            title.textContent = `Seguimiento · ${currentProspectCode} · ${currentProspectName}`;
+            text.value = '';
+            count.textContent = '0';
+            list.innerHTML = '';
+            setState({});
+            loadNotes();
+        });
+    });
+
+    text?.addEventListener('input', () => {
+        count.textContent = String((text.value || '').length);
+    });
+    saveBtn?.addEventListener('click', saveNote);
 })();
 </script>

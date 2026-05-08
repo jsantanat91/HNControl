@@ -61,6 +61,11 @@ public class ProspectsModel : PageModel
         string Status,
         decimal Total,
         DateTime CreatedAtUtc);
+    public record ProspectNoteVm(
+        Guid Id,
+        string UserName,
+        string Note,
+        DateTime CreatedAtUtc);
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -288,6 +293,95 @@ public class ProspectsModel : PageModel
         });
     }
 
+    public async Task<IActionResult> OnGetProspectNotesAsync(Guid prospectId)
+    {
+        if (!await EnsurePermissionsAsync())
+            return new JsonResult(new { ok = false, message = "Sin permiso." });
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var lead = await _db.Clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == prospectId && x.IsTemporaryLead);
+        if (lead == null)
+            return new JsonResult(new { ok = false, message = "Prospecto no encontrado o ya convertido a cliente." });
+        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            return new JsonResult(new { ok = false, message = "Sin acceso al prospecto." });
+
+        var notes = await _db.SalesProspectNotes
+            .AsNoTracking()
+            .Where(x => x.ClientId == prospectId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(50)
+            .Select(x => new ProspectNoteVm(x.Id, x.UserName, x.Note, x.CreatedAt))
+            .ToListAsync();
+
+        return new JsonResult(new
+        {
+            ok = true,
+            prospect = new { id = lead.Id, name = lead.Name, code = lead.ClientCode },
+            notes = notes.Select(n => new
+            {
+                id = n.Id,
+                userName = n.UserName,
+                note = n.Note,
+                createdAt = n.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            })
+        });
+    }
+
+    public async Task<IActionResult> OnPostAddProspectNoteAsync([FromBody] AddProspectNoteInput? input)
+    {
+        if (!await EnsurePermissionsAsync() || !CanEdit)
+            return new JsonResult(new { ok = false, message = "Sin permiso para notas." });
+
+        if (input == null || input.ProspectId == Guid.Empty)
+            return new JsonResult(new { ok = false, message = "Prospecto inválido." });
+
+        var text = (input.Note ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return new JsonResult(new { ok = false, message = "La nota está vacía." });
+        if (text.Length > 2000)
+            return new JsonResult(new { ok = false, message = "La nota excede 2000 caracteres." });
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == input.ProspectId && x.IsTemporaryLead);
+        if (lead == null)
+            return new JsonResult(new { ok = false, message = "El prospecto ya no está disponible (posiblemente convertido)." });
+        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+            return new JsonResult(new { ok = false, message = "Sin acceso al prospecto." });
+
+        var userName = (User.Identity?.Name ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(userName))
+            userName = await _db.EmployeeProfiles
+                .Where(x => x.UserId == userId)
+                .Select(x => x.FullName)
+                .FirstOrDefaultAsync() ?? "Usuario";
+
+        var note = new SalesProspectNote
+        {
+            ClientId = lead.Id,
+            UserId = string.IsNullOrWhiteSpace(userId) ? null : userId,
+            UserName = userName,
+            Note = text,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.SalesProspectNotes.Add(note);
+        await _db.SaveChangesAsync();
+
+        return new JsonResult(new
+        {
+            ok = true,
+            item = new
+            {
+                id = note.Id,
+                userName = note.UserName,
+                note = note.Note,
+                createdAt = note.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            }
+        });
+    }
+
     private async Task<bool> EnsurePermissionsAsync()
     {
         IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
@@ -392,4 +486,10 @@ public class ProspectsModel : PageModel
         nameof(QuoteRequestStatus.Rejected) => "Rechazada",
         _ => status
     };
+
+    public class AddProspectNoteInput
+    {
+        public Guid ProspectId { get; set; }
+        public string? Note { get; set; }
+    }
 }

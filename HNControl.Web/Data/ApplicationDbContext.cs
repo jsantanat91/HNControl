@@ -32,6 +32,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<SalesOpportunity> SalesOpportunities => Set<SalesOpportunity>();
     public DbSet<SalesSipAccount> SalesSipAccounts => Set<SalesSipAccount>();
     public DbSet<SalesCallLog> SalesCallLogs => Set<SalesCallLog>();
+    public DbSet<SalesProspectNote> SalesProspectNotes => Set<SalesProspectNote>();
     public DbSet<SalesAuditLog> SalesAuditLogs => Set<SalesAuditLog>();
     public DbSet<BillingInvoicePlan> BillingInvoicePlans => Set<BillingInvoicePlan>();
     public DbSet<BillingInvoiceLine> BillingInvoiceLines => Set<BillingInvoiceLine>();
@@ -264,6 +265,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .HasPrincipalKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SalesProspectNote>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(64);
+            e.Property(x => x.UserName).HasMaxLength(180);
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.HasIndex(x => new { x.ClientId, x.CreatedAt });
+            e.HasOne(x => x.Client)
+                .WithMany()
+                .HasForeignKey(x => x.ClientId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

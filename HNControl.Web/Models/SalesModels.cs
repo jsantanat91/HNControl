@@ -137,3 +137,22 @@ public class SalesCallLog
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public class SalesProspectNote
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ClientId { get; set; }
+    public Client? Client { get; set; }
+
+    [MaxLength(64)]
+    public string? UserId { get; set; }
+
+    [MaxLength(180)]
+    public string UserName { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string Note { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
