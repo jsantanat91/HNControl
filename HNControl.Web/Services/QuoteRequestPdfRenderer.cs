@@ -1,6 +1,8 @@
 ﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -12,31 +14,26 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _cfg;
     private readonly IFileStorage _storage;
+    private readonly IWebHostEnvironment _env;
 
-    public QuoteRequestPdfRenderer(ApplicationDbContext db, IConfiguration cfg, IFileStorage storage)
+    public QuoteRequestPdfRenderer(ApplicationDbContext db, IConfiguration cfg, IFileStorage storage, IWebHostEnvironment env)
     {
         _db = db;
         _cfg = cfg;
         _storage = storage;
+        _env = env;
     }
 
     public async Task<byte[]> RenderAsync(QuoteRequest request)
     {
-        // Soporte para render persistido (con Id) y preview (sin guardar en DB).
         QuoteRequest q;
         if (request.Lines.Count > 0)
-        {
             q = request;
-        }
         else
-        {
             q = await _db.QuoteRequests
                 .Include(x => x.Lines)
                 .FirstAsync(x => x.Id == request.Id);
-        }
 
-        // Query only stable columns so older DB schemas (without new optional
-        // MercadoPago protected fields) do not break quote PDF generation.
         var sys = await _db.SystemConfigurations
             .AsNoTracking()
             .OrderByDescending(x => x.UpdatedAt)
@@ -50,62 +47,58 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
 
         var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
         var companyLegal = string.IsNullOrWhiteSpace(sys?.CompanyLegalName) ? company : sys!.CompanyLegalName.Trim();
+        var website = (_cfg["Branding:Website"] ?? "www.hubnet-solutions.net").Trim();
         var logo = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
 
         var created = q.CreatedAt == default ? DateTime.UtcNow : q.CreatedAt;
 
-        var doc = Document.Create(c =>
+        var quotePdf = Document.Create(c =>
         {
             c.Page(p =>
             {
                 p.Size(PageSizes.A4);
-                p.Margin(24);
+                p.Margin(20);
                 p.DefaultTextStyle(x => x.FontSize(10));
 
-                p.Header().Row(r =>
+                p.Header().Column(head =>
                 {
-                    r.RelativeItem().Column(col =>
+                    head.Item().Row(r =>
                     {
-                        col.Item().Text(companyLegal).FontSize(15).SemiBold();
-                        col.Item().Text(company).FontSize(10).FontColor(Colors.Grey.Darken1);
-                        col.Item().Text("Cotizacion a la medida").FontSize(12).FontColor(Colors.Grey.Darken2);
-                        col.Item().Text($"Folio: {q.Folio}").SemiBold();
-                    });
-                    r.ConstantItem(150).AlignRight().AlignMiddle().Element(e =>
-                    {
-                        if (logo is { Length: > 0 })
-                            e.Height(52).Width(150).Image(logo).FitArea();
-                        else
-                            e.Text("HN").FontSize(16).Bold();
-                    });
-                });
-
-                p.Content().PaddingTop(10).Column(col =>
-                {
-                    col.Spacing(8);
-
-                    // Bloque estilo similar a Orden: datos cliente + meta.
-                    col.Item().Row(row =>
-                    {
-                        row.RelativeItem().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
+                        r.RelativeItem(1).Column(col =>
                         {
-                            x.Item().Text("Cliente").SemiBold();
-                            x.Item().Text(q.CustomerName);
-                            x.Item().Text(q.CustomerEmail).FontColor(Colors.Grey.Darken2);
-                            x.Item().Text(q.CustomerPhone).FontColor(Colors.Grey.Darken2);
-                            x.Item().Text(q.CustomerLocation).FontColor(Colors.Grey.Darken2);
-                            if (!string.IsNullOrWhiteSpace(q.CompanyName))
-                                x.Item().Text($"Empresa: {q.CompanyName}").FontColor(Colors.Grey.Darken2);
+                            if (logo is { Length: > 0 })
+                                col.Item().Height(62).Image(logo).FitHeight();
+                            else
+                                col.Item().Text(company).FontSize(16).SemiBold();
                         });
 
-                        row.ConstantItem(260).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Column(x =>
+                        r.RelativeItem(2).AlignRight().Column(col =>
                         {
-                            x.Item().Text("Datos de cotizacion").SemiBold();
-                            x.Item().Text($"Segmento: {LabelSegment(q.Segment)}");
-                            x.Item().Text($"Estatus: {LabelStatus(q.Status)}");
-                            x.Item().Text($"Fecha: {created.ToLocalTime():yyyy-MM-dd HH:mm}");
-                            if (q.ManualItemsCount > 0)
-                                x.Item().Text($"Conceptos manuales: {q.ManualItemsCount}");
+                            col.Item().Text(companyLegal).SemiBold().AlignRight();
+                            col.Item().Text(website).FontSize(10).FontColor(Colors.Grey.Darken2).AlignRight();
+                            col.Item().PaddingTop(8).Text("ESTIMACION").FontSize(10).FontColor(Colors.Grey.Darken2).AlignRight();
+                            col.Item().PaddingTop(6).Text($"Estimacion#  {q.Folio}").SemiBold().AlignRight();
+                            col.Item().Text($"Fecha de estimacion  {created:dd MMM yyyy}").AlignRight();
+                        });
+                    });
+
+                    head.Item().PaddingTop(6).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                });
+
+                p.Content().PaddingTop(8).Column(col =>
+                {
+                    col.Spacing(10);
+
+                    col.Item().Row(row =>
+                    {
+                        row.RelativeItem().Column(x =>
+                        {
+                            x.Item().Text("Receptor").FontSize(10).FontColor(Colors.Grey.Darken2);
+                            x.Item().Text(string.IsNullOrWhiteSpace(q.CompanyName) ? q.CustomerName : q.CompanyName).SemiBold().FontSize(12);
+                            if (!string.IsNullOrWhiteSpace(q.CompanyName) && !string.Equals(q.CustomerName, q.CompanyName, StringComparison.OrdinalIgnoreCase))
+                                x.Item().Text(q.CustomerName).FontColor(Colors.Grey.Darken2);
+                            x.Item().Text(q.CustomerLocation).FontColor(Colors.Grey.Darken2);
+                            x.Item().Text($"{q.CustomerEmail} · {q.CustomerPhone}").FontColor(Colors.Grey.Darken2);
                         });
                     });
 
@@ -116,45 +109,44 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                         {
                             t.ColumnsDefinition(cd =>
                             {
-                                cd.RelativeColumn(1.1f);
-                                cd.RelativeColumn(1.1f);
-                                cd.RelativeColumn(1f);
-                                cd.ConstantColumn(40);
-                                cd.ConstantColumn(65);
-                                cd.ConstantColumn(70);
-                                cd.ConstantColumn(72);
-                                cd.ConstantColumn(82);
-                            });
-                            t.Header(h =>
-                            {
-                                h.Cell().Element(CellHead).Text("Categoria");
-                                h.Cell().Element(CellHead).Text("Servicio");
-                                h.Cell().Element(CellHead).Text("Subproducto");
-                                h.Cell().Element(CellHead).AlignCenter().Text("Cant");
-                                h.Cell().Element(CellHead).AlignCenter().Text("Recurr.");
-                                h.Cell().Element(CellHead).AlignCenter().Text("Modalidad");
-                                h.Cell().Element(CellHead).AlignRight().Text("Costo unit. (sin IVA)");
-                                h.Cell().Element(CellHead).AlignRight().Text("Subtotal (sin IVA)");
+                                cd.ConstantColumn(24);
+                                cd.RelativeColumn(2.1f);
+                                cd.ConstantColumn(55);
+                                cd.ConstantColumn(90);
+                                cd.ConstantColumn(90);
                             });
 
+                            t.Header(h =>
+                            {
+                                h.Cell().Element(CellHead).AlignCenter().Text("#");
+                                h.Cell().Element(CellHead).Text("Descripcion");
+                                h.Cell().Element(CellHead).AlignCenter().Text("Cantidad");
+                                h.Cell().Element(CellHead).AlignRight().Text("Costo");
+                                h.Cell().Element(CellHead).AlignRight().Text("Total");
+                            });
+
+                            var index = 0;
                             foreach (var line in q.Lines)
                             {
-                                t.Cell().Element(CellBody).Text(line.CategoryName);
-                                t.Cell().Element(CellBody).Text(line.ServiceName);
-                                t.Cell().Element(CellBody).Text(line.SubproductName ?? "-");
-                                t.Cell().Element(CellBody).AlignCenter().Text(line.Quantity.ToString());
-                                t.Cell().Element(CellBody).AlignCenter().Text(string.IsNullOrWhiteSpace(line.Recurrence) ? "Unica" : line.Recurrence);
-                                t.Cell().Element(CellBody).AlignCenter().Text(LabelOffer(line.OfferType));
-                                t.Cell().Element(CellBody).AlignRight()
-                                    .Text(line.IsManualPrice
-                                        ? "Manual"
-                                        : (line.PriceIncludesVat
-                                            ? Money(((line.UnitPrice ?? 0m) / 1.16m))
-                                            : Money(line.UnitPrice)));
-                                t.Cell().Element(CellBody).AlignRight()
-                                    .Text(line.IsManualPrice
-                                        ? "Por validar"
-                                        : Money(line.BaseAmount ?? 0m));
+                                index++;
+                                var qty = line.Quantity <= 0 ? 1 : line.Quantity;
+                                var unitNoVat = line.PriceIncludesVat ? ((line.UnitPrice ?? 0m) / 1.16m) : (line.UnitPrice ?? 0m);
+                                var subtotalNoVat = line.IsManualPrice
+                                    ? Math.Round((line.UnitPrice ?? 0m) * qty, 2)
+                                    : (line.BaseAmount ?? Math.Round(unitNoVat * qty, 2));
+
+                                var desc = line.ServiceName;
+                                if (!string.IsNullOrWhiteSpace(line.SubproductName))
+                                    desc += $" ({line.SubproductName})";
+                                if (!string.IsNullOrWhiteSpace(line.Description) && !string.Equals(line.Description.Trim(), line.ServiceName.Trim(), StringComparison.OrdinalIgnoreCase))
+                                    desc += $"\n{line.Description}";
+                                desc += $"\n{LabelSegment(q.Segment)} · {LabelOffer(line.OfferType)} · {(string.IsNullOrWhiteSpace(line.Recurrence) ? "Unica" : line.Recurrence)}";
+
+                                t.Cell().Element(CellBody).AlignCenter().Text(index.ToString());
+                                t.Cell().Element(CellBody).Text(desc);
+                                t.Cell().Element(CellBody).AlignCenter().Text(qty.ToString("0.##"));
+                                t.Cell().Element(CellBody).AlignRight().Text(Money(unitNoVat));
+                                t.Cell().Element(CellBody).AlignRight().Text(Money(subtotalNoVat));
                             }
                         });
                     });
@@ -163,33 +155,36 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
                     {
                         r.RelativeItem().Column(x =>
                         {
-                            x.Item().Text("Notas").SemiBold();
+                            x.Item().Text("Observaciones").SemiBold();
                             x.Item().Text(string.IsNullOrWhiteSpace(q.Notes)
-                                ? "La cotizacion puede ajustarse despues de visita tecnica."
+                                ? "Esperamos seguir haciendo negocios con usted."
                                 : q.Notes);
+
                             if (q.ContractTermMonths.HasValue)
-                                x.Item().PaddingTop(4).Text($"Tiempo de contrato: {q.ContractTermMonths} meses").SemiBold();
+                                x.Item().PaddingTop(4).Text($"Periodo de contrato: {q.ContractTermMonths} meses").SemiBold();
+
                             if (!string.IsNullOrWhiteSpace(q.GeneralTerms))
                             {
                                 x.Item().PaddingTop(6).Text("Condiciones generales").SemiBold();
                                 x.Item().Text(q.GeneralTerms);
                             }
                         });
-                        r.ConstantItem(190).Column(x =>
+
+                        r.ConstantItem(210).Column(x =>
                         {
                             x.Item().AlignRight().Text($"Subtotal sin IVA: {Money(q.SubtotalBeforeVat)}");
                             x.Item().AlignRight().Text($"IVA 16%: {Money(q.VatAmount)}");
-                            x.Item().AlignRight().Text($"Total estimado: {Money(q.EstimatedTotal)}").SemiBold();
+                            x.Item().AlignRight().Text($"Total: {Money(q.EstimatedTotal)}").SemiBold().FontSize(12);
                         });
                     });
                 });
 
-                p.Footer().AlignCenter().Text($"Generado: {DateTime.Now:yyyy-MM-dd HH:mm} · {companyLegal}")
-                    .FontSize(9).FontColor(Colors.Grey.Darken1);
+                p.Footer().AlignCenter().Text($"{companyLegal} · Generado: {DateTime.Now:yyyy-MM-dd HH:mm}")
+                    .FontSize(8).FontColor(Colors.Grey.Darken1);
             });
-        });
+        }).GeneratePdf();
 
-        return doc.GeneratePdf();
+        return await MergeCatalogWithQuoteAsync(quotePdf);
     }
 
     private static IContainer CellHead(IContainer c) =>
@@ -205,21 +200,11 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
         _ => "Residencial"
     };
 
-    private static string LabelStatus(QuoteRequestStatus s) => s switch
-    {
-        QuoteRequestStatus.New => "Nueva",
-        QuoteRequestStatus.Emailed => "Enviada",
-        QuoteRequestStatus.EmailError => "Error de envio",
-        QuoteRequestStatus.Accepted => "Aceptada",
-        QuoteRequestStatus.Rejected => "Rechazada",
-        _ => s.ToString()
-    };
-
     private static string LabelOffer(QuoteOfferType x) => x switch
     {
         QuoteOfferType.Sale => "Venta",
         QuoteOfferType.MonthlyRent => "Renta",
-        QuoteOfferType.Lease => "Arrendam.",
+        QuoteOfferType.Lease => "Arrendamiento",
         _ => x.ToString()
     };
 
@@ -241,6 +226,44 @@ public class QuoteRequestPdfRenderer : IQuoteRequestPdfRenderer
         catch
         {
             return null;
+        }
+    }
+
+    private async Task<byte[]> MergeCatalogWithQuoteAsync(byte[] quotePdf)
+    {
+        var configured = _cfg["Quotes:CatalogPdfPath"];
+        var relative = string.IsNullOrWhiteSpace(configured) ? "assets/catalog/Catalogo_2026.pdf" : configured.Trim();
+        var catalogPath = Path.IsPathRooted(relative)
+            ? relative
+            : Path.Combine(_env.ContentRootPath, relative.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!File.Exists(catalogPath))
+            return quotePdf;
+
+        try
+        {
+            var catalogBytes = await File.ReadAllBytesAsync(catalogPath);
+            using var output = new PdfDocument();
+
+            using (var catalogDoc = PdfReader.Open(new MemoryStream(catalogBytes), PdfDocumentOpenMode.Import))
+            {
+                for (var i = 0; i < catalogDoc.PageCount; i++)
+                    output.AddPage(catalogDoc.Pages[i]);
+            }
+
+            using (var quoteDoc = PdfReader.Open(new MemoryStream(quotePdf), PdfDocumentOpenMode.Import))
+            {
+                for (var i = 0; i < quoteDoc.PageCount; i++)
+                    output.AddPage(quoteDoc.Pages[i]);
+            }
+
+            using var ms = new MemoryStream();
+            output.Save(ms, false);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return quotePdf;
         }
     }
 }
