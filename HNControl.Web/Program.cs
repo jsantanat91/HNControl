@@ -267,6 +267,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
 
     var db = services.GetRequiredService<ApplicationDbContext>();
+    await EnsureLegacyBrokenMigrationMarkedAsAppliedAsync(db);
     await db.Database.MigrateAsync();
     await EnsureQuoteSchemaAsync(db);
     await EnsureBillingSchemaAsync(db);
@@ -294,6 +295,51 @@ using (var scope = app.Services.CreateScope())
         app.Logger.LogWarning(ex, "SeedEval360: tablas aún no existen o no accesibles (se omite).");
     }
 
+}
+
+static async Task EnsureLegacyBrokenMigrationMarkedAsAppliedAsync(ApplicationDbContext db)
+{
+    const string brokenMigrationId = "20260508201704_AddSalesProspectNotes";
+
+    try
+    {
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!pending.Contains(brokenMigrationId))
+        {
+            return;
+        }
+
+        var quoteHasContractTermMonths = await db.Database.SqlQueryRaw<int>("""
+SELECT 1
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'QuoteRequests'
+  AND column_name = 'ContractTermMonths'
+LIMIT 1;
+""").AnyAsync();
+
+        if (!quoteHasContractTermMonths)
+        {
+            return;
+        }
+
+        var productVersion = await db.Database.SqlQueryRaw<string>("""
+SELECT "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId" DESC
+LIMIT 1;
+""").FirstOrDefaultAsync() ?? "8.0.0";
+
+        await db.Database.ExecuteSqlInterpolatedAsync($$"""
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ({{brokenMigrationId}}, {{productVersion}})
+ON CONFLICT ("MigrationId") DO NOTHING;
+""");
+    }
+    catch
+    {
+        // Si no puede leer/escribir __EFMigrationsHistory, dejamos que el flujo normal lo reporte.
+    }
 }
 
 app.Use(async (ctx, next) =>
