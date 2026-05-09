@@ -309,13 +309,16 @@ static async Task EnsureLegacyBrokenMigrationMarkedAsAppliedAsync(ApplicationDbC
             return;
         }
 
+        // Detecta columna existente en tabla con o sin comillas/case-sensitive.
         var quoteHasContractTermMonths = await db.Database.SqlQueryRaw<int>("""
 SELECT 1
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND table_name = 'QuoteRequests'
-  AND column_name = 'ContractTermMonths'
-LIMIT 1;
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN ('QuoteRequests', 'quoterequests')
+      AND column_name IN ('ContractTermMonths', 'contracttermmonths')
+)
 """).AnyAsync();
 
         if (!quoteHasContractTermMonths)
