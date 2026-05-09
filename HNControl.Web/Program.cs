@@ -309,39 +309,63 @@ static async Task EnsureLegacyBrokenMigrationMarkedAsAppliedAsync(ApplicationDbC
             return;
         }
 
-        // Detecta columna existente en tabla con o sin comillas/case-sensitive.
-        var quoteHasContractTermMonths = await db.Database.SqlQueryRaw<int>("""
-SELECT 1
-WHERE EXISTS (
+        await db.Database.OpenConnectionAsync();
+        await using var cmd = db.Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = """
+SELECT EXISTS (
     SELECT 1
     FROM information_schema.columns
     WHERE table_schema = 'public'
       AND table_name IN ('QuoteRequests', 'quoterequests')
       AND column_name IN ('ContractTermMonths', 'contracttermmonths')
 )
-""").AnyAsync();
+""";
+        var existsObj = await cmd.ExecuteScalarAsync();
+        var quoteHasContractTermMonths = existsObj is bool b && b;
 
         if (!quoteHasContractTermMonths)
         {
             return;
         }
 
-        var productVersion = await db.Database.SqlQueryRaw<string>("""
+        cmd.CommandText = """
 SELECT "ProductVersion"
 FROM "__EFMigrationsHistory"
 ORDER BY "MigrationId" DESC
-LIMIT 1;
-""").FirstOrDefaultAsync() ?? "8.0.0";
+LIMIT 1
+""";
+        var pvObj = await cmd.ExecuteScalarAsync();
+        var productVersion = pvObj as string;
+        if (string.IsNullOrWhiteSpace(productVersion))
+        {
+            productVersion = "8.0.0";
+        }
 
-        await db.Database.ExecuteSqlInterpolatedAsync($$"""
+        cmd.Parameters.Clear();
+        var pMigrationId = cmd.CreateParameter();
+        pMigrationId.ParameterName = "@migrationId";
+        pMigrationId.Value = brokenMigrationId;
+        cmd.Parameters.Add(pMigrationId);
+
+        var pProductVersion = cmd.CreateParameter();
+        pProductVersion.ParameterName = "@productVersion";
+        pProductVersion.Value = productVersion;
+        cmd.Parameters.Add(pProductVersion);
+
+        cmd.CommandText = """
 INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-VALUES ({{brokenMigrationId}}, {{productVersion}})
-ON CONFLICT ("MigrationId") DO NOTHING;
-""");
+VALUES (@migrationId, @productVersion)
+ON CONFLICT ("MigrationId") DO NOTHING
+""";
+        await cmd.ExecuteNonQueryAsync();
     }
     catch
     {
         // Si no puede leer/escribir __EFMigrationsHistory, dejamos que el flujo normal lo reporte.
+    }
+    finally
+    {
+        await db.Database.CloseConnectionAsync();
     }
 }
 
