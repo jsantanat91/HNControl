@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Sales;
@@ -331,35 +332,63 @@ public class ProspectsModel : PageModel
 
     public async Task<IActionResult> OnPostAddProspectNoteAsync([FromBody] AddProspectNoteInput? input)
     {
-        if (!await EnsurePermissionsAsync() || !CanEdit)
-            return new JsonResult(new { ok = false, message = "Sin permiso para notas." });
+        try
+        {
+            if (!await EnsurePermissionsAsync() || !CanEdit)
+                return new JsonResult(new { ok = false, message = "Sin permiso para notas." });
 
-        if (input == null || input.ProspectId == Guid.Empty)
-            return new JsonResult(new { ok = false, message = "Prospecto inválido." });
+            if (input == null || input.ProspectId == Guid.Empty)
+                return new JsonResult(new { ok = false, message = "Prospecto inválido." });
 
-        var text = (input.Note ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(text))
-            return new JsonResult(new { ok = false, message = "La nota está vacía." });
-        if (text.Length > 2000)
-            return new JsonResult(new { ok = false, message = "La nota excede 2000 caracteres." });
+            var text = (input.Note ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return new JsonResult(new { ok = false, message = "La nota está vacía." });
+            if (text.Length > 2000)
+                return new JsonResult(new { ok = false, message = "La nota excede 2000 caracteres." });
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-        var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == input.ProspectId && x.IsTemporaryLead);
-        if (lead == null)
-            return new JsonResult(new { ok = false, message = "El prospecto ya no está disponible (posiblemente convertido)." });
-        if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
-            return new JsonResult(new { ok = false, message = "Sin acceso al prospecto." });
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+            var lead = await _db.Clients.FirstOrDefaultAsync(x => x.Id == input.ProspectId && x.IsTemporaryLead);
+            if (lead == null)
+                return new JsonResult(new { ok = false, message = "El prospecto ya no está disponible (posiblemente convertido)." });
+            if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
+                return new JsonResult(new { ok = false, message = "Sin acceso al prospecto." });
 
-        var userName = (User.Identity?.Name ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(userName))
-            userName = await _db.EmployeeProfiles
-                .Where(x => x.UserId == userId)
-                .Select(x => x.FullName)
-                .FirstOrDefaultAsync() ?? "Usuario";
+            var userName = (User.Identity?.Name ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(userName))
+                userName = await _db.EmployeeProfiles
+                    .Where(x => x.UserId == userId)
+                    .Select(x => x.FullName)
+                    .FirstOrDefaultAsync() ?? "Usuario";
 
+            var note = await SaveProspectNoteWithSchemaRecoveryAsync(lead.Id, userId, userName, text);
+
+            return new JsonResult(new
+            {
+                ok = true,
+                item = new
+                {
+                    id = note.Id,
+                    userName = note.UserName,
+                    note = note.Note,
+                    createdAt = note.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return new JsonResult(new
+            {
+                ok = false,
+                message = $"Error guardando nota: {ex.Message}"
+            });
+        }
+    }
+
+    private async Task<SalesProspectNote> SaveProspectNoteWithSchemaRecoveryAsync(Guid clientId, string userId, string userName, string text)
+    {
         var note = new SalesProspectNote
         {
-            ClientId = lead.Id,
+            ClientId = clientId,
             UserId = string.IsNullOrWhiteSpace(userId) ? null : userId,
             UserName = userName,
             Note = text,
@@ -367,19 +396,57 @@ public class ProspectsModel : PageModel
         };
 
         _db.SalesProspectNotes.Add(note);
-        await _db.SaveChangesAsync();
-
-        return new JsonResult(new
+        try
         {
-            ok = true,
-            item = new
+            await _db.SaveChangesAsync();
+            return note;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && (pg.SqlState == "42P01" || pg.SqlState == "42703"))
+        {
+            _db.Entry(note).State = EntityState.Detached;
+            await EnsureProspectNotesSchemaAsync();
+
+            var retry = new SalesProspectNote
             {
-                id = note.Id,
-                userName = note.UserName,
-                note = note.Note,
-                createdAt = note.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-            }
-        });
+                ClientId = clientId,
+                UserId = string.IsNullOrWhiteSpace(userId) ? null : userId,
+                UserName = userName,
+                Note = text,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.SalesProspectNotes.Add(retry);
+            await _db.SaveChangesAsync();
+            return retry;
+        }
+    }
+
+    private async Task EnsureProspectNotesSchemaAsync()
+    {
+        await _db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."SalesProspectNotes" (
+    "Id" uuid NOT NULL,
+    "ClientId" uuid NOT NULL,
+    "UserId" character varying(64) NULL,
+    "UserName" character varying(160) NOT NULL DEFAULT '',
+    "Note" character varying(2000) NOT NULL DEFAULT '',
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_SalesProspectNotes" PRIMARY KEY ("Id")
+);
+
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "ClientId" uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "UserId" character varying(64);
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "UserName" character varying(160) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "Note" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS "IX_SalesProspectNotes_ClientId_CreatedAt"
+    ON public."SalesProspectNotes" ("ClientId", "CreatedAt");
+""");
     }
 
     private async Task<bool> EnsurePermissionsAsync()

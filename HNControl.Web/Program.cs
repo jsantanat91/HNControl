@@ -818,6 +818,30 @@ ALTER TABLE IF EXISTS public."SalesAuditLogs"
     ALTER COLUMN "Details" TYPE character varying(2000);
 ALTER TABLE IF EXISTS public.salesauditlogs
     ALTER COLUMN "Details" TYPE character varying(2000);
+
+CREATE TABLE IF NOT EXISTS public."SalesProspectNotes" (
+    "Id" uuid NOT NULL,
+    "ClientId" uuid NOT NULL,
+    "UserId" character varying(64) NULL,
+    "UserName" character varying(160) NOT NULL DEFAULT '',
+    "Note" character varying(2000) NOT NULL DEFAULT '',
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+    CONSTRAINT "PK_SalesProspectNotes" PRIMARY KEY ("Id")
+);
+
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "ClientId" uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "UserId" character varying(64);
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "UserName" character varying(160) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "Note" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SalesProspectNotes"
+    ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS "IX_SalesProspectNotes_ClientId_CreatedAt"
+    ON public."SalesProspectNotes" ("ClientId", "CreatedAt");
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")
