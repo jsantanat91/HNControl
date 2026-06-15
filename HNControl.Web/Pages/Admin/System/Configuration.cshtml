@@ -267,8 +267,68 @@
                         }
                     </div>
 
+                    <div class="col-12"><hr /></div>
+                    <div class="col-12">
+                        <div class="fw-semibold">WhatsApp / OpenWA</div>
+                        <div class="text-muted small">Gateway compatible con OpenWA. Se envia adicional al correo cuando esta activo.</div>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" asp-for="Input.WhatsAppEnabled" />
+                            <label class="form-check-label" asp-for="Input.WhatsAppEnabled">Habilitar WhatsApp</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">URL Gateway OpenWA</label>
+                        <input class="form-control" asp-for="Input.WhatsAppGatewayUrl" placeholder="http://openwa:3000" />
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">API Key / Token interno</label>
+                        <input class="form-control" asp-for="Input.WhatsAppApiKey" type="password" placeholder="Dejar vacio para conservar" />
+                        @if (Model.HasWhatsAppApiKey)
+                        {
+                            <div class="small text-success">Token guardado.</div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Telefonos internos para alertas</label>
+                        <input class="form-control" asp-for="Input.WhatsAppInternalPhonesCsv" placeholder="525655273643, 5255..." />
+                        <div class="form-text">Separados por coma. Se usan para tickets y alertas internas.</div>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" asp-for="Input.WhatsAppNotifyTickets" />
+                            <label class="form-check-label" asp-for="Input.WhatsAppNotifyTickets">Notificar tickets</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" asp-for="Input.WhatsAppNotifyCustomers" />
+                            <label class="form-check-label" asp-for="Input.WhatsAppNotifyCustomers">Notificar clientes</label>
+                        </div>
+                    </div>
+
                     <div class="col-12 d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Guardar API</button>
+                    </div>
+                </form>
+
+                <form method="post" asp-page-handler="TestWhatsApp" class="row g-3 mt-2">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label">Enviar prueba WhatsApp</label>
+                        <input class="form-control" asp-for="Input.WhatsAppTestPhone" placeholder="525655273643" />
+                    </div>
+                    <div class="col-12 col-md-3 d-flex align-items-end">
+                        <button class="btn btn-outline-success w-100" type="submit">Probar WhatsApp</button>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">Guarda la configuracion API antes de probar el envio.</div>
                     </div>
                 </form>
             </div>

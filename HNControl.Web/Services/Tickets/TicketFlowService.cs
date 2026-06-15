@@ -12,13 +12,15 @@ public class TicketFlowService : ITicketFlowService
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
+    private readonly IWhatsAppSender _whatsApp;
     private readonly IConfiguration _cfg;
 
-    public TicketFlowService(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IConfiguration cfg)
+    public TicketFlowService(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IWhatsAppSender whatsApp, IConfiguration cfg)
     {
         _db = db;
         _storage = storage;
         _email = email;
+        _whatsApp = whatsApp;
         _cfg = cfg;
     }
 
@@ -557,19 +559,20 @@ public class TicketFlowService : ITicketFlowService
 
         if (ticket.Source == TicketSource.PublicPortal)
         {
+            var customerSubject = $"Ticket recibido: {ticket.TicketNumber}";
+            var customerBody = BuildTicketEmailBody(
+                title: "Ticket recibido",
+                ticket,
+                clientName,
+                branch,
+                extraMessage: "Hemos recibido tu solicitud y te notificaremos cada movimiento hasta el cierre.");
+
             var to = (ticket.RequesterEmail ?? "").Trim();
             if (!string.IsNullOrWhiteSpace(to))
-            {
-                await TrySendAsync(
-                    to,
-                    $"Ticket recibido: {ticket.TicketNumber}",
-                    BuildTicketEmailBody(
-                        title: "Ticket recibido",
-                        ticket,
-                        clientName,
-                        branch,
-                        extraMessage: "Hemos recibido tu solicitud y te notificaremos cada movimiento hasta el cierre."));
-            }
+                await TrySendAsync(to, customerSubject, customerBody);
+
+            if (await ShouldNotifyCustomerByWhatsAppAsync(ct))
+                await TrySendWhatsAppAsync(ticket.RequesterPhone, ToPlainText(customerSubject, customerBody), ct);
         }
     }
 
@@ -589,14 +592,15 @@ public class TicketFlowService : ITicketFlowService
 
         if (ticket.Source == TicketSource.PublicPortal || forceCustomer)
         {
+            var customerSubject = $"{title}: {ticket.TicketNumber}";
+            var customerBody = BuildTicketEmailBody(title, ticket, clientName, branch, WebUtility.HtmlEncode(detail));
+
             var to = (ticket.RequesterEmail ?? "").Trim();
             if (!string.IsNullOrWhiteSpace(to))
-            {
-                await TrySendAsync(
-                    to,
-                    $"{title}: {ticket.TicketNumber}",
-                    BuildTicketEmailBody(title, ticket, clientName, branch, WebUtility.HtmlEncode(detail)));
-            }
+                await TrySendAsync(to, customerSubject, customerBody);
+
+            if (await ShouldNotifyCustomerByWhatsAppAsync(ct))
+                await TrySendWhatsAppAsync(ticket.RequesterPhone, ToPlainText(customerSubject, customerBody), ct);
         }
     }
 
@@ -605,6 +609,11 @@ public class TicketFlowService : ITicketFlowService
         var recipients = GetInternalTicketRecipients();
         foreach (var recipient in recipients)
             await TrySendAsync(recipient, subject, bodyHtml);
+
+        var phones = await GetInternalWhatsAppRecipientsAsync(ct);
+        var message = ToPlainText(subject, bodyHtml);
+        foreach (var phone in phones)
+            await TrySendWhatsAppAsync(phone, message, ct);
     }
 
     private async Task<(string? clientName, string? branch)> ResolveClientContextAsync(Ticket ticket, CancellationToken ct)
@@ -679,6 +688,71 @@ public class TicketFlowService : ITicketFlowService
         {
             // No interrumpir el flujo principal por errores de correo.
         }
+    }
+
+    private async Task TrySendWhatsAppAsync(string phone, string message, CancellationToken ct)
+    {
+        try
+        {
+            await _whatsApp.SendAsync(phone, message, ct);
+        }
+        catch
+        {
+            // No interrumpir el flujo principal por errores de WhatsApp.
+        }
+    }
+
+    private async Task<List<string>> GetInternalWhatsAppRecipientsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var cfg = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            if (cfg?.WhatsAppEnabled != true || !cfg.WhatsAppNotifyTickets)
+                return [];
+
+            return SplitPhones(cfg.WhatsAppInternalPhonesCsv);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private async Task<bool> ShouldNotifyCustomerByWhatsAppAsync(CancellationToken ct)
+    {
+        try
+        {
+            var cfg = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+            return cfg?.WhatsAppEnabled == true && cfg.WhatsAppNotifyTickets && cfg.WhatsAppNotifyCustomers;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static List<string> SplitPhones(string csv)
+        => (csv ?? "")
+            .Split(new[] { ',', ';', ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => new string(x.Where(char.IsDigit).ToArray()))
+            .Where(x => x.Length >= 10)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+    private static string ToPlainText(string subject, string htmlBody)
+    {
+        var text = WebUtility.HtmlDecode(System.Text.RegularExpressions.Regex.Replace(htmlBody ?? "", "<.*?>", " "));
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+        if (text.Length > 1200)
+            text = text[..1200] + "...";
+        return $"HN Control\n{subject}\n{text}";
     }
 
     private static bool CanOperate(Ticket t, string userId, bool isAdmin)

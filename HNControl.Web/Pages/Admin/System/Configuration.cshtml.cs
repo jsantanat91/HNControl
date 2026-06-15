@@ -19,12 +19,14 @@ public class ConfigurationModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly ISecretProtector _protector;
+    private readonly IWhatsAppSender _whatsApp;
 
-    public ConfigurationModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector)
+    public ConfigurationModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector, IWhatsAppSender whatsApp)
     {
         _db = db;
         _storage = storage;
         _protector = protector;
+        _whatsApp = whatsApp;
     }
 
     [TempData] public string? Flash { get; set; }
@@ -42,6 +44,7 @@ public class ConfigurationModel : PageModel
     public bool HasCsdPassword { get; set; }
     public bool HasMercadoPagoToken { get; set; }
     public bool HasMercadoPagoWebhookSecret { get; set; }
+    public bool HasWhatsAppApiKey { get; set; }
     public string LogoName { get; set; } = "";
 
     public class InputModel
@@ -79,6 +82,13 @@ public class ConfigurationModel : PageModel
         [MaxLength(220)] public string MercadoPagoPublicKey { get; set; } = "";
         [MaxLength(220)] public string MercadoPagoAccessToken { get; set; } = "";
         [MaxLength(220)] public string MercadoPagoWebhookSecret { get; set; } = "";
+        public bool WhatsAppEnabled { get; set; }
+        [MaxLength(300)] public string WhatsAppGatewayUrl { get; set; } = "";
+        [MaxLength(2200)] public string WhatsAppApiKey { get; set; } = "";
+        [MaxLength(1000)] public string WhatsAppInternalPhonesCsv { get; set; } = "";
+        public bool WhatsAppNotifyTickets { get; set; } = true;
+        public bool WhatsAppNotifyCustomers { get; set; }
+        [MaxLength(40)] public string WhatsAppTestPhone { get; set; } = "";
 
         [MaxLength(400)] public string Notes { get; set; } = "";
         public IFormFile? CompanyLogo { get; set; }
@@ -310,11 +320,44 @@ public class ConfigurationModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.MercadoPagoWebhookSecret))
             entity.MercadoPagoWebhookSecretProtected = _protector.Protect(Input.MercadoPagoWebhookSecret.Trim());
 
+        entity.WhatsAppEnabled = Input.WhatsAppEnabled;
+        entity.WhatsAppGatewayUrl = (Input.WhatsAppGatewayUrl ?? "").Trim();
+        entity.WhatsAppInternalPhonesCsv = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
+        entity.WhatsAppNotifyTickets = Input.WhatsAppNotifyTickets;
+        entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
+        if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
+            entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
+
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         Flash = "Configuracion API guardada.";
         FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostTestWhatsAppAsync()
+    {
+        var phone = (Input.WhatsAppTestPhone ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            Flash = "Ingresa un telefono de prueba para WhatsApp.";
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
+        try
+        {
+            await _whatsApp.SendAsync(phone, "Prueba de WhatsApp desde HN Control. Configuracion OpenWA activa.");
+            Flash = $"WhatsApp enviado a {phone}.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            Flash = $"No se pudo enviar WhatsApp: {ex.Message}";
+            FlashType = "danger";
+        }
+
         return RedirectToPage();
     }
 
@@ -384,7 +427,8 @@ public class ConfigurationModel : PageModel
                 SmtpPort = 587,
                 SmtpSecurity = "StartTls",
                 SmtpTimeoutMs = 15000,
-                PublicBaseUrl = ""
+                PublicBaseUrl = "",
+                WhatsAppNotifyTickets = true
             };
             HasLogo = false;
             return;
@@ -416,6 +460,11 @@ public class ConfigurationModel : PageModel
             CfdiSerieDefault = cfg.CfdiSerieDefault,
             PublicBaseUrl = cfg.PublicBaseUrl,
             MercadoPagoPublicKey = cfg.MercadoPagoPublicKey,
+            WhatsAppEnabled = cfg.WhatsAppEnabled,
+            WhatsAppGatewayUrl = cfg.WhatsAppGatewayUrl,
+            WhatsAppInternalPhonesCsv = cfg.WhatsAppInternalPhonesCsv,
+            WhatsAppNotifyTickets = cfg.WhatsAppNotifyTickets,
+            WhatsAppNotifyCustomers = cfg.WhatsAppNotifyCustomers,
             Notes = cfg.Notes
         };
 
@@ -427,6 +476,7 @@ public class ConfigurationModel : PageModel
         HasCsdPassword = !string.IsNullOrWhiteSpace(cfg.CsdPasswordProtected);
         HasMercadoPagoToken = !string.IsNullOrWhiteSpace(cfg.MercadoPagoAccessTokenProtected);
         HasMercadoPagoWebhookSecret = !string.IsNullOrWhiteSpace(cfg.MercadoPagoWebhookSecretProtected);
+        HasWhatsAppApiKey = !string.IsNullOrWhiteSpace(cfg.WhatsAppApiKeyProtected);
     }
 
     private async Task<SystemConfiguration?> GetLatestConfigSafeAsync()

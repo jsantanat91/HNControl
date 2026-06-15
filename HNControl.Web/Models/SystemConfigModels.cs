@@ -107,6 +107,21 @@ public class SystemConfiguration
     [MaxLength(2200)]
     public string MercadoPagoWebhookSecretProtected { get; set; } = "";
 
+    public bool WhatsAppEnabled { get; set; }
+
+    [MaxLength(300)]
+    public string WhatsAppGatewayUrl { get; set; } = "";
+
+    [MaxLength(2200)]
+    public string WhatsAppApiKeyProtected { get; set; } = "";
+
+    [MaxLength(1000)]
+    public string WhatsAppInternalPhonesCsv { get; set; } = "";
+
+    public bool WhatsAppNotifyTickets { get; set; } = true;
+
+    public bool WhatsAppNotifyCustomers { get; set; }
+
     [MaxLength(220)]
     public string PublicBaseUrl { get; set; } = "";
 

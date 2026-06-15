@@ -120,6 +120,10 @@ builder.Services.AddScoped<ModulePermissionPageFilter>();
 // Monitoreo
 // --------------------
 builder.Services.AddHttpClient("monitoring");
+builder.Services.AddHttpClient("openwa", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddScoped<IMonitorProbeService, MonitorProbeService>();
 builder.Services.AddHostedService<MonitorWorker>();
 
@@ -224,6 +228,7 @@ builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
 // EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
+builder.Services.AddScoped<IWhatsAppSender, OpenWaWhatsAppSender>();
 
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
@@ -1050,6 +1055,18 @@ ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "MercadoPagoWebhookSecretProtected" character varying(2200) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "PublicBaseUrl" character varying(220) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppEnabled" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppGatewayUrl" character varying(300) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppApiKeyProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppInternalPhonesCsv" character varying(1000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
 
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "MercadoPagoAccessTokenProtected" character varying(2200) NOT NULL DEFAULT '';
@@ -1059,6 +1076,18 @@ ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "MercadoPagoWebhookSecretProtected" character varying(2200) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "PublicBaseUrl" character varying(220) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppEnabled" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppGatewayUrl" character varying(300) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppApiKeyProtected" character varying(2200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppInternalPhonesCsv" character varying(1000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

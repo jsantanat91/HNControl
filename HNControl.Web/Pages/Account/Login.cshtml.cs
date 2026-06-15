@@ -19,6 +19,7 @@ public class LoginModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _db;
     private readonly IEmailSender _email;
+    private readonly IWhatsAppSender _whatsApp;
     private readonly IDataProtector _protector;
     private const string TrustedCookieName = "HNControl.Trusted2FA";
     private const string RememberedEmailCookieName = "HNControl.LoginEmail";
@@ -28,12 +29,14 @@ public class LoginModel : PageModel
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         IEmailSender email,
+        IWhatsAppSender whatsApp,
         IDataProtectionProvider dataProtectionProvider)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _db = db;
         _email = email;
+        _whatsApp = whatsApp;
         _protector = dataProtectionProvider.CreateProtector("HNControl.Login.TwoFactorTrust.v1");
     }
 
@@ -122,27 +125,84 @@ public class LoginModel : PageModel
         _db.LoginTwoFactorChallenges.Add(challenge);
         await _db.SaveChangesAsync();
 
-        try
-        {
-            await _email.SendAsync(
-                challenge.UserEmail,
-                "Código de seguridad HN Control",
-                $"<p>Tu código de acceso es:</p><h2 style=\"letter-spacing:2px\">{code}</h2><p>Válido por 10 minutos.</p>");
-        }
-        catch (Exception ex)
+        var delivery = await SendTwoFactorCodeAsync(user, challenge.UserEmail, code);
+        if (!delivery.Sent)
         {
             _db.LoginTwoFactorChallenges.Remove(challenge);
             await _db.SaveChangesAsync();
-            Error = $"No se pudo enviar el código de acceso por correo. Revisa la configuración SMTP. Detalle: {ex.Message}";
+            Error = $"No se pudo enviar el código de acceso por correo ni WhatsApp. Detalle: {delivery.Error}";
             return Page();
         }
 
         Input.AwaitingTwoFactor = true;
         Input.ChallengeId = challenge.Id;
         Input.Password = string.Empty;
-        Info = "Te enviamos un código de 8 dígitos a tu correo.";
+        Info = delivery.InfoMessage;
         ModelState.Clear();
         return Page();
+    }
+
+    private async Task<TwoFactorDeliveryResult> SendTwoFactorCodeAsync(ApplicationUser user, string email, string code)
+    {
+        var emailSent = false;
+        var whatsAppSent = false;
+        var errors = new List<string>();
+
+        try
+        {
+            await _email.SendAsync(
+                email,
+                "Código de seguridad HN Control",
+                $"<p>Tu código de acceso es:</p><h2 style=\"letter-spacing:2px\">{code}</h2><p>Válido por 10 minutos.</p>");
+            emailSent = true;
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"Correo: {ex.Message}");
+        }
+
+        var phone = await GetTwoFactorPhoneAsync(user);
+        if (!string.IsNullOrWhiteSpace(phone) && await _whatsApp.IsConfiguredAsync())
+        {
+            try
+            {
+                await _whatsApp.SendAsync(
+                    phone,
+                    $"Codigo de seguridad HN Control: {code}. Valido por 10 minutos.");
+                whatsAppSent = true;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"WhatsApp: {ex.Message}");
+            }
+        }
+
+        if (emailSent && whatsAppSent)
+            return new(true, "Te enviamos un código de 8 dígitos a tu correo y WhatsApp.", "");
+
+        if (emailSent)
+            return new(true, "Te enviamos un código de 8 dígitos a tu correo.", "");
+
+        if (whatsAppSent)
+            return new(true, "Te enviamos un código de 8 dígitos por WhatsApp.", "");
+
+        if (string.IsNullOrWhiteSpace(phone))
+            errors.Add("WhatsApp: el empleado no tiene teléfono registrado.");
+
+        return new(false, "", string.Join(" | ", errors));
+    }
+
+    private async Task<string?> GetTwoFactorPhoneAsync(ApplicationUser user)
+    {
+        var profilePhone = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.UserId == user.Id)
+            .Select(x => x.Phone)
+            .FirstOrDefaultAsync();
+
+        return !string.IsNullOrWhiteSpace(profilePhone)
+            ? profilePhone
+            : user.PhoneNumber;
     }
 
     private async Task<IActionResult> VerifyTwoFactorAsync()
@@ -307,4 +367,6 @@ public class LoginModel : PageModel
         public string Ip { get; set; } = string.Empty;
         public DateTime ExpiresAtUtc { get; set; }
     }
+
+    private sealed record TwoFactorDeliveryResult(bool Sent, string InfoMessage, string Error);
 }
