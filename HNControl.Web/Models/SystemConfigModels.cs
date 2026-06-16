@@ -123,10 +123,10 @@ public class SystemConfiguration
     public bool WhatsAppNotifyCustomers { get; set; }
 
     [MaxLength(2000)]
-    public string WhatsAppChildCheckInTemplate { get; set; } = "";
+    public string WhatsAppOtpTemplate { get; set; } = "";
 
     [MaxLength(2000)]
-    public string WhatsAppChildCheckOutTemplate { get; set; } = "";
+    public string WhatsAppPayrollReceiptTemplate { get; set; } = "";
 
     [MaxLength(220)]
     public string PublicBaseUrl { get; set; } = "";

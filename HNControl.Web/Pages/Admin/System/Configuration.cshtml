@@ -326,22 +326,23 @@
 
                     <div class="col-12"><hr /></div>
                     <div class="col-12">
-                        <div class="fw-semibold">Plantillas de mensajes WA</div>
+                        <div class="fw-semibold">Plantillas para empleados</div>
                         <div class="text-muted small">
-                            Variables disponibles: <code>{NinoNombre}</code>, <code>{TutorNombre}</code>, <code>{Fecha}</code>, <code>{Hora}</code>, <code>{Sede}</code>.
+                            OTP: <code>{NombreEmpleado}</code>, <code>{CorreoEmpleado}</code>, <code>{Codigo}</code>, <code>{Fecha}</code>, <code>{Hora}</code>, <code>{MinutosValidez}</code>.
+                            Nomina: <code>{NombreEmpleado}</code>, <code>{CorreoEmpleado}</code>, <code>{Periodo}</code>, <code>{FechaPago}</code>, <code>{TotalNeto}</code>, <code>{TotalBruto}</code>, <code>{Deducciones}</code>, <code>{Bonos}</code>, <code>{UrlPortal}</code>.
                         </div>
                     </div>
 
                     <div class="col-12 col-lg-6">
-                        <label class="form-label">Check-in de niños</label>
-                        <textarea class="form-control" asp-for="Input.WhatsAppChildCheckInTemplate" rows="5"></textarea>
-                        <div class="form-text">Mensaje enviado cuando se registra la entrada.</div>
+                        <label class="form-label">Codigo OTP de inicio de sesion</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppOtpTemplate" rows="5"></textarea>
+                        <div class="form-text">Se envia ademas del correo cuando el empleado inicia sesion.</div>
                     </div>
 
                     <div class="col-12 col-lg-6">
-                        <label class="form-label">Check-out de niños</label>
-                        <textarea class="form-control" asp-for="Input.WhatsAppChildCheckOutTemplate" rows="5"></textarea>
-                        <div class="form-text">Mensaje enviado cuando se registra la salida.</div>
+                        <label class="form-label">Recibo de nomina mensual/quincenal</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppPayrollReceiptTemplate" rows="5"></textarea>
+                        <div class="form-text">Se envia cuando se despacha el recibo de nomina por correo.</div>
                     </div>
 
                     <div class="col-12 d-flex gap-2">

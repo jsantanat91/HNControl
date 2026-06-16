@@ -949,8 +949,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.WhatsAppGatewayUrl).HasMaxLength(300);
             e.Property(x => x.WhatsAppApiKeyProtected).HasMaxLength(2200);
             e.Property(x => x.WhatsAppInternalPhonesCsv).HasMaxLength(1000);
-            e.Property(x => x.WhatsAppChildCheckInTemplate).HasMaxLength(2000);
-            e.Property(x => x.WhatsAppChildCheckOutTemplate).HasMaxLength(2000);
+            e.Property(x => x.WhatsAppOtpTemplate).HasMaxLength(2000);
+            e.Property(x => x.WhatsAppPayrollReceiptTemplate).HasMaxLength(2000);
             e.Property(x => x.PublicBaseUrl).HasMaxLength(220);
             e.Property(x => x.Notes).HasMaxLength(400);
             e.HasIndex(x => x.UpdatedAt);

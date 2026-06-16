@@ -1126,9 +1126,9 @@ ALTER TABLE IF EXISTS public."SystemConfigurations"
 ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS public."SystemConfigurations"
-    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckInTemplate" character varying(2000) NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SystemConfigurations"
-    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckOutTemplate" character varying(2000) NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
 
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "MercadoPagoAccessTokenProtected" character varying(2200) NOT NULL DEFAULT '';
@@ -1151,9 +1151,9 @@ ALTER TABLE IF EXISTS public.systemconfigurations
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.systemconfigurations
-    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckInTemplate" character varying(2000) NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public.systemconfigurations
-    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckOutTemplate" character varying(2000) NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

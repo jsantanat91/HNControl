@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HNControl.Web.Pages.Admin;
 
@@ -16,13 +17,17 @@ public class DashboardModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly IPayrollReceiptService _payrollReceipt;
     private readonly IEmailSender _emailSender;
+    private readonly IWhatsAppSender _whatsApp;
     private readonly IFileStorage _storage;
+    private const string DefaultWhatsAppPayrollReceiptTemplate =
+        "Hola {NombreEmpleado}, tu recibo de nomina del periodo {Periodo} esta disponible. Neto: {TotalNeto}. Ingresa al portal para consultarlo.";
 
-    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IFileStorage storage)
+    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IWhatsAppSender whatsApp, IFileStorage storage)
     {
         _db = db;
         _payrollReceipt = payrollReceipt;
         _emailSender = emailSender;
+        _whatsApp = whatsApp;
         _storage = storage;
     }
 
@@ -371,6 +376,8 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
                 $"recibo_nomina_{periodStart:yyyyMMdd}_{periodEnd:yyyyMMdd}.pdf",
                 "application/pdf");
 
+            await TrySendPayrollWhatsAppAsync(employee.Phone, data);
+
             dispatch.IsSent = true;
             dispatch.SentAt = DateTime.UtcNow;
             dispatch.LastError = null;
@@ -388,6 +395,53 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
         return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
     }
 
+    private async Task TrySendPayrollWhatsAppAsync(string? phone, PayrollReceiptData data)
+    {
+        if (string.IsNullOrWhiteSpace(phone) || !await _whatsApp.IsConfiguredAsync())
+            return;
+
+        try
+        {
+            var cfg = await LoadSystemConfigSafeAsync();
+            var period = $"{data.PeriodStart:yyyy-MM-dd} a {data.PeriodEnd:yyyy-MM-dd}";
+            var message = WhatsAppTemplateRenderer.Render(
+                cfg?.WhatsAppPayrollReceiptTemplate,
+                DefaultWhatsAppPayrollReceiptTemplate,
+                new Dictionary<string, string?>
+                {
+                    ["NombreEmpleado"] = data.FullName,
+                    ["CorreoEmpleado"] = data.Email,
+                    ["Periodo"] = period,
+                    ["FechaPago"] = data.PayrollDate.ToString("yyyy-MM-dd"),
+                    ["TotalNeto"] = WhatsAppTemplateRenderer.Money(data.NetEstimated),
+                    ["TotalBruto"] = WhatsAppTemplateRenderer.Money(data.GrossEstimated),
+                    ["Deducciones"] = WhatsAppTemplateRenderer.Money(data.Deductions),
+                    ["Bonos"] = WhatsAppTemplateRenderer.Money(data.Bonuses),
+                    ["UrlPortal"] = cfg?.PublicBaseUrl
+                });
+
+            await _whatsApp.SendAsync(phone, message);
+        }
+        catch
+        {
+            // El recibo por correo no debe fallar si el gateway WA no esta disponible.
+        }
+    }
+
+    private async Task<SystemConfiguration?> LoadSystemConfigSafeAsync()
+    {
+        try
+        {
+            return await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            return null;
+        }
+    }
     private async Task LoadPayrollSummaryAsync(DateTime periodStart, DateTime periodEnd)
     {
         PayrollPeriodLabel = $"{periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";

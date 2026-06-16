@@ -16,11 +16,11 @@ namespace HNControl.Web.Pages.Admin.SystemPages;
 [Authorize(Roles = AppRoles.Admin)]
 public class ConfigurationModel : PageModel
 {
-    public const string DefaultChildCheckInTemplate =
-        "Hola {TutorNombre}, registramos el check-in de {NinoNombre} el {Fecha} a las {Hora}.";
+    public const string DefaultWhatsAppOtpTemplate =
+        "Hola {NombreEmpleado}, tu codigo de acceso a HN Control es {Codigo}. Vence en {MinutosValidez} minutos.";
 
-    public const string DefaultChildCheckOutTemplate =
-        "Hola {TutorNombre}, registramos el check-out de {NinoNombre} el {Fecha} a las {Hora}.";
+    public const string DefaultWhatsAppPayrollReceiptTemplate =
+        "Hola {NombreEmpleado}, tu recibo de nomina del periodo {Periodo} esta disponible. Neto: {TotalNeto}. Ingresa al portal para consultarlo.";
 
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
@@ -95,8 +95,8 @@ public class ConfigurationModel : PageModel
         public bool WhatsAppNotifyTickets { get; set; } = true;
         public bool WhatsAppNotifyCustomers { get; set; }
         [MaxLength(40)] public string WhatsAppTestPhone { get; set; } = "";
-        [MaxLength(2000)] public string WhatsAppChildCheckInTemplate { get; set; } = DefaultChildCheckInTemplate;
-        [MaxLength(2000)] public string WhatsAppChildCheckOutTemplate { get; set; } = DefaultChildCheckOutTemplate;
+        [MaxLength(2000)] public string WhatsAppOtpTemplate { get; set; } = DefaultWhatsAppOtpTemplate;
+        [MaxLength(2000)] public string WhatsAppPayrollReceiptTemplate { get; set; } = DefaultWhatsAppPayrollReceiptTemplate;
 
         [MaxLength(400)] public string Notes { get; set; } = "";
         public IFormFile? CompanyLogo { get; set; }
@@ -355,8 +355,8 @@ public class ConfigurationModel : PageModel
         entity.WhatsAppInternalPhonesCsv = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
         entity.WhatsAppNotifyTickets = Input.WhatsAppNotifyTickets;
         entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
-        entity.WhatsAppChildCheckInTemplate = NormalizeTemplate(Input.WhatsAppChildCheckInTemplate, DefaultChildCheckInTemplate);
-        entity.WhatsAppChildCheckOutTemplate = NormalizeTemplate(Input.WhatsAppChildCheckOutTemplate, DefaultChildCheckOutTemplate);
+        entity.WhatsAppOtpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
+        entity.WhatsAppPayrollReceiptTemplate = NormalizeTemplate(Input.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate);
 
         if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
             entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
@@ -462,8 +462,8 @@ public class ConfigurationModel : PageModel
                 SmtpTimeoutMs = 15000,
                 PublicBaseUrl = "",
                 WhatsAppNotifyTickets = true,
-                WhatsAppChildCheckInTemplate = DefaultChildCheckInTemplate,
-                WhatsAppChildCheckOutTemplate = DefaultChildCheckOutTemplate
+                WhatsAppOtpTemplate = DefaultWhatsAppOtpTemplate,
+                WhatsAppPayrollReceiptTemplate = DefaultWhatsAppPayrollReceiptTemplate
             };
             HasLogo = false;
             return;
@@ -500,8 +500,8 @@ public class ConfigurationModel : PageModel
             WhatsAppInternalPhonesCsv = cfg.WhatsAppInternalPhonesCsv,
             WhatsAppNotifyTickets = cfg.WhatsAppNotifyTickets,
             WhatsAppNotifyCustomers = cfg.WhatsAppNotifyCustomers,
-            WhatsAppChildCheckInTemplate = NormalizeTemplate(cfg.WhatsAppChildCheckInTemplate, DefaultChildCheckInTemplate),
-            WhatsAppChildCheckOutTemplate = NormalizeTemplate(cfg.WhatsAppChildCheckOutTemplate, DefaultChildCheckOutTemplate),
+            WhatsAppOtpTemplate = NormalizeTemplate(cfg.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate),
+            WhatsAppPayrollReceiptTemplate = NormalizeTemplate(cfg.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate),
             Notes = cfg.Notes
         };
 

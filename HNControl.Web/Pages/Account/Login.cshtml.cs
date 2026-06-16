@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HNControl.Web.Pages.Account;
 
@@ -23,6 +24,8 @@ public class LoginModel : PageModel
     private readonly IDataProtector _protector;
     private const string TrustedCookieName = "HNControl.Trusted2FA";
     private const string RememberedEmailCookieName = "HNControl.LoginEmail";
+    private const string DefaultWhatsAppOtpTemplate =
+        "Hola {NombreEmpleado}, tu codigo de acceso a HN Control es {Codigo}. Vence en {MinutosValidez} minutos.";
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
@@ -161,14 +164,36 @@ public class LoginModel : PageModel
             errors.Add($"Correo: {ex.Message}");
         }
 
-        var phone = await GetTwoFactorPhoneAsync(user);
+        var employee = await _db.EmployeeProfiles
+            .AsNoTracking()
+            .Where(x => x.UserId == user.Id)
+            .Select(x => new { x.FullName, x.Email, x.Phone })
+            .FirstOrDefaultAsync();
+
+        var phone = !string.IsNullOrWhiteSpace(employee?.Phone)
+            ? employee.Phone
+            : user.PhoneNumber;
+
         if (!string.IsNullOrWhiteSpace(phone) && await _whatsApp.IsConfiguredAsync())
         {
             try
             {
-                await _whatsApp.SendAsync(
-                    phone,
-                    $"Codigo de seguridad HN Control: {code}. Valido por 10 minutos.");
+                var cfg = await LoadSystemConfigSafeAsync();
+                var now = DateTime.Now;
+                var message = WhatsAppTemplateRenderer.Render(
+                    cfg?.WhatsAppOtpTemplate,
+                    DefaultWhatsAppOtpTemplate,
+                    new Dictionary<string, string?>
+                    {
+                        ["NombreEmpleado"] = string.IsNullOrWhiteSpace(employee?.FullName) ? user.Email : employee.FullName,
+                        ["CorreoEmpleado"] = string.IsNullOrWhiteSpace(employee?.Email) ? email : employee.Email,
+                        ["Codigo"] = code,
+                        ["Fecha"] = now.ToString("yyyy-MM-dd"),
+                        ["Hora"] = now.ToString("HH:mm"),
+                        ["MinutosValidez"] = "10"
+                    });
+
+                await _whatsApp.SendAsync(phone, message);
                 whatsAppSent = true;
             }
             catch (Exception ex)
@@ -192,17 +217,19 @@ public class LoginModel : PageModel
         return new(false, "", string.Join(" | ", errors));
     }
 
-    private async Task<string?> GetTwoFactorPhoneAsync(ApplicationUser user)
+    private async Task<SystemConfiguration?> LoadSystemConfigSafeAsync()
     {
-        var profilePhone = await _db.EmployeeProfiles
-            .AsNoTracking()
-            .Where(x => x.UserId == user.Id)
-            .Select(x => x.Phone)
-            .FirstOrDefaultAsync();
-
-        return !string.IsNullOrWhiteSpace(profilePhone)
-            ? profilePhone
-            : user.PhoneNumber;
+        try
+        {
+            return await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            return null;
+        }
     }
 
     private async Task<IActionResult> VerifyTwoFactorAsync()

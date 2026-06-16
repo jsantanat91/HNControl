@@ -1,6 +1,7 @@
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HNControl.Web.Services;
 
@@ -9,6 +10,8 @@ public class PayrollReceiptDispatchWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PayrollReceiptDispatchWorker> _logger;
     private readonly IConfiguration _cfg;
+    private const string DefaultWhatsAppPayrollReceiptTemplate =
+        "Hola {NombreEmpleado}, tu recibo de nomina del periodo {Periodo} esta disponible. Neto: {TotalNeto}. Ingresa al portal para consultarlo.";
 
     public PayrollReceiptDispatchWorker(IServiceScopeFactory scopeFactory, ILogger<PayrollReceiptDispatchWorker> logger, IConfiguration cfg)
     {
@@ -65,7 +68,9 @@ public class PayrollReceiptDispatchWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var email = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+        var whatsApp = scope.ServiceProvider.GetRequiredService<IWhatsAppSender>();
         var receipt = scope.ServiceProvider.GetRequiredService<IPayrollReceiptService>();
+        var systemConfig = await LoadSystemConfigSafeAsync(db, ct);
 
         var employees = await db.EmployeeProfiles
             .AsNoTracking()
@@ -134,6 +139,8 @@ public class PayrollReceiptDispatchWorker : BackgroundService
                     $"recibo_nomina_{start:yyyyMMdd}_{end:yyyyMMdd}.pdf",
                     "application/pdf");
 
+                await TrySendPayrollWhatsAppAsync(whatsApp, emp.Phone, data, systemConfig, ct);
+
                 log.IsSent = true;
                 log.SentAt = DateTime.UtcNow;
                 log.LastError = null;
@@ -145,6 +152,58 @@ public class PayrollReceiptDispatchWorker : BackgroundService
                 await db.SaveChangesAsync(ct);
                 _logger.LogWarning(ex, "No se pudo enviar recibo de nomina a {Email}", emp.Email);
             }
+        }
+    }
+
+    private async Task TrySendPayrollWhatsAppAsync(
+        IWhatsAppSender whatsApp,
+        string? phone,
+        PayrollReceiptData data,
+        SystemConfiguration? cfg,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(phone) || !await whatsApp.IsConfiguredAsync(ct))
+            return;
+
+        try
+        {
+            var period = $"{data.PeriodStart:yyyy-MM-dd} a {data.PeriodEnd:yyyy-MM-dd}";
+            var message = WhatsAppTemplateRenderer.Render(
+                cfg?.WhatsAppPayrollReceiptTemplate,
+                DefaultWhatsAppPayrollReceiptTemplate,
+                new Dictionary<string, string?>
+                {
+                    ["NombreEmpleado"] = data.FullName,
+                    ["CorreoEmpleado"] = data.Email,
+                    ["Periodo"] = period,
+                    ["FechaPago"] = data.PayrollDate.ToString("yyyy-MM-dd"),
+                    ["TotalNeto"] = WhatsAppTemplateRenderer.Money(data.NetEstimated),
+                    ["TotalBruto"] = WhatsAppTemplateRenderer.Money(data.GrossEstimated),
+                    ["Deducciones"] = WhatsAppTemplateRenderer.Money(data.Deductions),
+                    ["Bonos"] = WhatsAppTemplateRenderer.Money(data.Bonuses),
+                    ["UrlPortal"] = cfg?.PublicBaseUrl
+                });
+
+            await whatsApp.SendAsync(phone, message, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo enviar WhatsApp de recibo de nomina a {Employee}", data.Email);
+        }
+    }
+
+    private static async Task<SystemConfiguration?> LoadSystemConfigSafeAsync(ApplicationDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            return await db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            return null;
         }
     }
 
