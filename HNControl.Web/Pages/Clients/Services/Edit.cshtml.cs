@@ -193,9 +193,11 @@ public class EditModel : PageModel
         await LoadProjectsAsync(ClientId);
         await LoadSalesOpportunitiesAsync(ClientId);
 
-        if (!ModelState.IsValid) return Page();
-
         NormalizeSelectedServiceTypes();
+        ModelState.Remove("Input.ServiceType");
+        ModelState.Remove("Input.SelectedServiceTypes");
+
+        if (!ModelState.IsValid) return Page();
 
         Contract.ServiceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         Contract.Label = (Input.Label ?? "").Trim();
@@ -393,7 +395,7 @@ public class EditModel : PageModel
     {
         Input.SelectedServiceTypes = NormalizeServiceTypeNames(Input.SelectedServiceTypes).ToList();
         if (!Input.SelectedServiceTypes.Any())
-            Input.SelectedServiceTypes = [Input.ServiceType.ToString()];
+            Input.SelectedServiceTypes = [Enum.IsDefined(Input.ServiceType) ? Input.ServiceType.ToString() : ClientServiceType.Internet.ToString()];
     }
 
     private static IEnumerable<string> NormalizeServiceTypeNames(IEnumerable<string>? selected)

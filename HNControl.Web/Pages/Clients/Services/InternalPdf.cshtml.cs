@@ -65,6 +65,10 @@ public class InternalPdfModel : PageModel
         var tech = ClientServiceContractMetadata.ParseTechnical(contract.Notes);
         var serviceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes : [contract.ServiceType.ToString()];
         var notes = ClientServiceContractMetadata.StripMeta(contract.Notes);
+        var recurrence = MetaValue(contract.Notes, "Recurrencia");
+        var term = MetaValue(contract.Notes, "Plazo");
+        var saleId = MetaValue(contract.Notes, "VentaId");
+        var feasibilityId = MetaValue(contract.Notes, "FactibilidadId");
 
         return Document.Create(container =>
         {
@@ -139,44 +143,91 @@ public class InternalPdfModel : PageModel
 
                             Row(table, "Monto mensual antes de IVA", (contract.MonthlyAmount ?? 0m).ToString("C2"));
                             Row(table, "Costo de instalacion antes de IVA", tech.InstallationCost.ToString("C2"));
+                            Row(table, "Recurrencia", recurrence);
+                            Row(table, "Tiempo de contrato", FormatTerm(term));
                             Row(table, "Inicio", contract.ContractStartDate?.ToString("dd/MM/yyyy"));
                             Row(table, "Vencimiento", contract.ContractEndDate?.ToString("dd/MM/yyyy"));
+                            Row(table, "Venta relacionada", saleId);
+                            Row(table, "Factibilidad origen", feasibilityId);
                         });
                     });
 
                     col.Item().Element(Card).Column(c =>
                     {
-                        c.Item().Text("Ficha tecnica").Bold().FontSize(12);
-                        c.Item().PaddingTop(8).Table(table =>
-                        {
-                            table.ColumnsDefinition(cols =>
-                            {
-                                cols.RelativeColumn();
-                                cols.RelativeColumn();
-                            });
+                        c.Item().Text("Ficha tecnica completa").Bold().FontSize(12);
 
-                            if (serviceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase))
-                                Row(table, "Internet - Capacidad", PickOther(tech.InternetCapacity, tech.InternetCapacityOther, "MB", appendSuffixForOther: false));
-                            if (serviceTypes.Contains("Telefonia", StringComparer.OrdinalIgnoreCase))
+                        if (serviceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(8).Text("Internet").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Table(table =>
                             {
-                                Row(table, "Telefonia - Extensiones", tech.TelephonyExtensions);
-                                Row(table, "Telefonia - Troncales", tech.TelephonyTrunks);
-                                Row(table, "Telefonia - DID", tech.TelephonyDids);
-                            }
-                            if (serviceTypes.Contains("CCTV", StringComparer.OrdinalIgnoreCase))
-                                Row(table, "CCTV - Canales", PickOther(tech.CctvChannels, tech.CctvChannelsOther, "canales", appendSuffixForOther: false));
-                            if (serviceTypes.Contains("Seguridad", StringComparer.OrdinalIgnoreCase))
-                                Row(table, "Seguridad", PickOther(tech.SecurityBrand, tech.SecurityBrandOther));
-                            if (serviceTypes.Contains("Servidores", StringComparer.OrdinalIgnoreCase))
+                                DefineTwoColumns(table);
+                                Row(table, "Capacidad MB", tech.InternetCapacity);
+                                Row(table, "Capacidad personalizada", tech.InternetCapacityOther);
+                                Row(table, "Capacidad operativa", PickOther(tech.InternetCapacity, tech.InternetCapacityOther, "MB", appendSuffixForOther: false));
+                            });
+                        }
+
+                        if (serviceTypes.Contains("Telefonia", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("Telefonia").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Table(table =>
                             {
-                                Row(table, "Servidor - Sistema operativo", tech.ServerOs);
-                                Row(table, "Servidor - Nucleos", tech.ServerCpuCores);
-                                Row(table, "Servidor - RAM", tech.ServerRam);
-                                Row(table, "Servidor - Disco duro", tech.ServerDisk);
-                            }
-                            if (serviceTypes.Contains("Hardware", StringComparer.OrdinalIgnoreCase))
-                                Row(table, "Hardware", "Detalle en notas");
-                        });
+                                DefineTwoColumns(table);
+                                Row(table, "Extensiones", tech.TelephonyExtensions);
+                                Row(table, "Troncales", tech.TelephonyTrunks);
+                                Row(table, "DID", tech.TelephonyDids);
+                            });
+                        }
+
+                        if (serviceTypes.Contains("CCTV", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("CCTV").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Table(table =>
+                            {
+                                DefineTwoColumns(table);
+                                Row(table, "Canales", tech.CctvChannels);
+                                Row(table, "Canales personalizados", tech.CctvChannelsOther);
+                                Row(table, "Canales operativos", PickOther(tech.CctvChannels, tech.CctvChannelsOther, "canales", appendSuffixForOther: false));
+                            });
+                        }
+
+                        if (serviceTypes.Contains("Seguridad", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("Seguridad").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Table(table =>
+                            {
+                                DefineTwoColumns(table);
+                                Row(table, "Fabricante / plataforma", tech.SecurityBrand);
+                                Row(table, "Detalle personalizado", tech.SecurityBrandOther);
+                                Row(table, "Plataforma operativa", PickOther(tech.SecurityBrand, tech.SecurityBrandOther));
+                            });
+                        }
+
+                        if (serviceTypes.Contains("Servidores", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("Servidores").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Table(table =>
+                            {
+                                DefineTwoColumns(table);
+                                Row(table, "Sistema operativo", tech.ServerOs);
+                                Row(table, "Nucleos", tech.ServerCpuCores);
+                                Row(table, "RAM", tech.ServerRam);
+                                Row(table, "Disco duro", tech.ServerDisk);
+                            });
+                        }
+
+                        if (serviceTypes.Contains("Hardware", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("Hardware").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Text("El detalle de hardware se documenta en notas del contrato.");
+                        }
+
+                        if (serviceTypes.Contains("Otro", StringComparer.OrdinalIgnoreCase))
+                        {
+                            c.Item().PaddingTop(10).Text("Otro").Bold().FontColor(Colors.Blue.Medium);
+                            c.Item().PaddingTop(4).Text("Servicio adicional documentado en notas del contrato.");
+                        }
                     });
 
                     if (!string.IsNullOrWhiteSpace(notes))
@@ -209,6 +260,42 @@ public class InternalPdfModel : PageModel
             .Text(label).FontColor(Colors.Grey.Darken2);
         table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten3).PaddingVertical(4)
             .Text(string.IsNullOrWhiteSpace(value) ? "-" : value.Trim()).SemiBold();
+    }
+
+    private static void DefineTwoColumns(TableDescriptor table)
+    {
+        table.ColumnsDefinition(cols =>
+        {
+            cols.RelativeColumn();
+            cols.RelativeColumn();
+        });
+    }
+
+    private static string MetaValue(string? notes, string key)
+    {
+        foreach (var line in (notes ?? string.Empty).Split('\n'))
+        {
+            var clean = line.Trim().TrimEnd('\r');
+            if (!clean.StartsWith("[META]", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var payload = clean[6..].Trim();
+            var parts = payload.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length == 2 && parts[0].Equals(key, StringComparison.OrdinalIgnoreCase))
+                return parts[1].Trim();
+        }
+
+        return string.Empty;
+    }
+
+    private static string FormatTerm(string? term)
+    {
+        var clean = (term ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(clean))
+            return string.Empty;
+        if (clean.Equals("Indefinido", StringComparison.OrdinalIgnoreCase))
+            return "Indefinido";
+        return clean.EndsWith("meses", StringComparison.OrdinalIgnoreCase) ? clean : $"{clean} meses";
     }
 
     private static string PickOther(string value, string other, string suffix = "", bool appendSuffixForOther = true)

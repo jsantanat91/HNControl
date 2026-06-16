@@ -39,7 +39,14 @@
                     {
                         var isChecked = Model.Input.SelectedServiceTypes.Contains(serviceType, StringComparer.OrdinalIgnoreCase);
                         <label class="btn btn-sm @(isChecked ? "btn-primary" : "btn-outline-primary") service-type-chip">
-                            <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" checked="@isChecked" />
+                            @if (isChecked)
+                            {
+                                <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" checked />
+                            }
+                            else
+                            {
+                                <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" />
+                            }
                             @serviceType
                         </label>
                     }

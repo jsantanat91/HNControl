@@ -176,6 +176,10 @@ public class CreateModel : PageModel
             }
         }
 
+        NormalizeSelectedServiceTypes();
+        ModelState.Remove("Input.ServiceType");
+        ModelState.Remove("Input.SelectedServiceTypes");
+
         if (!ModelState.IsValid) return Page();
 
         QuoteCatalogItem? selectedPackage = null;
@@ -185,8 +189,6 @@ public class CreateModel : PageModel
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == Input.ServicePackageId.Value && x.VariantGroup == ServicePackageMarker);
         }
-
-        NormalizeSelectedServiceTypes();
 
         var serviceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         if (selectedPackage != null && Enum.TryParse<ClientServiceType>(selectedPackage.VariantValue, true, out var parsedType))
@@ -399,7 +401,7 @@ public class CreateModel : PageModel
     {
         Input.SelectedServiceTypes = NormalizeServiceTypeNames(Input.SelectedServiceTypes).ToList();
         if (!Input.SelectedServiceTypes.Any())
-            Input.SelectedServiceTypes = [Input.ServiceType.ToString()];
+            Input.SelectedServiceTypes = [Enum.IsDefined(Input.ServiceType) ? Input.ServiceType.ToString() : ClientServiceType.Internet.ToString()];
     }
 
     private static IEnumerable<string> NormalizeServiceTypeNames(IEnumerable<string>? selected)
