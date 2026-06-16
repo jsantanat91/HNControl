@@ -126,6 +126,17 @@
                                         <a class="btn btn-sm btn-outline-success"
                                            asp-page="/Clients/Services/InternalPdf"
                                            asp-route-id="@c.Id">PDF</a>
+                                        @if (Model.CanEdit)
+                                        {
+                                            <form method="post"
+                                                  asp-page-handler="DeleteContract"
+                                                  asp-route-id="@Model.Client.Id"
+                                                  asp-route-contractId="@c.Id"
+                                                  onsubmit="return confirm('¿Eliminar este contrato? Se quitarán las ligas con facturación, tickets, órdenes, monitoreo y documentos, pero no se borrarán esos registros.');"
+                                                  class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                            </form>
+                                        }
                                     </div>
                                 </div>
                             </div>

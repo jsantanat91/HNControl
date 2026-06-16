@@ -359,6 +359,67 @@ public class DetailsModel : PageModel
         return RedirectToPage(new { id });
     }
 
+    public async Task<IActionResult> OnPostDeleteContractAsync(Guid id, Guid contractId)
+    {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        if (!canEdit) return Forbid();
+        if (!await CanAccessClientAsync(id)) return Forbid();
+
+        var contract = await _db.ClientServiceContracts
+            .FirstOrDefaultAsync(c => c.Id == contractId && c.ClientId == id);
+
+        if (contract == null)
+        {
+            TempData["ClientDetailsInfo"] = "Contrato no encontrado.";
+            TempData["ClientDetailsInfoType"] = "warning";
+            return RedirectToPage(new { id });
+        }
+
+        try
+        {
+            await _db.ClientLegalDocuments
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.BillingInvoicePlans
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.KnowledgeLinks
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.ClientCarrierServices
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.MonitorTargets
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.Tickets
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            await _db.ServiceOrders
+                .Where(x => x.ClientServiceContractId == contractId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
+
+            _db.ClientServiceContracts.Remove(contract);
+            await _db.SaveChangesAsync();
+
+            TempData["ClientDetailsInfo"] = "Contrato eliminado. Los registros relacionados se conservaron sin liga al contrato.";
+            TempData["ClientDetailsInfoType"] = "success";
+        }
+        catch
+        {
+            TempData["ClientDetailsInfo"] = "No se pudo eliminar el contrato. Revisa si existe una migracion pendiente o una relacion nueva ligada al contrato.";
+            TempData["ClientDetailsInfoType"] = "danger";
+        }
+
+        return RedirectToPage(new { id });
+    }
+
     public async Task<IActionResult> OnPostResetPortalAccessAsync(Guid id)
     {
         if (!AppRoles.IsGlobalAdmin(User))

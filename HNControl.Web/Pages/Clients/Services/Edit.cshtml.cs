@@ -197,7 +197,11 @@ public class EditModel : PageModel
         ModelState.Remove("Input.ServiceType");
         ModelState.Remove("Input.SelectedServiceTypes");
 
-        if (!ModelState.IsValid) return Page();
+        if (!ModelState.IsValid)
+        {
+            Error = BuildModelStateError();
+            return Page();
+        }
 
         Contract.ServiceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         Contract.Label = (Input.Label ?? "").Trim();
@@ -417,6 +421,19 @@ public class EditModel : PageModel
     {
         if (!string.IsNullOrWhiteSpace(value))
             lines.Add($"[META] {key}={value.Trim()}");
+    }
+
+    private string BuildModelStateError()
+    {
+        var errors = ModelState
+            .Where(x => x.Value?.Errors.Count > 0)
+            .SelectMany(x => x.Value!.Errors.Select(e => $"{x.Key}: {e.ErrorMessage}"))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+
+        return errors.Any()
+            ? "No se pudo guardar el contrato. Revisa: " + string.Join(" | ", errors)
+            : "No se pudo guardar el contrato. Revisa los campos obligatorios.";
     }
 
     private static decimal ParseMoney(string? value)
