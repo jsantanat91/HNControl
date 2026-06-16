@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -48,6 +49,8 @@ public class EditModel : PageModel
 
         [Required] public ClientServiceType ServiceType { get; set; }
 
+        public List<string> SelectedServiceTypes { get; set; } = [];
+
         [Required, MaxLength(200)]
         public string Label { get; set; } = "";
 
@@ -73,6 +76,23 @@ public class EditModel : PageModel
 
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
+
+        [Range(0, 99999999)]
+        public decimal InstallationCost { get; set; } = 0m;
+
+        [MaxLength(20)] public string InternetCapacity { get; set; } = "";
+        [MaxLength(40)] public string InternetCapacityOther { get; set; } = "";
+        [MaxLength(20)] public string TelephonyExtensions { get; set; } = "";
+        [MaxLength(20)] public string TelephonyTrunks { get; set; } = "";
+        [MaxLength(20)] public string TelephonyDids { get; set; } = "";
+        [MaxLength(20)] public string CctvChannels { get; set; } = "";
+        [MaxLength(40)] public string CctvChannelsOther { get; set; } = "";
+        [MaxLength(40)] public string SecurityBrand { get; set; } = "";
+        [MaxLength(80)] public string SecurityBrandOther { get; set; } = "";
+        [MaxLength(80)] public string ServerOs { get; set; } = "";
+        [MaxLength(20)] public string ServerCpuCores { get; set; } = "";
+        [MaxLength(40)] public string ServerRam { get; set; } = "";
+        [MaxLength(80)] public string ServerDisk { get; set; } = "";
 
         [MaxLength(20)]
         public string BillingRecurrence { get; set; } = "Mensual";
@@ -112,11 +132,13 @@ public class EditModel : PageModel
         await LoadProjectsAsync(ClientId);
         await LoadSalesOpportunitiesAsync(ClientId);
         var meta = ParseNotesMetadata(Contract.Notes);
+        var tech = ClientServiceContractMetadata.ParseTechnical(Contract.Notes);
 
         Input = new InputModel
         {
             Id = Contract.Id,
             ServiceType = Contract.ServiceType,
+            SelectedServiceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes.ToList() : [Contract.ServiceType.ToString()],
             Label = Contract.Label,
             Provider = Contract.Provider,
             AccountNumber = string.IsNullOrWhiteSpace(Contract.AccountNumber) ? ClientCode : Contract.AccountNumber,
@@ -126,6 +148,20 @@ public class EditModel : PageModel
             BranchAddress = Contract.BranchAddress,
             BillingRecurrence = meta.Recurrence,
             ContractTermOption = meta.Term,
+            InstallationCost = meta.InstallationCost,
+            InternetCapacity = tech.InternetCapacity,
+            InternetCapacityOther = tech.InternetCapacityOther,
+            TelephonyExtensions = tech.TelephonyExtensions,
+            TelephonyTrunks = tech.TelephonyTrunks,
+            TelephonyDids = tech.TelephonyDids,
+            CctvChannels = tech.CctvChannels,
+            CctvChannelsOther = tech.CctvChannelsOther,
+            SecurityBrand = tech.SecurityBrand,
+            SecurityBrandOther = tech.SecurityBrandOther,
+            ServerOs = tech.ServerOs,
+            ServerCpuCores = tech.ServerCpuCores,
+            ServerRam = tech.ServerRam,
+            ServerDisk = tech.ServerDisk,
             SalesOpportunityId = meta.SalesOpportunityId,
             ContractStartDate = Contract.ContractStartDate?.Date,
             ContractEndDate = Contract.ContractEndDate?.Date,
@@ -159,7 +195,9 @@ public class EditModel : PageModel
 
         if (!ModelState.IsValid) return Page();
 
-        Contract.ServiceType = Input.ServiceType;
+        NormalizeSelectedServiceTypes();
+
+        Contract.ServiceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         Contract.Label = (Input.Label ?? "").Trim();
         Contract.Provider = (Input.Provider ?? "").Trim();
         Contract.AccountNumber = string.IsNullOrWhiteSpace(Input.AccountNumber) ? ClientCode : Input.AccountNumber.Trim();
@@ -174,7 +212,22 @@ public class EditModel : PageModel
             (Input.Notes ?? "").Trim(),
             Input.BillingRecurrence,
             Input.ContractTermOption,
-            Input.SalesOpportunityId);
+            Input.SalesOpportunityId,
+            Input.InstallationCost,
+            Input.SelectedServiceTypes,
+            Input.InternetCapacity,
+            Input.InternetCapacityOther,
+            Input.TelephonyExtensions,
+            Input.TelephonyTrunks,
+            Input.TelephonyDids,
+            Input.CctvChannels,
+            Input.CctvChannelsOther,
+            Input.SecurityBrand,
+            Input.SecurityBrandOther,
+            Input.ServerOs,
+            Input.ServerCpuCores,
+            Input.ServerRam,
+            Input.ServerDisk);
         Contract.UpdatedAt = DateTime.UtcNow;
 
         if (Input.SignedContract != null && Input.SignedContract.Length > 0)
@@ -252,12 +305,13 @@ public class EditModel : PageModel
         SalesOpportunityItems = new SelectList(rows, "Id", "Label");
     }
 
-    private static (string Notes, string Recurrence, string Term, Guid? SalesOpportunityId) ParseNotesMetadata(string? rawNotes)
+    private static (string Notes, string Recurrence, string Term, Guid? SalesOpportunityId, decimal InstallationCost) ParseNotesMetadata(string? rawNotes)
     {
         var notes = new List<string>();
         string recurrence = "Mensual";
         string term = "12";
         Guid? salesOpportunityId = null;
+        var installationCost = 0m;
 
         foreach (var line in (rawNotes ?? string.Empty).Split('\n'))
         {
@@ -279,14 +333,35 @@ public class EditModel : PageModel
                 recurrence = NormalizeRecurrence(value);
             else if (key.Equals("Plazo", StringComparison.OrdinalIgnoreCase))
                 term = NormalizeTerm(value);
+            else if (key.Equals("CostoInstalacion", StringComparison.OrdinalIgnoreCase) || key.Equals("COSTOINST", StringComparison.OrdinalIgnoreCase))
+                installationCost = ParseMoney(value);
             else if (key.Equals("VentaId", StringComparison.OrdinalIgnoreCase) && Guid.TryParse(value, out var gid))
                 salesOpportunityId = gid;
         }
 
-        return (string.Join(Environment.NewLine, notes).Trim(), recurrence, term, salesOpportunityId);
+        return (string.Join(Environment.NewLine, notes).Trim(), recurrence, term, salesOpportunityId, installationCost);
     }
 
-    private static string ComposeNotesMetadata(string rawNotes, string recurrence, string termOption, Guid? salesOpportunityId)
+    private static string ComposeNotesMetadata(
+        string rawNotes,
+        string recurrence,
+        string termOption,
+        Guid? salesOpportunityId,
+        decimal installationCost,
+        IReadOnlyCollection<string> selectedServiceTypes,
+        string internetCapacity,
+        string internetCapacityOther,
+        string telephonyExtensions,
+        string telephonyTrunks,
+        string telephonyDids,
+        string cctvChannels,
+        string cctvChannelsOther,
+        string securityBrand,
+        string securityBrandOther,
+        string serverOs,
+        string serverCpuCores,
+        string serverRam,
+        string serverDisk)
     {
         var notes = (rawNotes ?? string.Empty).Trim();
         var lines = new List<string>();
@@ -294,9 +369,62 @@ public class EditModel : PageModel
             lines.Add(notes);
         lines.Add($"[META] Recurrencia={NormalizeRecurrence(recurrence)}");
         lines.Add($"[META] Plazo={NormalizeTerm(termOption)}");
+        lines.Add($"[META] CostoInstalacion={Math.Max(0m, installationCost).ToString("0.##", CultureInfo.InvariantCulture)}");
+        lines.Add($"[META] TiposServicio={string.Join('|', NormalizeServiceTypeNames(selectedServiceTypes))}");
+        AddMeta(lines, "InternetCapacidad", internetCapacity);
+        AddMeta(lines, "InternetCapacidadOtro", internetCapacityOther);
+        AddMeta(lines, "TelefoniaExtensiones", telephonyExtensions);
+        AddMeta(lines, "TelefoniaTroncales", telephonyTrunks);
+        AddMeta(lines, "TelefoniaDID", telephonyDids);
+        AddMeta(lines, "CCTVCanales", cctvChannels);
+        AddMeta(lines, "CCTVCanalesOtro", cctvChannelsOther);
+        AddMeta(lines, "SeguridadMarca", securityBrand);
+        AddMeta(lines, "SeguridadMarcaOtro", securityBrandOther);
+        AddMeta(lines, "ServidorSO", serverOs);
+        AddMeta(lines, "ServidorNucleos", serverCpuCores);
+        AddMeta(lines, "ServidorRAM", serverRam);
+        AddMeta(lines, "ServidorDisco", serverDisk);
         if (salesOpportunityId.HasValue)
             lines.Add($"[META] VentaId={salesOpportunityId.Value}");
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private void NormalizeSelectedServiceTypes()
+    {
+        Input.SelectedServiceTypes = NormalizeServiceTypeNames(Input.SelectedServiceTypes).ToList();
+        if (!Input.SelectedServiceTypes.Any())
+            Input.SelectedServiceTypes = [Input.ServiceType.ToString()];
+    }
+
+    private static IEnumerable<string> NormalizeServiceTypeNames(IEnumerable<string>? selected)
+    {
+        var allowed = Enum.GetNames<ClientServiceType>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (selected ?? [])
+            .Select(x => (x ?? "").Trim())
+            .Where(x => allowed.Contains(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static ClientServiceType PrimaryServiceType(IEnumerable<string> selected, ClientServiceType fallback)
+    {
+        var first = NormalizeServiceTypeNames(selected).FirstOrDefault();
+        return Enum.TryParse<ClientServiceType>(first, true, out var parsed) ? parsed : fallback;
+    }
+
+    private static void AddMeta(List<string> lines, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            lines.Add($"[META] {key}={value.Trim()}");
+    }
+
+    private static decimal ParseMoney(string? value)
+    {
+        var raw = (value ?? string.Empty).Trim();
+        if (decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var invariant))
+            return Math.Max(0m, invariant);
+        if (decimal.TryParse(raw, NumberStyles.Any, new CultureInfo("es-MX"), out var localized))
+            return Math.Max(0m, localized);
+        return 0m;
     }
 
     private static string NormalizeRecurrence(string? recurrence) => (recurrence ?? "").Trim() switch
@@ -306,14 +434,17 @@ public class EditModel : PageModel
         _ => "Mensual"
     };
 
-    private static string NormalizeTerm(string? termOption) => termOption switch
+    private static string NormalizeTerm(string? termOption)
     {
-        "12" => "12",
-        "18" => "18",
-        "24" => "24",
-        "36" => "36",
-        _ => "Indefinido"
-    };
+        var value = (termOption ?? "").Trim();
+        if (value.Equals("Indefinido", StringComparison.OrdinalIgnoreCase))
+            return "Indefinido";
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var months) && months > 0
+            ? months.ToString(CultureInfo.InvariantCulture)
+            : "Indefinido";
+    }
 }
 
 

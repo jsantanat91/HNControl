@@ -59,7 +59,9 @@ public class DetailsModel : PageModel
         string StatusText,
         string StatusBadgeClass,
         bool HasContractFile,
-        string ProjectTitle
+        string ProjectTitle,
+        IReadOnlyList<string> ServiceTypes,
+        IReadOnlyList<string> TechnicalSummary
     );
 
     public List<ContractRow> Contracts { get; set; } = new();
@@ -166,6 +168,9 @@ public class DetailsModel : PageModel
 
                 var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "-";
                 var meta = ParseContractMeta(x.Notes);
+                var tech = ClientServiceContractMetadata.ParseTechnical(x.Notes);
+                var serviceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes : [x.ServiceType.ToString()];
+                var technicalSummary = BuildTechnicalSummary(tech);
 
                 var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
                     ? t
@@ -188,7 +193,9 @@ public class DetailsModel : PageModel
                     status,
                     badge,
                     !string.IsNullOrWhiteSpace(x.SignedContractStoragePath),
-                    projTitle
+                    projTitle,
+                    serviceTypes,
+                    technicalSummary
                 );
             })
             .ToList();
@@ -450,6 +457,65 @@ public class DetailsModel : PageModel
         };
 
         return (recurrence, termText, sale);
+    }
+
+    private static IReadOnlyList<string> BuildTechnicalSummary(ClientServiceTechnicalMetadata tech)
+    {
+        var rows = new List<string>();
+        if (tech.ServiceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase))
+        {
+            var capacity = string.Equals(tech.InternetCapacity, "Otro", StringComparison.OrdinalIgnoreCase)
+                ? tech.InternetCapacityOther
+                : tech.InternetCapacity;
+            if (!string.IsNullOrWhiteSpace(capacity))
+                rows.Add(string.Equals(tech.InternetCapacity, "Otro", StringComparison.OrdinalIgnoreCase)
+                    ? $"Internet: {capacity}"
+                    : $"Internet: {capacity} MB");
+        }
+
+        if (tech.ServiceTypes.Contains("Telefonia", StringComparer.OrdinalIgnoreCase))
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(tech.TelephonyExtensions)) parts.Add($"{tech.TelephonyExtensions} extensiones");
+            if (!string.IsNullOrWhiteSpace(tech.TelephonyTrunks)) parts.Add($"{tech.TelephonyTrunks} troncales");
+            if (!string.IsNullOrWhiteSpace(tech.TelephonyDids)) parts.Add($"{tech.TelephonyDids} DID");
+            if (parts.Any()) rows.Add($"Telefonia: {string.Join(", ", parts)}");
+        }
+
+        if (tech.ServiceTypes.Contains("CCTV", StringComparer.OrdinalIgnoreCase))
+        {
+            var channels = string.Equals(tech.CctvChannels, "Otro", StringComparison.OrdinalIgnoreCase)
+                ? tech.CctvChannelsOther
+                : tech.CctvChannels;
+            if (!string.IsNullOrWhiteSpace(channels))
+                rows.Add(string.Equals(tech.CctvChannels, "Otro", StringComparison.OrdinalIgnoreCase)
+                    ? $"CCTV: {channels}"
+                    : $"CCTV: {channels} canales");
+        }
+
+        if (tech.ServiceTypes.Contains("Seguridad", StringComparer.OrdinalIgnoreCase))
+        {
+            var brand = string.Equals(tech.SecurityBrand, "Otro", StringComparison.OrdinalIgnoreCase)
+                ? tech.SecurityBrandOther
+                : tech.SecurityBrand;
+            if (!string.IsNullOrWhiteSpace(brand))
+                rows.Add($"Seguridad: {brand}");
+        }
+
+        if (tech.ServiceTypes.Contains("Servidores", StringComparer.OrdinalIgnoreCase))
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(tech.ServerOs)) parts.Add(tech.ServerOs);
+            if (!string.IsNullOrWhiteSpace(tech.ServerCpuCores)) parts.Add($"{tech.ServerCpuCores} nucleos");
+            if (!string.IsNullOrWhiteSpace(tech.ServerRam)) parts.Add($"{tech.ServerRam} RAM");
+            if (!string.IsNullOrWhiteSpace(tech.ServerDisk)) parts.Add($"{tech.ServerDisk} disco");
+            if (parts.Any()) rows.Add($"Servidor: {string.Join(", ", parts)}");
+        }
+
+        if (tech.InstallationCost > 0)
+            rows.Add($"Instalacion: {tech.InstallationCost.ToString("C2")}");
+
+        return rows;
     }
 
     private async Task<bool> CanAccessClientAsync(Guid clientId)

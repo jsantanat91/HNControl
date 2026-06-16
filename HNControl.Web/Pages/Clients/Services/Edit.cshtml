@@ -30,14 +30,141 @@
         <input type="hidden" asp-for="Input.Id" />
 
         <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Categoria</label>
-                <select class="form-select" asp-for="Input.ServiceType" asp-items="Model.ServiceTypeItems"></select>
+            <input type="hidden" asp-for="Input.ServiceType" id="primaryServiceType" />
+
+            <div class="col-12">
+                <label class="form-label">Servicios incluidos</label>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var serviceType in new[] { "Internet", "Telefonia", "CCTV", "Seguridad", "Servidores", "Hardware", "Otro" })
+                    {
+                        var isChecked = Model.Input.SelectedServiceTypes.Contains(serviceType, StringComparer.OrdinalIgnoreCase);
+                        <label class="btn btn-sm @(isChecked ? "btn-primary" : "btn-outline-primary") service-type-chip">
+                            <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" checked="@isChecked" />
+                            @serviceType
+                        </label>
+                    }
+                </div>
+                <div class="form-text">Puedes seleccionar mas de un servicio. Se activan campos tecnicos segun corresponda.</div>
             </div>
 
-            <div class="col-md-8">
+            <div class="col-12">
                 <label class="form-label">Nombre del contrato</label>
                 <input class="form-control" asp-for="Input.Label" />
+            </div>
+
+            <div class="col-12 contract-tech-section" data-tech-section="Internet">
+                <div class="border rounded-3 p-3">
+                    <div class="fw-semibold mb-2">Datos de Internet</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Capacidad MB</label>
+                            <select class="form-select" asp-for="Input.InternetCapacity">
+                                <option value="">-- Seleccionar --</option>
+                                @foreach (var mb in new[] { "10", "20", "30", "50", "100", "200", "300", "500", "1000", "Otro" })
+                                {
+                                    <option value="@mb">@mb</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Capacidad personalizada</label>
+                            <input class="form-control" asp-for="Input.InternetCapacityOther" placeholder="Ej: 2 Gbps / enlace simetrico dedicado" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 contract-tech-section" data-tech-section="Telefonia">
+                <div class="border rounded-3 p-3">
+                    <div class="fw-semibold mb-2">Datos de Telefonia</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Extensiones</label>
+                            <input class="form-control" asp-for="Input.TelephonyExtensions" placeholder="Ej: 25" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Troncales</label>
+                            <input class="form-control" asp-for="Input.TelephonyTrunks" placeholder="Ej: 4" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">DID</label>
+                            <input class="form-control" asp-for="Input.TelephonyDids" placeholder="Ej: 10 numeros" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 contract-tech-section" data-tech-section="CCTV">
+                <div class="border rounded-3 p-3">
+                    <div class="fw-semibold mb-2">Datos de CCTV</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Canales</label>
+                            <select class="form-select" asp-for="Input.CctvChannels">
+                                <option value="">-- Seleccionar --</option>
+                                @foreach (var ch in new[] { "2", "4", "6", "8", "16", "32", "Otro" })
+                                {
+                                    <option value="@ch">@ch</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Canales personalizados</label>
+                            <input class="form-control" asp-for="Input.CctvChannelsOther" placeholder="Ej: 48 canales / NVR dedicado" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 contract-tech-section" data-tech-section="Seguridad">
+                <div class="border rounded-3 p-3">
+                    <div class="fw-semibold mb-2">Datos de Seguridad</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Fabricante / plataforma</label>
+                            <select class="form-select" asp-for="Input.SecurityBrand">
+                                <option value="">-- Seleccionar --</option>
+                                @foreach (var brand in new[] { "Fortinet", "Meraki", "Huawei", "Otro" })
+                                {
+                                    <option value="@brand">@brand</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Detalle personalizado</label>
+                            <input class="form-control" asp-for="Input.SecurityBrandOther" placeholder="Ej: firewall, licenciamiento, soporte administrado" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 contract-tech-section" data-tech-section="Servidores">
+                <div class="border rounded-3 p-3">
+                    <div class="fw-semibold mb-2">Datos de Servidores</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Sistema operativo</label>
+                            <select class="form-select" asp-for="Input.ServerOs">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="Windows Server">Windows Server</option>
+                                <option value="Linux">Linux</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Nucleos</label>
+                            <input class="form-control" asp-for="Input.ServerCpuCores" placeholder="Ej: 8" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">RAM</label>
+                            <input class="form-control" asp-for="Input.ServerRam" placeholder="Ej: 32 GB" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Disco duro</label>
+                            <input class="form-control" asp-for="Input.ServerDisk" placeholder="Ej: 1 TB SSD" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-4">
@@ -62,12 +189,17 @@
                 <input class="form-control" asp-for="Input.ContractNumber" />
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">Monto mensual (antes de IVA)</label>
                 <input class="form-control" asp-for="Input.MonthlyAmount" type="number" min="0" step="0.01" placeholder="0.00" />
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label">Costo de instalacion (antes de IVA)</label>
+                <input class="form-control" asp-for="Input.InstallationCost" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="col-md-3">
                 <label class="form-label">Recurrencia</label>
                 <select class="form-select" asp-for="Input.BillingRecurrence">
                     <option value="Unica">Unico</option>
@@ -76,7 +208,7 @@
                 </select>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">Tiempo de contrato</label>
                 <select class="form-select" asp-for="Input.ContractTermOption">
                     <option value="12">12 meses</option>
@@ -150,4 +282,26 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const toggles = Array.from(document.querySelectorAll('.service-type-toggle'));
+            const sections = Array.from(document.querySelectorAll('.contract-tech-section'));
+            const primary = document.getElementById('primaryServiceType');
+
+            function refreshServiceSections() {
+                const selected = toggles.filter(x => x.checked).map(x => x.value);
+                toggles.forEach(input => {
+                    input.closest('.service-type-chip')?.classList.toggle('btn-primary', input.checked);
+                    input.closest('.service-type-chip')?.classList.toggle('btn-outline-primary', !input.checked);
+                });
+                sections.forEach(section => {
+                    section.style.display = selected.includes(section.dataset.techSection) ? '' : 'none';
+                });
+                if (primary) primary.value = selected[0] || 'Otro';
+            }
+
+            toggles.forEach(x => x.addEventListener('change', refreshServiceSections));
+            refreshServiceSections();
+        })();
+    </script>
 }

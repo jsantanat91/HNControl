@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Inventory.IndexModel
 @using System
 @using HNControl.Web.Models
@@ -42,7 +42,7 @@
 
 <form method="get" class="card mb-3 shadow-soft hn-hover">
     <div class="card-body p-3">
-        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="p" value="1" />
         <input type="hidden" name="stock" value="@Model.Stock" />
 
         <div class="row g-2 align-items-end">
@@ -127,7 +127,7 @@
                     <a class="btn btn-sm btn-outline-secondary"
                        asp-page="./Index"
                        asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
-                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="all" asp-route-page="1">Ver todo</a>
+                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="all" asp-route-p="1">Ver todo</a>
                 </div>
             </div>
         </div>
@@ -141,7 +141,7 @@
                     <a class="btn btn-sm btn-outline-warning"
                        asp-page="./Index"
                        asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
-                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="low" asp-route-page="1">Ver bajo stock</a>
+                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="low" asp-route-p="1">Ver bajo stock</a>
                 </div>
             </div>
         </div>
@@ -155,7 +155,7 @@
                     <a class="btn btn-sm btn-outline-danger"
                        asp-page="./Index"
                        asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
-                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="zero" asp-route-page="1">Ver sin stock</a>
+                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="zero" asp-route-p="1">Ver sin stock</a>
                     @if (Model.CanRequestRestock && Model.ZeroStockItems.Count > 0)
                     {
                         <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#restockModal">Solicitar item</button>
@@ -253,7 +253,7 @@
                             <a class="page-link" asp-page="./Index"
                            asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                            asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="@Model.Stock"
-                           asp-route-page="@(current - 1)">Anterior</a>
+                           asp-route-p="@(current - 1)">Anterior</a>
                     </li>
 
                     @if (start > 1)
@@ -262,7 +262,7 @@
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="@Model.Stock"
-                               asp-route-page="1">1</a>
+                               asp-route-p="1">1</a>
                         </li>
                         @if (start > 2)
                         {
@@ -276,7 +276,7 @@
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="@Model.Stock"
-                               asp-route-page="@p">@p</a>
+                               asp-route-p="@p">@p</a>
                         </li>
                     }
 
@@ -290,7 +290,7 @@
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="@Model.Stock"
-                               asp-route-page="@total">@total</a>
+                               asp-route-p="@total">@total</a>
                         </li>
                     }
 
@@ -298,7 +298,7 @@
                         <a class="page-link" asp-page="./Index"
                            asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                            asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-stock="@Model.Stock"
-                           asp-route-page="@(current + 1)">Siguiente</a>
+                           asp-route-p="@(current + 1)">Siguiente</a>
                     </li>
                 </ul>
             </nav>
@@ -321,7 +321,7 @@
                     <input type="hidden" name="dir" value="@Model.Dir" />
 
                     <div class="modal-header">
-                        <h5 class="modal-title">Solicitar reposición (sin stock)</h5>
+                        <h5 class="modal-title">Solicitar reposici�n (sin stock)</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body">
@@ -353,3 +353,4 @@
         </div>
     </div>
 }
+

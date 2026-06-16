@@ -278,6 +278,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureBillingSchemaAsync(db);
     await EnsureSecuritySchemaAsync(db);
     await EnsureOrgChartSchemaAsync(db);
+    await EnsureProjectSchemaAsync(db);
     await EnsureProjectActivitySchemaAsync(db);
     await EnsureClientProspectsSchemaAsync(db);
     await EnsureSalesSchemaAsync(db);
@@ -703,6 +704,49 @@ ALTER TABLE IF EXISTS public."EmployeeOrgChartNodes"
     }
 }
 
+static async Task EnsureProjectSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "Objective" character varying(400) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "Scope" character varying(1200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "ActivityDescription" character varying(4000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "AdditionalComments" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "AccessNotes" character varying(8000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "ClosedAt" timestamp with time zone;
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "ClosedByUserId" character varying(64);
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT NOW();
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "Status" integer NOT NULL DEFAULT 1;
+ALTER TABLE IF EXISTS public."Projects"
+    ADD COLUMN IF NOT EXISTS "EstimatedEndDate" timestamp with time zone NOT NULL DEFAULT NOW();
+
+UPDATE public."Projects"
+SET "Objective" = COALESCE("Objective", ''),
+    "Scope" = COALESCE("Scope", ''),
+    "ActivityDescription" = COALESCE("ActivityDescription", ''),
+    "AdditionalComments" = COALESCE("AdditionalComments", ''),
+    "AccessNotes" = COALESCE("AccessNotes", ''),
+    "UpdatedAt" = COALESCE("UpdatedAt", NOW()),
+    "Status" = COALESCE("Status", 1),
+    "EstimatedEndDate" = COALESCE("EstimatedEndDate", "StartDate", NOW());
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureProjectSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
 static async Task EnsureProjectActivitySchemaAsync(ApplicationDbContext db)
 {
     try
@@ -746,6 +790,10 @@ ALTER TABLE IF EXISTS public."ProjectActivities"
     ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
 ALTER TABLE IF EXISTS public."ProjectActivities"
     ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "IsCompleted" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public."ProjectActivities"
+    ADD COLUMN IF NOT EXISTS "CompletedAtUtc" timestamp with time zone;
 
 ALTER TABLE IF EXISTS public.projectactivities
     ADD COLUMN IF NOT EXISTS "AssignedToUserId" character varying(64);
@@ -759,6 +807,10 @@ ALTER TABLE IF EXISTS public.projectactivities
     ADD COLUMN IF NOT EXISTS "EndAtUtc" timestamp with time zone;
 ALTER TABLE IF EXISTS public.projectactivities
     ADD COLUMN IF NOT EXISTS "ColorHex" character varying(16);
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "IsCompleted" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.projectactivities
+    ADD COLUMN IF NOT EXISTS "CompletedAtUtc" timestamp with time zone;
 
 UPDATE public."ProjectActivities"
 SET "DurationUnit" = COALESCE(NULLIF("DurationUnit", ''), 'hours'),

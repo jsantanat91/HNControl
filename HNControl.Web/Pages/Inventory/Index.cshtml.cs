@@ -50,7 +50,7 @@ public class IndexModel : PageModel
     public string? Stock { get; set; } // all|low|zero
 
     // Paging
-    [BindProperty(SupportsGet = true)]
+    [FromQuery(Name = "p")]
     public int Page { get; set; } = 1;
 
     public int PageSize { get; } = 50;
@@ -270,7 +270,7 @@ public class IndexModel : PageModel
                     sort = Sort,
                     dir = Dir,
                     stock = "zero",
-                    page = 1
+                    p = 1
                 });
             }
 
@@ -332,7 +332,7 @@ public class IndexModel : PageModel
             sort = Sort,
             dir = Dir,
             stock = "zero",
-            page = 1
+            p = 1
         });
     }
 

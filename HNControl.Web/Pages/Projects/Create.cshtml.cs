@@ -125,8 +125,21 @@ public class CreateModel : PageModel
             UpdatedAt = DateTime.UtcNow
         };
 
-        _db.Projects.Add(p);
-        await _db.SaveChangesAsync();
+        try
+        {
+            _db.Projects.Add(p);
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg)
+        {
+            Error = $"No se pudo crear el proyecto por esquema de base de datos ({pg.SqlState}): {pg.MessageText}";
+            return Page();
+        }
+        catch (Exception ex)
+        {
+            Error = $"No se pudo crear el proyecto: {ex.Message}";
+            return Page();
+        }
 
         if (!string.IsNullOrWhiteSpace(Input.InitialActivityDescription))
         {
@@ -153,11 +166,21 @@ public class CreateModel : PageModel
             }
         }
 
-        await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
+        try
+        {
+            await AssignContractsAsync(p.Id, Input.ClientId, Input.ContractIds);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg)
+        {
+            TempData["ProjectWarning"] = $"Proyecto creado, pero no se pudieron ligar contratos ({pg.SqlState}): {pg.MessageText}";
+        }
+        catch (Exception ex)
+        {
+            TempData["ProjectWarning"] = $"Proyecto creado, pero no se pudieron ligar contratos: {ex.Message}";
+        }
 
-        // Evita caídas por rutas/handlers de detalle en despliegues con esquema mixto:
-        // al crear, volvemos al listado general donde el proyecto ya aparece.
-        return RedirectToPage("/Projects/Index");
+        // Evita depender del nombre interno de Razor Pages; al crear, volvemos al listado público del módulo.
+        return LocalRedirect("/Projects");
     }
 
     public async Task<IActionResult> OnGetContractsAsync(Guid clientId)
@@ -179,7 +202,11 @@ public class CreateModel : PageModel
 
     private async Task LoadListsAsync(Guid? selectedClientId = null)
     {
-        var clients = await _db.Clients.OrderBy(c => c.Name).ToListAsync();
+        var clients = await _db.Clients
+            .AsNoTracking()
+            .Where(c => c.IsActive && !c.IsTemporaryLead)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
         ClientItems = new SelectList(
             clients,
             "Id",

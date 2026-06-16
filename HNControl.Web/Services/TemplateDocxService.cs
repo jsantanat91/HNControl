@@ -89,6 +89,7 @@ public class TemplateDocxService : ITemplateDocxService
         var legalAddress = Safe(tpl.DIRECCIONC, client.FiscalAddress, client.Address, "Domicilio por confirmar");
         var signer = Safe(tpl.RLCLIENTE, client.LegalRepresentative, client.ContactName, "Representante legal");
         var periodo = Safe(BuildContractPeriod(doc, doc.ClientServiceContract), tpl.PERIODOC, "12 meses");
+        var installationCost = FormatMoney(ExtractInstallationCostFromNotes(doc.ClientServiceContract?.Notes));
         var firma = BuildDigitalSignatureText(doc, signer);
         var firmaHash = BuildDigitalSignatureHash(doc, signer);
         var firmaFecha = BuildDigitalSignatureDate(doc);
@@ -108,6 +109,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["PERIODOC"] = periodo,
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, doc.ClientServiceContract?.Branch, "-"),
             ["COSTOCLIENTE"] = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? doc.ClientServiceContract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX"))),
+            ["COSTOINST"] = Safe(tpl.COSTOINST, installationCost),
             ["FIRMACLIENTE"] = firma,
             ["HASHFIRMA"] = firmaHash,
             ["FIRMAHASH"] = firmaHash,
@@ -128,6 +130,7 @@ public class TemplateDocxService : ITemplateDocxService
         var period = BuildContractPeriod(doc, contract);
         var serviceName = Safe(tpl.CONTRATOC, contract?.Label, "Servicio de telecomunicaciones");
         var monthly = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? contract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")));
+        var installationCost = Safe(tpl.COSTOINST, FormatMoney(ExtractInstallationCostFromNotes(contract?.Notes)));
         var firma = BuildDigitalSignatureText(doc, Safe(client.LegalRepresentative, client.ContactName));
         var firmaHash = BuildDigitalSignatureHash(doc, Safe(client.LegalRepresentative, client.ContactName));
         var firmaFecha = BuildDigitalSignatureDate(doc);
@@ -147,6 +150,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["PERIODOC"] = Safe(period, tpl.PERIODOC, "12 meses"),
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label, "-"),
             ["COSTOCLIENTE"] = monthly,
+            ["COSTOINST"] = installationCost,
             ["FIRMACLIENTE"] = firma,
             ["HASHFIRMA"] = firmaHash,
             ["FIRMAHASH"] = firmaHash,
@@ -209,6 +213,10 @@ public class TemplateDocxService : ITemplateDocxService
 
     private static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)
     {
+        var explicitTerm = ExtractContractTermFromNotes(contract?.Notes);
+        if (!string.IsNullOrWhiteSpace(explicitTerm))
+            return explicitTerm;
+
         static int? EstimateMonths(DateTime? start, DateTime? end)
         {
             if (!start.HasValue || !end.HasValue)
@@ -229,6 +237,71 @@ public class TemplateDocxService : ITemplateDocxService
 
         return $"{(months ?? 12)} meses";
     }
+
+    private static string? ExtractContractTermFromNotes(string? notes)
+    {
+        foreach (var line in (notes ?? string.Empty).Split('\n'))
+        {
+            var clean = line.Trim().TrimEnd('\r');
+            if (!clean.StartsWith("[META]", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var payload = clean.Substring(6).Trim();
+            var parts = payload.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2 || !parts[0].Equals("Plazo", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var value = parts[1].Trim();
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (value.Equals("Indefinido", StringComparison.OrdinalIgnoreCase))
+                return "Indefinido";
+
+            var digits = new string(value.Where(char.IsDigit).ToArray());
+            if (int.TryParse(digits, out var months) && months > 0)
+                return $"{months} meses";
+        }
+
+        return null;
+    }
+
+    private static decimal ExtractInstallationCostFromNotes(string? notes)
+    {
+        foreach (var line in (notes ?? string.Empty).Split('\n'))
+        {
+            var clean = line.Trim().TrimEnd('\r');
+            if (!clean.StartsWith("[META]", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var payload = clean.Substring(6).Trim();
+            var parts = payload.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length != 2)
+                continue;
+
+            var key = parts[0];
+            if (!key.Equals("CostoInstalacion", StringComparison.OrdinalIgnoreCase) &&
+                !key.Equals("COSTOINST", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return ParseMoney(parts[1]);
+        }
+
+        return 0m;
+    }
+
+    private static decimal ParseMoney(string? value)
+    {
+        var raw = (value ?? string.Empty).Trim();
+        if (decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var invariant))
+            return Math.Max(0m, invariant);
+        if (decimal.TryParse(raw, NumberStyles.Any, new CultureInfo("es-MX"), out var localized))
+            return Math.Max(0m, localized);
+        return 0m;
+    }
+
+    private static string FormatMoney(decimal value) =>
+        Math.Max(0m, value).ToString("N2", new CultureInfo("es-MX"));
 
     private static string Safe(params string?[] values)
     {
@@ -326,6 +399,7 @@ public class TemplateDocxService : ITemplateDocxService
         public string? PERIODOC { get; set; }
         public string? SUCURSALC { get; set; }
         public string? COSTOCLIENTE { get; set; }
+        public string? COSTOINST { get; set; }
         public string? FIRMACLIENTE { get; set; }
         public string? NOMBREPROYECTO { get; set; }
         public string? NOMBRETECNICO { get; set; }

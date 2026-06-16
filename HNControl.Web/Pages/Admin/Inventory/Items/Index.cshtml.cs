@@ -45,7 +45,7 @@ public class IndexModel : PageModel
     public List<string> LocationOptions { get; private set; } = new();
     public List<InventoryBrand> BrandOptions { get; private set; } = new();
 
-    [BindProperty(SupportsGet = true)]
+    [FromQuery(Name = "p")]
     public int Page { get; set; } = 1;
 
     public int PageSize { get; } = 50;

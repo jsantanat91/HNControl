@@ -1,4 +1,4 @@
-ï»¿@page
+@page
 @model HNControl.Web.Pages.Admin.Inventory.Items.IndexModel
 @using System
 @using HNControl.Web.Models
@@ -10,14 +10,14 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Items de inventario</h1>
-        <div class="text-muted small">CatÃ¡logo + stock. Los movimientos se aprueban en Aprobaciones pendientes.</div>
+        <div class="text-muted small">Catálogo + stock. Los movimientos se aprueban en Aprobaciones pendientes.</div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-primary" asp-page="./Create">+ Nuevo item</a>
 
         <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Brands/Index">Marcas</a>
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Categories/Index">CategorÃ­as</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Categories/Index">Categorías</a>
         <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Locations/Index">Ubicaciones</a>
         <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
 
@@ -42,19 +42,19 @@
 
 <form method="get" class="card mb-3">
     <div class="card-body p-3">
-        <input type="hidden" name="page" value="1" />
+        <input type="hidden" name="p" value="1" />
 
         <div class="row g-2 align-items-end">
             <div class="col-12 col-lg-4">
                 <label class="form-label small text-muted mb-1">Buscar</label>
-                <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por cualquier campo (nombre, SKU, categorÃ­a, ubicaciÃ³n, marca, modelo...)" />
+                <input class="form-control" name="q" value="@Model.Q" placeholder="Buscar por cualquier campo (nombre, SKU, categoría, ubicación, marca, modelo...)" />
             </div>
 
             <div class="col-12 col-sm-6 col-lg-2">
-                <label class="form-label small text-muted mb-1">CategorÃ­a</label>
+                <label class="form-label small text-muted mb-1">Categoría</label>
                 <select class="form-select" name="cat">
                     <option value="">Todas</option>
-                    <option value="__none" selected="@(Model.Cat == "__none")">Sin categorÃ­a</option>
+                    <option value="__none" selected="@(Model.Cat == "__none")">Sin categoría</option>
                     @foreach (var c in Model.CategoryOptions.Where(x => !string.IsNullOrWhiteSpace(x)))
                     {
                         <option value="@c" selected="@(Model.Cat == c)">@c</option>
@@ -63,10 +63,10 @@
             </div>
 
             <div class="col-12 col-sm-6 col-lg-2">
-                <label class="form-label small text-muted mb-1">UbicaciÃ³n</label>
+                <label class="form-label small text-muted mb-1">Ubicación</label>
                 <select class="form-select" name="loc">
                     <option value="">Todas</option>
-                    <option value="__none" selected="@(Model.Loc == "__none")">Sin ubicaciÃ³n</option>
+                    <option value="__none" selected="@(Model.Loc == "__none")">Sin ubicación</option>
                     @foreach (var l in Model.LocationOptions.Where(x => !string.IsNullOrWhiteSpace(x)))
                     {
                         <option value="@l" selected="@(Model.Loc == l)">@l</option>
@@ -90,9 +90,9 @@
                 <label class="form-label small text-muted mb-1">Ordenar</label>
                 <select class="form-select" name="sort">
                     <option value="active" selected="@(string.Equals(Model.Sort, "active", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Sort))">Activo</option>
-                    <option value="category" selected="@(string.Equals(Model.Sort, "category", StringComparison.OrdinalIgnoreCase))">CategorÃ­a</option>
+                    <option value="category" selected="@(string.Equals(Model.Sort, "category", StringComparison.OrdinalIgnoreCase))">Categoría</option>
                     <option value="brand" selected="@(string.Equals(Model.Sort, "brand", StringComparison.OrdinalIgnoreCase))">Marca</option>
-                    <option value="location" selected="@(string.Equals(Model.Sort, "location", StringComparison.OrdinalIgnoreCase))">UbicaciÃ³n</option>
+                    <option value="location" selected="@(string.Equals(Model.Sort, "location", StringComparison.OrdinalIgnoreCase))">Ubicación</option>
                     <option value="name" selected="@(string.Equals(Model.Sort, "name", StringComparison.OrdinalIgnoreCase))">Item</option>
                     <option value="stock" selected="@(string.Equals(Model.Sort, "stock", StringComparison.OrdinalIgnoreCase))">Existencia</option>
                 </select>
@@ -101,8 +101,8 @@
             <div class="col-4 col-sm-2 col-lg-1">
                 <label class="form-label small text-muted mb-1">Dir</label>
                 <select class="form-select" name="dir">
-                    <option value="desc" selected="@(string.Equals(Model.Dir, "desc", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Dir))">â†“</option>
-                    <option value="asc" selected="@(string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase))">â†‘</option>
+                    <option value="desc" selected="@(string.Equals(Model.Dir, "desc", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Model.Dir))">?</option>
+                    <option value="asc" selected="@(string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase))">?</option>
                 </select>
             </div>
 
@@ -130,22 +130,22 @@
                     <span>Mostrando <strong>@Model.From</strong>-<strong>@Model.To</strong> de <strong>@Model.TotalCount</strong></span>
                 }
             </div>
-            <div class="text-muted small">50 por pÃ¡gina</div>
+            <div class="text-muted small">50 por página</div>
         </div>
 
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead>
                     <tr>
-                        <th>CategorÃ­a</th>
+                        <th>Categoría</th>
                         <th>Item</th>
                         <th>ID modelo</th>
                         <th>SKU</th>
                         <th>Marca</th>
                         <th>Modelo</th>
-                        <th>UbicaciÃ³n</th>
+                        <th>Ubicación</th>
                         <th class="text-end">Existencia</th>
-                        <th class="text-end">Stock mÃ­nimo</th>
+                        <th class="text-end">Stock mínimo</th>
                         <th>Activo</th>
                         <th class="text-end">Acciones</th>
                     </tr>
@@ -153,23 +153,23 @@
                 <tbody>
                     @foreach (var i in Model.Items)
                     {
-                        var catLabel = string.IsNullOrWhiteSpace(i.Category) ? "â€”" : i.Category;
+                        var catLabel = string.IsNullOrWhiteSpace(i.Category) ? "—" : i.Category;
                         var badge = Model.GetCategoryBadgeClass(i.Category);
 
                         <tr>
                             <td><span class="hn-badge @badge">@catLabel</span></td>
                             <td class="fw-semibold">@i.Name</td>
-                            <td><span class="hn-badge hn-badge-cyan">@(string.IsNullOrWhiteSpace(i.ModelCode) ? "â€”" : i.ModelCode)</span></td>
-                            <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "â€”" : i.Sku)</td>
-                            <td>@(i.Brand?.Name ?? "â€”")</td>
-                            <td>@(string.IsNullOrWhiteSpace(i.Model) ? "â€”" : i.Model)</td>
-                            <td>@(string.IsNullOrWhiteSpace(i.Location) ? "â€”" : i.Location)</td>
+                            <td><span class="hn-badge hn-badge-cyan">@(string.IsNullOrWhiteSpace(i.ModelCode) ? "—" : i.ModelCode)</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "—" : i.Sku)</td>
+                            <td>@(i.Brand?.Name ?? "—")</td>
+                            <td>@(string.IsNullOrWhiteSpace(i.Model) ? "—" : i.Model)</td>
+                            <td>@(string.IsNullOrWhiteSpace(i.Location) ? "—" : i.Location)</td>
                             <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
                             <td class="text-end">@i.ReorderLevel</td>
                             <td>
                                 @if (i.IsActive)
                                 {
-                                    <span class="hn-badge hn-badge-green hn-badge-compact">SÃ­</span>
+                                    <span class="hn-badge hn-badge-green hn-badge-compact">Sí</span>
                                 }
                                 else
                                 {
@@ -206,7 +206,7 @@
                         <a class="page-link" asp-page="./Index"
                            asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                            asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir"
-                           asp-route-page="@(current - 1)">Anterior</a>
+                           asp-route-p="@(current - 1)">Anterior</a>
                     </li>
 
                     @if (start > 1)
@@ -215,11 +215,11 @@
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir"
-                               asp-route-page="1">1</a>
+                               asp-route-p="1">1</a>
                         </li>
                         @if (start > 2)
                         {
-                            <li class="page-item disabled"><span class="page-link">â€¦</span></li>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
                         }
                     }
 
@@ -229,7 +229,7 @@
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir"
-                               asp-route-page="@p">@p</a>
+                               asp-route-p="@p">@p</a>
                         </li>
                     }
 
@@ -237,13 +237,13 @@
                     {
                         @if (end < total - 1)
                         {
-                            <li class="page-item disabled"><span class="page-link">â€¦</span></li>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
                         }
                         <li class="page-item">
                             <a class="page-link" asp-page="./Index"
                                asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                                asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir"
-                               asp-route-page="@total">@total</a>
+                               asp-route-p="@total">@total</a>
                         </li>
                     }
 
@@ -251,7 +251,7 @@
                         <a class="page-link" asp-page="./Index"
                            asp-route-q="@Model.Q" asp-route-cat="@Model.Cat" asp-route-loc="@Model.Loc" asp-route-brandId="@Model.BrandId"
                            asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir"
-                           asp-route-page="@(current + 1)">Siguiente</a>
+                           asp-route-p="@(current + 1)">Siguiente</a>
                     </li>
                 </ul>
             </nav>
@@ -270,7 +270,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-light border small mb-3">
-                        1) Descarga la plantilla Â· 2) LlÃ©nala Â· 3) Sube el archivo y listo.
+                        1) Descarga la plantilla · 2) Llénala · 3) Sube el archivo y listo.
                     </div>
 
                     <div class="d-flex flex-wrap gap-2 mb-3">
@@ -298,5 +298,6 @@
         </div>
     </div>
 </div>
+
 
 

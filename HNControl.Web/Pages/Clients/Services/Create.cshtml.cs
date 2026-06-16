@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -51,6 +52,8 @@ public class CreateModel : PageModel
 
         [Required] public ClientServiceType ServiceType { get; set; } = ClientServiceType.Internet;
 
+        public List<string> SelectedServiceTypes { get; set; } = ["Internet"];
+
         [Required, MaxLength(200)]
         public string Label { get; set; } = "";
 
@@ -76,6 +79,23 @@ public class CreateModel : PageModel
 
         [Range(0, 99999999)]
         public decimal? MonthlyAmount { get; set; }
+
+        [Range(0, 99999999)]
+        public decimal InstallationCost { get; set; } = 0m;
+
+        [MaxLength(20)] public string InternetCapacity { get; set; } = "";
+        [MaxLength(40)] public string InternetCapacityOther { get; set; } = "";
+        [MaxLength(20)] public string TelephonyExtensions { get; set; } = "";
+        [MaxLength(20)] public string TelephonyTrunks { get; set; } = "";
+        [MaxLength(20)] public string TelephonyDids { get; set; } = "";
+        [MaxLength(20)] public string CctvChannels { get; set; } = "";
+        [MaxLength(40)] public string CctvChannelsOther { get; set; } = "";
+        [MaxLength(40)] public string SecurityBrand { get; set; } = "";
+        [MaxLength(80)] public string SecurityBrandOther { get; set; } = "";
+        [MaxLength(80)] public string ServerOs { get; set; } = "";
+        [MaxLength(20)] public string ServerCpuCores { get; set; } = "";
+        [MaxLength(40)] public string ServerRam { get; set; } = "";
+        [MaxLength(80)] public string ServerDisk { get; set; } = "";
 
         [MaxLength(20)]
         public string BillingRecurrence { get; set; } = "Mensual";
@@ -166,7 +186,9 @@ public class CreateModel : PageModel
                 .FirstOrDefaultAsync(x => x.Id == Input.ServicePackageId.Value && x.VariantGroup == ServicePackageMarker);
         }
 
-        var serviceType = Input.ServiceType;
+        NormalizeSelectedServiceTypes();
+
+        var serviceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         if (selectedPackage != null && Enum.TryParse<ClientServiceType>(selectedPackage.VariantValue, true, out var parsedType))
             serviceType = parsedType;
 
@@ -187,7 +209,22 @@ public class CreateModel : PageModel
                 ComposeFeasibilityMetadata((Input.Notes ?? "").Trim(), FeasibilityId),
                 Input.BillingRecurrence,
                 Input.ContractTermOption,
-                Input.SalesOpportunityId),
+                Input.SalesOpportunityId,
+                Input.InstallationCost,
+                Input.SelectedServiceTypes,
+                Input.InternetCapacity,
+                Input.InternetCapacityOther,
+                Input.TelephonyExtensions,
+                Input.TelephonyTrunks,
+                Input.TelephonyDids,
+                Input.CctvChannels,
+                Input.CctvChannelsOther,
+                Input.SecurityBrand,
+                Input.SecurityBrandOther,
+                Input.ServerOs,
+                Input.ServerCpuCores,
+                Input.ServerRam,
+                Input.ServerDisk),
             MonthlyAmount = Input.MonthlyAmount ?? selectedPackage?.UnitPrice,
             Branch = (Input.Branch ?? "").Trim(),
             BranchAddress = (Input.BranchAddress ?? "").Trim(),
@@ -311,7 +348,26 @@ public class CreateModel : PageModel
         SalesOpportunityItems = new SelectList(rows, "Id", "Label");
     }
 
-    private static string ComposeNotesMetadata(string rawNotes, string recurrence, string termOption, Guid? salesOpportunityId)
+    private static string ComposeNotesMetadata(
+        string rawNotes,
+        string recurrence,
+        string termOption,
+        Guid? salesOpportunityId,
+        decimal installationCost,
+        IReadOnlyCollection<string> selectedServiceTypes,
+        string internetCapacity,
+        string internetCapacityOther,
+        string telephonyExtensions,
+        string telephonyTrunks,
+        string telephonyDids,
+        string cctvChannels,
+        string cctvChannelsOther,
+        string securityBrand,
+        string securityBrandOther,
+        string serverOs,
+        string serverCpuCores,
+        string serverRam,
+        string serverDisk)
     {
         var notes = StripNotesMetadata(rawNotes);
         var lines = new List<string>();
@@ -319,9 +375,52 @@ public class CreateModel : PageModel
             lines.Add(notes);
         lines.Add($"[META] Recurrencia={NormalizeRecurrence(recurrence)}");
         lines.Add($"[META] Plazo={NormalizeTerm(termOption)}");
+        lines.Add($"[META] CostoInstalacion={Math.Max(0m, installationCost).ToString("0.##", CultureInfo.InvariantCulture)}");
+        lines.Add($"[META] TiposServicio={string.Join('|', NormalizeServiceTypeNames(selectedServiceTypes))}");
+        AddMeta(lines, "InternetCapacidad", internetCapacity);
+        AddMeta(lines, "InternetCapacidadOtro", internetCapacityOther);
+        AddMeta(lines, "TelefoniaExtensiones", telephonyExtensions);
+        AddMeta(lines, "TelefoniaTroncales", telephonyTrunks);
+        AddMeta(lines, "TelefoniaDID", telephonyDids);
+        AddMeta(lines, "CCTVCanales", cctvChannels);
+        AddMeta(lines, "CCTVCanalesOtro", cctvChannelsOther);
+        AddMeta(lines, "SeguridadMarca", securityBrand);
+        AddMeta(lines, "SeguridadMarcaOtro", securityBrandOther);
+        AddMeta(lines, "ServidorSO", serverOs);
+        AddMeta(lines, "ServidorNucleos", serverCpuCores);
+        AddMeta(lines, "ServidorRAM", serverRam);
+        AddMeta(lines, "ServidorDisco", serverDisk);
         if (salesOpportunityId.HasValue)
             lines.Add($"[META] VentaId={salesOpportunityId.Value}");
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private void NormalizeSelectedServiceTypes()
+    {
+        Input.SelectedServiceTypes = NormalizeServiceTypeNames(Input.SelectedServiceTypes).ToList();
+        if (!Input.SelectedServiceTypes.Any())
+            Input.SelectedServiceTypes = [Input.ServiceType.ToString()];
+    }
+
+    private static IEnumerable<string> NormalizeServiceTypeNames(IEnumerable<string>? selected)
+    {
+        var allowed = Enum.GetNames<ClientServiceType>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (selected ?? [])
+            .Select(x => (x ?? "").Trim())
+            .Where(x => allowed.Contains(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static ClientServiceType PrimaryServiceType(IEnumerable<string> selected, ClientServiceType fallback)
+    {
+        var first = NormalizeServiceTypeNames(selected).FirstOrDefault();
+        return Enum.TryParse<ClientServiceType>(first, true, out var parsed) ? parsed : fallback;
+    }
+
+    private static void AddMeta(List<string> lines, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            lines.Add($"[META] {key}={value.Trim()}");
     }
 
     private async Task PrefillFromFeasibilityAsync()
@@ -385,14 +484,17 @@ public class CreateModel : PageModel
         _ => "Mensual"
     };
 
-    private static string NormalizeTerm(string? termOption) => termOption switch
+    private static string NormalizeTerm(string? termOption)
     {
-        "12" => "12",
-        "18" => "18",
-        "24" => "24",
-        "36" => "36",
-        _ => "Indefinido"
-    };
+        var value = (termOption ?? "").Trim();
+        if (value.Equals("Indefinido", StringComparison.OrdinalIgnoreCase))
+            return "Indefinido";
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var months) && months > 0
+            ? months.ToString(CultureInfo.InvariantCulture)
+            : "Indefinido";
+    }
 }
 
 
