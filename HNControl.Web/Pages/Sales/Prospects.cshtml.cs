@@ -38,13 +38,14 @@ public class ProspectsModel : PageModel
     public bool CanConvert { get; set; }
     public bool IsSuperAdmin { get; set; }
 
-    public record Row(Guid Id, string ClientCode, string Name, string ContactName, string Email, string Phone, string Location, DateTime CreatedAt, bool IsActive);
+    public record Row(Guid Id, string ClientCode, string Name, string Rfc, string ContactName, string Email, string Phone, string Location, DateTime CreatedAt, bool IsActive);
     public List<Row> Rows { get; set; } = [];
 
     public class LeadInput
     {
         public string ContactName { get; set; } = "";
         public string? CompanyName { get; set; }
+        public string? Rfc { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? Location { get; set; }
@@ -90,42 +91,40 @@ public class ProspectsModel : PageModel
         var phone = (Lead.Phone ?? "").Trim();
         var location = (Lead.Location ?? "").Trim();
         var company = string.IsNullOrWhiteSpace(Lead.CompanyName) ? contactName : Lead.CompanyName!.Trim();
-
-        var existing = !string.IsNullOrWhiteSpace(email)
-            ? await _db.Clients.FirstOrDefaultAsync(x => x.IsTemporaryLead && x.Email != null && x.Email.ToLower() == email)
-            : null;
-
-        if (existing != null)
+        var rfc = NormalizeRfc(Lead.Rfc);
+        if (string.IsNullOrWhiteSpace(rfc))
         {
-            if (!CanViewAll && !string.Equals(existing.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
-                return Forbid();
+            UiMessage = "Captura el RFC del prospecto para evitar duplicados.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        }
 
-            existing.Name = company;
-            existing.ContactName = contactName;
-            existing.Phone = phone;
-            existing.Address = location;
-            existing.IsActive = true;
-            existing.CreatedByUserId ??= userId;
-            existing.OwnerUserId ??= userId;
-        }
-        else
+        var rfcExists = await _db.Clients
+            .AsNoTracking()
+            .Where(x => x.Rfc != null && x.Rfc.ToUpper() == rfc)
+            .Select(x => new { x.ClientCode, x.Name, x.IsTemporaryLead })
+            .FirstOrDefaultAsync();
+        if (rfcExists != null)
         {
-            _db.Clients.Add(new Client
-            {
-                ClientCode = await NextLeadCodeAsync(),
-                Name = company,
-                Type = ClientType.Moral,
-                Email = string.IsNullOrWhiteSpace(email) ? null : email,
-                Phone = phone,
-                ContactName = contactName,
-                Address = location,
-                IsTemporaryLead = true,
-                IsActive = true,
-                CreatedByUserId = userId,
-                OwnerUserId = userId,
-                CreatedAt = DateTime.UtcNow
-            });
+            UiMessage = $"No se guardó: el RFC {rfc} ya existe en {(rfcExists.IsTemporaryLead ? "prospecto" : "cliente")} {rfcExists.ClientCode} - {rfcExists.Name}.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
         }
+
+        _db.Clients.Add(new Client
+        {
+            ClientCode = await NextLeadCodeAsync(),
+            Name = company,
+            Rfc = rfc,
+            Type = ClientType.Moral,
+            Email = string.IsNullOrWhiteSpace(email) ? null : email,
+            Phone = phone,
+            ContactName = contactName,
+            Address = location,
+            IsTemporaryLead = true,
+            IsActive = true,
+            CreatedByUserId = userId,
+            OwnerUserId = userId,
+            CreatedAt = DateTime.UtcNow
+        });
 
         await _db.SaveChangesAsync();
         return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
@@ -168,7 +167,26 @@ public class ProspectsModel : PageModel
             return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
 
         var company = string.IsNullOrWhiteSpace(EditLead.CompanyName) ? contactName : EditLead.CompanyName!.Trim();
+        var rfc = NormalizeRfc(EditLead.Rfc);
+        if (string.IsNullOrWhiteSpace(rfc))
+        {
+            UiMessage = "Captura el RFC del prospecto para evitar duplicados.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        }
+
+        var duplicate = await _db.Clients
+            .AsNoTracking()
+            .Where(x => x.Id != lead.Id && x.Rfc != null && x.Rfc.ToUpper() == rfc)
+            .Select(x => new { x.ClientCode, x.Name, x.IsTemporaryLead })
+            .FirstOrDefaultAsync();
+        if (duplicate != null)
+        {
+            UiMessage = $"No se actualizó: el RFC {rfc} ya existe en {(duplicate.IsTemporaryLead ? "prospecto" : "cliente")} {duplicate.ClientCode} - {duplicate.Name}.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        }
+
         lead.Name = company;
+        lead.Rfc = rfc;
         lead.ContactName = contactName;
         lead.Email = (EditLead.Email ?? "").Trim().ToLowerInvariant();
         lead.Phone = (EditLead.Phone ?? "").Trim();
@@ -191,6 +209,24 @@ public class ProspectsModel : PageModel
             return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
         if (!CanViewAll && !string.Equals(lead.CreatedByUserId, userId, StringComparison.OrdinalIgnoreCase))
             return Forbid();
+
+        var rfc = NormalizeRfc(lead.Rfc);
+        if (string.IsNullOrWhiteSpace(rfc))
+        {
+            UiMessage = "No se puede convertir: el prospecto no tiene RFC.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        }
+
+        var duplicateClient = await _db.Clients
+            .AsNoTracking()
+            .Where(x => x.Id != lead.Id && x.Rfc != null && x.Rfc.ToUpper() == rfc)
+            .Select(x => new { x.ClientCode, x.Name, x.IsTemporaryLead })
+            .FirstOrDefaultAsync();
+        if (duplicateClient != null)
+        {
+            UiMessage = $"No se convirtió: ya existe {(duplicateClient.IsTemporaryLead ? "el prospecto" : "el cliente")} {duplicateClient.ClientCode} - {duplicateClient.Name} con RFC {rfc}.";
+            return RedirectToPage("/Sales/Prospects", new { Name, Page, PageSize, Month });
+        }
 
         lead.IsTemporaryLead = false;
         lead.IsActive = true;
@@ -480,7 +516,8 @@ CREATE INDEX IF NOT EXISTS "IX_SalesProspectNotes_ClientId_CreatedAt"
             q = q.Where(c =>
                 c.Name.ToLower().Contains(name)
                 || (c.ContactName ?? "").ToLower().Contains(name)
-                || (c.Email ?? "").ToLower().Contains(name));
+                || (c.Email ?? "").ToLower().Contains(name)
+                || (c.Rfc ?? "").ToLower().Contains(name));
         }
 
         TotalCount = await q.CountAsync();
@@ -492,6 +529,7 @@ CREATE INDEX IF NOT EXISTS "IX_SalesProspectNotes_ClientId_CreatedAt"
                 c.Id,
                 c.ClientCode,
                 c.Name,
+                c.Rfc ?? "-",
                 c.ContactName ?? "-",
                 c.Email ?? "-",
                 c.Phone ?? "-",
@@ -553,6 +591,9 @@ CREATE INDEX IF NOT EXISTS "IX_SalesProspectNotes_ClientId_CreatedAt"
         nameof(QuoteRequestStatus.Rejected) => "Rechazada",
         _ => status
     };
+
+    private static string NormalizeRfc(string? value) =>
+        (value ?? string.Empty).Trim().Replace(" ", string.Empty).Replace("-", string.Empty).ToUpperInvariant();
 
     public class AddProspectNoteInput
     {

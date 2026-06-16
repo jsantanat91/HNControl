@@ -16,6 +16,12 @@ namespace HNControl.Web.Pages.Admin.SystemPages;
 [Authorize(Roles = AppRoles.Admin)]
 public class ConfigurationModel : PageModel
 {
+    public const string DefaultChildCheckInTemplate =
+        "Hola {TutorNombre}, registramos el check-in de {NinoNombre} el {Fecha} a las {Hora}.";
+
+    public const string DefaultChildCheckOutTemplate =
+        "Hola {TutorNombre}, registramos el check-out de {NinoNombre} el {Fecha} a las {Hora}.";
+
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly ISecretProtector _protector;
@@ -89,6 +95,8 @@ public class ConfigurationModel : PageModel
         public bool WhatsAppNotifyTickets { get; set; } = true;
         public bool WhatsAppNotifyCustomers { get; set; }
         [MaxLength(40)] public string WhatsAppTestPhone { get; set; } = "";
+        [MaxLength(2000)] public string WhatsAppChildCheckInTemplate { get; set; } = DefaultChildCheckInTemplate;
+        [MaxLength(2000)] public string WhatsAppChildCheckOutTemplate { get; set; } = DefaultChildCheckOutTemplate;
 
         [MaxLength(400)] public string Notes { get; set; } = "";
         public IFormFile? CompanyLogo { get; set; }
@@ -320,18 +328,43 @@ public class ConfigurationModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.MercadoPagoWebhookSecret))
             entity.MercadoPagoWebhookSecretProtected = _protector.Protect(Input.MercadoPagoWebhookSecret.Trim());
 
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        Flash = "Configuracion API guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveWhatsAppAsync()
+    {
+        SystemConfiguration entity;
+        try
+        {
+            entity = await GetOrCreateAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Flash = ex.Message;
+            FlashType = "warning";
+            return RedirectToPage();
+        }
+
         entity.WhatsAppEnabled = Input.WhatsAppEnabled;
         entity.WhatsAppGatewayUrl = (Input.WhatsAppGatewayUrl ?? "").Trim();
         entity.WhatsAppInternalPhonesCsv = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
         entity.WhatsAppNotifyTickets = Input.WhatsAppNotifyTickets;
         entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
+        entity.WhatsAppChildCheckInTemplate = NormalizeTemplate(Input.WhatsAppChildCheckInTemplate, DefaultChildCheckInTemplate);
+        entity.WhatsAppChildCheckOutTemplate = NormalizeTemplate(Input.WhatsAppChildCheckOutTemplate, DefaultChildCheckOutTemplate);
+
         if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
             entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Flash = "Configuracion API guardada.";
+        Flash = "Configuracion WhatsApp guardada.";
         FlashType = "success";
         return RedirectToPage();
     }
@@ -428,7 +461,9 @@ public class ConfigurationModel : PageModel
                 SmtpSecurity = "StartTls",
                 SmtpTimeoutMs = 15000,
                 PublicBaseUrl = "",
-                WhatsAppNotifyTickets = true
+                WhatsAppNotifyTickets = true,
+                WhatsAppChildCheckInTemplate = DefaultChildCheckInTemplate,
+                WhatsAppChildCheckOutTemplate = DefaultChildCheckOutTemplate
             };
             HasLogo = false;
             return;
@@ -465,6 +500,8 @@ public class ConfigurationModel : PageModel
             WhatsAppInternalPhonesCsv = cfg.WhatsAppInternalPhonesCsv,
             WhatsAppNotifyTickets = cfg.WhatsAppNotifyTickets,
             WhatsAppNotifyCustomers = cfg.WhatsAppNotifyCustomers,
+            WhatsAppChildCheckInTemplate = NormalizeTemplate(cfg.WhatsAppChildCheckInTemplate, DefaultChildCheckInTemplate),
+            WhatsAppChildCheckOutTemplate = NormalizeTemplate(cfg.WhatsAppChildCheckOutTemplate, DefaultChildCheckOutTemplate),
             Notes = cfg.Notes
         };
 
@@ -572,4 +609,7 @@ public class ConfigurationModel : PageModel
         PacProvider.SwSapien => "SW Sapien",
         _ => "Sin timbrado"
     };
+
+    private static string NormalizeTemplate(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 }

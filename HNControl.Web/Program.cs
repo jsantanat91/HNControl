@@ -841,6 +841,8 @@ ALTER TABLE IF EXISTS public."Clients"
     ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
 ALTER TABLE IF EXISTS public."Clients"
     ADD COLUMN IF NOT EXISTS "OwnerUserId" character varying(64);
+ALTER TABLE IF EXISTS public."Clients"
+    ADD COLUMN IF NOT EXISTS "Rfc" character varying(13);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(64);
 ALTER TABLE IF EXISTS public.clients
@@ -849,11 +851,15 @@ ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "Municipality" character varying(120);
 ALTER TABLE IF EXISTS public.clients
     ADD COLUMN IF NOT EXISTS "OwnerUserId" character varying(64);
+ALTER TABLE IF EXISTS public.clients
+    ADD COLUMN IF NOT EXISTS "Rfc" character varying(13);
 
 CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_CreatedByUserId_CreatedAt"
     ON public."Clients" ("IsTemporaryLead", "CreatedByUserId", "CreatedAt");
 CREATE INDEX IF NOT EXISTS "IX_Clients_IsTemporaryLead_OwnerUserId_CreatedAt"
     ON public."Clients" ("IsTemporaryLead", "OwnerUserId", "CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_Clients_Rfc"
+    ON public."Clients" ("Rfc");
 
 UPDATE public."Clients"
 SET "OwnerUserId" = "CreatedByUserId"
@@ -1119,6 +1125,10 @@ ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
 ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckInTemplate" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckOutTemplate" character varying(2000) NOT NULL DEFAULT '';
 
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "MercadoPagoAccessTokenProtected" character varying(2200) NOT NULL DEFAULT '';
@@ -1140,6 +1150,10 @@ ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckInTemplate" character varying(2000) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public.systemconfigurations
+    ADD COLUMN IF NOT EXISTS "WhatsAppChildCheckOutTemplate" character varying(2000) NOT NULL DEFAULT '';
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

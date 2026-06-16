@@ -69,6 +69,7 @@ else
                         </div>
                         <div class="mt-2 d-flex gap-2 flex-wrap">
                             <span class="hn-badge hn-badge-blue">@p.ClientCode</span>
+                            <span class="hn-badge hn-badge-blue">@p.Rfc</span>
                             <span class="hn-badge hn-badge-green">@p.ContactName</span>
                         </div>
                         <div class="small mt-2">@p.Email &middot; @p.Phone</div>
@@ -153,14 +154,18 @@ else
                                         <label class="form-label">Contacto</label>
                                         <input class="form-control" asp-for="EditLead.ContactName" value="@p.ContactName" />
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Empresa</label>
-                                        <input class="form-control" asp-for="EditLead.CompanyName" value="@p.Name" />
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Correo</label>
-                                        <input class="form-control" asp-for="EditLead.Email" value="@p.Email" />
-                                    </div>
+                                     <div class="col-md-6">
+                                         <label class="form-label">Empresa</label>
+                                         <input class="form-control" asp-for="EditLead.CompanyName" value="@p.Name" />
+                                     </div>
+                                     <div class="col-md-4">
+                                         <label class="form-label">RFC</label>
+                                         <input class="form-control text-uppercase" asp-for="EditLead.Rfc" value="@p.Rfc" maxlength="13" required />
+                                     </div>
+                                     <div class="col-md-4">
+                                         <label class="form-label">Correo</label>
+                                         <input class="form-control" asp-for="EditLead.Email" value="@p.Email" />
+                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Teléfono</label>
                                         <input class="form-control" asp-for="EditLead.Phone" value="@p.Phone" />
@@ -221,13 +226,17 @@ else
                             <label class="form-label">Contacto</label>
                             <input class="form-control" asp-for="Lead.ContactName" />
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Empresa (opcional)</label>
-                            <input class="form-control" asp-for="Lead.CompanyName" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Correo</label>
-                            <input class="form-control" asp-for="Lead.Email" />
+                         <div class="col-md-6">
+                             <label class="form-label">Empresa (opcional)</label>
+                             <input class="form-control" asp-for="Lead.CompanyName" />
+                         </div>
+                         <div class="col-md-4">
+                             <label class="form-label">RFC</label>
+                             <input class="form-control text-uppercase" asp-for="Lead.Rfc" maxlength="13" required />
+                         </div>
+                         <div class="col-md-4">
+                             <label class="form-label">Correo</label>
+                             <input class="form-control" asp-for="Lead.Email" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Teléfono</label>

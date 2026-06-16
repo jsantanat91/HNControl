@@ -353,6 +353,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasKey(x => x.Id);
             e.Property(x => x.ClientCode).HasMaxLength(20);
             e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Rfc).HasMaxLength(13);
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(40);
             e.Property(x => x.ContactName).HasMaxLength(120);
@@ -945,6 +946,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.Property(x => x.MercadoPagoAccessTokenProtected).HasMaxLength(2200);
             e.Property(x => x.MercadoPagoPublicKey).HasMaxLength(220);
             e.Property(x => x.MercadoPagoWebhookSecretProtected).HasMaxLength(2200);
+            e.Property(x => x.WhatsAppGatewayUrl).HasMaxLength(300);
+            e.Property(x => x.WhatsAppApiKeyProtected).HasMaxLength(2200);
+            e.Property(x => x.WhatsAppInternalPhonesCsv).HasMaxLength(1000);
+            e.Property(x => x.WhatsAppChildCheckInTemplate).HasMaxLength(2000);
+            e.Property(x => x.WhatsAppChildCheckOutTemplate).HasMaxLength(2000);
             e.Property(x => x.PublicBaseUrl).HasMaxLength(220);
             e.Property(x => x.Notes).HasMaxLength(400);
             e.HasIndex(x => x.UpdatedAt);

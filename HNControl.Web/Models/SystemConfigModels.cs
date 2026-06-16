@@ -122,6 +122,12 @@ public class SystemConfiguration
 
     public bool WhatsAppNotifyCustomers { get; set; }
 
+    [MaxLength(2000)]
+    public string WhatsAppChildCheckInTemplate { get; set; } = "";
+
+    [MaxLength(2000)]
+    public string WhatsAppChildCheckOutTemplate { get; set; } = "";
+
     [MaxLength(220)]
     public string PublicBaseUrl { get; set; } = "";
 

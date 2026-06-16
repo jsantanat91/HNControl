@@ -34,6 +34,9 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabApi">API</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabWa">WA</button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -267,10 +270,17 @@
                         }
                     </div>
 
-                    <div class="col-12"><hr /></div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Guardar API</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane fade" id="tabWa">
+                <form method="post" asp-page-handler="SaveWhatsApp" class="row g-3">
                     <div class="col-12">
                         <div class="fw-semibold">WhatsApp / OpenWA</div>
-                        <div class="text-muted small">Gateway compatible con OpenWA. Se envia adicional al correo cuando esta activo.</div>
+                        <div class="text-muted small">Gateway compatible con OpenWA. Se envía adicional al correo cuando está activo.</div>
                     </div>
 
                     <div class="col-12 col-md-3">
@@ -295,7 +305,7 @@
                     </div>
 
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Telefonos internos para alertas</label>
+                        <label class="form-label">Teléfonos internos para alertas</label>
                         <input class="form-control" asp-for="Input.WhatsAppInternalPhonesCsv" placeholder="525655273643, 5255..." />
                         <div class="form-text">Separados por coma. Se usan para tickets y alertas internas.</div>
                     </div>
@@ -314,8 +324,28 @@
                         </div>
                     </div>
 
+                    <div class="col-12"><hr /></div>
+                    <div class="col-12">
+                        <div class="fw-semibold">Plantillas de mensajes WA</div>
+                        <div class="text-muted small">
+                            Variables disponibles: <code>{NinoNombre}</code>, <code>{TutorNombre}</code>, <code>{Fecha}</code>, <code>{Hora}</code>, <code>{Sede}</code>.
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Check-in de niños</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppChildCheckInTemplate" rows="5"></textarea>
+                        <div class="form-text">Mensaje enviado cuando se registra la entrada.</div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Check-out de niños</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppChildCheckOutTemplate" rows="5"></textarea>
+                        <div class="form-text">Mensaje enviado cuando se registra la salida.</div>
+                    </div>
+
                     <div class="col-12 d-flex gap-2">
-                        <button class="btn btn-primary" type="submit">Guardar API</button>
+                        <button class="btn btn-primary" type="submit">Guardar WhatsApp</button>
                     </div>
                 </form>
 
@@ -328,7 +358,7 @@
                         <button class="btn btn-outline-success w-100" type="submit">Probar WhatsApp</button>
                     </div>
                     <div class="col-12">
-                        <div class="form-text">Guarda la configuracion API antes de probar el envio.</div>
+                        <div class="form-text">Guarda la configuración WA antes de probar el envío.</div>
                     </div>
                 </form>
             </div>
