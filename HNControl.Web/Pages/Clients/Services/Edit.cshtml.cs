@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -80,19 +80,19 @@ public class EditModel : PageModel
         [Range(0, 99999999)]
         public decimal InstallationCost { get; set; } = 0m;
 
-        [MaxLength(20)] public string InternetCapacity { get; set; } = "";
-        [MaxLength(40)] public string InternetCapacityOther { get; set; } = "";
-        [MaxLength(20)] public string TelephonyExtensions { get; set; } = "";
-        [MaxLength(20)] public string TelephonyTrunks { get; set; } = "";
-        [MaxLength(20)] public string TelephonyDids { get; set; } = "";
-        [MaxLength(20)] public string CctvChannels { get; set; } = "";
-        [MaxLength(40)] public string CctvChannelsOther { get; set; } = "";
-        [MaxLength(40)] public string SecurityBrand { get; set; } = "";
-        [MaxLength(80)] public string SecurityBrandOther { get; set; } = "";
-        [MaxLength(80)] public string ServerOs { get; set; } = "";
-        [MaxLength(20)] public string ServerCpuCores { get; set; } = "";
-        [MaxLength(40)] public string ServerRam { get; set; } = "";
-        [MaxLength(80)] public string ServerDisk { get; set; } = "";
+        [MaxLength(20)] public string? InternetCapacity { get; set; }
+        [MaxLength(40)] public string? InternetCapacityOther { get; set; }
+        [MaxLength(20)] public string? TelephonyExtensions { get; set; }
+        [MaxLength(20)] public string? TelephonyTrunks { get; set; }
+        [MaxLength(20)] public string? TelephonyDids { get; set; }
+        [MaxLength(20)] public string? CctvChannels { get; set; }
+        [MaxLength(40)] public string? CctvChannelsOther { get; set; }
+        [MaxLength(40)] public string? SecurityBrand { get; set; }
+        [MaxLength(80)] public string? SecurityBrandOther { get; set; }
+        [MaxLength(80)] public string? ServerOs { get; set; }
+        [MaxLength(20)] public string? ServerCpuCores { get; set; }
+        [MaxLength(40)] public string? ServerRam { get; set; }
+        [MaxLength(80)] public string? ServerDisk { get; set; }
 
         [MaxLength(20)]
         public string BillingRecurrence { get; set; } = "Mensual";
@@ -303,8 +303,8 @@ public class EditModel : PageModel
             {
                 x.Id,
                 Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "Venta")
-                    + " · " + x.WorkflowStage
-                    + " · " + x.Status
+                    + " Â· " + x.WorkflowStage
+                    + " Â· " + x.Status
             })
             .ToListAsync();
 
@@ -355,19 +355,19 @@ public class EditModel : PageModel
         Guid? salesOpportunityId,
         decimal installationCost,
         IReadOnlyCollection<string> selectedServiceTypes,
-        string internetCapacity,
-        string internetCapacityOther,
-        string telephonyExtensions,
-        string telephonyTrunks,
-        string telephonyDids,
-        string cctvChannels,
-        string cctvChannelsOther,
-        string securityBrand,
-        string securityBrandOther,
-        string serverOs,
-        string serverCpuCores,
-        string serverRam,
-        string serverDisk)
+        string? internetCapacity,
+        string? internetCapacityOther,
+        string? telephonyExtensions,
+        string? telephonyTrunks,
+        string? telephonyDids,
+        string? cctvChannels,
+        string? cctvChannelsOther,
+        string? securityBrand,
+        string? securityBrandOther,
+        string? serverOs,
+        string? serverCpuCores,
+        string? serverRam,
+        string? serverDisk)
     {
         var notes = (rawNotes ?? string.Empty).Trim();
         var lines = new List<string>();
@@ -465,5 +465,6 @@ public class EditModel : PageModel
             : "Indefinido";
     }
 }
+
 
 
