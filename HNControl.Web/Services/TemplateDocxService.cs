@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using HNControl.Web.Models;
 
 namespace HNControl.Web.Services;
@@ -67,6 +68,7 @@ public class TemplateDocxService : ITemplateDocxService
                     {
                         if (string.IsNullOrWhiteSpace(kv.Key)) continue;
                         xml = xml.Replace(kv.Key, kv.Value, StringComparison.Ordinal);
+                        xml = ReplaceSplitPlaceholder(xml, kv.Key, kv.Value);
                     }
                     using var sw = new StreamWriter(outStream, new UTF8Encoding(false));
                     sw.Write(xml);
@@ -79,6 +81,16 @@ public class TemplateDocxService : ITemplateDocxService
         }
 
         return output.ToArray();
+    }
+
+    private static string ReplaceSplitPlaceholder(string xml, string key, string value)
+    {
+        if (string.IsNullOrWhiteSpace(xml) || string.IsNullOrWhiteSpace(key))
+            return xml;
+
+        var separators = @"(?:</w:t>(?:(?!<w:t).)*<w:t[^>]*>|<[^>]+>)*";
+        var pattern = string.Join(separators, key.Select(c => Regex.Escape(c.ToString())));
+        return Regex.Replace(xml, pattern, value ?? string.Empty, RegexOptions.Singleline);
     }
 
     private static Dictionary<string, string> BuildNdaReplacements(ClientLegalDocument doc, Client client)
@@ -146,7 +158,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["ESTADOC"] = Safe(tpl.ESTADOC, client.State, "MÃ©xico"),
             ["CPC"] = Safe(client.FiscalZipCode, "00000"),
             ["EMAILC"] = Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com"),
-            ["CONTRATOC"] = Safe(tpl.CONTRATOC, doc.Title, serviceName),
+            ["CONTRATOC"] = Safe(tpl.CONTRATOC, serviceName, doc.Title),
             ["PERIODOC"] = Safe(period, tpl.PERIODOC, "12 meses"),
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label, "-"),
             ["COSTOCLIENTE"] = monthly,

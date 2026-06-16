@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -56,7 +57,8 @@ public class DocumentsModel : PageModel
         string CreatedAt,
         string? SignedAt,
         string? SignedBy,
-        Guid? ContractId);
+        Guid? ContractId,
+        string? ContractLabel);
 
     public record SignContactOption(
         Guid Id,
@@ -100,9 +102,10 @@ public class DocumentsModel : PageModel
         }
 
         doc.Status = ClientLegalDocumentStatus.Draft;
+        var documentSubject = FirstNonEmpty(contract?.Label, client.Name);
         doc.Title = type == ClientLegalDocumentType.NDA
-            ? $"NDA - {client.Name}"
-            : $"Contrato de servicios - {client.Name}";
+            ? $"NDA - {documentSubject}"
+            : $"Contrato de servicios - {documentSubject}";
         doc.TermsBody = BuildTemplateTerms(type, client, contract);
         doc.MonthlyAmount = contract?.MonthlyAmount;
         doc.ContractStartDate = contract?.ContractStartDate;
@@ -282,6 +285,7 @@ public class DocumentsModel : PageModel
 
         Docs = await _db.ClientLegalDocuments
             .AsNoTracking()
+            .Include(x => x.ClientServiceContract)
             .Where(x => x.ClientId == clientId)
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new LegalDocRow(
@@ -295,7 +299,8 @@ public class DocumentsModel : PageModel
                 x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                 x.SignedAt.HasValue ? x.SignedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : null,
                 x.SignedByName,
-                x.ClientServiceContractId
+                x.ClientServiceContractId,
+                x.ClientServiceContract != null ? x.ClientServiceContract.Label : null
             ))
             .ToListAsync();
     }
@@ -327,6 +332,7 @@ public class DocumentsModel : PageModel
 
     private static string BuildTemplateTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract)
     {
+        var technical = ClientServiceContractMetadata.ParseTechnical(contract?.Notes);
         var payload = new ContractTemplatePayload
         {
             RSCLIENTE = Safe(client.Name),
@@ -339,7 +345,8 @@ public class DocumentsModel : PageModel
             CONTRATOC = Safe(type == ClientLegalDocumentType.NDA ? "NDA" : contract?.Label, "Contrato de servicios"),
             PERIODOC = BuildPeriod(contract),
             SUCURSALC = Safe(contract?.Branch, contract?.Label),
-            COSTOCLIENTE = (contract?.MonthlyAmount ?? 0m).ToString("N2"),
+            COSTOCLIENTE = (contract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")),
+            COSTOINST = technical.InstallationCost.ToString("N2", new CultureInfo("es-MX")),
             FIRMACLIENTE = "PENDIENTE DE FIRMA",
             NOMBREPROYECTO = Safe(contract?.Label),
             NOMBRETECNICO = "-"
@@ -395,8 +402,11 @@ public class DocumentsModel : PageModel
         public string? PERIODOC { get; set; }
         public string? SUCURSALC { get; set; }
         public string? COSTOCLIENTE { get; set; }
+        public string? COSTOINST { get; set; }
         public string? FIRMACLIENTE { get; set; }
         public string? NOMBREPROYECTO { get; set; }
         public string? NOMBRETECNICO { get; set; }
     }
 }
+
+
