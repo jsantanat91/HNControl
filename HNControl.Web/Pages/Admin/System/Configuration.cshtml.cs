@@ -561,7 +561,6 @@ public class ConfigurationModel : PageModel
                     CsdCerStoragePath = x.CsdCerStoragePath,
                     CsdKeyStoragePath = x.CsdKeyStoragePath,
                     CsdPasswordProtected = x.CsdPasswordProtected,
-                    PublicBaseUrl = x.PublicBaseUrl,
                     WhatsAppEnabled = x.WhatsAppEnabled,
                     WhatsAppGatewayUrl = x.WhatsAppGatewayUrl,
                     WhatsAppApiKeyProtected = x.WhatsAppApiKeyProtected,
