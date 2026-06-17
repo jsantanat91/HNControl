@@ -331,38 +331,34 @@ public class ConfigurationModel : PageModel
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        Flash = "Configuracion API guardada.";
+        Flash = "Configuracion Mercado Pago guardada.";
         FlashType = "success";
         return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostSaveWhatsAppAsync()
     {
-        SystemConfiguration entity;
         try
         {
-            entity = await GetOrCreateAsync();
+            var entity = await GetOrCreateAsync();
+
+            ApplyWhatsAppInput(entity);
+
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UndefinedColumn })
         {
-            Flash = ex.Message;
-            FlashType = "warning";
-            return RedirectToPage();
+            await SaveWhatsAppCompatibleAsync();
         }
-
-        entity.WhatsAppEnabled = Input.WhatsAppEnabled;
-        entity.WhatsAppGatewayUrl = (Input.WhatsAppGatewayUrl ?? "").Trim();
-        entity.WhatsAppInternalPhonesCsv = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
-        entity.WhatsAppNotifyTickets = Input.WhatsAppNotifyTickets;
-        entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
-        entity.WhatsAppOtpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
-        entity.WhatsAppPayrollReceiptTemplate = NormalizeTemplate(Input.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate);
-
-        if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
-            entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
-
-        entity.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        catch (DbUpdateException ex) when (ex.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.UndefinedColumn })
+        {
+            await SaveWhatsAppCompatibleAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            await SaveWhatsAppCompatibleAsync();
+        }
 
         Flash = "Configuracion WhatsApp guardada.";
         FlashType = "success";
@@ -565,10 +561,140 @@ public class ConfigurationModel : PageModel
                     CsdCerStoragePath = x.CsdCerStoragePath,
                     CsdKeyStoragePath = x.CsdKeyStoragePath,
                     CsdPasswordProtected = x.CsdPasswordProtected,
+                    PublicBaseUrl = x.PublicBaseUrl,
+                    WhatsAppEnabled = x.WhatsAppEnabled,
+                    WhatsAppGatewayUrl = x.WhatsAppGatewayUrl,
+                    WhatsAppApiKeyProtected = x.WhatsAppApiKeyProtected,
+                    WhatsAppInternalPhonesCsv = x.WhatsAppInternalPhonesCsv,
+                    WhatsAppNotifyTickets = x.WhatsAppNotifyTickets,
+                    WhatsAppNotifyCustomers = x.WhatsAppNotifyCustomers,
+                    WhatsAppOtpTemplate = x.WhatsAppOtpTemplate,
+                    WhatsAppPayrollReceiptTemplate = x.WhatsAppPayrollReceiptTemplate,
                     Notes = x.Notes,
                     UpdatedAt = x.UpdatedAt
                 })
                 .FirstOrDefaultAsync();
+        }
+    }
+
+    private void ApplyWhatsAppInput(SystemConfiguration entity)
+    {
+        entity.WhatsAppEnabled = Input.WhatsAppEnabled;
+        entity.WhatsAppGatewayUrl = (Input.WhatsAppGatewayUrl ?? "").Trim();
+        entity.WhatsAppInternalPhonesCsv = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
+        entity.WhatsAppNotifyTickets = Input.WhatsAppNotifyTickets;
+        entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
+        entity.WhatsAppOtpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
+        entity.WhatsAppPayrollReceiptTemplate = NormalizeTemplate(Input.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate);
+
+        if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
+            entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
+    }
+
+    private async Task SaveWhatsAppCompatibleAsync()
+    {
+        var id = await GetLatestConfigIdRawAsync() ?? Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var otpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
+        var payrollTemplate = NormalizeTemplate(Input.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate);
+        var gatewayUrl = (Input.WhatsAppGatewayUrl ?? "").Trim();
+        var internalPhones = (Input.WhatsAppInternalPhonesCsv ?? "").Trim();
+        var apiKeyProtected = !string.IsNullOrWhiteSpace(Input.WhatsAppApiKey)
+            ? _protector.Protect(Input.WhatsAppApiKey.Trim())
+            : null;
+
+        if (!await SystemConfigurationExistsRawAsync(id))
+        {
+            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "SystemConfigurations"
+                    ("Id", "CompanyName", "CompanyFiscalRegimeCode", "CfdiVersion", "CfdiSerieDefault", "SmtpPort", "SmtpSecurity", "SmtpTimeoutMs",
+                     "WhatsAppEnabled", "WhatsAppGatewayUrl", "WhatsAppApiKeyProtected", "WhatsAppInternalPhonesCsv", "WhatsAppNotifyTickets",
+                     "WhatsAppNotifyCustomers", "WhatsAppOtpTemplate", "WhatsAppPayrollReceiptTemplate", "UpdatedAt")
+                VALUES
+                    ({id}, {"HN Solutions"}, {"601"}, {"4.0"}, {"A"}, {587}, {"StartTls"}, {15000},
+                     {Input.WhatsAppEnabled}, {gatewayUrl}, {apiKeyProtected ?? ""}, {internalPhones}, {Input.WhatsAppNotifyTickets},
+                     {Input.WhatsAppNotifyCustomers}, {otpTemplate}, {payrollTemplate}, {now})
+                """);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(apiKeyProtected))
+        {
+            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE "SystemConfigurations"
+                SET "WhatsAppEnabled" = {Input.WhatsAppEnabled},
+                    "WhatsAppGatewayUrl" = {gatewayUrl},
+                    "WhatsAppApiKeyProtected" = {apiKeyProtected},
+                    "WhatsAppInternalPhonesCsv" = {internalPhones},
+                    "WhatsAppNotifyTickets" = {Input.WhatsAppNotifyTickets},
+                    "WhatsAppNotifyCustomers" = {Input.WhatsAppNotifyCustomers},
+                    "WhatsAppOtpTemplate" = {otpTemplate},
+                    "WhatsAppPayrollReceiptTemplate" = {payrollTemplate},
+                    "UpdatedAt" = {now}
+                WHERE "Id" = {id}
+                """);
+        }
+        else
+        {
+            await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE "SystemConfigurations"
+                SET "WhatsAppEnabled" = {Input.WhatsAppEnabled},
+                    "WhatsAppGatewayUrl" = {gatewayUrl},
+                    "WhatsAppInternalPhonesCsv" = {internalPhones},
+                    "WhatsAppNotifyTickets" = {Input.WhatsAppNotifyTickets},
+                    "WhatsAppNotifyCustomers" = {Input.WhatsAppNotifyCustomers},
+                    "WhatsAppOtpTemplate" = {otpTemplate},
+                    "WhatsAppPayrollReceiptTemplate" = {payrollTemplate},
+                    "UpdatedAt" = {now}
+                WHERE "Id" = {id}
+                """);
+        }
+    }
+
+    private async Task<Guid?> GetLatestConfigIdRawAsync()
+    {
+        var connection = _db.Database.GetDbConnection();
+        var shouldClose = connection.State != global::System.Data.ConnectionState.Open;
+        if (shouldClose)
+            await connection.OpenAsync();
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """SELECT "Id" FROM "SystemConfigurations" ORDER BY "UpdatedAt" DESC LIMIT 1""";
+            var result = await cmd.ExecuteScalarAsync();
+            if (result is Guid guid)
+                return guid;
+            return Guid.TryParse(result?.ToString(), out var parsed) ? parsed : null;
+        }
+        finally
+        {
+            if (shouldClose)
+                await connection.CloseAsync();
+        }
+    }
+
+    private async Task<bool> SystemConfigurationExistsRawAsync(Guid id)
+    {
+        var connection = _db.Database.GetDbConnection();
+        var shouldClose = connection.State != global::System.Data.ConnectionState.Open;
+        if (shouldClose)
+            await connection.OpenAsync();
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """SELECT EXISTS (SELECT 1 FROM "SystemConfigurations" WHERE "Id" = @id)""";
+            var parameter = cmd.CreateParameter();
+            parameter.ParameterName = "id";
+            parameter.Value = id;
+            cmd.Parameters.Add(parameter);
+            return await cmd.ExecuteScalarAsync() is true;
+        }
+        finally
+        {
+            if (shouldClose)
+                await connection.CloseAsync();
         }
     }
 

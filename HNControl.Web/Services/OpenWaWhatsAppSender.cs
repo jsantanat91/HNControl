@@ -85,8 +85,33 @@ public class OpenWaWhatsAppSender : IWhatsAppSender
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
         {
-            _log.LogWarning(ex, "Esquema de SystemConfigurations desactualizado. Se omite WhatsApp.");
-            return null;
+            _log.LogWarning(ex, "Esquema de SystemConfigurations desactualizado. Se carga WhatsApp en modo compatible.");
+
+            try
+            {
+                return await _db.SystemConfigurations
+                    .AsNoTracking()
+                    .OrderByDescending(x => x.UpdatedAt)
+                    .Select(x => new Models.SystemConfiguration
+                    {
+                        Id = x.Id,
+                        WhatsAppEnabled = x.WhatsAppEnabled,
+                        WhatsAppGatewayUrl = x.WhatsAppGatewayUrl,
+                        WhatsAppApiKeyProtected = x.WhatsAppApiKeyProtected,
+                        WhatsAppInternalPhonesCsv = x.WhatsAppInternalPhonesCsv,
+                        WhatsAppNotifyTickets = x.WhatsAppNotifyTickets,
+                        WhatsAppNotifyCustomers = x.WhatsAppNotifyCustomers,
+                        WhatsAppOtpTemplate = x.WhatsAppOtpTemplate,
+                        WhatsAppPayrollReceiptTemplate = x.WhatsAppPayrollReceiptTemplate,
+                        UpdatedAt = x.UpdatedAt
+                    })
+                    .FirstOrDefaultAsync(ct);
+            }
+            catch (PostgresException nestedEx) when (nestedEx.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _log.LogWarning(nestedEx, "Esquema de SystemConfigurations sin columnas WhatsApp. Se omite WhatsApp.");
+                return null;
+            }
         }
     }
 
