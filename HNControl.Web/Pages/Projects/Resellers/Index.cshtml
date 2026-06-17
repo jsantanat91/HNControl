@@ -5,6 +5,59 @@
     ViewData["Title"] = "Reseller";
 }
 
+<style>
+    .content-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        align-items: center;
+        padding: .45rem;
+        background: #fff;
+        border: 1px solid rgba(37, 99, 235, .12);
+        border-radius: .9rem;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, .07);
+    }
+
+    .content-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        min-height: 2.3rem;
+        padding: .48rem .78rem;
+        color: #25324b;
+        font-size: .88rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+        border-radius: .65rem;
+        background: transparent;
+        transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+
+    .content-tab:hover,
+    .content-tab:focus {
+        color: #1d4ed8;
+        background: #f5f8ff;
+        border-color: #d8e3ff;
+    }
+
+    .content-tab.active {
+        color: #2746e8;
+        background: linear-gradient(180deg, #f6f8ff 0%, #eef3ff 100%);
+        border-color: #b8c8ff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .75);
+    }
+
+    .content-tab .tab-icon {
+        color: #64748b;
+        font-size: .82rem;
+        line-height: 1;
+    }
+
+    .content-tab.active .tab-icon {
+        color: #2746e8;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Reseller</h1>
@@ -18,12 +71,27 @@
 
 <div class="card shadow-soft hn-hover mb-3">
     <div class="card-body">
-        <div class="d-flex flex-wrap gap-2" id="resellerSectionNav">
-            <button class="btn btn-lg btn-primary section-btn" type="button" data-section="sectionPartner">Nuevo reseller</button>
-            <button class="btn btn-lg btn-outline-primary section-btn" type="button" data-section="sectionCommission">Nuevo plan de comision</button>
-            <button class="btn btn-lg btn-outline-success section-btn" type="button" data-section="sectionPartnersList">Resellers</button>
-            <button class="btn btn-lg btn-outline-info section-btn" type="button" data-section="sectionCommissions">Comisiones</button>
-            <button class="btn btn-lg btn-outline-warning section-btn" type="button" data-section="sectionPayments">Pagos</button>
+        <div class="content-tabs" id="resellerSectionNav">
+            <button class="content-tab section-btn active" type="button" data-section="sectionPartner">
+                <span class="tab-icon" aria-hidden="true">＋</span>
+                <span>Nuevo reseller</span>
+            </button>
+            <button class="content-tab section-btn" type="button" data-section="sectionCommission">
+                <span class="tab-icon" aria-hidden="true">◇</span>
+                <span>Nuevo plan</span>
+            </button>
+            <button class="content-tab section-btn" type="button" data-section="sectionPartnersList">
+                <span class="tab-icon" aria-hidden="true">◎</span>
+                <span>Resellers</span>
+            </button>
+            <button class="content-tab section-btn" type="button" data-section="sectionCommissions">
+                <span class="tab-icon" aria-hidden="true">⌁</span>
+                <span>Comisiones</span>
+            </button>
+            <button class="content-tab section-btn" type="button" data-section="sectionPayments">
+                <span class="tab-icon" aria-hidden="true">↓</span>
+                <span>Pagos</span>
+            </button>
         </div>
     </div>
 </div>
@@ -250,11 +318,8 @@
                 sections.forEach(s => s.classList.toggle('d-none', s.id !== targetId));
                 buttons.forEach(btn => {
                     const isActive = btn.dataset.section === targetId;
-                    btn.classList.toggle('btn-primary', isActive);
-                    btn.classList.toggle('btn-outline-primary', !isActive && btn.dataset.section !== 'sectionPartnersList' && btn.dataset.section !== 'sectionCommissions' && btn.dataset.section !== 'sectionPayments');
-                    btn.classList.toggle('btn-outline-success', !isActive && btn.dataset.section === 'sectionPartnersList');
-                    btn.classList.toggle('btn-outline-info', !isActive && btn.dataset.section === 'sectionCommissions');
-                    btn.classList.toggle('btn-outline-warning', !isActive && btn.dataset.section === 'sectionPayments');
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
                 });
             }
 

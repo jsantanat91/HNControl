@@ -5,6 +5,64 @@
     ViewData["Title"] = "Configuraci\u00F3n del sistema";
 }
 
+<style>
+    .content-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        align-items: center;
+        padding: .45rem;
+        margin-bottom: 1rem;
+        background: #fff;
+        border: 1px solid rgba(37, 99, 235, .12);
+        border-radius: .9rem;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, .07);
+    }
+
+    .content-tabs .nav-item {
+        margin: 0;
+    }
+
+    .content-tabs .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        min-height: 2.3rem;
+        padding: .48rem .78rem;
+        color: #25324b;
+        font-size: .88rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+        border-radius: .65rem;
+        background: transparent;
+        transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+    }
+
+    .content-tabs .nav-link:hover,
+    .content-tabs .nav-link:focus {
+        color: #1d4ed8;
+        background: #f5f8ff;
+        border-color: #d8e3ff;
+    }
+
+    .content-tabs .nav-link.active {
+        color: #2746e8;
+        background: linear-gradient(180deg, #f6f8ff 0%, #eef3ff 100%);
+        border-color: #b8c8ff;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .75);
+    }
+
+    .content-tabs .tab-icon {
+        color: #64748b;
+        font-size: .82rem;
+        line-height: 1;
+    }
+
+    .content-tabs .nav-link.active .tab-icon {
+        color: #2746e8;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">Configuración</h1>
@@ -24,18 +82,30 @@
 
 <div class="card shadow-soft hn-hover">
     <div class="card-body">
-        <ul class="nav nav-pills mb-3" id="cfgTabs" role="tablist">
+        <ul class="nav content-tabs" id="cfgTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#tabGeneral">General</button>
+                <button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#tabGeneral">
+                    <span class="tab-icon" aria-hidden="true">☰</span>
+                    <span>General</span>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabFiscal">Fiscal</button>
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabFiscal">
+                    <span class="tab-icon" aria-hidden="true">◉</span>
+                    <span>Fiscal</span>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabApi">API</button>
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabApi">
+                    <span class="tab-icon" aria-hidden="true">⌁</span>
+                    <span>API</span>
+                </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabWa">WA</button>
+                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#tabWa">
+                    <span class="tab-icon" aria-hidden="true">✉</span>
+                    <span>WA</span>
+                </button>
             </li>
         </ul>
 
