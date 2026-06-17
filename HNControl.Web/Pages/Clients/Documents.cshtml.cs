@@ -315,6 +315,18 @@ public class DocumentsModel : PageModel
         byte[]? pdfBytes = null;
         if (dbDoc.Client != null)
         {
+            if (dbDoc.ClientServiceContract != null)
+            {
+                var documentSubject = FirstNonEmpty(dbDoc.ClientServiceContract.Label, dbDoc.Client.Name);
+                dbDoc.Title = dbDoc.DocumentType == ClientLegalDocumentType.NDA
+                    ? $"NDA - {documentSubject}"
+                    : $"Contrato de servicios - {documentSubject}";
+                dbDoc.TermsBody = BuildTemplateTerms(dbDoc.DocumentType, dbDoc.Client, dbDoc.ClientServiceContract);
+                dbDoc.MonthlyAmount = dbDoc.ClientServiceContract.MonthlyAmount;
+                dbDoc.ContractStartDate = dbDoc.ClientServiceContract.ContractStartDate;
+                dbDoc.ContractEndDate = dbDoc.ClientServiceContract.ContractEndDate;
+            }
+
             var docxBytes = _docxTemplates.BuildClientLegalDocx(dbDoc, dbDoc.Client, dbDoc.ClientServiceContract);
             pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{dbDoc.DocumentType}_{dbDoc.Id:N}");
         }
@@ -324,9 +336,9 @@ public class DocumentsModel : PageModel
 
         var fileName = $"legal_{doc.DocumentType}_{doc.Id:N}.pdf";
         var (path, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"clients/{doc.ClientId}/legal", fileName, "application/pdf");
-        doc.PdfStoragePath = path;
-        doc.PdfGeneratedAt = DateTime.UtcNow;
-        doc.UpdatedAt = DateTime.UtcNow;
+        dbDoc.PdfStoragePath = path;
+        dbDoc.PdfGeneratedAt = DateTime.UtcNow;
+        dbDoc.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
 

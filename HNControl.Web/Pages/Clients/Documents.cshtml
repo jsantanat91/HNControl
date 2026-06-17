@@ -78,96 +78,121 @@
     </div>
 </div>
 
-<div class="card shadow-soft hn-hover">
-    <div class="card-header d-flex justify-content-between align-items-center gap-2">
-        <span class="fw-semibold">Documentos del cliente</span>
-        <span class="badge text-bg-light border">@Model.Docs.Count documento(s)</span>
-    </div>
-    <div class="card-body">
-        @if (!Model.Docs.Any())
+@{
+    var contractDocs = Model.Docs.Where(d => d.Type != "NDA").ToList();
+    var ndaDocs = Model.Docs.Where(d => d.Type == "NDA").ToList();
+    var docGroups = new[]
+    {
+        new
         {
-            <div class="text-muted">Aun no hay documentos generados.</div>
+            Title = "Contratos del cliente",
+            Badge = $"{contractDocs.Count} contrato(s)",
+            Empty = "Aun no hay contratos generados.",
+            Items = contractDocs
+        },
+        new
+        {
+            Title = "NDA del cliente",
+            Badge = $"{ndaDocs.Count} NDA(s)",
+            Empty = "Aun no hay NDA generados.",
+            Items = ndaDocs
         }
-        else
-        {
-            <div class="row g-3">
-                @foreach (var d in Model.Docs)
-                {
-                    var statusBadge = d.Status == "Firmado" ? "text-bg-success" : d.Status == "En firma" ? "text-bg-warning" : "text-bg-secondary";
-                    var typeBadge = d.Type == "NDA" ? "text-bg-info" : "text-bg-primary";
-                    var contractLabel = string.IsNullOrWhiteSpace(d.ContractLabel) ? null : d.ContractLabel;
-                    var title = d.Title;
-                    if (!string.IsNullOrWhiteSpace(contractLabel) && !title.Contains(contractLabel, StringComparison.OrdinalIgnoreCase))
+    };
+}
+
+@foreach (var group in docGroups)
+{
+    <div class="card shadow-soft hn-hover mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center gap-2">
+            <span class="fw-semibold">@group.Title</span>
+            <span class="badge text-bg-light border">@group.Badge</span>
+        </div>
+        <div class="card-body">
+            @if (!group.Items.Any())
+            {
+                <div class="text-muted">@group.Empty</div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var d in group.Items)
                     {
-                        title = $"{title} - {contractLabel}";
-                    }
+                        var statusBadge = d.Status == "Firmado" ? "text-bg-success" : d.Status == "En firma" ? "text-bg-warning" : "text-bg-secondary";
+                        var typeBadge = d.Type == "NDA" ? "text-bg-info" : "text-bg-primary";
+                        var contractLabel = string.IsNullOrWhiteSpace(d.ContractLabel) ? null : d.ContractLabel;
+                        var title = d.Title;
+                        if (!string.IsNullOrWhiteSpace(contractLabel) && !title.Contains(contractLabel, StringComparison.OrdinalIgnoreCase))
+                        {
+                            title = $"{title} - {contractLabel}";
+                        }
 
-                    <div class="col-12 col-lg-6">
-                        <article class="card h-100 border-0 shadow-sm hn-hover">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <span class="badge @typeBadge">@d.Type</span>
-                                        <span class="badge @statusBadge">@d.Status</span>
-                                        @if (d.HasPdf)
-                                        {
-                                            <span class="badge text-bg-light border">PDF listo</span>
-                                        }
+                        <div class="col-12 col-lg-6">
+                            <article class="card h-100 border-0 shadow-sm hn-hover">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <span class="badge @typeBadge">@d.Type</span>
+                                            <span class="badge @statusBadge">@d.Status</span>
+                                            @if (d.HasPdf)
+                                            {
+                                                <span class="badge text-bg-light border">PDF listo</span>
+                                            }
+                                        </div>
+                                        <span class="text-muted small">@d.CreatedAt</span>
                                     </div>
-                                    <span class="text-muted small">@d.CreatedAt</span>
-                                </div>
 
-                                <h3 class="h6 mb-1">@title</h3>
-                                @if (!string.IsNullOrWhiteSpace(contractLabel))
-                                {
-                                    <div class="small text-muted">Contrato base: <strong>@contractLabel</strong></div>
-                                }
-                                else
-                                {
-                                    <div class="small text-muted">Sin contrato base ligado</div>
-                                }
-
-                                <div class="mt-3 small">
-                                    @if (d.IsSigned)
+                                    <h3 class="h6 mb-1">@title</h3>
+                                    @if (!string.IsNullOrWhiteSpace(contractLabel))
                                     {
-                                        <div><strong>Firmado por:</strong> @d.SignedBy</div>
-                                        <div class="text-muted">@d.SignedAt</div>
+                                        <div class="small text-muted">Contrato base: <strong>@contractLabel</strong></div>
                                     }
                                     else
                                     {
-                                        <span class="text-muted">Pendiente de firma</span>
+                                        <div class="small text-muted">Sin contrato base ligado</div>
                                     }
-                                </div>
-                            </div>
 
-                            <div class="card-footer bg-transparent border-0 pt-0">
-                                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                    <form method="post" asp-page-handler="RegeneratePdf">
-                                        <input type="hidden" name="clientId" value="@Model.Client.Id" />
-                                        <input type="hidden" name="docId" value="@d.Id" />
-                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerar PDF</button>
-                                    </form>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline-primary js-open-sign-modal"
-                                        data-doc-id="@d.Id"
-                                        data-doc-title="@title">
-                                        Enviar firma
-                                    </button>
-                                    <form method="post" asp-page-handler="Download">
-                                        <input type="hidden" name="clientId" value="@Model.Client.Id" />
-                                        <input type="hidden" name="docId" value="@d.Id" />
-                                        <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar PDF</button>
-                                    </form>
+                                    <div class="mt-3 small">
+                                        @if (d.IsSigned)
+                                        {
+                                            <div><strong>Firmado por:</strong> @d.SignedBy</div>
+                                            <div class="text-muted">@d.SignedAt</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Pendiente de firma</span>
+                                        }
+                                    </div>
                                 </div>
-                            </div>
-                        </article>
-                    </div>
-                }
-            </div>
-        }
+
+                                <div class="card-footer bg-transparent border-0 pt-0">
+                                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                        <form method="post" asp-page-handler="RegeneratePdf">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerar PDF</button>
+                                        </form>
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary js-open-sign-modal"
+                                            data-doc-id="@d.Id"
+                                            data-doc-title="@title">
+                                            Enviar firma
+                                        </button>
+                                        <form method="post" asp-page-handler="Download">
+                                            <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                            <input type="hidden" name="docId" value="@d.Id" />
+                                            <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar PDF</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
-</div>
+}
 
 <div class="modal fade" id="sendSignatureModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">

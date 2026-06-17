@@ -120,8 +120,8 @@ public class TemplateDocxService : ITemplateDocxService
             ["CONTRATOC"] = Safe(tpl.CONTRATOC, doc.Title, "NDA"),
             ["PERIODOC"] = periodo,
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, doc.ClientServiceContract?.Branch, "-"),
-            ["COSTOCLIENTE"] = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? doc.ClientServiceContract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX"))),
-            ["COSTOINST"] = Safe(tpl.COSTOINST, installationCost),
+            ["COSTOCLIENTE"] = Safe((doc.ClientServiceContract?.MonthlyAmount ?? doc.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")), tpl.COSTOCLIENTE),
+            ["COSTOINST"] = Safe(installationCost, tpl.COSTOINST),
             ["FIRMACLIENTE"] = firma,
             ["HASHFIRMA"] = firmaHash,
             ["FIRMAHASH"] = firmaHash,
@@ -141,8 +141,8 @@ public class TemplateDocxService : ITemplateDocxService
         var nowText = DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         var period = BuildContractPeriod(doc, contract);
         var serviceName = Safe(tpl.CONTRATOC, contract?.Label, "Servicio de telecomunicaciones");
-        var monthly = Safe(tpl.COSTOCLIENTE, (doc.MonthlyAmount ?? contract?.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")));
-        var installationCost = Safe(tpl.COSTOINST, FormatMoney(ExtractInstallationCostFromNotes(contract?.Notes)));
+        var monthly = Safe((contract?.MonthlyAmount ?? doc.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")), tpl.COSTOCLIENTE);
+        var installationCost = Safe(FormatMoney(ExtractInstallationCostFromNotes(contract?.Notes)), tpl.COSTOINST);
         var firma = BuildDigitalSignatureText(doc, Safe(client.LegalRepresentative, client.ContactName));
         var firmaHash = BuildDigitalSignatureHash(doc, Safe(client.LegalRepresentative, client.ContactName));
         var firmaFecha = BuildDigitalSignatureDate(doc);
