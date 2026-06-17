@@ -349,19 +349,54 @@ public class ConfigurationModel : PageModel
         }
         catch (InvalidOperationException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UndefinedColumn })
         {
-            await SaveWhatsAppCompatibleAsync();
+            return await SaveWhatsAppCompatibleOrWarnAsync();
         }
         catch (DbUpdateException ex) when (ex.GetBaseException() is PostgresException { SqlState: PostgresErrorCodes.UndefinedColumn })
         {
-            await SaveWhatsAppCompatibleAsync();
+            return await SaveWhatsAppCompatibleOrWarnAsync();
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
         {
-            await SaveWhatsAppCompatibleAsync();
+            return await SaveWhatsAppCompatibleOrWarnAsync();
+        }
+        catch (InvalidOperationException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.InsufficientPrivilege })
+        {
+            return WhatsAppOwnerWarning();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+        {
+            return WhatsAppOwnerWarning();
         }
 
         Flash = "Configuracion WhatsApp guardada.";
         FlashType = "success";
+        return RedirectToPage();
+    }
+
+    private async Task<IActionResult> SaveWhatsAppCompatibleOrWarnAsync()
+    {
+        try
+        {
+            await SaveWhatsAppCompatibleAsync();
+        }
+        catch (InvalidOperationException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.InsufficientPrivilege })
+        {
+            return WhatsAppOwnerWarning();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+        {
+            return WhatsAppOwnerWarning();
+        }
+
+        Flash = "Configuracion WhatsApp guardada.";
+        FlashType = "success";
+        return RedirectToPage();
+    }
+
+    private IActionResult WhatsAppOwnerWarning()
+    {
+        Flash = "WhatsApp necesita actualizar el esquema de BD, pero el usuario actual no es OWNER de SystemConfigurations. Ejecuta el SQL de actualizacion con el usuario OWNER en pgAdmin.";
+        FlashType = "warning";
         return RedirectToPage();
     }
 
@@ -725,16 +760,23 @@ public class ConfigurationModel : PageModel
 
     private async Task EnsureWhatsAppColumnsAsync()
     {
-        await _db.Database.ExecuteSqlRawAsync("""
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppEnabled" boolean NOT NULL DEFAULT FALSE;
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppGatewayUrl" character varying(300) NOT NULL DEFAULT '';
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppApiKeyProtected" character varying(2200) NOT NULL DEFAULT '';
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppInternalPhonesCsv" character varying(1000) NOT NULL DEFAULT '';
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
-            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
-            """);
+        try
+        {
+            await _db.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppEnabled" boolean NOT NULL DEFAULT FALSE;
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppGatewayUrl" character varying(300) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppApiKeyProtected" character varying(2200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppInternalPhonesCsv" character varying(1000) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
+                """);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+        {
+            throw new InvalidOperationException("Owner requerido para actualizar columnas WhatsApp.", ex);
+        }
     }
 
     private async Task<Guid?> GetLatestConfigIdRawAsync()
