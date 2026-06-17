@@ -526,54 +526,125 @@ public class ConfigurationModel : PageModel
             Flash = "La configuracion API de Mercado Pago aun no esta en el esquema de BD. Se cargo modo compatible sin esos campos.";
             FlashType = "warning";
 
-            return await _db.SystemConfigurations
-                .AsNoTracking()
-                .OrderByDescending(x => x.UpdatedAt)
-                .Select(x => new SystemConfiguration
-                {
-                    Id = x.Id,
-                    CompanyName = x.CompanyName,
-                    CompanyLegalName = x.CompanyLegalName,
-                    CompanyRfc = x.CompanyRfc,
-                    CompanyFiscalRegimeCode = x.CompanyFiscalRegimeCode,
-                    CompanyFiscalZipCode = x.CompanyFiscalZipCode,
-                    CompanyFiscalAddress = x.CompanyFiscalAddress,
-                    BillingEmail = x.BillingEmail,
-                    CompanyLogoStoragePath = x.CompanyLogoStoragePath,
-                    CompanyLogoOriginalFileName = x.CompanyLogoOriginalFileName,
-                    SmtpHost = x.SmtpHost,
-                    SmtpPort = x.SmtpPort,
-                    SmtpUser = x.SmtpUser,
-                    SmtpPasswordProtected = x.SmtpPasswordProtected,
-                    SmtpFromEmail = x.SmtpFromEmail,
-                    SmtpFromName = x.SmtpFromName,
-                    SmtpSecurity = x.SmtpSecurity,
-                    SmtpHeloDomain = x.SmtpHeloDomain,
-                    SmtpTimeoutMs = x.SmtpTimeoutMs,
-                    BillingPacProvider = x.BillingPacProvider,
-                    BillingPacApiBaseUrl = x.BillingPacApiBaseUrl,
-                    BillingPacApiKey = x.BillingPacApiKey,
-                    BillingPacApiSecretProtected = x.BillingPacApiSecretProtected,
-                    BillingPacUsername = x.BillingPacUsername,
-                    BillingPacPasswordProtected = x.BillingPacPasswordProtected,
-                    CfdiVersion = x.CfdiVersion,
-                    CfdiSerieDefault = x.CfdiSerieDefault,
-                    CsdCerStoragePath = x.CsdCerStoragePath,
-                    CsdKeyStoragePath = x.CsdKeyStoragePath,
-                    CsdPasswordProtected = x.CsdPasswordProtected,
-                    WhatsAppEnabled = x.WhatsAppEnabled,
-                    WhatsAppGatewayUrl = x.WhatsAppGatewayUrl,
-                    WhatsAppApiKeyProtected = x.WhatsAppApiKeyProtected,
-                    WhatsAppInternalPhonesCsv = x.WhatsAppInternalPhonesCsv,
-                    WhatsAppNotifyTickets = x.WhatsAppNotifyTickets,
-                    WhatsAppNotifyCustomers = x.WhatsAppNotifyCustomers,
-                    WhatsAppOtpTemplate = x.WhatsAppOtpTemplate,
-                    WhatsAppPayrollReceiptTemplate = x.WhatsAppPayrollReceiptTemplate,
-                    Notes = x.Notes,
-                    UpdatedAt = x.UpdatedAt
-                })
-                .FirstOrDefaultAsync();
+            return await LoadLatestConfigCompatibleRawAsync();
         }
+    }
+
+    private async Task<SystemConfiguration?> LoadLatestConfigCompatibleRawAsync()
+    {
+        var connection = _db.Database.GetDbConnection();
+        var shouldClose = connection.State != global::System.Data.ConnectionState.Open;
+        if (shouldClose)
+            await connection.OpenAsync();
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """SELECT * FROM "SystemConfigurations" ORDER BY "UpdatedAt" DESC LIMIT 1""";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                return null;
+
+            var cfg = new SystemConfiguration
+            {
+                Id = ReadGuid(reader, "Id", Guid.NewGuid()),
+                CompanyName = ReadString(reader, "CompanyName", "HN Solutions"),
+                CompanyLegalName = ReadString(reader, "CompanyLegalName"),
+                CompanyRfc = ReadString(reader, "CompanyRfc"),
+                CompanyFiscalRegimeCode = ReadString(reader, "CompanyFiscalRegimeCode", "601"),
+                CompanyFiscalZipCode = ReadString(reader, "CompanyFiscalZipCode"),
+                CompanyFiscalAddress = ReadString(reader, "CompanyFiscalAddress"),
+                BillingEmail = ReadString(reader, "BillingEmail"),
+                CompanyLogoStoragePath = ReadString(reader, "CompanyLogoStoragePath"),
+                CompanyLogoOriginalFileName = ReadString(reader, "CompanyLogoOriginalFileName"),
+                SmtpHost = ReadString(reader, "SmtpHost"),
+                SmtpPort = ReadInt(reader, "SmtpPort", 587),
+                SmtpUser = ReadString(reader, "SmtpUser"),
+                SmtpPasswordProtected = ReadString(reader, "SmtpPasswordProtected"),
+                SmtpFromEmail = ReadString(reader, "SmtpFromEmail"),
+                SmtpFromName = ReadString(reader, "SmtpFromName", "HN Control"),
+                SmtpSecurity = ReadString(reader, "SmtpSecurity", "StartTls"),
+                SmtpHeloDomain = ReadString(reader, "SmtpHeloDomain"),
+                SmtpTimeoutMs = ReadInt(reader, "SmtpTimeoutMs", 15000),
+                BillingPacProvider = (PacProvider)ReadInt(reader, "BillingPacProvider", (int)PacProvider.None),
+                BillingPacApiBaseUrl = ReadString(reader, "BillingPacApiBaseUrl"),
+                BillingPacApiKey = ReadString(reader, "BillingPacApiKey"),
+                BillingPacApiSecretProtected = ReadString(reader, "BillingPacApiSecretProtected"),
+                BillingPacUsername = ReadString(reader, "BillingPacUsername"),
+                BillingPacPasswordProtected = ReadString(reader, "BillingPacPasswordProtected"),
+                CfdiVersion = ReadString(reader, "CfdiVersion", "4.0"),
+                CfdiSerieDefault = ReadString(reader, "CfdiSerieDefault", "A"),
+                CsdCerStoragePath = ReadString(reader, "CsdCerStoragePath"),
+                CsdKeyStoragePath = ReadString(reader, "CsdKeyStoragePath"),
+                CsdPasswordProtected = ReadString(reader, "CsdPasswordProtected"),
+                MercadoPagoAccessTokenProtected = ReadString(reader, "MercadoPagoAccessTokenProtected"),
+                MercadoPagoPublicKey = ReadString(reader, "MercadoPagoPublicKey"),
+                MercadoPagoWebhookSecretProtected = ReadString(reader, "MercadoPagoWebhookSecretProtected"),
+                WhatsAppEnabled = ReadBool(reader, "WhatsAppEnabled"),
+                WhatsAppGatewayUrl = ReadString(reader, "WhatsAppGatewayUrl"),
+                WhatsAppApiKeyProtected = ReadString(reader, "WhatsAppApiKeyProtected"),
+                WhatsAppInternalPhonesCsv = ReadString(reader, "WhatsAppInternalPhonesCsv"),
+                WhatsAppNotifyTickets = ReadBool(reader, "WhatsAppNotifyTickets", true),
+                WhatsAppNotifyCustomers = ReadBool(reader, "WhatsAppNotifyCustomers"),
+                WhatsAppOtpTemplate = ReadString(reader, "WhatsAppOtpTemplate"),
+                WhatsAppPayrollReceiptTemplate = ReadString(reader, "WhatsAppPayrollReceiptTemplate"),
+                PublicBaseUrl = ReadString(reader, "PublicBaseUrl"),
+                Notes = ReadString(reader, "Notes"),
+                UpdatedAt = ReadDateTime(reader, "UpdatedAt", DateTime.UtcNow)
+            };
+
+            return cfg;
+        }
+        finally
+        {
+            if (shouldClose)
+                await connection.CloseAsync();
+        }
+    }
+
+    private static int GetOrdinalOrMissing(global::System.Data.Common.DbDataReader reader, string columnName)
+    {
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            if (string.Equals(reader.GetName(i), columnName, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static string ReadString(global::System.Data.Common.DbDataReader reader, string columnName, string fallback = "")
+    {
+        var ordinal = GetOrdinalOrMissing(reader, columnName);
+        return ordinal < 0 || reader.IsDBNull(ordinal) ? fallback : Convert.ToString(reader.GetValue(ordinal)) ?? fallback;
+    }
+
+    private static int ReadInt(global::System.Data.Common.DbDataReader reader, string columnName, int fallback = 0)
+    {
+        var ordinal = GetOrdinalOrMissing(reader, columnName);
+        return ordinal < 0 || reader.IsDBNull(ordinal) ? fallback : Convert.ToInt32(reader.GetValue(ordinal));
+    }
+
+    private static bool ReadBool(global::System.Data.Common.DbDataReader reader, string columnName, bool fallback = false)
+    {
+        var ordinal = GetOrdinalOrMissing(reader, columnName);
+        return ordinal < 0 || reader.IsDBNull(ordinal) ? fallback : Convert.ToBoolean(reader.GetValue(ordinal));
+    }
+
+    private static Guid ReadGuid(global::System.Data.Common.DbDataReader reader, string columnName, Guid fallback)
+    {
+        var ordinal = GetOrdinalOrMissing(reader, columnName);
+        if (ordinal < 0 || reader.IsDBNull(ordinal))
+            return fallback;
+
+        var value = reader.GetValue(ordinal);
+        return value is Guid guid || Guid.TryParse(value.ToString(), out guid) ? guid : fallback;
+    }
+
+    private static DateTime ReadDateTime(global::System.Data.Common.DbDataReader reader, string columnName, DateTime fallback)
+    {
+        var ordinal = GetOrdinalOrMissing(reader, columnName);
+        return ordinal < 0 || reader.IsDBNull(ordinal) ? fallback : Convert.ToDateTime(reader.GetValue(ordinal));
     }
 
     private void ApplyWhatsAppInput(SystemConfiguration entity)
@@ -592,6 +663,8 @@ public class ConfigurationModel : PageModel
 
     private async Task SaveWhatsAppCompatibleAsync()
     {
+        await EnsureWhatsAppColumnsAsync();
+
         var id = await GetLatestConfigIdRawAsync() ?? Guid.NewGuid();
         var now = DateTime.UtcNow;
         var otpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
@@ -648,6 +721,20 @@ public class ConfigurationModel : PageModel
                 WHERE "Id" = {id}
                 """);
         }
+    }
+
+    private async Task EnsureWhatsAppColumnsAsync()
+    {
+        await _db.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppEnabled" boolean NOT NULL DEFAULT FALSE;
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppGatewayUrl" character varying(300) NOT NULL DEFAULT '';
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppApiKeyProtected" character varying(2200) NOT NULL DEFAULT '';
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppInternalPhonesCsv" character varying(1000) NOT NULL DEFAULT '';
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyTickets" boolean NOT NULL DEFAULT TRUE;
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
+            ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
+            """);
     }
 
     private async Task<Guid?> GetLatestConfigIdRawAsync()
