@@ -72,6 +72,8 @@ public class DetailsModel : PageModel
     public List<QuoteRow> Quotes { get; set; } = new();
     public record TicketRow(Guid Id, string Number, string Title, string Status, string Priority, string CreatedAt, string AssignedTo);
     public List<TicketRow> Tickets { get; set; } = new();
+    public record DeliveryRow(Guid Id, string Title, string Project, string DeliveryDate, string Status, string Receiver, bool HasPdf);
+    public List<DeliveryRow> Deliveries { get; set; } = new();
     public string PublicQuoteUrl { get; set; } = string.Empty;
     public string PublicTicketUrl { get; set; } = string.Empty;
     public record ClientContactRow(Guid Id, string Name, string Email, string Phone, string Role, bool IsPrimary, DateTime UpdatedAt);
@@ -257,6 +259,24 @@ public class DetailsModel : PageModel
             ))
             .ToListAsync();
 
+        Deliveries = await _db.ProjectDeliveryFormats
+            .AsNoTracking()
+            .Include(x => x.Project)
+            .Where(x => x.ClientId == id)
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(200)
+            .Select(x => new DeliveryRow(
+                x.Id,
+                x.Title,
+                x.Project != null ? x.Project.Title : "-",
+                x.DeliveryDate.ToString("yyyy-MM-dd"),
+                x.Status == ProjectDeliveryFormatStatus.Draft ? "Borrador" :
+                x.Status == ProjectDeliveryFormatStatus.SentForSignature ? "En firma" : "Firmado",
+                x.ReceiverName,
+                !string.IsNullOrWhiteSpace(x.PdfStoragePath)
+            ))
+            .ToListAsync();
+
         await LoadContactsAsync(id);
     }
 
@@ -417,6 +437,30 @@ public class DetailsModel : PageModel
             TempData["ClientDetailsInfoType"] = "danger";
         }
 
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDeleteDeliveryAsync(Guid id, Guid deliveryId)
+    {
+        var canEdit = AppRoles.IsGlobalAdmin(User) || await _actions.HasActionAsync(User, AppActions.ClientsEdit);
+        if (!canEdit) return Forbid();
+        if (!await CanAccessClientAsync(id)) return Forbid();
+
+        var delivery = await _db.ProjectDeliveryFormats
+            .FirstOrDefaultAsync(x => x.Id == deliveryId && x.ClientId == id);
+
+        if (delivery == null)
+        {
+            TempData["ClientDetailsInfo"] = "Formato de entrega no encontrado.";
+            TempData["ClientDetailsInfoType"] = "warning";
+            return RedirectToPage(new { id });
+        }
+
+        _db.ProjectDeliveryFormats.Remove(delivery);
+        await _db.SaveChangesAsync();
+
+        TempData["ClientDetailsInfo"] = "Formato de entrega eliminado.";
+        TempData["ClientDetailsInfoType"] = "success";
         return RedirectToPage(new { id });
     }
 

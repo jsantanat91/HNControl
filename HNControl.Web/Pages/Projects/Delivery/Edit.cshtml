@@ -1,26 +1,21 @@
-﻿@page
-@model HNControl.Web.Pages.Projects.Delivery.CreateModel
+@page "{id:guid}"
+@model HNControl.Web.Pages.Projects.Delivery.EditModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Nuevo formato de entrega";
+    ViewData["Title"] = "Editar formato de entrega";
 }
 
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-        <h1 class="h4 m-0">Nuevo formato de entrega</h1>
-        <div class="text-muted small">Selecciona cliente/proyecto y captura servicios y hardware (hasta 5 renglones por area).</div>
+        <h1 class="h4 m-0">Editar formato de entrega</h1>
+        <div class="text-muted small">Actualiza servicios, hardware, receptor y fecha del acta.</div>
     </div>
-    @if (Model.BackClientId.HasValue)
-    {
-        <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.BackClientId.Value">Volver cliente</a>
-    }
-    else
-    {
-        <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
-    }
+    <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Details" asp-route-id="@Model.DeliveryId">Volver</a>
 </div>
+
 <form method="post" class="card shadow-soft hn-hover">
     <div class="card-body">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Cliente</label>
@@ -37,27 +32,27 @@
                 </select>
             </div>
             <div class="col-12">
-                <label class="form-label">Titulo</label>
-                <input class="form-control" asp-for="Input.Title" placeholder="Ej: Acta entrega de servicios - Sucursal Norte" />
+                <label class="form-label">T&iacute;tulo</label>
+                <input class="form-control" asp-for="Input.Title" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">NOMBREPROYECTO</label>
-                <input class="form-control" asp-for="Input.ProjectTemplateName" placeholder="Nombre para el documento" />
+                <label class="form-label">Nombre del proyecto en documento</label>
+                <input class="form-control" asp-for="Input.ProjectTemplateName" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">NOMBRETECNICO</label>
-                <input class="form-control" asp-for="Input.AssignedTechnicianName" placeholder="Tecnico asignado" />
+                <label class="form-label">T&eacute;cnico asignado</label>
+                <input class="form-control" asp-for="Input.AssignedTechnicianName" />
             </div>
 
             <div class="col-12">
-                <label class="form-label fw-semibold">Area de Servicios</label>
+                <label class="form-label fw-semibold">&Aacute;rea de Servicios</label>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 34%;">SERVICIO01-05</th>
-                                <th style="width: 33%;">SMODAL01-05</th>
-                                <th style="width: 33%;">SPLAZO01-05</th>
+                                <th style="width: 34%;">Servicio</th>
+                                <th style="width: 33%;">Modalidad</th>
+                                <th style="width: 33%;">Plazo</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -75,13 +70,13 @@
             </div>
 
             <div class="col-12">
-                <label class="form-label fw-semibold">Area de Hardware</label>
+                <label class="form-label fw-semibold">&Aacute;rea de Hardware</label>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 65%;">EQUIPO01-05</th>
-                                <th style="width: 35%;">ECANTIDAD01-05</th>
+                                <th style="width: 65%;">Equipo</th>
+                                <th style="width: 35%;">Cantidad</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,7 +93,7 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Ubicacion de entrega</label>
+                <label class="form-label">Ubicaci&oacute;n de entrega</label>
                 <input class="form-control" asp-for="Input.DeliveryLocation" />
             </div>
             <div class="col-md-6">
@@ -114,13 +109,14 @@
                 <input class="form-control" asp-for="Input.ReceiverEmail" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Recibe (telefono)</label>
+                <label class="form-label">Recibe (tel&eacute;fono)</label>
                 <input class="form-control" asp-for="Input.ReceiverPhone" />
             </div>
         </div>
     </div>
-    <div class="card-footer">
-        <button class="btn btn-primary" type="submit">Crear formato</button>
+    <div class="card-footer d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar cambios</button>
+        <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Details" asp-route-id="@Model.DeliveryId">Cancelar</a>
     </div>
 </form>
 

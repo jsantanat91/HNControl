@@ -5,7 +5,6 @@
     var canBase = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsView);
     var canInvest = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsInvestmentsView);
     var canReseller = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsResellersView);
-    var canDelivery = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsDeliveryView);
 }
 
 <div class="card shadow-soft hn-hover mb-3">
@@ -28,12 +27,6 @@
         {
             <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Resellers") ? "project-sub-btn-active" : "project-sub-btn-reseller")"
                asp-page="/Projects/Resellers/Index">Reseller</a>
-        }
-
-        @if (canDelivery)
-        {
-            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Delivery") ? "project-sub-btn-active" : "project-sub-btn-delivery")"
-               asp-page="/Projects/Delivery/Index">Formato de entrega</a>
         }
 
     </div>
@@ -63,12 +56,6 @@
         border-color: #9333ea;
         color: #7e22ce;
         background: linear-gradient(135deg, rgba(168,85,247,.15), rgba(196,181,253,.08));
-    }
-
-    .project-sub-btn-delivery {
-        border-color: #b45309;
-        color: #92400e;
-        background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(251,191,36,.10));
     }
 
     .project-sub-btn-active {

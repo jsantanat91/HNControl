@@ -33,6 +33,7 @@
         {
             <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
             <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
+            <a class="btn btn-outline-success" asp-page="/Projects/Delivery/Create" asp-route-clientId="@Model.Client.Id">Formato entrega</a>
             <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
         }
     </div>
@@ -147,6 +148,64 @@
 
             <div class="card-footer text-muted small">
                 Tip pro: liga el contrato a un <b>Proyecto</b> para que las &Oacute;rdenes de Servicio queden trazables (mantenimientos vs servicio espec&iacute;fico).
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-soft hn-hover">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">Formatos de entrega</div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">@Model.Deliveries.Count formato(s)</span>
+                    @if (Model.CanEdit)
+                    {
+                        <a class="btn btn-sm btn-primary" asp-page="/Projects/Delivery/Create" asp-route-clientId="@Model.Client.Id">+ Nuevo formato</a>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                @if (!Model.Deliveries.Any())
+                {
+                    <div class="text-muted">Sin formatos de entrega ligados a este cliente.</div>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var d in Model.Deliveries)
+                        {
+                            var badge = d.Status == "Firmado" ? "text-bg-success" : d.Status == "En firma" ? "text-bg-warning" : "text-bg-secondary";
+                            <div class="col-12 col-lg-6">
+                                <div class="card border h-100 contract-card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                            <span class="badge @badge">@d.Status</span>
+                                            <span class="text-muted small">@d.DeliveryDate</span>
+                                        </div>
+                                        <div class="fw-semibold mb-1">@d.Title</div>
+                                        <div class="small text-muted mb-1">Proyecto: @d.Project</div>
+                                        <div class="small text-muted">Recibe: @(!string.IsNullOrWhiteSpace(d.Receiver) ? d.Receiver : "-")</div>
+                                    </div>
+                                    <div class="card-footer bg-transparent border-0 pt-0 d-flex flex-wrap gap-2 justify-content-end">
+                                        <a class="btn btn-sm btn-outline-primary" asp-page="/Projects/Delivery/Details" asp-route-id="@d.Id" asp-route-clientId="@Model.Client.Id">Abrir</a>
+                                        @if (Model.CanEdit)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Projects/Delivery/Edit" asp-route-id="@d.Id">Editar</a>
+                                            <form method="post"
+                                                  asp-page-handler="DeleteDelivery"
+                                                  asp-route-id="@Model.Client.Id"
+                                                  asp-route-deliveryId="@d.Id"
+                                                  onsubmit="return confirm('¿Eliminar este formato de entrega?');"
+                                                  class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>

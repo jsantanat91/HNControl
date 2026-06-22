@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -11,16 +11,16 @@ using Microsoft.EntityFrameworkCore;
 namespace HNControl.Web.Pages.Projects.Delivery;
 
 [Authorize(Policy = "EmployeeOnly")]
-public class CreateModel : PageModel
+public class EditModel : PageModel
 {
     private const int MaxRows = 5;
     private readonly ApplicationDbContext _db;
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    public EditModel(ApplicationDbContext db) => _db = db;
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public SelectList ClientItems { get; set; } = default!;
     public List<ProjectOption> ProjectItems { get; set; } = [];
-    public Guid? BackClientId { get; set; }
+    public Guid DeliveryId { get; set; }
 
     public record ProjectOption(Guid Id, Guid ClientId, string Name);
 
@@ -48,20 +48,27 @@ public class CreateModel : PageModel
         [DataType(DataType.Date)] public DateTime DeliveryDate { get; set; } = DateTime.Today;
     }
 
-    public async Task OnGetAsync(Guid? clientId)
+    public async Task<IActionResult> OnGetAsync(Guid id)
     {
+        var item = await _db.ProjectDeliveryFormats.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+
+        DeliveryId = id;
         await LoadCatalogsAsync();
-        BackClientId = clientId;
-        if (clientId.HasValue)
-            Input.ClientId = clientId.Value;
+        FillInput(item);
+        return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(Guid id)
     {
+        DeliveryId = id;
         await LoadCatalogsAsync();
         NormalizeRows(Input);
 
         if (!ModelState.IsValid) return Page();
+
+        var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
 
         if (Input.ProjectId.HasValue)
         {
@@ -75,29 +82,51 @@ public class CreateModel : PageModel
             }
         }
 
-        var deliveryPayload = BuildDeliveryPayload(Input);
+        item.ClientId = Input.ClientId;
+        item.ProjectId = Input.ProjectId;
+        item.Title = Input.Title.Trim();
+        item.ServiceSummary = "__DELIVERYJSON__" + JsonSerializer.Serialize(BuildDeliveryPayload(Input));
+        item.EquipmentSummary = BuildReadableEquipment(Input);
+        item.DeliveryLocation = Input.DeliveryLocation.Trim();
+        item.ReceiverName = Input.ReceiverName.Trim();
+        item.ReceiverEmail = Input.ReceiverEmail.Trim();
+        item.ReceiverPhone = (Input.ReceiverPhone ?? "").Trim();
+        item.DeliveryDate = Input.DeliveryDate.Date;
+        item.PdfStoragePath = null;
+        item.PdfGeneratedAt = null;
+        item.UpdatedAt = DateTime.UtcNow;
 
-        var entity = new ProjectDeliveryFormat
+        await _db.SaveChangesAsync();
+        return RedirectToPage("/Projects/Delivery/Details", new { id = item.Id, clientId = item.ClientId });
+    }
+
+    private void FillInput(ProjectDeliveryFormat item)
+    {
+        var tpl = ParseDeliveryTemplateData(item.ServiceSummary);
+        Input = new InputModel
         {
-            ClientId = Input.ClientId,
-            ProjectId = Input.ProjectId,
-            Title = Input.Title.Trim(),
-            ServiceSummary = "__DELIVERYJSON__" + JsonSerializer.Serialize(deliveryPayload),
-            EquipmentSummary = BuildReadableEquipment(Input),
-            DeliveryLocation = Input.DeliveryLocation.Trim(),
-            ReceiverName = Input.ReceiverName.Trim(),
-            ReceiverEmail = Input.ReceiverEmail.Trim(),
-            ReceiverPhone = (Input.ReceiverPhone ?? "").Trim(),
-            DeliveryDate = Input.DeliveryDate.Date,
-            PublicToken = Guid.NewGuid().ToString("N"),
-            TokenExpiresAt = DateTime.UtcNow.AddMonths(2),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            ClientId = item.ClientId,
+            ProjectId = item.ProjectId,
+            Title = item.Title,
+            DeliveryLocation = item.DeliveryLocation,
+            ReceiverName = item.ReceiverName,
+            ReceiverEmail = item.ReceiverEmail,
+            ReceiverPhone = item.ReceiverPhone,
+            ProjectTemplateName = tpl.NOMBREPROYECTO ?? "",
+            AssignedTechnicianName = tpl.NOMBRETECNICO ?? "",
+            DeliveryDate = item.DeliveryDate.Date
         };
 
-        _db.ProjectDeliveryFormats.Add(entity);
-        await _db.SaveChangesAsync();
-        return RedirectToPage("/Projects/Delivery/Details", new { id = entity.Id, clientId = entity.ClientId });
+        for (var i = 0; i < MaxRows; i++)
+        {
+            var s = i < tpl.Services.Count ? tpl.Services[i] : new DeliveryServiceRow();
+            var e = i < tpl.Equipment.Count ? tpl.Equipment[i] : new DeliveryEquipmentRow();
+            Input.ServiceNames[i] = s.Servicio ?? "";
+            Input.ServiceModes[i] = s.Modalidad ?? "";
+            Input.ServiceTerms[i] = s.Plazo ?? "";
+            Input.EquipmentNames[i] = e.Equipo ?? "";
+            Input.EquipmentQty[i] = e.Cantidad ?? "";
+        }
     }
 
     private async Task LoadCatalogsAsync()
@@ -109,12 +138,11 @@ public class CreateModel : PageModel
             .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Name");
 
-        var projects = await _db.Projects
+        ProjectItems = await _db.Projects
             .AsNoTracking()
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new ProjectOption(x.Id, x.ClientId, x.Title))
             .ToListAsync();
-        ProjectItems = projects;
     }
 
     private static void NormalizeRows(InputModel input)
@@ -144,18 +172,8 @@ public class CreateModel : PageModel
 
         for (var i = 0; i < MaxRows; i++)
         {
-            services.Add(new
-            {
-                Servicio = input.ServiceNames[i],
-                Modalidad = input.ServiceModes[i],
-                Plazo = input.ServiceTerms[i]
-            });
-
-            equipment.Add(new
-            {
-                Equipo = input.EquipmentNames[i],
-                Cantidad = input.EquipmentQty[i]
-            });
+            services.Add(new { Servicio = input.ServiceNames[i], Modalidad = input.ServiceModes[i], Plazo = input.ServiceTerms[i] });
+            equipment.Add(new { Equipo = input.EquipmentNames[i], Cantidad = input.EquipmentQty[i] });
         }
 
         return new
@@ -177,5 +195,42 @@ public class CreateModel : PageModel
         }
 
         return lines.Count == 0 ? "-" : string.Join("\n", lines);
+    }
+
+    private static DeliveryTemplateData ParseDeliveryTemplateData(string? serviceSummary)
+    {
+        if (string.IsNullOrWhiteSpace(serviceSummary) || !serviceSummary.StartsWith("__DELIVERYJSON__", StringComparison.Ordinal))
+            return new DeliveryTemplateData();
+
+        try
+        {
+            var json = serviceSummary["__DELIVERYJSON__".Length..];
+            return JsonSerializer.Deserialize<DeliveryTemplateData>(json) ?? new DeliveryTemplateData();
+        }
+        catch
+        {
+            return new DeliveryTemplateData();
+        }
+    }
+
+    private sealed class DeliveryTemplateData
+    {
+        public string? NOMBREPROYECTO { get; set; }
+        public string? NOMBRETECNICO { get; set; }
+        public List<DeliveryServiceRow> Services { get; set; } = [];
+        public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
+    }
+
+    private sealed class DeliveryServiceRow
+    {
+        public string? Servicio { get; set; }
+        public string? Modalidad { get; set; }
+        public string? Plazo { get; set; }
+    }
+
+    private sealed class DeliveryEquipmentRow
+    {
+        public string? Equipo { get; set; }
+        public string? Cantidad { get; set; }
     }
 }

@@ -182,6 +182,7 @@ public class TemplateDocxService : ITemplateDocxService
     {
         var tpl = ParseDeliveryTemplateData(delivery.ServiceSummary, delivery.EquipmentSummary);
         var dt = delivery.DeliveryDate.ToString("dd 'de' MMMM yyyy", new CultureInfo("es-MX"));
+        var shortDate = delivery.DeliveryDate.ToString("dd/MM/yyyy", new CultureInfo("es-MX"));
         var r = new Dictionary<string, string>
         {
             ["RSCLIENTE"] = Safe(client.Name),
@@ -200,12 +201,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["RamsÃ©s Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Ramses Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Oficinas Corporativas"] = Safe(delivery.DeliveryLocation),
-            ["15 de julio 2025"] = dt,
-            ["Cliente:"] = $"Cliente: {Safe(client.Name)}",
-            ["Proyecto"] = $"Proyecto: {Safe(project?.Title, tpl.NOMBREPROYECTO, "Sin proyecto")}",
-            ["Recibe"] = $"Recibe: {Safe(delivery.ReceiverName)}",
-            ["TelÃ©fono:"] = $"TelÃ©fono: {Safe(delivery.ReceiverPhone)}",
-            ["TelÃƒÂ©fono:"] = $"TelÃ©fono: {Safe(delivery.ReceiverPhone)}"
+            ["15 de julio 2025"] = shortDate
         };
 
         for (var i = 1; i <= 5; i++)

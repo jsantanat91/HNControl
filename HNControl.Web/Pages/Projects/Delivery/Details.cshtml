@@ -17,7 +17,20 @@
         <h1 class="h4 m-0">@Model.Item.Title</h1>
         <div class="text-muted small">@Model.Item.Client?.Name - @Model.Item.Project?.Title</div>
     </div>
-    <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
+    <div class="d-flex flex-wrap gap-2">
+        @if (Model.BackClientId.HasValue)
+        {
+            <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.BackClientId.Value">Volver cliente</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
+        }
+        <a class="btn btn-outline-primary" asp-page="/Projects/Delivery/Edit" asp-route-id="@Model.Item.Id">Editar</a>
+        <form method="post" asp-page-handler="Delete" onsubmit="return confirm('¿Eliminar este formato de entrega?');">
+            <button class="btn btn-outline-danger" type="submit">Eliminar</button>
+        </form>
+    </div>
 </div>
 @if (!string.IsNullOrWhiteSpace(Model.Flash))
 {

@@ -216,7 +216,6 @@
                             <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
                             <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
                             <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
-                            <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato de entrega</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index">
@@ -460,10 +459,6 @@
                                 {
                                     <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsDeliveryView))
-                                {
-                                    <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
-                                }
                             </div>
                         </details>
                     }
@@ -626,7 +621,6 @@
                             <a class="hn-side-sublink @Active("/Projects/Index")" asp-page="/Projects/Index">Proyectos</a>
                             <a class="hn-side-sublink @Active("/Projects/Investments")" asp-page="/Projects/Investments/Index">Inversiones</a>
                             <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
-                            <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato de entrega</a>
                         </div>
                     </details>
                     <a class="hn-side-link @Active("/Admin/ServiceOrders")" asp-page="/Admin/ServiceOrders/Index"><span class="hn-side-icon"><i class="bi bi-clipboard-check"></i></span><span class="hn-side-text">&Oacute;rdenes</span>@if (newServiceOrdersCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@newServiceOrdersCount</span>}</a>
@@ -759,10 +753,6 @@
                                 {
                                     <a class="hn-side-sublink @Active("/Projects/Resellers")" asp-page="/Projects/Resellers/Index">Reseller</a>
                                 }
-                                @if (CanAction(HNControl.Web.Models.AppActions.ProjectsDeliveryView))
-                                {
-                                    <a class="hn-side-sublink @Active("/Projects/Delivery")" asp-page="/Projects/Delivery/Index">Formato entrega</a>
-                                }
                             </div>
                         </details>
                     }
@@ -866,16 +856,3 @@ else
     @RenderSection("Scripts", required: false)
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -39,6 +39,7 @@ public class DetailsModel : PageModel
     }
 
     public ProjectDeliveryFormat? Item { get; set; }
+    public Guid? BackClientId { get; set; }
     public string? PublicSignUrl { get; set; }
     public string ServiceSummaryDisplay { get; set; } = "-";
     public string EquipmentSummaryDisplay { get; set; } = "-";
@@ -46,8 +47,9 @@ public class DetailsModel : PageModel
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(Guid id)
+    public async Task<IActionResult> OnGetAsync(Guid id, Guid? clientId)
     {
+        BackClientId = clientId;
         await LoadAsync(id);
         return Item == null ? NotFound() : Page();
     }
@@ -131,6 +133,22 @@ public class DetailsModel : PageModel
 
         var (stream, contentType, _) = await _storage.OpenAsync(item.PdfStoragePath, $"acta_entrega_{id:N}.pdf");
         return File(stream, contentType, $"acta_entrega_{id:N}.pdf");
+    }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        if (!AppRoles.IsGlobalAdmin(User) && !User.IsInRole(AppRoles.Admin))
+            return Forbid();
+
+        var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+
+        var clientId = item.ClientId;
+        _db.ProjectDeliveryFormats.Remove(item);
+        await _db.SaveChangesAsync();
+        TempData["ClientDetailsInfo"] = "Formato de entrega eliminado.";
+        TempData["ClientDetailsInfoType"] = "success";
+        return RedirectToPage("/Clients/Details", new { id = clientId });
     }
 
     private async Task LoadAsync(Guid id)
