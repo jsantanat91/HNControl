@@ -45,9 +45,19 @@ public class OpenWaWhatsAppSender : IWhatsAppSender
 
         var client = _httpClientFactory.CreateClient("openwa");
         var baseUrl = cfg.WhatsAppGatewayUrl.Trim().TrimEnd('/');
-        var apiKey = !string.IsNullOrWhiteSpace(cfg.WhatsAppApiKeyProtected)
-            ? _protector.Unprotect(cfg.WhatsAppApiKeyProtected)
-            : "";
+        var hasStoredKey = !string.IsNullOrWhiteSpace(cfg.WhatsAppApiKeyProtected);
+        var apiKey = hasStoredKey ? _protector.Unprotect(cfg.WhatsAppApiKeyProtected) : "";
+
+        // Si hay token guardado pero al descifrar viene vacio, el keyring de DataProtection
+        // cambio (contenedor reconstruido sin volumen de llaves). Avisamos claro en vez de
+        // mandar la peticion sin x-api-key y recibir un 401 confuso.
+        if (hasStoredKey && string.IsNullOrWhiteSpace(apiKey))
+        {
+            _log.LogError("No se pudo descifrar el token de WhatsApp (DataProtection). Reguarda el token en Configuracion y persiste las llaves.");
+            throw new InvalidOperationException(
+                "No se pudo descifrar el token de WhatsApp guardado. Las llaves de cifrado cambiaron " +
+                "(probable reconstruccion del contenedor sin volumen de llaves). Vuelve a guardar el token interno en Configuracion > WA.");
+        }
 
         var payload = JsonSerializer.Serialize(new { to, message }, JsonOptions);
         var errors = new List<string>();

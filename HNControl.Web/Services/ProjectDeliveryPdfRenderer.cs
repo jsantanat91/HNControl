@@ -4,6 +4,7 @@ using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.Advanced;
 using PdfSharpCore.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -145,6 +146,10 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
 
     public async Task<byte[]> AppendEvidencePagesAsync(ProjectDeliveryFormat delivery, byte[] basePdf)
     {
+        // LibreOffice suele dejar una hoja en blanco al final del acta (parrafo vacio que
+        // desborda con margenes muy ajustados). La quitamos antes de anexar la evidencia.
+        basePdf = TrimTrailingBlankPages(basePdf);
+
         var payload = ProjectDeliveryPayload.Parse(delivery.ServiceSummary);
         var images = new List<(byte[] Bytes, string Name)>();
 
@@ -215,6 +220,70 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         }
 
         return MergePdfs(basePdf, evidencePdf);
+    }
+
+    /// <summary>
+    /// Elimina paginas en blanco al final del PDF (deja al menos una). No toca el resto.
+    /// Si algo falla, devuelve el PDF original sin cambios.
+    /// </summary>
+    private static byte[] TrimTrailingBlankPages(byte[] pdf)
+    {
+        if (pdf == null || pdf.Length == 0) return pdf;
+        try
+        {
+            using var ms = new MemoryStream(pdf);
+            using var doc = PdfReader.Open(ms, PdfDocumentOpenMode.Modify);
+
+            var removed = false;
+            for (var i = doc.PageCount - 1; i > 0; i--)
+            {
+                if (!IsBlankPage(doc.Pages[i])) break;
+                doc.Pages.RemoveAt(i);
+                removed = true;
+            }
+
+            if (!removed) return pdf;
+
+            using var outMs = new MemoryStream();
+            doc.Save(outMs, false);
+            return outMs.ToArray();
+        }
+        catch
+        {
+            return pdf;
+        }
+    }
+
+    private static bool IsBlankPage(PdfPage page)
+    {
+        try
+        {
+            var contents = page.Contents;
+            if (contents == null || contents.Elements.Count == 0) return true;
+
+            var sb = new StringBuilder();
+            foreach (var item in contents.Elements)
+            {
+                var dict = (item is PdfReference r ? r.Value : item) as PdfDictionary;
+                var bytes = dict?.Stream?.UnfilteredValue;
+                if (bytes == null || bytes.Length == 0) continue;
+                sb.Append(Encoding.Latin1.GetString(bytes));
+            }
+
+            var content = sb.ToString();
+            if (string.IsNullOrWhiteSpace(content)) return true;
+
+            // Operadores que dejan marca visible: texto mostrado (Tj/TJ/'/"), imagenes (Do),
+            // sombreados (sh) o trazos/rellenos de path. Un bloque BT/ET vacio (parrafo sin
+            // texto, p.ej. el footer vacio que desborda) NO deja marca, por eso no se cuenta.
+            string[] markers = { "Tj", "TJ", " Do", "\nDo", "'", "\"", " f\n", " f ", " f*", " S\n", " S ", " B\n", " re\n", " l\n", " c\n", " sh\n" };
+            return !markers.Any(m => content.Contains(m, StringComparison.Ordinal));
+        }
+        catch
+        {
+            // Ante la duda, conservamos la pagina.
+            return false;
+        }
     }
 
     private static byte[] MergePdfs(params byte[][] pdfs)

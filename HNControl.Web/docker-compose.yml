@@ -17,8 +17,13 @@ services:
       Database__PsqlPath: "psql"
       Office__Command: "/usr/bin/soffice"
 
+      # Llaves de DataProtection persistentes (cifran WhatsApp/SMTP/MercadoPago/CSD...).
+      # Deben sobrevivir a reconstrucciones del contenedor o los secretos se vuelven indescifrables.
+      DataProtection__KeysPath: "/app/dp-keys"
+
     volumes:
       - hncontrol_uploads:/app/App_Data/uploads
+      - hncontrol_dpkeys:/app/dp-keys
 
     networks:
       - infra_net
@@ -49,6 +54,7 @@ services:
 
 volumes:
   hncontrol_uploads:
+  hncontrol_dpkeys:
   openwacontrol_sessions:
 
 networks:

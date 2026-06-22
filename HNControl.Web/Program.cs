@@ -6,6 +6,7 @@ using HNControl.Web.Services.Monitoring;
 using HNControl.Web.Services.Mobile;
 using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -222,8 +223,17 @@ builder.Services.AddRazorPages(options =>
 // --------------------
 builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 
-// DataProtection para cifrar accesos de proyectos (passwords)
-builder.Services.AddDataProtection();
+// DataProtection para cifrar accesos de proyectos (passwords).
+// Las llaves se persisten en disco (volumen) y se fija el ApplicationName para que
+// sobrevivan a reconstrucciones/recreaciones del contenedor. Sin esto, al perder el
+// keyring TODOS los secretos guardados (WhatsApp, SMTP, Mercado Pago, CSD...) quedan
+// indescifrables y se envian vacios.
+var dpKeysPath = builder.Configuration["DataProtection:KeysPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "dp-keys");
+Directory.CreateDirectory(dpKeysPath);
+builder.Services.AddDataProtection()
+    .SetApplicationName("HNControl")
+    .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath));
 builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
 // EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
