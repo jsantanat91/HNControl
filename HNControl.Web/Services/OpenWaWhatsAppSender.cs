@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using HNControl.Web.Data;
@@ -50,28 +49,41 @@ public class OpenWaWhatsAppSender : IWhatsAppSender
             ? _protector.Unprotect(cfg.WhatsAppApiKeyProtected)
             : "";
 
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            client.DefaultRequestHeaders.Remove("x-api-key");
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        }
-
         var payload = JsonSerializer.Serialize(new { to, message }, JsonOptions);
         var errors = new List<string>();
 
-        foreach (var path in new[] { "/send", "/send-message" })
+        var sendUrl = baseUrl + "/send";
+        using (var content = new StringContent(payload, Encoding.UTF8, "application/json"))
         {
-            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(baseUrl + path, content, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Post, sendUrl) { Content = content };
+            if (!string.IsNullOrWhiteSpace(apiKey))
+                request.Headers.TryAddWithoutValidation("x-api-key", apiKey);
+
+            var response = await client.SendAsync(request, ct);
             if (response.IsSuccessStatusCode)
                 return;
 
             var body = await response.Content.ReadAsStringAsync(ct);
-            errors.Add($"{path}: {(int)response.StatusCode} {Truncate(body, 260)}");
+            errors.Add($"/send: {(int)response.StatusCode} {Truncate(body, 260)}");
         }
 
-        throw new InvalidOperationException("OpenWA no pudo enviar mensaje. " + string.Join(" | ", errors));
+        // Algunos proxies internos no pasan headers personalizados; el gateway tambien acepta ?key=.
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(sendUrl + "?key=" + Uri.EscapeDataString(apiKey), content, ct);
+            if (response.IsSuccessStatusCode)
+                return;
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            errors.Add($"/send?key=***: {(int)response.StatusCode} {Truncate(body, 260)}");
+        }
+
+        var hint = errors.Any(x => x.Contains("401", StringComparison.OrdinalIgnoreCase))
+            ? " Verifica que el token guardado coincida con HNCONTROL_OPENWA_API_KEY o con el valor default hncontrol_wa_key_2026 del contenedor."
+            : "";
+
+        throw new InvalidOperationException("OpenWA no pudo enviar mensaje. " + string.Join(" | ", errors) + hint);
     }
 
     private async Task<Models.SystemConfiguration?> LoadConfigSafeAsync(CancellationToken ct)

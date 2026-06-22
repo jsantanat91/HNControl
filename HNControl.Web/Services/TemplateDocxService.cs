@@ -190,6 +190,8 @@ public class TemplateDocxService : ITemplateDocxService
             ["DIRECCIONC"] = Safe(client.FiscalAddress, client.Address, delivery.DeliveryLocation, "-"),
             ["NOMBREPROYECTO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, delivery.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.SignedByName, "TÃ©cnico asignado"),
+            ["SEGMENTOLAN"] = Safe(tpl.SEGMENTOLAN, ""),
+            ["IPPUBLICA"] = Safe(tpl.IPPUBLICA, ""),
             ["FIRMACLIENTE"] = delivery.Status == ProjectDeliveryFormatStatus.Signed
                 ? Safe(delivery.SignedByName, delivery.ReceiverName, "-")
                 : "PENDIENTE DE FIRMA",
@@ -417,6 +419,8 @@ public class TemplateDocxService : ITemplateDocxService
     {
         public string? NOMBREPROYECTO { get; set; }
         public string? NOMBRETECNICO { get; set; }
+        public string? SEGMENTOLAN { get; set; }
+        public string? IPPUBLICA { get; set; }
         public List<DeliveryServiceRow> Services { get; set; } = [];
         public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
     }

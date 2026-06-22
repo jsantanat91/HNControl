@@ -46,7 +46,31 @@
                 <h6>Servicios entregados</h6>
                 <pre class="mb-3" style="white-space:pre-wrap;font-family:inherit;">@Model.ServiceSummaryDisplay</pre>
                 <h6>Equipamiento entregado</h6>
-                <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;">@Model.EquipmentSummaryDisplay</pre>
+                <pre class="mb-3" style="white-space:pre-wrap;font-family:inherit;">@Model.EquipmentSummaryDisplay</pre>
+                <h6>Datos t&eacute;cnicos</h6>
+                <div class="row g-2 small mb-3">
+                    <div class="col-md-6"><b>Segmento LAN:</b> @Model.SegmentoLanDisplay</div>
+                    <div class="col-md-6"><b>IP p&uacute;blica:</b> @Model.IpPublicaDisplay</div>
+                </div>
+                <h6>Evidencia fotogr&aacute;fica</h6>
+                @if (Model.EvidenceItems.Count == 0)
+                {
+                    <div class="text-muted small">Sin evidencias cargadas.</div>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var ev in Model.EvidenceItems)
+                        {
+                            <a class="btn btn-sm btn-outline-primary"
+                               asp-page-handler="DownloadEvidence"
+                               asp-route-id="@Model.Item.Id"
+                               asp-route-storagePath="@ev.StoragePath">
+                                @(ev.OriginalFileName ?? "Evidencia")
+                            </a>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>

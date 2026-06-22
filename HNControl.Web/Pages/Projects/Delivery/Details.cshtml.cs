@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using HNControl.Web.Data;
+﻿using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -43,6 +42,9 @@ public class DetailsModel : PageModel
     public string? PublicSignUrl { get; set; }
     public string ServiceSummaryDisplay { get; set; } = "-";
     public string EquipmentSummaryDisplay { get; set; } = "-";
+    public string SegmentoLanDisplay { get; set; } = "-";
+    public string IpPublicaDisplay { get; set; } = "-";
+    public List<DeliveryEvidenceRow> EvidenceItems { get; set; } = [];
 
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
@@ -135,6 +137,18 @@ public class DetailsModel : PageModel
         return File(stream, contentType, $"acta_entrega_{id:N}.pdf");
     }
 
+    public async Task<IActionResult> OnGetDownloadEvidenceAsync(Guid id, string storagePath)
+    {
+        var item = await _db.ProjectDeliveryFormats.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+
+        var payload = ProjectDeliveryPayload.Parse(item.ServiceSummary);
+        var evidence = payload.Evidences.FirstOrDefault(x => string.Equals(x.StoragePath, storagePath, StringComparison.Ordinal));
+        if (evidence == null || string.IsNullOrWhiteSpace(evidence.StoragePath)) return NotFound();
+
+        var (stream, contentType, _) = await _storage.OpenAsync(evidence.StoragePath, evidence.OriginalFileName ?? "evidencia");
+        return File(stream, contentType, evidence.OriginalFileName ?? "evidencia");
+    }
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         if (!AppRoles.IsGlobalAdmin(User) && !User.IsInRole(AppRoles.Admin))
@@ -165,9 +179,24 @@ public class DetailsModel : PageModel
             ? Url.Page("/Public/DeliveryDocument", pageHandler: null, values: new { token = Item.PublicToken }, protocol: Request.Scheme) ?? ""
             : $"{baseUrl}/Public/DeliveryDocument/{Item.PublicToken}";
 
-        BuildDisplays(Item.ServiceSummary, Item.EquipmentSummary, out var services, out var equipment);
-        ServiceSummaryDisplay = services;
-        EquipmentSummaryDisplay = equipment;
+        var payload = ProjectDeliveryPayload.Parse(Item.ServiceSummary);
+        if (Item.ServiceSummary?.StartsWith(ProjectDeliveryPayload.Prefix, StringComparison.Ordinal) == true)
+        {
+            ServiceSummaryDisplay = ProjectDeliveryPayload.ServicesDisplay(payload);
+            EquipmentSummaryDisplay = ProjectDeliveryPayload.EquipmentDisplay(payload);
+        }
+        else
+        {
+            ServiceSummaryDisplay = string.IsNullOrWhiteSpace(Item.ServiceSummary) ? "-" : Item.ServiceSummary;
+            EquipmentSummaryDisplay = string.IsNullOrWhiteSpace(Item.EquipmentSummary) ? "-" : Item.EquipmentSummary;
+        }
+
+        SegmentoLanDisplay = ProjectDeliveryPayload.Safe(payload.SEGMENTOLAN);
+        IpPublicaDisplay = ProjectDeliveryPayload.Safe(payload.IPPUBLICA);
+        EvidenceItems = payload.Evidences
+            .Where(x => !string.IsNullOrWhiteSpace(x.StoragePath))
+            .Take(ProjectDeliveryPayload.MaxEvidenceFiles)
+            .ToList();
     }
 
     private async Task RegeneratePdfAsync(ProjectDeliveryFormat item)
@@ -184,7 +213,10 @@ public class DetailsModel : PageModel
             bytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"acta_{dbItem.Id:N}");
         }
 
-        bytes ??= await _pdf.RenderAsync(item);
+        if (bytes == null)
+            bytes = await _pdf.RenderAsync(item);
+        else
+            bytes = await _pdf.AppendEvidencePagesAsync(dbItem, bytes);
         var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"projects/delivery/{item.Id}", $"acta_{item.Id:N}.pdf", "application/pdf");
         item.PdfStoragePath = path;
         item.PdfGeneratedAt = DateTime.UtcNow;
@@ -192,58 +224,6 @@ public class DetailsModel : PageModel
         await _db.SaveChangesAsync();
     }
 
-    private static void BuildDisplays(string? serviceSummary, string? equipmentSummary, out string services, out string equipment)
-    {
-        if (string.IsNullOrWhiteSpace(serviceSummary) || !serviceSummary.StartsWith("__DELIVERYJSON__", StringComparison.Ordinal))
-        {
-            services = string.IsNullOrWhiteSpace(serviceSummary) ? "-" : serviceSummary;
-            equipment = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
-            return;
-        }
-
-        try
-        {
-            var json = serviceSummary["__DELIVERYJSON__".Length..];
-            var root = JsonSerializer.Deserialize<DeliveryTemplateData>(json) ?? new DeliveryTemplateData();
-
-            var serviceLines = root.Services
-                .Where(x => !string.IsNullOrWhiteSpace(x.Servicio) || !string.IsNullOrWhiteSpace(x.Modalidad) || !string.IsNullOrWhiteSpace(x.Plazo))
-                .Select(x => $"{Safe(x.Servicio)} | {Safe(x.Modalidad)} | {Safe(x.Plazo)}")
-                .ToList();
-
-            var equipmentLines = root.Equipment
-                .Where(x => !string.IsNullOrWhiteSpace(x.Equipo) || !string.IsNullOrWhiteSpace(x.Cantidad))
-                .Select(x => $"{Safe(x.Equipo)} ({Safe(x.Cantidad)})")
-                .ToList();
-
-            services = serviceLines.Count == 0 ? "-" : string.Join("\n", serviceLines);
-            equipment = equipmentLines.Count == 0 ? "-" : string.Join("\n", equipmentLines);
-        }
-        catch
-        {
-            services = "-";
-            equipment = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
-        }
-    }
-
-    private static string Safe(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
-
-    private sealed class DeliveryTemplateData
-    {
-        public List<DeliveryServiceRow> Services { get; set; } = [];
-        public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
-    }
-
-    private sealed class DeliveryServiceRow
-    {
-        public string? Servicio { get; set; }
-        public string? Modalidad { get; set; }
-        public string? Plazo { get; set; }
-    }
-
-    private sealed class DeliveryEquipmentRow
-    {
-        public string? Equipo { get; set; }
-        public string? Cantidad { get; set; }
-    }
 }
+
+

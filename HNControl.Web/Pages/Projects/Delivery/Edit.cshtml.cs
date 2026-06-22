@@ -1,7 +1,7 @@
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
+﻿using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,13 +13,21 @@ namespace HNControl.Web.Pages.Projects.Delivery;
 [Authorize(Policy = "EmployeeOnly")]
 public class EditModel : PageModel
 {
-    private const int MaxRows = 5;
+    private const int MaxRows = ProjectDeliveryPayload.MaxRows;
     private readonly ApplicationDbContext _db;
-    public EditModel(ApplicationDbContext db) => _db = db;
+    private readonly IFileStorage _storage;
+
+    public EditModel(ApplicationDbContext db, IFileStorage storage)
+    {
+        _db = db;
+        _storage = storage;
+    }
 
     [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty] public IFormFile[] EvidenceFiles { get; set; } = [];
     public SelectList ClientItems { get; set; } = default!;
     public List<ProjectOption> ProjectItems { get; set; } = [];
+    public List<DeliveryEvidenceRow> ExistingEvidences { get; set; } = [];
     public Guid DeliveryId { get; set; }
 
     public record ProjectOption(Guid Id, Guid ClientId, string Name);
@@ -38,6 +46,8 @@ public class EditModel : PageModel
 
         [MaxLength(200)] public string ProjectTemplateName { get; set; } = "";
         [MaxLength(200)] public string AssignedTechnicianName { get; set; } = "";
+        [MaxLength(200)] public string SegmentoLan { get; set; } = "";
+        [MaxLength(120)] public string IpPublica { get; set; } = "";
 
         public string[] ServiceNames { get; set; } = Enumerable.Repeat("", MaxRows).ToArray();
         public string[] ServiceModes { get; set; } = Enumerable.Repeat("", MaxRows).ToArray();
@@ -65,10 +75,11 @@ public class EditModel : PageModel
         await LoadCatalogsAsync();
         NormalizeRows(Input);
 
-        if (!ModelState.IsValid) return Page();
-
         var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
+        ExistingEvidences = ProjectDeliveryPayload.Parse(item.ServiceSummary).Evidences;
+
+        if (!ModelState.IsValid) return Page();
 
         if (Input.ProjectId.HasValue)
         {
@@ -82,10 +93,18 @@ public class EditModel : PageModel
             }
         }
 
+        var previousPayload = ProjectDeliveryPayload.Parse(item.ServiceSummary);
+        var deliveryPayload = BuildDeliveryPayload(Input);
+        deliveryPayload.Evidences = previousPayload.Evidences
+            .Where(x => !string.IsNullOrWhiteSpace(x.StoragePath))
+            .Take(ProjectDeliveryPayload.MaxEvidenceFiles)
+            .ToList();
+        await AddEvidenceFilesAsync(item, deliveryPayload);
+
         item.ClientId = Input.ClientId;
         item.ProjectId = Input.ProjectId;
         item.Title = Input.Title.Trim();
-        item.ServiceSummary = "__DELIVERYJSON__" + JsonSerializer.Serialize(BuildDeliveryPayload(Input));
+        item.ServiceSummary = ProjectDeliveryPayload.Serialize(deliveryPayload);
         item.EquipmentSummary = BuildReadableEquipment(Input);
         item.DeliveryLocation = Input.DeliveryLocation.Trim();
         item.ReceiverName = Input.ReceiverName.Trim();
@@ -100,9 +119,31 @@ public class EditModel : PageModel
         return RedirectToPage("/Projects/Delivery/Details", new { id = item.Id, clientId = item.ClientId });
     }
 
+    public async Task<IActionResult> OnPostRemoveEvidenceAsync(Guid id, string storagePath)
+    {
+        var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+
+        var payload = ProjectDeliveryPayload.Parse(item.ServiceSummary);
+        var evidence = payload.Evidences.FirstOrDefault(x => string.Equals(x.StoragePath, storagePath, StringComparison.Ordinal));
+        if (evidence != null)
+        {
+            payload.Evidences.Remove(evidence);
+            await _storage.DeleteIfExistsAsync(evidence.StoragePath ?? "");
+            item.ServiceSummary = ProjectDeliveryPayload.Serialize(payload);
+            item.PdfStoragePath = null;
+            item.PdfGeneratedAt = null;
+            item.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return RedirectToPage(new { id });
+    }
+
     private void FillInput(ProjectDeliveryFormat item)
     {
-        var tpl = ParseDeliveryTemplateData(item.ServiceSummary);
+        var tpl = ProjectDeliveryPayload.Parse(item.ServiceSummary);
+        ExistingEvidences = tpl.Evidences;
         Input = new InputModel
         {
             ClientId = item.ClientId,
@@ -114,6 +155,8 @@ public class EditModel : PageModel
             ReceiverPhone = item.ReceiverPhone,
             ProjectTemplateName = tpl.NOMBREPROYECTO ?? "",
             AssignedTechnicianName = tpl.NOMBRETECNICO ?? "",
+            SegmentoLan = tpl.SEGMENTOLAN ?? "",
+            IpPublica = tpl.IPPUBLICA ?? "",
             DeliveryDate = item.DeliveryDate.Date
         };
 
@@ -165,24 +208,55 @@ public class EditModel : PageModel
         return result;
     }
 
-    private static object BuildDeliveryPayload(InputModel input)
+    private async Task AddEvidenceFilesAsync(ProjectDeliveryFormat entity, DeliveryTemplateData payload)
     {
-        var services = new List<object>();
-        var equipment = new List<object>();
-
-        for (var i = 0; i < MaxRows; i++)
+        var remaining = Math.Max(0, ProjectDeliveryPayload.MaxEvidenceFiles - payload.Evidences.Count);
+        var files = (EvidenceFiles ?? []).Where(x => x is { Length: > 0 }).Take(remaining).ToList();
+        foreach (var file in files)
         {
-            services.Add(new { Servicio = input.ServiceNames[i], Modalidad = input.ServiceModes[i], Plazo = input.ServiceTerms[i] });
-            equipment.Add(new { Equipo = input.EquipmentNames[i], Cantidad = input.EquipmentQty[i] });
-        }
+            var saved = await _storage.SaveFileAsync(
+                file,
+                $"projects/delivery/{entity.Id}/evidence",
+                $"evidence_{payload.Evidences.Count + 1}_{Guid.NewGuid():N}",
+                [".jpg", ".jpeg", ".png"],
+                8 * 1024 * 1024);
 
-        return new
+            payload.Evidences.Add(new DeliveryEvidenceRow
+            {
+                StoragePath = saved.storagePath,
+                OriginalFileName = saved.originalName,
+                ContentType = saved.contentType
+            });
+        }
+    }
+
+    private static DeliveryTemplateData BuildDeliveryPayload(InputModel input)
+    {
+        var payload = new DeliveryTemplateData
         {
             NOMBREPROYECTO = input.ProjectTemplateName,
             NOMBRETECNICO = input.AssignedTechnicianName,
-            Services = services,
-            Equipment = equipment
+            SEGMENTOLAN = input.SegmentoLan,
+            IPPUBLICA = input.IpPublica
         };
+
+        for (var i = 0; i < MaxRows; i++)
+        {
+            payload.Services.Add(new DeliveryServiceRow
+            {
+                Servicio = input.ServiceNames[i],
+                Modalidad = input.ServiceModes[i],
+                Plazo = input.ServiceTerms[i]
+            });
+
+            payload.Equipment.Add(new DeliveryEquipmentRow
+            {
+                Equipo = input.EquipmentNames[i],
+                Cantidad = input.EquipmentQty[i]
+            });
+        }
+
+        return payload;
     }
 
     private static string BuildReadableEquipment(InputModel input)
@@ -195,42 +269,5 @@ public class EditModel : PageModel
         }
 
         return lines.Count == 0 ? "-" : string.Join("\n", lines);
-    }
-
-    private static DeliveryTemplateData ParseDeliveryTemplateData(string? serviceSummary)
-    {
-        if (string.IsNullOrWhiteSpace(serviceSummary) || !serviceSummary.StartsWith("__DELIVERYJSON__", StringComparison.Ordinal))
-            return new DeliveryTemplateData();
-
-        try
-        {
-            var json = serviceSummary["__DELIVERYJSON__".Length..];
-            return JsonSerializer.Deserialize<DeliveryTemplateData>(json) ?? new DeliveryTemplateData();
-        }
-        catch
-        {
-            return new DeliveryTemplateData();
-        }
-    }
-
-    private sealed class DeliveryTemplateData
-    {
-        public string? NOMBREPROYECTO { get; set; }
-        public string? NOMBRETECNICO { get; set; }
-        public List<DeliveryServiceRow> Services { get; set; } = [];
-        public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
-    }
-
-    private sealed class DeliveryServiceRow
-    {
-        public string? Servicio { get; set; }
-        public string? Modalidad { get; set; }
-        public string? Plazo { get; set; }
-    }
-
-    private sealed class DeliveryEquipmentRow
-    {
-        public string? Equipo { get; set; }
-        public string? Cantidad { get; set; }
     }
 }

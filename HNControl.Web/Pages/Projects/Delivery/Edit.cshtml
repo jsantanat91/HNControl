@@ -13,7 +13,7 @@
     <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Details" asp-route-id="@Model.DeliveryId">Volver</a>
 </div>
 
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
     <div class="card-body">
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <div class="row g-3">
@@ -42,6 +42,14 @@
             <div class="col-md-6">
                 <label class="form-label">T&eacute;cnico asignado</label>
                 <input class="form-control" asp-for="Input.AssignedTechnicianName" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">SEGMENTOLAN</label>
+                <input class="form-control" asp-for="Input.SegmentoLan" placeholder="Ej: 192.168.10.0/24" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">IPPUBLICA</label>
+                <input class="form-control" asp-for="Input.IpPublica" placeholder="Ej: 201.xxx.xxx.xxx" />
             </div>
 
             <div class="col-12">
@@ -112,6 +120,31 @@
                 <label class="form-label">Recibe (tel&eacute;fono)</label>
                 <input class="form-control" asp-for="Input.ReceiverPhone" />
             </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Agregar evidencia fotogr&aacute;fica</label>
+                <input class="form-control" type="file" asp-for="EvidenceFiles" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple />
+                <div class="form-text">Puedes conservar/subir hasta 5 im&aacute;genes en total. Al guardar, el PDF se regenerar&aacute; con anexos.</div>
+            </div>
+            @if (Model.ExistingEvidences.Count > 0)
+            {
+                <div class="col-12">
+                    <div class="small fw-semibold mb-2">Evidencias actuales</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var ev in Model.ExistingEvidences)
+                        {
+                            <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2">
+                                @(ev.OriginalFileName ?? "Evidencia")
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1"
+                                        type="submit"
+                                        formaction="?handler=RemoveEvidence&id=@Model.DeliveryId&storagePath=@Uri.EscapeDataString(ev.StoragePath ?? "")"
+                                        formnovalidate>
+                                    Quitar
+                                </button>
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
         </div>
     </div>
     <div class="card-footer d-flex gap-2">

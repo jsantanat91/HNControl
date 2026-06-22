@@ -1,5 +1,5 @@
 ﻿/**
- * Ministerium WhatsApp Service
+ * HN Control WhatsApp Service
  * Powered by whatsapp-web.js (open source, MIT license)
  *
  * Exposes a REST API to send WhatsApp Web messages.
@@ -50,7 +50,7 @@ let qrBase64 = null;
 let sessionInfo = null;
 
 const client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'ministerium' }),
+    authStrategy: new LocalAuth({ clientId: 'hncontrol' }),
     puppeteer: {
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
@@ -100,7 +100,7 @@ client.on('ready', async () => {
     const info = client.info;
     sessionInfo = {
         phone: info?.wid?.user || 'unknown',
-        name: info?.pushname || 'Ministerium WA'
+        name: info?.pushname || 'HN Control WA'
     };
     console.log(`[WA] Ready. Connected as: ${sessionInfo.name} (${sessionInfo.phone})`);
 });

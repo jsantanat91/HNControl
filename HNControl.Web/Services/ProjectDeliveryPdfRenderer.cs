@@ -1,9 +1,10 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -35,7 +36,13 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
             .FirstOrDefaultAsync();
 
         var logoBytes = await TryReadStorageBytesAsync(sys?.CompanyLogoStoragePath);
-        ParseDeliveryRows(d.ServiceSummary, d.EquipmentSummary, out var servicesText, out var equipmentText);
+        var payload = ProjectDeliveryPayload.Parse(d.ServiceSummary);
+        var servicesText = d.ServiceSummary?.StartsWith(ProjectDeliveryPayload.Prefix, StringComparison.Ordinal) == true
+            ? ProjectDeliveryPayload.ServicesDisplay(payload)
+            : string.IsNullOrWhiteSpace(d.ServiceSummary) ? "-" : d.ServiceSummary;
+        var equipmentText = d.ServiceSummary?.StartsWith(ProjectDeliveryPayload.Prefix, StringComparison.Ordinal) == true
+            ? ProjectDeliveryPayload.EquipmentDisplay(payload)
+            : string.IsNullOrWhiteSpace(d.EquipmentSummary) ? "-" : d.EquipmentSummary;
 
         byte[]? sigBytes = null;
         if (!string.IsNullOrWhiteSpace(d.SignatureStoragePath))
@@ -57,8 +64,7 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         }
 
         var company = (sys?.CompanyName ?? _cfg["Branding:CompanyName"] ?? "HN Solutions").Trim();
-
-        return Document.Create(container =>
+        var basePdf = Document.Create(container =>
         {
             container.Page(page =>
             {
@@ -92,6 +98,8 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
                         x.Item().Text($"Fecha de entrega: {d.DeliveryDate:yyyy-MM-dd}");
                         x.Item().Text($"Ubicacion: {d.DeliveryLocation}");
                         x.Item().Text($"Recibe: {d.ReceiverName} ({d.ReceiverEmail})");
+                        x.Item().Text($"Segmento LAN: {ProjectDeliveryPayload.Safe(payload.SEGMENTOLAN)}");
+                        x.Item().Text($"IP publica: {ProjectDeliveryPayload.Safe(payload.IPPUBLICA)}");
                     });
 
                     c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(x =>
@@ -131,43 +139,99 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
                 });
             });
         }).GeneratePdf();
+
+        return await AppendEvidencePagesAsync(d, basePdf);
     }
 
-    private static void ParseDeliveryRows(string? serviceSummary, string? equipmentSummary, out string servicesText, out string equipmentText)
+    public async Task<byte[]> AppendEvidencePagesAsync(ProjectDeliveryFormat delivery, byte[] basePdf)
     {
-        if (string.IsNullOrWhiteSpace(serviceSummary) || !serviceSummary.StartsWith("__DELIVERYJSON__", StringComparison.Ordinal))
+        var payload = ProjectDeliveryPayload.Parse(delivery.ServiceSummary);
+        var images = new List<(byte[] Bytes, string Name)>();
+
+        foreach (var evidence in payload.Evidences.Where(x => !string.IsNullOrWhiteSpace(x.StoragePath)).Take(ProjectDeliveryPayload.MaxEvidenceFiles))
         {
-            servicesText = string.IsNullOrWhiteSpace(serviceSummary) ? "-" : serviceSummary;
-            equipmentText = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
-            return;
+            try
+            {
+                var (stream, _, _) = await _storage.OpenAsync(evidence.StoragePath!, evidence.OriginalFileName ?? "evidencia");
+                await using (stream)
+                await using (var ms = new MemoryStream())
+                {
+                    await stream.CopyToAsync(ms);
+                    if (ms.Length > 0)
+                        images.Add((ms.ToArray(), evidence.OriginalFileName ?? "Evidencia"));
+                }
+            }
+            catch
+            {
+                // Una evidencia faltante no debe bloquear la generación del acta.
+            }
         }
 
+        if (images.Count == 0)
+            return basePdf;
+
+        byte[] evidencePdf;
         try
         {
-            var json = serviceSummary["__DELIVERYJSON__".Length..];
-            var root = JsonSerializer.Deserialize<DeliveryTemplateData>(json) ?? new DeliveryTemplateData();
-
-            var serviceLines = root.Services
-                .Where(x => !string.IsNullOrWhiteSpace(x.Servicio) || !string.IsNullOrWhiteSpace(x.Modalidad) || !string.IsNullOrWhiteSpace(x.Plazo))
-                .Select(x => $"{Safe(x.Servicio)} | {Safe(x.Modalidad)} | {Safe(x.Plazo)}")
-                .ToList();
-
-            var equipmentLines = root.Equipment
-                .Where(x => !string.IsNullOrWhiteSpace(x.Equipo) || !string.IsNullOrWhiteSpace(x.Cantidad))
-                .Select(x => $"{Safe(x.Equipo)} ({Safe(x.Cantidad)})")
-                .ToList();
-
-            servicesText = serviceLines.Count == 0 ? "-" : string.Join("\n", serviceLines);
-            equipmentText = equipmentLines.Count == 0 ? "-" : string.Join("\n", equipmentLines);
+            evidencePdf = Document.Create(container =>
+            {
+                for (var i = 0; i < images.Count; i += 2)
+                {
+                    var pageImages = images.Skip(i).Take(2).ToList();
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(28);
+                        page.DefaultTextStyle(x => x.FontSize(10));
+                        page.Header().Column(h =>
+                        {
+                            h.Item().Text("Evidencia fotografica").FontSize(18).SemiBold();
+                            h.Item().Text(delivery.Title).FontColor(Colors.Grey.Darken2);
+                        });
+                        page.Content().PaddingTop(16).Column(c =>
+                        {
+                            c.Spacing(14);
+                            foreach (var image in pageImages)
+                            {
+                                c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(card =>
+                                {
+                                    card.Item().Height(300).AlignCenter().AlignMiddle().Image(image.Bytes).FitArea();
+                                    card.Item().PaddingTop(6).Text(image.Name).FontSize(9).FontColor(Colors.Grey.Darken1);
+                                });
+                            }
+                        });
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Anexo de evidencia - ");
+                            x.CurrentPageNumber();
+                        });
+                    });
+                }
+            }).GeneratePdf();
         }
         catch
         {
-            servicesText = "-";
-            equipmentText = string.IsNullOrWhiteSpace(equipmentSummary) ? "-" : equipmentSummary;
+            return basePdf;
         }
+
+        return MergePdfs(basePdf, evidencePdf);
     }
 
-    private static string Safe(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    private static byte[] MergePdfs(params byte[][] pdfs)
+    {
+        using var output = new PdfDocument();
+        foreach (var pdf in pdfs.Where(x => x.Length > 0))
+        {
+            using var ms = new MemoryStream(pdf);
+            using var input = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
+            for (var i = 0; i < input.PageCount; i++)
+                output.AddPage(input.Pages[i]);
+        }
+
+        using var outMs = new MemoryStream();
+        output.Save(outMs, false);
+        return outMs.ToArray();
+    }
 
     private static string BuildHash(ProjectDeliveryFormat d)
     {
@@ -193,24 +257,5 @@ public class ProjectDeliveryPdfRenderer : IProjectDeliveryPdfRenderer
         {
             return null;
         }
-    }
-
-    private sealed class DeliveryTemplateData
-    {
-        public List<DeliveryServiceRow> Services { get; set; } = [];
-        public List<DeliveryEquipmentRow> Equipment { get; set; } = [];
-    }
-
-    private sealed class DeliveryServiceRow
-    {
-        public string? Servicio { get; set; }
-        public string? Modalidad { get; set; }
-        public string? Plazo { get; set; }
-    }
-
-    private sealed class DeliveryEquipmentRow
-    {
-        public string? Equipo { get; set; }
-        public string? Cantidad { get; set; }
     }
 }

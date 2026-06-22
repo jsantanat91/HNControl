@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,11 +13,17 @@ namespace HNControl.Web.Pages.Projects.Delivery;
 [Authorize(Policy = "EmployeeOnly")]
 public class CreateModel : PageModel
 {
-    private const int MaxRows = 5;
+    private const int MaxRows = ProjectDeliveryPayload.MaxRows;
     private readonly ApplicationDbContext _db;
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    private readonly IFileStorage _storage;
+    public CreateModel(ApplicationDbContext db, IFileStorage storage)
+    {
+        _db = db;
+        _storage = storage;
+    }
 
     [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty] public IFormFile[] EvidenceFiles { get; set; } = [];
     public SelectList ClientItems { get; set; } = default!;
     public List<ProjectOption> ProjectItems { get; set; } = [];
     public Guid? BackClientId { get; set; }
@@ -38,6 +44,8 @@ public class CreateModel : PageModel
 
         [MaxLength(200)] public string ProjectTemplateName { get; set; } = "";
         [MaxLength(200)] public string AssignedTechnicianName { get; set; } = "";
+        [MaxLength(200)] public string SegmentoLan { get; set; } = "";
+        [MaxLength(120)] public string IpPublica { get; set; } = "";
 
         public string[] ServiceNames { get; set; } = Enumerable.Repeat("", MaxRows).ToArray();
         public string[] ServiceModes { get; set; } = Enumerable.Repeat("", MaxRows).ToArray();
@@ -75,14 +83,12 @@ public class CreateModel : PageModel
             }
         }
 
-        var deliveryPayload = BuildDeliveryPayload(Input);
-
         var entity = new ProjectDeliveryFormat
         {
             ClientId = Input.ClientId,
             ProjectId = Input.ProjectId,
             Title = Input.Title.Trim(),
-            ServiceSummary = "__DELIVERYJSON__" + JsonSerializer.Serialize(deliveryPayload),
+            ServiceSummary = "",
             EquipmentSummary = BuildReadableEquipment(Input),
             DeliveryLocation = Input.DeliveryLocation.Trim(),
             ReceiverName = Input.ReceiverName.Trim(),
@@ -96,6 +102,9 @@ public class CreateModel : PageModel
         };
 
         _db.ProjectDeliveryFormats.Add(entity);
+        var deliveryPayload = BuildDeliveryPayload(Input);
+        await AddEvidenceFilesAsync(entity, deliveryPayload);
+        entity.ServiceSummary = ProjectDeliveryPayload.Serialize(deliveryPayload);
         await _db.SaveChangesAsync();
         return RedirectToPage("/Projects/Delivery/Details", new { id = entity.Id, clientId = entity.ClientId });
     }
@@ -137,34 +146,54 @@ public class CreateModel : PageModel
         return result;
     }
 
-    private static object BuildDeliveryPayload(InputModel input)
+    private async Task AddEvidenceFilesAsync(ProjectDeliveryFormat entity, DeliveryTemplateData payload)
     {
-        var services = new List<object>();
-        var equipment = new List<object>();
+        var files = (EvidenceFiles ?? []).Where(x => x is { Length: > 0 }).Take(ProjectDeliveryPayload.MaxEvidenceFiles).ToList();
+        foreach (var file in files)
+        {
+            var saved = await _storage.SaveFileAsync(
+                file,
+                $"projects/delivery/{entity.Id}/evidence",
+                $"evidence_{payload.Evidences.Count + 1}_{Guid.NewGuid():N}",
+                [".jpg", ".jpeg", ".png"],
+                8 * 1024 * 1024);
+
+            payload.Evidences.Add(new DeliveryEvidenceRow
+            {
+                StoragePath = saved.storagePath,
+                OriginalFileName = saved.originalName,
+                ContentType = saved.contentType
+            });
+        }
+    }
+
+    private static DeliveryTemplateData BuildDeliveryPayload(InputModel input)
+    {
+        var payload = new DeliveryTemplateData
+        {
+            NOMBREPROYECTO = input.ProjectTemplateName,
+            NOMBRETECNICO = input.AssignedTechnicianName,
+            SEGMENTOLAN = input.SegmentoLan,
+            IPPUBLICA = input.IpPublica
+        };
 
         for (var i = 0; i < MaxRows; i++)
         {
-            services.Add(new
+            payload.Services.Add(new DeliveryServiceRow
             {
                 Servicio = input.ServiceNames[i],
                 Modalidad = input.ServiceModes[i],
                 Plazo = input.ServiceTerms[i]
             });
 
-            equipment.Add(new
+            payload.Equipment.Add(new DeliveryEquipmentRow
             {
                 Equipo = input.EquipmentNames[i],
                 Cantidad = input.EquipmentQty[i]
             });
         }
 
-        return new
-        {
-            NOMBREPROYECTO = input.ProjectTemplateName,
-            NOMBRETECNICO = input.AssignedTechnicianName,
-            Services = services,
-            Equipment = equipment
-        };
+        return payload;
     }
 
     private static string BuildReadableEquipment(InputModel input)
@@ -179,3 +208,5 @@ public class CreateModel : PageModel
         return lines.Count == 0 ? "-" : string.Join("\n", lines);
     }
 }
+
+
