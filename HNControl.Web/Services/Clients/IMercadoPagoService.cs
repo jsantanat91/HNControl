@@ -15,6 +15,13 @@ public interface IMercadoPagoService
     /// Devuelve datos de la cuenta si es valido; Success=false con el error si no.
     /// </summary>
     Task<MercadoPagoCheckoutResult> CheckConnectionAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Procesa una notificacion de pago del webhook: consulta el pago en la API de MP,
+    /// lo empareja por external_reference con una domiciliacion y actualiza su estatus.
+    /// Devuelve true si se emparejo y actualizo alguna domiciliacion.
+    /// </summary>
+    Task<bool> ProcessPaymentNotificationAsync(string paymentId, CancellationToken ct = default);
 }
 
 public sealed class MercadoPagoCheckoutResult

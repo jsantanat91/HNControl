@@ -108,6 +108,15 @@ public class IndexModel : PageModel
         if (!auth.ok) return auth.redirect!;
 
         await LoadPageDataAsync(auth.clientId!.Value);
+
+        // Precargamos el monto a pagar con el saldo pendiente (si hay).
+        if (TotalPendiente > 0)
+            DomiciliationForm.MontoReferencia = TotalPendiente;
+
+        // Sugerimos el correo del cliente como pagador (editable por el usuario).
+        if (string.IsNullOrWhiteSpace(DomiciliationForm.CorreoPagador))
+            DomiciliationForm.CorreoPagador = PayerEmailHint;
+
         return Page();
     }
 
@@ -173,7 +182,11 @@ public class IndexModel : PageModel
         if (DomiciliationForm.MontoReferencia <= 0)
             DomiciliationForm.MontoReferencia = 1m;
 
-        var payerEmail = await ResolveBestPayerEmailAsync(auth.clientId.Value);
+        // El pagador puede indicar su propio correo (distinto al del negocio). Si lo deja
+        // vacio, usamos el mejor correo de contacto del cliente.
+        var payerEmail = !string.IsNullOrWhiteSpace(DomiciliationForm.CorreoPagador)
+            ? DomiciliationForm.CorreoPagador.Trim()
+            : await ResolveBestPayerEmailAsync(auth.clientId.Value);
 
         if (string.IsNullOrWhiteSpace(payerEmail))
         {
@@ -194,7 +207,7 @@ public class IndexModel : PageModel
                 client.Name,
                 payerEmail,
                 DomiciliationForm.MontoReferencia,
-                "Domiciliación de tarjeta para servicios recurrentes");
+                "Pago de servicios");
         }
         catch (Exception ex)
         {
@@ -224,6 +237,25 @@ public class IndexModel : PageModel
         await _db.SaveChangesAsync();
 
         return Redirect(mp.Url);
+    }
+
+    public async Task<IActionResult> OnPostDeletePaymentAsync(Guid id)
+    {
+        var auth = await EnsureClientAuthAsync();
+        if (!auth.ok) return auth.redirect!;
+
+        var row = await _db.ClientCardDomiciliations
+            .FirstOrDefaultAsync(x => x.Id == id && x.ClientId == auth.clientId!.Value);
+
+        if (row != null)
+        {
+            _db.ClientCardDomiciliations.Remove(row);
+            await _db.SaveChangesAsync();
+            TempData["PortalInfo"] = "Intento de pago eliminado.";
+            TempData["PortalInfoType"] = "success";
+        }
+
+        return RedirectToPage();
     }
 
     public async Task<IActionResult> OnGetDownloadContractAsync(Guid id)

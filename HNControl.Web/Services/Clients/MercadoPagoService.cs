@@ -28,6 +28,75 @@ public class MercadoPagoService : IMercadoPagoService
         _protector = protector;
     }
 
+    public async Task<bool> ProcessPaymentNotificationAsync(string paymentId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(paymentId))
+            return false;
+
+        SystemConfiguration? settings = null;
+        try
+        {
+            settings = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            settings = null;
+        }
+
+        var token = !string.IsNullOrWhiteSpace(settings?.MercadoPagoAccessTokenProtected)
+            ? _protector.Unprotect(settings.MercadoPagoAccessTokenProtected)
+            : (_cfg["MercadoPago:AccessToken"] ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        // Reconsultamos el pago en la API oficial: esto valida que el pago existe y es
+        // nuestro (evita notificaciones falsas), sin depender de la firma del webhook.
+        var http = _httpFactory.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        using var response = await http.GetAsync($"https://api.mercadopago.com/v1/payments/{paymentId}", ct);
+        if (!response.IsSuccessStatusCode)
+            return false;
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+
+        var status = root.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
+        var externalRef = root.TryGetProperty("external_reference", out var e) ? e.GetString() ?? "" : "";
+        if (string.IsNullOrWhiteSpace(externalRef))
+            return false;
+
+        var domiciliation = await _db.ClientCardDomiciliations
+            .FirstOrDefaultAsync(x => x.MercadoPagoExternalReference == externalRef, ct);
+        if (domiciliation is null)
+            return false;
+
+        var newStatus = status switch
+        {
+            "approved" => ClientCardDomiciliationStatus.Active,
+            "authorized" => ClientCardDomiciliationStatus.Active,
+            "rejected" => ClientCardDomiciliationStatus.Rejected,
+            "cancelled" => ClientCardDomiciliationStatus.Cancelled,
+            "refunded" => ClientCardDomiciliationStatus.Cancelled,
+            "charged_back" => ClientCardDomiciliationStatus.Cancelled,
+            _ => ClientCardDomiciliationStatus.Pending
+        };
+
+        if (domiciliation.Status != newStatus)
+        {
+            domiciliation.Status = newStatus;
+            domiciliation.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return true;
+    }
+
     public async Task<MercadoPagoCheckoutResult> CheckConnectionAsync(CancellationToken ct = default)
     {
         SystemConfiguration? settings = null;
@@ -125,7 +194,7 @@ public class MercadoPagoService : IMercadoPagoService
             {
                 new
                 {
-                    title = $"Domiciliacion {clientName}",
+                    title = $"Pago de servicios - {clientName}",
                     description,
                     quantity = 1,
                     currency_id = "MXN",
@@ -140,7 +209,9 @@ public class MercadoPagoService : IMercadoPagoService
                 pending = $"{siteUrl}/Portal?mp=pending",
                 failure = $"{siteUrl}/Portal?mp=failure"
             },
-            auto_return = "approved"
+            auto_return = "approved",
+            // Meta/MP notificará aquí el resultado del pago para confirmar la domiciliación.
+            notification_url = $"{siteUrl}/api/mercadopago/webhook"
         };
 
         var http = _httpFactory.CreateClient();

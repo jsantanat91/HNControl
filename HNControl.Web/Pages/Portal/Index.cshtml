@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Portal.IndexModel
 @{
     Layout = "_LayoutPublic";
@@ -13,235 +13,277 @@
     return;
 }
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-        <div>
-            <h1 class="h4 m-0">Portal cliente</h1>
-            <div class="text-muted small">@Model.Client.Name · @Model.Client.ClientCode</div>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Cambiar contraseña</button>
-            <form method="post" asp-page-handler="Logout">
-                <button class="btn btn-outline-danger" type="submit">Cerrar sesión</button>
-            </form>
-        </div>
-    </div>
+<div class="portal-shell">
+    <div class="container py-4">
 
-    @if (TempData["PortalInfo"] is string info)
-    {
-        var infoType = (TempData["PortalInfoType"] as string) ?? "info";
-        <div class="alert alert-@infoType py-2">@info</div>
-    }
-
-    <div class="row g-3">
-        <div class="col-12 col-lg-4">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-header fw-semibold">Estado de cuenta</div>
-                <div class="card-body">
-                    <div class="small text-muted text-uppercase fw-semibold">Pendiente</div>
-                    <div class="h4 fw-bold text-danger mb-3">@Model.TotalPendiente.ToString("C")</div>
-                    <div class="small text-muted text-uppercase fw-semibold">Pagado</div>
-                    <div class="h5 fw-bold text-success">@Model.TotalPagado.ToString("C")</div>
-                    <div class="text-muted small mt-2">Facturas ligadas a planes recurrentes del cliente.</div>
-                    <div class="d-flex gap-2 flex-wrap mt-3">
-                        <span class="hn-status-badge is-pending">Pendiente</span>
-                        <span class="hn-status-badge is-paid">Pagada</span>
-                    </div>
+        <!-- Encabezado -->
+        <div class="pf-hero mb-4">
+            <div class="pf-hero-main">
+                <div class="pf-avatar">@(string.IsNullOrWhiteSpace(Model.Client.Name) ? "?" : Model.Client.Name.Trim()[..1].ToUpper())</div>
+                <div>
+                    <div class="pf-hero-eyebrow">Portal cliente</div>
+                    <h1 class="pf-hero-title">@Model.Client.Name</h1>
+                    <div class="pf-hero-sub"><span class="pf-chip">@Model.Client.ClientCode</span></div>
                 </div>
+            </div>
+            <div class="pf-hero-actions">
+                <button class="pf-btn pf-btn-ghost" type="button" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <svg viewBox="0 0 24 24" class="pf-ic"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    Contraseña
+                </button>
+                <form method="post" asp-page-handler="Logout">
+                    <button class="pf-btn pf-btn-danger" type="submit">
+                        <svg viewBox="0 0 24 24" class="pf-ic"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        Salir
+                    </button>
+                </form>
             </div>
         </div>
 
-        <div class="col-12 col-lg-4">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-header fw-semibold">Domiciliar tarjeta</div>
-                <div class="card-body">
-                    <form method="post" asp-page-handler="CreateDomiciliation" class="row g-2">
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Correo pagador (autom&aacute;tico)</label>
-                            <input class="form-control" value="@Model.PayerEmailHint" readonly />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Monto referencia</label>
-                            <input asp-for="DomiciliationForm.MontoReferencia" class="form-control" />
-                        </div>
-                        <div class="col-12 d-grid">
-                            <button type="submit" class="btn btn-primary">Ir a Mercado Pago</button>
-                        </div>
-                    </form>
-                    @if (Model.Domiciliations.Any())
-                    {
-                        <hr />
-                        <div class="small fw-semibold mb-1">Intentos recientes</div>
-                        @foreach (var d in Model.Domiciliations.Take(3))
+        @if (TempData["PortalInfo"] is string info)
+        {
+            var infoType = (TempData["PortalInfoType"] as string) ?? "info";
+            <div class="pf-alert pf-alert-@infoType mb-3">@info</div>
+        }
+
+        <div class="row g-3">
+            <!-- Estado de cuenta -->
+            <div class="col-12 col-lg-4">
+                <div class="pf-card h-100">
+                    <div class="pf-card-head">
+                        <svg viewBox="0 0 24 24" class="pf-ic"><path d="M3 10h18M7 15h4m-4-9h10a4 4 0 014 4v6a4 4 0 01-4 4H7a4 4 0 01-4-4V10a4 4 0 014-4z"/></svg>
+                        <span>Estado de cuenta</span>
+                    </div>
+                    <div class="pf-card-body">
+                        <div class="pf-stat-label">Pendiente</div>
+                        <div class="pf-stat-value is-danger">@Model.TotalPendiente.ToString("C")</div>
+                        <div class="pf-stat-label mt-3">Pagado</div>
+                        <div class="pf-stat-value is-ok">@Model.TotalPagado.ToString("C")</div>
+                        <p class="pf-muted mt-3 mb-0">Facturas ligadas a planes recurrentes del cliente.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pago en línea -->
+            <div class="col-12 col-lg-4">
+                <div class="pf-card h-100">
+                    <div class="pf-card-head">
+                        <svg viewBox="0 0 24 24" class="pf-ic"><path d="M3 10h18M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+                        <span>Pago en línea</span>
+                    </div>
+                    <div class="pf-card-body">
+                        <form method="post" asp-page-handler="CreateDomiciliation" class="pf-form">
+                            <div>
+                                <label class="pf-label">Correo del pagador</label>
+                                <input asp-for="DomiciliationForm.CorreoPagador" class="pf-input" type="email"
+                                       placeholder="correo@@delpagador.com" />
+                                <div class="pf-muted" style="margin-top:.25rem">Debe ser distinto al correo de la cuenta de Mercado Pago que cobra.</div>
+                            </div>
+                            <div>
+                                <label class="pf-label">Monto a pagar (MXN)</label>
+                                <input asp-for="DomiciliationForm.MontoReferencia" class="pf-input" inputmode="decimal" />
+                            </div>
+                            <button type="submit" class="pf-btn pf-btn-primary w-100">
+                                <svg viewBox="0 0 24 24" class="pf-ic"><path d="M5 13l4 4L19 7"/></svg>
+                                Pagar con Mercado Pago
+                            </button>
+                        </form>
+
+                        @if (Model.Domiciliations.Any())
                         {
-                            <div class="small text-muted d-flex align-items-center gap-2">
-                                <span>@d.Fecha</span>
-                                <span class="hn-status-badge @(d.Estado.Equals("Approved", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Authorized", StringComparison.OrdinalIgnoreCase) ? "is-paid" : d.Estado.Equals("Rejected", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Failed", StringComparison.OrdinalIgnoreCase) ? "is-rejected" : "is-pending")">@d.Estado</span>
+                            <div class="pf-divider"></div>
+                            <div class="pf-subhead">Pagos recientes</div>
+                            <div class="pf-list">
+                                @foreach (var d in Model.Domiciliations.Take(4))
+                                {
+                                    var isPaid = d.Estado.Equals("Active", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Approved", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Authorized", StringComparison.OrdinalIgnoreCase);
+                                    var isBad = d.Estado.Equals("Rejected", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Cancelled", StringComparison.OrdinalIgnoreCase) || d.Estado.Equals("Failed", StringComparison.OrdinalIgnoreCase);
+                                    var isPending = !isPaid && !isBad;
+                                    <div class="pf-list-row">
+                                        <span class="pf-muted pf-nowrap">@d.Fecha</span>
+                                        <span class="pf-badge @(isPaid ? "is-paid" : isBad ? "is-rejected" : "is-pending")">@d.Estado</span>
+                                        <div class="pf-list-actions">
+                                            @if (isPending && !string.IsNullOrWhiteSpace(d.UrlPago))
+                                            {
+                                                <a class="pf-iconbtn is-primary" href="@d.UrlPago" target="_blank" rel="noopener" title="Retomar pago">
+                                                    <svg viewBox="0 0 24 24" class="pf-ic-sm"><path d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                                </a>
+                                            }
+                                            <form method="post" asp-page-handler="DeletePayment" asp-route-id="@d.Id" onsubmit="return confirm('¿Eliminar este intento de pago?');">
+                                                <button class="pf-iconbtn is-danger" type="submit" title="Eliminar">
+                                                    <svg viewBox="0 0 24 24" class="pf-ic-sm"><path d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0l1 12a1 1 0 001 1h4a1 1 0 001-1l1-12"/></svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
-                    }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ticket -->
+            <div class="col-12 col-lg-4">
+                <div class="pf-card h-100">
+                    <div class="pf-card-head">
+                        <svg viewBox="0 0 24 24" class="pf-ic"><path d="M15 5v2m0 4v2m0 4v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>
+                        <span>Abrir ticket</span>
+                    </div>
+                    <div class="pf-card-body">
+                        <form method="post" asp-page-handler="CreateTicket" class="pf-form">
+                            <div>
+                                <label class="pf-label">Asunto</label>
+                                <input asp-for="TicketForm.Titulo" class="pf-input" />
+                            </div>
+                            <div>
+                                <label class="pf-label">Descripción</label>
+                                <textarea asp-for="TicketForm.Descripcion" rows="3" class="pf-input"></textarea>
+                            </div>
+                            <div>
+                                <label class="pf-label">Contrato (opcional)</label>
+                                <select asp-for="TicketForm.ContractId" class="pf-input">
+                                    <option value="">-- Sin contrato --</option>
+                                    @foreach (var c in Model.ActiveContracts)
+                                    {
+                                        <option value="@c.Id">@c.Tipo - @c.Nombre - @c.Sucursal</option>
+                                    }
+                                </select>
+                            </div>
+                            <div>
+                                <label class="pf-label">Contacto (opcional)</label>
+                                <select asp-for="TicketForm.ClientContactId" id="portalTicketContact" class="pf-input">
+                                    <option value="">-- Captura manual --</option>
+                                    @foreach (var contact in Model.Contacts)
+                                    {
+                                        var label = contact.Principal ? $"Principal: {contact.Nombre}" : contact.Nombre;
+                                        <option value="@contact.Id" data-name="@contact.Nombre" data-email="@contact.Correo" data-phone="@contact.Telefono">@label &middot; @contact.Correo</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="pf-grid-2">
+                                <div>
+                                    <label class="pf-label">Nombre</label>
+                                    <input asp-for="TicketForm.ContactoNombre" id="portalTicketName" class="pf-input" />
+                                </div>
+                                <div>
+                                    <label class="pf-label">Teléfono</label>
+                                    <input asp-for="TicketForm.ContactoTelefono" id="portalTicketPhone" class="pf-input" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="pf-label">Correo</label>
+                                <input asp-for="TicketForm.ContactoCorreo" id="portalTicketEmail" class="pf-input" />
+                            </div>
+                            <button type="submit" class="pf-btn pf-btn-success w-100">Crear ticket</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-lg-4">
-            <div class="card shadow-soft hn-hover h-100">
-                <div class="card-header fw-semibold">Abrir ticket directo</div>
-                <div class="card-body">
-                    <form method="post" asp-page-handler="CreateTicket" class="row g-2">
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Asunto</label>
-                            <input asp-for="TicketForm.Titulo" class="form-control" />
+        <div class="row g-3 mt-1">
+            <!-- Facturas -->
+            <div class="col-12 col-xl-7">
+                <div class="pf-card">
+                    <div class="pf-card-head pf-card-head-split">
+                        <span class="pf-card-head-title">
+                            <svg viewBox="0 0 24 24" class="pf-ic"><path d="M9 7h6m-6 4h6m-6 4h4M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+                            Facturas recurrentes
+                        </span>
+                        <span class="pf-count">@Model.AccountRuns.Count registro(s)</span>
+                    </div>
+                    <div class="pf-card-body">
+                        @if (!Model.AccountRuns.Any())
+                        {
+                            <div class="pf-empty">Sin facturas registradas.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="pf-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Periodo</th>
+                                            <th>Concepto</th>
+                                            <th>Fecha</th>
+                                            <th class="text-end">Total</th>
+                                            <th class="text-center">Estado</th>
+                                            <th class="text-center">PDF</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var run in Model.AccountRuns.Take(20))
+                                        {
+                                            <tr>
+                                                <td>@run.Periodo</td>
+                                                <td>@run.Concepto</td>
+                                                <td>@run.Fecha</td>
+                                                <td class="text-end fw-semibold">@run.Total.ToString("C")</td>
+                                                <td class="text-center">
+                                                    <span class="pf-badge @(run.Pagada ? "is-paid" : "is-pending")">@run.Estado</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (run.HasPdf)
+                                                    {
+                                                        <a class="pf-btn pf-btn-ghost pf-btn-sm" asp-page="/Portal/Index" asp-page-handler="DownloadInvoice" asp-route-id="@run.Id">Descargar</a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="pf-muted">-</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contratos -->
+            <div class="col-12 col-xl-5">
+                <div class="pf-card">
+                    <div class="pf-card-head pf-card-head-split">
+                        <span class="pf-card-head-title">
+                            <svg viewBox="0 0 24 24" class="pf-ic"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Contratos y cotización
+                        </span>
+                        <span class="pf-count">@Model.ActiveContracts.Count contrato(s)</span>
+                    </div>
+                    <div class="pf-card-body">
+                        <div class="pf-inset mb-3">
+                            <div class="pf-inset-title">Liga pública para cotizar</div>
+                            <div class="pf-muted mb-2">Comparte esta liga para capturar cotizaciones del cliente.</div>
+                            <div class="pf-copyrow">
+                                <input class="pf-input" readonly value="@Model.PublicQuoteUrl" />
+                                <a class="pf-btn pf-btn-ghost" href="@Model.PublicQuoteUrl" target="_blank" rel="noopener">Abrir</a>
+                            </div>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Descripción</label>
-                            <textarea asp-for="TicketForm.Descripcion" rows="3" class="form-control"></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Contrato (opcional)</label>
-                            <select asp-for="TicketForm.ContractId" class="form-select">
-                                <option value="">-- Sin contrato --</option>
+                        @if (!Model.ActiveContracts.Any())
+                        {
+                            <div class="pf-empty">Sin contratos activos.</div>
+                        }
+                        else
+                        {
+                            <div class="pf-form">
                                 @foreach (var c in Model.ActiveContracts)
                                 {
-                                    <option value="@c.Id">@c.Tipo - @c.Nombre - @c.Sucursal</option>
+                                    <div class="pf-inset">
+                                        <div class="pf-inset-title">@c.Nombre</div>
+                                        <div class="pf-muted">@c.Tipo · @c.Sucursal</div>
+                                        <div class="pf-muted">Vigencia: @c.Vigencia</div>
+                                        @if (c.HasFile)
+                                        {
+                                            <a class="pf-btn pf-btn-ghost pf-btn-sm mt-2" asp-page="/Portal/Index" asp-page-handler="DownloadContract" asp-route-id="@c.Id">Descargar contrato</a>
+                                        }
+                                    </div>
                                 }
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Contacto (opcional)</label>
-                            <select asp-for="TicketForm.ClientContactId" id="portalTicketContact" class="form-select">
-                                <option value="">-- Captura manual --</option>
-                                @foreach (var contact in Model.Contacts)
-                                {
-                                    var label = contact.Principal ? $"Principal: {contact.Nombre}" : contact.Nombre;
-                                    <option value="@contact.Id" data-name="@contact.Nombre" data-email="@contact.Correo" data-phone="@contact.Telefono">@label &middot; @contact.Correo</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small mb-1">Nombre</label>
-                            <input asp-for="TicketForm.ContactoNombre" id="portalTicketName" class="form-control" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small mb-1">Teléfono</label>
-                            <input asp-for="TicketForm.ContactoTelefono" id="portalTicketPhone" class="form-control" />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small mb-1">Correo</label>
-                            <input asp-for="TicketForm.ContactoCorreo" id="portalTicketEmail" class="form-control" />
-                        </div>
-                        <div class="col-12 d-grid">
-                            <button type="submit" class="btn btn-success">Crear ticket</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-1">
-        <div class="col-12 col-xl-7">
-            <div class="card shadow-soft hn-hover">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Facturas recurrentes</div>
-                    <span class="text-muted small">@Model.AccountRuns.Count registro(s)</span>
-                </div>
-                <div class="card-body">
-                    @if (!Model.AccountRuns.Any())
-                    {
-                        <div class="text-muted small">Sin facturas registradas.</div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Periodo</th>
-                                        <th>Concepto</th>
-                                        <th>Fecha</th>
-                                        <th class="text-end">Total</th>
-                                        <th class="text-center">Estado</th>
-                                        <th class="text-center">PDF</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var run in Model.AccountRuns.Take(20))
-                                    {
-                                        <tr>
-                                            <td>@run.Periodo</td>
-                                            <td>@run.Concepto</td>
-                                            <td>@run.Fecha</td>
-                                            <td class="text-end">@run.Total.ToString("C")</td>
-                                            <td class="text-center">
-                                                <span class="hn-status-badge @(run.Pagada ? "is-paid" : "is-pending")">@run.Estado</span>
-                                            </td>
-                                            <td class="text-center">
-                                                @if (run.HasPdf)
-                                                {
-                                                    <a class="btn btn-sm btn-outline-primary"
-                                                       asp-page="/Portal/Index"
-                                                       asp-page-handler="DownloadInvoice"
-                                                       asp-route-id="@run.Id">
-                                                        Descargar
-                                                    </a>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted small">-</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xl-5">
-            <div class="card shadow-soft hn-hover">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Contratos y cotización</div>
-                    <span class="text-muted small">@Model.ActiveContracts.Count contrato(s)</span>
-                </div>
-                <div class="card-body">
-                    <div class="border rounded p-2 mb-2">
-                        <div class="fw-semibold">Liga pública para cotizar</div>
-                        <div class="small text-muted">Comparte esta liga para capturar cotizaciones del cliente.</div>
-                        <div class="input-group input-group-sm mt-2">
-                            <input class="form-control" readonly value="@Model.PublicQuoteUrl" />
-                            <a class="btn btn-outline-primary" href="@Model.PublicQuoteUrl" target="_blank" rel="noopener">Abrir</a>
-                        </div>
+                            </div>
+                        }
                     </div>
-                    @if (!Model.ActiveContracts.Any())
-                    {
-                        <div class="text-muted small">Sin contratos activos.</div>
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-column gap-2">
-                            @foreach (var c in Model.ActiveContracts)
-                            {
-                                <div class="border rounded p-2">
-                                    <div class="fw-semibold">@c.Nombre</div>
-                                    <div class="small text-muted">@c.Tipo · @c.Sucursal</div>
-                                    <div class="small text-muted">Vigencia: @c.Vigencia</div>
-                                    @if (c.HasFile)
-                                    {
-                                        <a class="btn btn-sm btn-outline-primary mt-2"
-                                           asp-page="/Portal/Index"
-                                           asp-page-handler="DownloadContract"
-                                           asp-route-id="@c.Id">
-                                            Descargar contrato
-                                        </a>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -258,22 +300,22 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-2">
-                        <label class="form-label">Contraseña actual</label>
-                        <input asp-for="PasswordForm.CurrentPassword" type="password" class="form-control" autocomplete="current-password" />
+                        <label class="pf-label">Contraseña actual</label>
+                        <input asp-for="PasswordForm.CurrentPassword" type="password" class="pf-input" autocomplete="current-password" />
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Nueva contraseña</label>
-                        <input asp-for="PasswordForm.NewPassword" type="password" class="form-control" autocomplete="new-password" />
+                        <label class="pf-label">Nueva contraseña</label>
+                        <input asp-for="PasswordForm.NewPassword" type="password" class="pf-input" autocomplete="new-password" />
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Confirmar contraseña</label>
-                        <input asp-for="PasswordForm.ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+                        <label class="pf-label">Confirmar contraseña</label>
+                        <input asp-for="PasswordForm.ConfirmPassword" type="password" class="pf-input" autocomplete="new-password" />
                     </div>
-                    <div class="text-muted small">La nueva contraseña debe tener al menos 10 caracteres.</div>
+                    <div class="pf-muted">La nueva contraseña debe tener al menos 10 caracteres.</div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar contraseña</button>
+                    <button type="button" class="pf-btn pf-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="pf-btn pf-btn-primary">Guardar contraseña</button>
                 </div>
             </form>
         </div>
@@ -289,50 +331,155 @@
             const phone = document.getElementById('portalTicketPhone');
             const email = document.getElementById('portalTicketEmail');
             if (!contact || !name || !phone || !email) return;
-
-            const syncFields = () => {
+            contact.addEventListener('change', () => {
                 const opt = contact.options[contact.selectedIndex];
                 if (!opt || !opt.value) return;
                 name.value = opt.dataset.name || '';
                 phone.value = opt.dataset.phone || '';
                 email.value = opt.dataset.email || '';
-            };
-
-            contact.addEventListener('change', syncFields);
+            });
         })();
     </script>
 }
 
 @section Styles {
     <style>
-        .hn-status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 9999px;
-            padding: .2rem .65rem;
-            font-size: .72rem;
-            font-weight: 700;
-            line-height: 1;
-            border: 1px solid transparent;
-            white-space: nowrap;
+        .portal-shell {
+            --pf-bg: #f6f8fb;
+            --pf-card: #ffffff;
+            --pf-border: #e6eaf0;
+            --pf-ink: #0f172a;
+            --pf-muted: #64748b;
+            --pf-brand: #2563eb;
+            --pf-brand-2: #1e3a8a;
+            --pf-radius: 16px;
+            background:
+                radial-gradient(1200px 400px at 100% -10%, #eef4ff 0%, rgba(238,244,255,0) 60%),
+                var(--pf-bg);
+            min-height: 100%;
+            color: var(--pf-ink);
         }
-        .hn-status-badge.is-paid {
-            background: #dcfce7;
-            color: #166534;
-            border-color: #86efac;
+        .portal-shell .pf-ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .portal-shell .pf-ic-sm { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Hero */
+        .portal-shell .pf-hero {
+            display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+            background: linear-gradient(135deg, var(--pf-brand-2), var(--pf-brand));
+            color: #fff; border-radius: var(--pf-radius); padding: 1.25rem 1.5rem;
+            box-shadow: 0 10px 30px -12px rgba(37,99,235,.5);
         }
-        .hn-status-badge.is-pending {
-            background: #fef9c3;
-            color: #854d0e;
-            border-color: #fde68a;
+        .portal-shell .pf-hero-main { display: flex; align-items: center; gap: 1rem; }
+        .portal-shell .pf-avatar {
+            width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
+            background: rgba(255,255,255,.18); font-size: 1.4rem; font-weight: 800; backdrop-filter: blur(4px);
         }
-        .hn-status-badge.is-rejected {
-            background: #fee2e2;
-            color: #991b1b;
-            border-color: #fecaca;
+        .portal-shell .pf-hero-eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .8; }
+        .portal-shell .pf-hero-title { margin: .1rem 0; font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+        .portal-shell .pf-chip { display: inline-block; background: rgba(255,255,255,.2); border-radius: 999px; padding: .12rem .6rem; font-size: .78rem; font-weight: 600; }
+        .portal-shell .pf-hero-actions { display: flex; gap: .5rem; }
+
+        /* Cards */
+        .portal-shell .pf-card {
+            background: var(--pf-card); border: 1px solid var(--pf-border); border-radius: var(--pf-radius);
+            box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px -18px rgba(16,24,40,.25);
+            transition: transform .16s ease, box-shadow .16s ease; overflow: hidden;
+        }
+        .portal-shell .pf-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 16px 32px -18px rgba(16,24,40,.3); }
+        .portal-shell .pf-card-head {
+            display: flex; align-items: center; gap: .55rem; padding: .9rem 1.1rem; font-weight: 700; font-size: .95rem;
+            border-bottom: 1px solid var(--pf-border); color: var(--pf-ink);
+        }
+        .portal-shell .pf-card-head .pf-ic { color: var(--pf-brand); }
+        .portal-shell .pf-card-head-split { justify-content: space-between; }
+        .portal-shell .pf-card-head-title { display: inline-flex; align-items: center; gap: .55rem; }
+        .portal-shell .pf-card-head-title .pf-ic { color: var(--pf-brand); }
+        .portal-shell .pf-count { font-size: .78rem; color: var(--pf-muted); font-weight: 500; }
+        .portal-shell .pf-card-body { padding: 1.1rem; }
+
+        /* Stats */
+        .portal-shell .pf-stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--pf-muted); font-weight: 700; }
+        .portal-shell .pf-stat-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
+        .portal-shell .pf-stat-value.is-danger { color: #dc2626; }
+        .portal-shell .pf-stat-value.is-ok { color: #16a34a; }
+
+        /* Forms */
+        .portal-shell .pf-form { display: flex; flex-direction: column; gap: .75rem; }
+        .portal-shell .pf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+        .portal-shell .pf-label { display: block; font-size: .78rem; font-weight: 600; color: var(--pf-muted); margin-bottom: .3rem; }
+        .portal-shell .pf-input {
+            width: 100%; background: #fff; border: 1px solid #d5dbe4; border-radius: 10px; padding: .55rem .7rem;
+            font-size: .9rem; color: var(--pf-ink); transition: border-color .15s ease, box-shadow .15s ease; outline: none;
+        }
+        .portal-shell .pf-input:focus { border-color: var(--pf-brand); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+        .portal-shell .pf-input[readonly] { background: #f1f5f9; color: var(--pf-muted); }
+        .portal-shell textarea.pf-input { resize: vertical; }
+
+        /* Buttons */
+        .portal-shell .pf-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+            border: 1px solid transparent; border-radius: 10px; padding: .55rem .9rem; font-size: .88rem; font-weight: 600;
+            cursor: pointer; text-decoration: none; transition: filter .15s ease, background .15s ease, transform .05s ease;
+        }
+        .portal-shell .pf-btn:active { transform: translateY(1px); }
+        .portal-shell .pf-btn.w-100 { width: 100%; }
+        .portal-shell .pf-btn-sm { padding: .32rem .6rem; font-size: .78rem; border-radius: 8px; }
+        .portal-shell .pf-btn-primary { background: linear-gradient(135deg, var(--pf-brand), #1d4ed8); color: #fff; box-shadow: 0 6px 16px -8px rgba(37,99,235,.7); }
+        .portal-shell .pf-btn-primary:hover { filter: brightness(1.06); }
+        .portal-shell .pf-btn-success { background: #16a34a; color: #fff; }
+        .portal-shell .pf-btn-success:hover { filter: brightness(1.06); }
+        .portal-shell .pf-btn-ghost { background: #fff; border-color: #d5dbe4; color: var(--pf-ink); }
+        .portal-shell .pf-btn-ghost:hover { background: #f8fafc; }
+        .portal-shell .pf-btn-danger { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.35); }
+        .portal-shell .pf-btn-danger:hover { background: rgba(255,255,255,.24); }
+
+        /* Lists / pagos recientes */
+        .portal-shell .pf-divider { height: 1px; background: var(--pf-border); margin: 1rem 0; }
+        .portal-shell .pf-subhead { font-size: .8rem; font-weight: 700; color: var(--pf-muted); margin-bottom: .5rem; }
+        .portal-shell .pf-list { display: flex; flex-direction: column; gap: .4rem; }
+        .portal-shell .pf-list-row { display: flex; align-items: center; gap: .5rem; font-size: .82rem; }
+        .portal-shell .pf-list-actions { margin-left: auto; display: flex; gap: .3rem; align-items: center; }
+        .portal-shell .pf-nowrap { white-space: nowrap; }
+        .portal-shell .pf-iconbtn {
+            display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+            border: 1px solid var(--pf-border); background: #fff; color: var(--pf-muted); cursor: pointer; transition: all .15s ease;
+        }
+        .portal-shell .pf-iconbtn.is-primary:hover { border-color: var(--pf-brand); color: var(--pf-brand); background: #eff6ff; }
+        .portal-shell .pf-iconbtn.is-danger:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+        .portal-shell .pf-list-actions form { display: contents; }
+
+        /* Badges */
+        .portal-shell .pf-badge {
+            display: inline-flex; align-items: center; border-radius: 999px; padding: .18rem .6rem;
+            font-size: .7rem; font-weight: 700; line-height: 1; border: 1px solid transparent; white-space: nowrap;
+        }
+        .portal-shell .pf-badge.is-paid { background: #dcfce7; color: #166534; border-color: #86efac; }
+        .portal-shell .pf-badge.is-pending { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+        .portal-shell .pf-badge.is-rejected { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+        /* Table */
+        .portal-shell .pf-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .86rem; }
+        .portal-shell .pf-table thead th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--pf-muted); font-weight: 700; padding: .5rem .6rem; border-bottom: 1px solid var(--pf-border); }
+        .portal-shell .pf-table tbody td { padding: .6rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .portal-shell .pf-table tbody tr:hover td { background: #f8fafc; }
+
+        /* Insets / misc */
+        .portal-shell .pf-inset { border: 1px solid var(--pf-border); border-radius: 12px; padding: .8rem; background: #fcfdff; }
+        .portal-shell .pf-inset-title { font-weight: 700; font-size: .9rem; }
+        .portal-shell .pf-copyrow { display: flex; gap: .4rem; }
+        .portal-shell .pf-muted { color: var(--pf-muted); font-size: .82rem; }
+        .portal-shell .pf-empty { color: var(--pf-muted); font-size: .85rem; padding: .5rem 0; }
+
+        /* Alerts */
+        .portal-shell .pf-alert { border-radius: 12px; padding: .7rem .9rem; font-size: .88rem; border: 1px solid transparent; }
+        .portal-shell .pf-alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+        .portal-shell .pf-alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .portal-shell .pf-alert-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+        .portal-shell .pf-alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+
+        @@media (max-width: 575.98px) {
+            .portal-shell .pf-hero { padding: 1rem; }
+            .portal-shell .pf-hero-title { font-size: 1.15rem; }
         }
     </style>
 }
-
-
