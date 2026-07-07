@@ -9,6 +9,12 @@ public interface IMercadoPagoService
         decimal referenceAmount,
         string description,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Valida el Access Token contra la API de Mercado Pago (GET /users/me) sin crear pagos.
+    /// Devuelve datos de la cuenta si es valido; Success=false con el error si no.
+    /// </summary>
+    Task<MercadoPagoCheckoutResult> CheckConnectionAsync(CancellationToken ct = default);
 }
 
 public sealed class MercadoPagoCheckoutResult

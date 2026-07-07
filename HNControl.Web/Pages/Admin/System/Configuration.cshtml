@@ -342,6 +342,10 @@
 
                     <div class="col-12 d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Guardar Mercado Pago</button>
+                        <button class="btn btn-outline-primary" type="submit" asp-page-handler="CheckMercadoPagoConnection">Probar conexión Mercado Pago</button>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">"Probar conexión" valida el Access Token contra la API de Mercado Pago (sin generar pagos). Guarda antes de probar.</div>
                     </div>
                 </form>
             </div>

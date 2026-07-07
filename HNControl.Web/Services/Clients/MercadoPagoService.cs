@@ -28,6 +28,57 @@ public class MercadoPagoService : IMercadoPagoService
         _protector = protector;
     }
 
+    public async Task<MercadoPagoCheckoutResult> CheckConnectionAsync(CancellationToken ct = default)
+    {
+        SystemConfiguration? settings = null;
+        try
+        {
+            settings = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .FirstOrDefaultAsync(ct);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            settings = null;
+        }
+
+        var token = !string.IsNullOrWhiteSpace(settings?.MercadoPagoAccessTokenProtected)
+            ? _protector.Unprotect(settings.MercadoPagoAccessTokenProtected)
+            : (_cfg["MercadoPago:AccessToken"] ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(token))
+            return new MercadoPagoCheckoutResult { Success = false, Message = "Mercado Pago no esta configurado (falta AccessToken). Guarda primero." };
+
+        var http = _httpFactory.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        using var response = await http.GetAsync("https://api.mercadopago.com/users/me", ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = body.Length > 250 ? body[..250] : body;
+            return new MercadoPagoCheckoutResult { Success = false, Message = $"Mercado Pago respondio ({(int)response.StatusCode}): {detail}" };
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var nickname = root.TryGetProperty("nickname", out var n) ? n.GetString() : null;
+            var email = root.TryGetProperty("email", out var e) ? e.GetString() : null;
+            var siteId = root.TryGetProperty("site_id", out var s) ? s.GetString() : null;
+            var id = root.TryGetProperty("id", out var i) ? i.ToString() : null;
+            var label = nickname ?? email ?? id ?? "cuenta";
+            return new MercadoPagoCheckoutResult { Success = true, Message = $"{label} · sitio {siteId ?? "?"} · ID {id ?? "?"}" };
+        }
+        catch
+        {
+            return new MercadoPagoCheckoutResult { Success = true, Message = "Token valido." };
+        }
+    }
+
     public async Task<MercadoPagoCheckoutResult> CreateCardDomiciliationCheckoutAsync(
         string clientCode,
         string clientName,

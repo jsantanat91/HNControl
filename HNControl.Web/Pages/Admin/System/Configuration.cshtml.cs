@@ -26,13 +26,15 @@ public class ConfigurationModel : PageModel
     private readonly IFileStorage _storage;
     private readonly ISecretProtector _protector;
     private readonly IWhatsAppSender _whatsApp;
+    private readonly Services.Clients.IMercadoPagoService _mercadoPago;
 
-    public ConfigurationModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector, IWhatsAppSender whatsApp)
+    public ConfigurationModel(ApplicationDbContext db, IFileStorage storage, ISecretProtector protector, IWhatsAppSender whatsApp, Services.Clients.IMercadoPagoService mercadoPago)
     {
         _db = db;
         _storage = storage;
         _protector = protector;
         _whatsApp = whatsApp;
+        _mercadoPago = mercadoPago;
     }
 
     [TempData] public string? Flash { get; set; }
@@ -407,6 +409,31 @@ public class ConfigurationModel : PageModel
     {
         Flash = "WhatsApp necesita actualizar el esquema de BD, pero el usuario actual no es OWNER de SystemConfigurations. Ejecuta el SQL de actualizacion con el usuario OWNER en pgAdmin.";
         FlashType = "warning";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostCheckMercadoPagoConnectionAsync()
+    {
+        try
+        {
+            var result = await _mercadoPago.CheckConnectionAsync();
+            if (result.Success)
+            {
+                Flash = $"Conexion con Mercado Pago OK: {result.Message}";
+                FlashType = "success";
+            }
+            else
+            {
+                Flash = $"No se pudo conectar con Mercado Pago: {result.Message}";
+                FlashType = "danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            Flash = $"No se pudo conectar con Mercado Pago: {ex.Message}";
+            FlashType = "danger";
+        }
+
         return RedirectToPage();
     }
 
