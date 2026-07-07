@@ -457,6 +457,10 @@
 
                     <div class="col-12 d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Guardar WhatsApp</button>
+                        <button class="btn btn-outline-primary" type="submit" asp-page-handler="CheckWhatsAppConnection">Probar conexión</button>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-text">"Probar conexión" valida el token y el Phone Number ID contra Meta (sin enviar mensajes). Guarda antes de probar.</div>
                     </div>
                 </form>
 

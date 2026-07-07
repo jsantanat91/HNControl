@@ -410,6 +410,23 @@ public class ConfigurationModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostCheckWhatsAppConnectionAsync()
+    {
+        try
+        {
+            var info = await _whatsApp.CheckConnectionAsync();
+            Flash = $"Conexion con Meta OK: {info}";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            Flash = $"No se pudo conectar con Meta: {ex.Message}";
+            FlashType = "danger";
+        }
+
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostTestWhatsAppAsync()
     {
         var phone = (Input.WhatsAppTestPhone ?? "").Trim();

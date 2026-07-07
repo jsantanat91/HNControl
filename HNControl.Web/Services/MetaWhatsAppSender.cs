@@ -114,6 +114,45 @@ public class MetaWhatsAppSender : IWhatsAppSender
         }, ct);
     }
 
+    public async Task<string> CheckConnectionAsync(CancellationToken ct = default)
+    {
+        var cfg = await LoadConfigSafeAsync(ct);
+        var phoneNumberId = (cfg?.WhatsAppGatewayUrl ?? "").Trim();
+        var accessToken = !string.IsNullOrWhiteSpace(cfg?.WhatsAppApiKeyProtected)
+            ? _protector.Unprotect(cfg!.WhatsAppApiKeyProtected)
+            : "";
+
+        if (string.IsNullOrWhiteSpace(phoneNumberId) || string.IsNullOrWhiteSpace(accessToken))
+            throw new InvalidOperationException("Falta Phone Number ID o Access Token. Guarda la configuracion primero.");
+
+        var version = string.IsNullOrWhiteSpace(cfg?.WhatsAppGraphApiVersion) ? "v21.0" : cfg!.WhatsAppGraphApiVersion.Trim();
+        var url = $"https://graph.facebook.com/{version}/{phoneNumberId}?fields=verified_name,display_phone_number,quality_rating";
+
+        var client = _httpClientFactory.CreateClient("whatsapp");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await client.SendAsync(request, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"Meta respondio {(int)response.StatusCode}: {Truncate(body, 300)}");
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var name = root.TryGetProperty("verified_name", out var n) ? n.GetString() : null;
+            var phone = root.TryGetProperty("display_phone_number", out var p) ? p.GetString() : null;
+            var quality = root.TryGetProperty("quality_rating", out var q) ? q.GetString() : null;
+            var label = string.IsNullOrWhiteSpace(name) ? phoneNumberId : name;
+            return $"{label} ({phone ?? "?"}) · calidad: {quality ?? "n/d"}";
+        }
+        catch
+        {
+            return Truncate(body, 200);
+        }
+    }
+
     private async Task PostAsync(string to, object body, CancellationToken ct)
     {
         var cfg = await LoadConfigSafeAsync(ct);

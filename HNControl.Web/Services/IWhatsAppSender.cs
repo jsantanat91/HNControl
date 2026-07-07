@@ -16,6 +16,12 @@ public interface IWhatsAppSender
     Task SendTemplateAsync(WhatsAppTemplateMessage message, CancellationToken ct = default);
 
     Task<bool> IsConfiguredAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Valida credenciales (token + Phone Number ID) contra el Graph API sin enviar mensajes.
+    /// Devuelve una descripcion del numero (nombre verificado y telefono). Lanza si falla.
+    /// </summary>
+    Task<string> CheckConnectionAsync(CancellationToken ct = default);
 }
 
 /// <summary>
