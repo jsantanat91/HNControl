@@ -349,8 +349,8 @@
             <div class="tab-pane fade" id="tabWa">
                 <form method="post" asp-page-handler="SaveWhatsApp" class="row g-3">
                     <div class="col-12">
-                        <div class="fw-semibold">WhatsApp / OpenWA</div>
-                        <div class="text-muted small">Gateway compatible con OpenWA. Se envía adicional al correo cuando está activo.</div>
+                        <div class="fw-semibold">WhatsApp Business · Meta Cloud API</div>
+                        <div class="text-muted small">Envío oficial vía graph.facebook.com. Los mensajes iniciados por el negocio requieren plantillas aprobadas en Meta.</div>
                     </div>
 
                     <div class="col-12 col-md-3">
@@ -361,18 +361,40 @@
                     </div>
 
                     <div class="col-12 col-md-5">
-                        <label class="form-label">URL Gateway OpenWA</label>
-                        <input class="form-control" asp-for="Input.WhatsAppGatewayUrl" placeholder="http://openwa:3000" />
+                        <label class="form-label">Phone Number ID</label>
+                        <input class="form-control" asp-for="Input.WhatsAppGatewayUrl" placeholder="Ej: 123456789012345" />
+                        <div class="form-text">El <code>Phone Number ID</code> del número (WhatsApp → API Setup en Meta).</div>
                     </div>
 
                     <div class="col-12 col-md-4">
-                        <label class="form-label">API Key / Token interno</label>
+                        <label class="form-label">Access Token permanente</label>
                         <input class="form-control" asp-for="Input.WhatsAppApiKey" type="password" placeholder="Dejar vacio para conservar" />
                         @if (Model.HasWhatsAppApiKey)
                         {
                             <div class="small text-success">Token guardado.</div>
                         }
-                        <div class="form-text">Debe coincidir con <code>HNCONTROL_OPENWA_API_KEY</code>. Si no definiste variable, usa <code>hncontrol_wa_key_2026</code>.</div>
+                        <div class="form-text">Token del Usuario del Sistema de Meta (permiso <code>whatsapp_business_messaging</code>).</div>
+                    </div>
+
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">WABA ID (opcional)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppWabaId" placeholder="ID de la cuenta WhatsApp Business" />
+                    </div>
+
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Versión Graph API</label>
+                        <input class="form-control" asp-for="Input.WhatsAppGraphApiVersion" placeholder="v21.0" />
+                    </div>
+
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Idioma de plantillas</label>
+                        <input class="form-control" asp-for="Input.WhatsAppTemplateLanguage" placeholder="es_MX" />
+                        <div class="form-text">Debe coincidir con el idioma configurado en la plantilla de Meta.</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Webhook Verify Token (opcional)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppWebhookVerifyToken" placeholder="Cadena que eliges tú; debe coincidir en Meta" />
                     </div>
 
                     <div class="col-12 col-md-6">
@@ -404,16 +426,33 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-lg-6">
-                        <label class="form-label">Codigo OTP de inicio de sesion</label>
-                        <textarea class="form-control" asp-for="Input.WhatsAppOtpTemplate" rows="5"></textarea>
-                        <div class="form-text">Se envia ademas del correo cuando el empleado inicia sesion.</div>
+                    <div class="col-12">
+                        <div class="alert alert-info small mb-0">
+                            El <b>texto</b> es solo respaldo/preview (se usa dentro de la ventana de 24h). Para mensajes
+                            iniciados por el negocio, Meta exige el <b>nombre exacto de una plantilla aprobada</b>.
+                        </div>
                     </div>
 
                     <div class="col-12 col-lg-6">
-                        <label class="form-label">Recibo de nomina mensual/quincenal</label>
-                        <textarea class="form-control" asp-for="Input.WhatsAppPayrollReceiptTemplate" rows="5"></textarea>
-                        <div class="form-text">Se envia cuando se despacha el recibo de nomina por correo.</div>
+                        <label class="form-label">Codigo OTP de inicio de sesion (texto/preview)</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppOtpTemplate" rows="4"></textarea>
+                        <label class="form-label mt-2">Nombre de plantilla OTP (Authentication)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppOtpTemplateName" placeholder="Ej: hn_otp_login" />
+                        <div class="form-text">Plantilla categoría <b>Authentication</b>. Parámetro: {{1}} = código.</div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Recibo de nomina (texto/preview)</label>
+                        <textarea class="form-control" asp-for="Input.WhatsAppPayrollReceiptTemplate" rows="4"></textarea>
+                        <label class="form-label mt-2">Nombre de plantilla Nómina (Utility)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppPayrollTemplateName" placeholder="Ej: hn_recibo_nomina" />
+                        <div class="form-text">Utility. Params: {{1}}Nombre {{2}}Periodo {{3}}TotalNeto {{4}}FechaPago.</div>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Nombre de plantilla Tickets/alertas (Utility)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppTicketTemplateName" placeholder="Ej: hn_alerta_ticket" />
+                        <div class="form-text">Utility. Parámetro: {{1}} = resumen de la alerta.</div>
                     </div>
 
                     <div class="col-12 d-flex gap-2">

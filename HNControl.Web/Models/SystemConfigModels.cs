@@ -128,6 +128,39 @@ public class SystemConfiguration
     [MaxLength(2000)]
     public string WhatsAppPayrollReceiptTemplate { get; set; } = "";
 
+    // ── Meta WhatsApp Cloud API ───────────────────────────────────────────
+    // Nota: se reutiliza WhatsAppGatewayUrl como Phone Number ID y
+    // WhatsAppApiKeyProtected como Access Token permanente (cifrado).
+
+    /// <summary>ID de la cuenta de WhatsApp Business (WABA ID). Informativo.</summary>
+    [MaxLength(64)]
+    public string WhatsAppWabaId { get; set; } = "";
+
+    /// <summary>Version del Graph API de Meta. Ej: v21.0</summary>
+    [MaxLength(12)]
+    public string WhatsAppGraphApiVersion { get; set; } = "v21.0";
+
+    /// <summary>Idioma por defecto de las plantillas HSM. Ej: es_MX</summary>
+    [MaxLength(12)]
+    public string WhatsAppTemplateLanguage { get; set; } = "es_MX";
+
+    /// <summary>Token de verificacion del webhook (lo eliges tu; debe coincidir en Meta).</summary>
+    [MaxLength(120)]
+    public string WhatsAppWebhookVerifyToken { get; set; } = "";
+
+    // Nombres de plantillas HSM aprobadas en Meta (si van vacias, se envia texto libre).
+    /// <summary>Plantilla de codigo OTP de login (categoria Authentication).</summary>
+    [MaxLength(200)]
+    public string WhatsAppOtpTemplateName { get; set; } = "";
+
+    /// <summary>Plantilla de aviso de recibo de nomina (categoria Utility).</summary>
+    [MaxLength(200)]
+    public string WhatsAppPayrollTemplateName { get; set; } = "";
+
+    /// <summary>Plantilla de alertas de tickets (categoria Utility).</summary>
+    [MaxLength(200)]
+    public string WhatsAppTicketTemplateName { get; set; } = "";
+
     [MaxLength(220)]
     public string PublicBaseUrl { get; set; } = "";
 

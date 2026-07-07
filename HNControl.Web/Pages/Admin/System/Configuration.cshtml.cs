@@ -89,7 +89,9 @@ public class ConfigurationModel : PageModel
         [MaxLength(220)] public string MercadoPagoAccessToken { get; set; } = "";
         [MaxLength(220)] public string MercadoPagoWebhookSecret { get; set; } = "";
         public bool WhatsAppEnabled { get; set; }
+        // WhatsAppGatewayUrl se reutiliza como Phone Number ID de Meta.
         [MaxLength(300)] public string WhatsAppGatewayUrl { get; set; } = "";
+        // WhatsAppApiKey se reutiliza como Access Token permanente de Meta.
         [MaxLength(2200)] public string WhatsAppApiKey { get; set; } = "";
         [MaxLength(1000)] public string WhatsAppInternalPhonesCsv { get; set; } = "";
         public bool WhatsAppNotifyTickets { get; set; } = true;
@@ -97,6 +99,14 @@ public class ConfigurationModel : PageModel
         [MaxLength(40)] public string WhatsAppTestPhone { get; set; } = "";
         [MaxLength(2000)] public string WhatsAppOtpTemplate { get; set; } = DefaultWhatsAppOtpTemplate;
         [MaxLength(2000)] public string WhatsAppPayrollReceiptTemplate { get; set; } = DefaultWhatsAppPayrollReceiptTemplate;
+        // Meta Cloud API
+        [MaxLength(64)] public string WhatsAppWabaId { get; set; } = "";
+        [MaxLength(12)] public string WhatsAppGraphApiVersion { get; set; } = "v21.0";
+        [MaxLength(12)] public string WhatsAppTemplateLanguage { get; set; } = "es_MX";
+        [MaxLength(120)] public string WhatsAppWebhookVerifyToken { get; set; } = "";
+        [MaxLength(200)] public string WhatsAppOtpTemplateName { get; set; } = "";
+        [MaxLength(200)] public string WhatsAppPayrollTemplateName { get; set; } = "";
+        [MaxLength(200)] public string WhatsAppTicketTemplateName { get; set; } = "";
 
         [MaxLength(400)] public string Notes { get; set; } = "";
         public IFormFile? CompanyLogo { get; set; }
@@ -412,8 +422,10 @@ public class ConfigurationModel : PageModel
 
         try
         {
-            await _whatsApp.SendAsync(phone, "Prueba de WhatsApp desde HN Control. Configuracion OpenWA activa.");
-            Flash = $"WhatsApp enviado a {phone}.";
+            // Texto libre: la Cloud API solo lo entrega dentro de la ventana de 24h o a numeros
+            // de prueba de Meta. Fuera de eso, usa una plantilla aprobada (OTP/Nomina/Tickets).
+            await _whatsApp.SendAsync(phone, "Prueba de WhatsApp desde HN Control (Meta Cloud API).");
+            Flash = $"WhatsApp enviado a {phone}. (Si el numero no escribio en las ultimas 24h, Meta puede rechazar el texto libre; usa plantillas para mensajes iniciados por el negocio.)";
             FlashType = "success";
         }
         catch (Exception ex)
@@ -533,6 +545,13 @@ public class ConfigurationModel : PageModel
             WhatsAppNotifyCustomers = cfg.WhatsAppNotifyCustomers,
             WhatsAppOtpTemplate = NormalizeTemplate(cfg.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate),
             WhatsAppPayrollReceiptTemplate = NormalizeTemplate(cfg.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate),
+            WhatsAppWabaId = cfg.WhatsAppWabaId,
+            WhatsAppGraphApiVersion = string.IsNullOrWhiteSpace(cfg.WhatsAppGraphApiVersion) ? "v21.0" : cfg.WhatsAppGraphApiVersion,
+            WhatsAppTemplateLanguage = string.IsNullOrWhiteSpace(cfg.WhatsAppTemplateLanguage) ? "es_MX" : cfg.WhatsAppTemplateLanguage,
+            WhatsAppWebhookVerifyToken = cfg.WhatsAppWebhookVerifyToken,
+            WhatsAppOtpTemplateName = cfg.WhatsAppOtpTemplateName,
+            WhatsAppPayrollTemplateName = cfg.WhatsAppPayrollTemplateName,
+            WhatsAppTicketTemplateName = cfg.WhatsAppTicketTemplateName,
             Notes = cfg.Notes
         };
 
@@ -623,6 +642,13 @@ public class ConfigurationModel : PageModel
                 WhatsAppNotifyCustomers = ReadBool(reader, "WhatsAppNotifyCustomers"),
                 WhatsAppOtpTemplate = ReadString(reader, "WhatsAppOtpTemplate"),
                 WhatsAppPayrollReceiptTemplate = ReadString(reader, "WhatsAppPayrollReceiptTemplate"),
+                WhatsAppWabaId = ReadString(reader, "WhatsAppWabaId"),
+                WhatsAppGraphApiVersion = ReadString(reader, "WhatsAppGraphApiVersion", "v21.0"),
+                WhatsAppTemplateLanguage = ReadString(reader, "WhatsAppTemplateLanguage", "es_MX"),
+                WhatsAppWebhookVerifyToken = ReadString(reader, "WhatsAppWebhookVerifyToken"),
+                WhatsAppOtpTemplateName = ReadString(reader, "WhatsAppOtpTemplateName"),
+                WhatsAppPayrollTemplateName = ReadString(reader, "WhatsAppPayrollTemplateName"),
+                WhatsAppTicketTemplateName = ReadString(reader, "WhatsAppTicketTemplateName"),
                 PublicBaseUrl = ReadString(reader, "PublicBaseUrl"),
                 Notes = ReadString(reader, "Notes"),
                 UpdatedAt = ReadDateTime(reader, "UpdatedAt", DateTime.UtcNow)
@@ -691,6 +717,15 @@ public class ConfigurationModel : PageModel
         entity.WhatsAppNotifyCustomers = Input.WhatsAppNotifyCustomers;
         entity.WhatsAppOtpTemplate = NormalizeTemplate(Input.WhatsAppOtpTemplate, DefaultWhatsAppOtpTemplate);
         entity.WhatsAppPayrollReceiptTemplate = NormalizeTemplate(Input.WhatsAppPayrollReceiptTemplate, DefaultWhatsAppPayrollReceiptTemplate);
+
+        // Meta Cloud API
+        entity.WhatsAppWabaId = (Input.WhatsAppWabaId ?? "").Trim();
+        entity.WhatsAppGraphApiVersion = string.IsNullOrWhiteSpace(Input.WhatsAppGraphApiVersion) ? "v21.0" : Input.WhatsAppGraphApiVersion.Trim();
+        entity.WhatsAppTemplateLanguage = string.IsNullOrWhiteSpace(Input.WhatsAppTemplateLanguage) ? "es_MX" : Input.WhatsAppTemplateLanguage.Trim();
+        entity.WhatsAppWebhookVerifyToken = (Input.WhatsAppWebhookVerifyToken ?? "").Trim();
+        entity.WhatsAppOtpTemplateName = (Input.WhatsAppOtpTemplateName ?? "").Trim();
+        entity.WhatsAppPayrollTemplateName = (Input.WhatsAppPayrollTemplateName ?? "").Trim();
+        entity.WhatsAppTicketTemplateName = (Input.WhatsAppTicketTemplateName ?? "").Trim();
 
         if (!string.IsNullOrWhiteSpace(Input.WhatsAppApiKey))
             entity.WhatsAppApiKeyProtected = _protector.Protect(Input.WhatsAppApiKey.Trim());
@@ -771,6 +806,13 @@ public class ConfigurationModel : PageModel
                 ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppNotifyCustomers" boolean NOT NULL DEFAULT FALSE;
                 ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
                 ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppWabaId" character varying(64) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppGraphApiVersion" character varying(12) NOT NULL DEFAULT 'v21.0';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppTemplateLanguage" character varying(12) NOT NULL DEFAULT 'es_MX';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppWebhookVerifyToken" character varying(120) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplateName" character varying(200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppPayrollTemplateName" character varying(200) NOT NULL DEFAULT '';
+                ALTER TABLE IF EXISTS "SystemConfigurations" ADD COLUMN IF NOT EXISTS "WhatsAppTicketTemplateName" character varying(200) NOT NULL DEFAULT '';
                 """);
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)

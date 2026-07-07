@@ -121,7 +121,7 @@ builder.Services.AddScoped<ModulePermissionPageFilter>();
 // Monitoreo
 // --------------------
 builder.Services.AddHttpClient("monitoring");
-builder.Services.AddHttpClient("openwa", client =>
+builder.Services.AddHttpClient("whatsapp", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
 });
@@ -238,7 +238,7 @@ builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
 // EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
-builder.Services.AddScoped<IWhatsAppSender, OpenWaWhatsAppSender>();
+builder.Services.AddScoped<IWhatsAppSender, MetaWhatsAppSender>();
 
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
@@ -1164,6 +1164,22 @@ ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplate" character varying(2000) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
+
+-- Meta WhatsApp Cloud API (reemplazo de OpenWA)
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppWabaId" character varying(64) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppGraphApiVersion" character varying(12) NOT NULL DEFAULT 'v21.0';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppTemplateLanguage" character varying(12) NOT NULL DEFAULT 'es_MX';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppWebhookVerifyToken" character varying(120) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppOtpTemplateName" character varying(200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppPayrollTemplateName" character varying(200) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS public."SystemConfigurations"
+    ADD COLUMN IF NOT EXISTS "WhatsAppTicketTemplateName" character varying(200) NOT NULL DEFAULT '';
 """);
     }
     catch (PostgresException ex) when (ex.SqlState == "42501")

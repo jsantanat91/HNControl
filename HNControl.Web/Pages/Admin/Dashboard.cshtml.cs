@@ -358,7 +358,7 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
             }
 
             var pdf = _payrollReceipt.RenderPdf(data);
-            var subject = $"Pago aplicado de nomina · {periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
+            var subject = $"Pago aplicado de nomina ï¿½ {periodStart:yyyy-MM-dd} a {periodEnd:yyyy-MM-dd}";
             var body = $@"
                 <p>Hola {WebUtility.HtmlEncode(data.FullName)},</p>
                 <p>Te confirmamos que tu pago de nomina fue aplicado.</p>
@@ -420,11 +420,22 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
                     ["UrlPortal"] = cfg?.PublicBaseUrl
                 });
 
-            await _whatsApp.SendAsync(phone, message);
+            // Plantilla Utility. Params: {{1}}NombreEmpleado {{2}}Periodo {{3}}TotalNeto {{4}}FechaPago.
+            await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
+                phone,
+                cfg?.WhatsAppPayrollTemplateName,
+                new[]
+                {
+                    data.FullName ?? "",
+                    period,
+                    WhatsAppTemplateRenderer.Money(data.NetEstimated),
+                    data.PayrollDate.ToString("yyyy-MM-dd")
+                },
+                FallbackText: message));
         }
         catch
         {
-            // El recibo por correo no debe fallar si el gateway WA no esta disponible.
+            // El recibo por correo no debe fallar si WhatsApp no esta disponible.
         }
     }
 

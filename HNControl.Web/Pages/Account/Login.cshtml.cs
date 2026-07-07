@@ -193,7 +193,15 @@ public class LoginModel : PageModel
                         ["MinutosValidez"] = "10"
                     });
 
-                await _whatsApp.SendAsync(phone, message);
+                // Mensaje iniciado por el negocio: requiere plantilla aprobada (categoria
+                // Authentication). El unico parametro es el codigo; si no hay plantilla
+                // configurada, cae a texto libre (solo entrega en ventana 24h / pruebas).
+                await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
+                    phone,
+                    cfg?.WhatsAppOtpTemplateName,
+                    new[] { code },
+                    FallbackText: message,
+                    AuthenticationCode: true));
                 whatsAppSent = true;
             }
             catch (Exception ex)

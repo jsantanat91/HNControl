@@ -184,7 +184,18 @@ public class PayrollReceiptDispatchWorker : BackgroundService
                     ["UrlPortal"] = cfg?.PublicBaseUrl
                 });
 
-            await whatsApp.SendAsync(phone, message, ct);
+            // Plantilla Utility. Params: {{1}}NombreEmpleado {{2}}Periodo {{3}}TotalNeto {{4}}FechaPago.
+            await whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
+                phone,
+                cfg?.WhatsAppPayrollTemplateName,
+                new[]
+                {
+                    data.FullName ?? "",
+                    period,
+                    WhatsAppTemplateRenderer.Money(data.NetEstimated),
+                    data.PayrollDate.ToString("yyyy-MM-dd")
+                },
+                FallbackText: message), ct);
         }
         catch (Exception ex)
         {

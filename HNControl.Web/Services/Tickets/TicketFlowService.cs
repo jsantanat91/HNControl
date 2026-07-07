@@ -694,7 +694,18 @@ public class TicketFlowService : ITicketFlowService
     {
         try
         {
-            await _whatsApp.SendAsync(phone, message, ct);
+            // Plantilla Utility de un parametro: {{1}} = resumen de la alerta.
+            var templateName = await _db.SystemConfigurations
+                .AsNoTracking()
+                .OrderByDescending(x => x.UpdatedAt)
+                .Select(x => x.WhatsAppTicketTemplateName)
+                .FirstOrDefaultAsync(ct);
+
+            await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
+                phone,
+                templateName,
+                new[] { message },
+                FallbackText: message), ct);
         }
         catch
         {

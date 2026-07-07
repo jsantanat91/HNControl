@@ -31,31 +31,12 @@ services:
     expose:
       - "8080"
 
-  openwacontrol:
-    container_name: openwacontrol
-    build:
-      context: ../openwa-service
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      PORT: "3000"
-      API_KEY: "${HNCONTROL_OPENWA_API_KEY:-hncontrol_wa_key_2026}"
-      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-      PUPPETEER_EXECUTABLE_PATH: "/usr/bin/chromium"
-    volumes:
-      - openwacontrol_sessions:/app/.wwebjs_auth
-    networks:
-      - infra_net
-    expose:
-      - "3000"
-    # Puerto externo independiente para QR/proxy sin interferir con Ministerium (3001).
-    ports:
-      - "3002:3000"
+  # WhatsApp ahora usa la Cloud API oficial de Meta (graph.facebook.com).
+  # Ya no se despliega el gateway OpenWA (openwacontrol).
 
 volumes:
   hncontrol_uploads:
   hncontrol_dpkeys:
-  openwacontrol_sessions:
 
 networks:
   infra_net:
