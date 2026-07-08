@@ -558,7 +558,8 @@ public class TicketFlowService : ITicketFlowService
                 clientName,
                 branch,
                 extraMessage: $"Se registró un ticket nuevo con estado inicial <strong>Nuevo</strong>."),
-            ct);
+            ct,
+            whatsAppParams: BuildTicketWhatsAppParams(ticket, clientName, branch));
 
         if (ticket.Source == TicketSource.PublicPortal)
         {
@@ -575,7 +576,7 @@ public class TicketFlowService : ITicketFlowService
                 await TrySendAsync(to, customerSubject, customerBody);
 
             if (await ShouldNotifyCustomerByWhatsAppAsync(ct))
-                await TrySendWhatsAppAsync(ticket.RequesterPhone, ToPlainText(customerSubject, customerBody), ct);
+                await TrySendTicketWhatsAppAsync(ticket.RequesterPhone, BuildTicketWhatsAppParams(ticket, clientName, branch), ct);
         }
     }
 
@@ -591,7 +592,8 @@ public class TicketFlowService : ITicketFlowService
         await NotifyInternalAsync(
             subject: $"[{ticket.TicketNumber}] {title}",
             bodyHtml: BuildTicketEmailBody(title, ticket, clientName, branch, WebUtility.HtmlEncode(detail)),
-            ct);
+            ct,
+            whatsAppParams: BuildTicketWhatsAppParams(ticket, clientName, branch));
 
         if (ticket.Source == TicketSource.PublicPortal || forceCustomer)
         {
@@ -603,20 +605,23 @@ public class TicketFlowService : ITicketFlowService
                 await TrySendAsync(to, customerSubject, customerBody);
 
             if (await ShouldNotifyCustomerByWhatsAppAsync(ct))
-                await TrySendWhatsAppAsync(ticket.RequesterPhone, ToPlainText(customerSubject, customerBody), ct);
+                await TrySendTicketWhatsAppAsync(ticket.RequesterPhone, BuildTicketWhatsAppParams(ticket, clientName, branch), ct);
         }
     }
 
-    private async Task NotifyInternalAsync(string subject, string bodyHtml, CancellationToken ct)
+    private async Task NotifyInternalAsync(string subject, string bodyHtml, CancellationToken ct, string[]? whatsAppParams = null)
     {
         var recipients = GetInternalTicketRecipients();
         foreach (var recipient in recipients)
             await TrySendAsync(recipient, subject, bodyHtml);
 
+        // El correo lleva el detalle completo; WhatsApp usa la plantilla hn_ticket (4 params).
+        if (whatsAppParams is null || whatsAppParams.Length == 0)
+            return;
+
         var phones = await GetInternalWhatsAppRecipientsAsync(ct);
-        var message = ToPlainText(subject, bodyHtml);
         foreach (var phone in phones)
-            await TrySendWhatsAppAsync(phone, message, ct);
+            await TrySendTicketWhatsAppAsync(phone, whatsAppParams, ct);
     }
 
     private async Task<(string? clientName, string? branch)> ResolveClientContextAsync(Ticket ticket, CancellationToken ct)
@@ -693,26 +698,22 @@ public class TicketFlowService : ITicketFlowService
         }
     }
 
-    private async Task TrySendWhatsAppAsync(string phone, string message, CancellationToken ct)
+    private async Task TrySendTicketWhatsAppAsync(string phone, string[] parameters, CancellationToken ct)
     {
         try
         {
-            // Plantilla Utility de un parametro: {{1}} = resumen de la alerta.
+            // Plantilla hn_ticket (Utility). Params: {{1}}Numero {{2}}Cliente {{3}}Sucursal {{4}}Estado.
             var templateName = await _db.SystemConfigurations
                 .AsNoTracking()
                 .OrderByDescending(x => x.UpdatedAt)
                 .Select(x => x.WhatsAppTicketTemplateName)
                 .FirstOrDefaultAsync(ct);
 
-            // Meta rechaza parametros de plantilla con saltos de linea, tabs o 4+ espacios.
-            // El resumen del ticket puede traerlos, asi que lo aplanamos a una sola linea.
-            var param = SanitizeTemplateParam(message);
-
             await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
                 phone,
                 templateName,
-                new[] { param },
-                FallbackText: message), ct);
+                parameters,
+                FallbackText: string.Join(" · ", parameters)), ct);
         }
         catch (Exception ex)
         {
@@ -730,6 +731,20 @@ public class TicketFlowService : ITicketFlowService
         var flat = System.Text.RegularExpressions.Regex.Replace(text ?? "", @"\s+", " ").Trim();
         return flat.Length > 600 ? flat[..600] : flat;
     }
+
+    /// <summary>
+    /// Parametros para la plantilla hn_ticket, en orden:
+    /// {{1}}Numero de ticket, {{2}}Cliente, {{3}}Sucursal, {{4}}Estado.
+    /// Cada uno se aplana a una sola linea (Meta rechaza saltos de linea/tabs en params).
+    /// </summary>
+    private string[] BuildTicketWhatsAppParams(Ticket ticket, string? clientName, string? branch)
+        => new[]
+        {
+            SanitizeTemplateParam(ticket.TicketNumber ?? "-"),
+            SanitizeTemplateParam(string.IsNullOrWhiteSpace(clientName) ? "-" : clientName),
+            SanitizeTemplateParam(string.IsNullOrWhiteSpace(branch) ? "-" : branch),
+            SanitizeTemplateParam(ToStatusLabel(ticket.Status))
+        };
 
     private async Task<List<string>> GetInternalWhatsAppRecipientsAsync(CancellationToken ct)
     {
