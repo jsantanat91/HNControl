@@ -7,61 +7,23 @@
     var canReseller = User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || User.IsInRole(HNControl.Web.Models.AppRoles.Admin) || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.ProjectsResellersView);
 }
 
-<div class="card shadow-soft hn-hover mb-3">
-    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
-        <span class="text-muted me-2">Submodulos de proyectos:</span>
-
+<nav class="hn-context-tabs" aria-label="Subm&oacute;dulos de proyectos">
         @if (canBase)
         {
-            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Index") ? "project-sub-btn-active" : "project-sub-btn-projects")"
-               asp-page="/Projects/Index">Proyectos</a>
+            <a class="hn-tab-link @(IsActive("/Projects/Index") ? "active" : "")"
+               asp-page="/Projects/Index"><i class="bi bi-kanban hn-tab-icon"></i> Proyectos</a>
         }
 
         @if (canInvest)
         {
-            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Investments") ? "project-sub-btn-active" : "project-sub-btn-invest")"
-               asp-page="/Projects/Investments/Index">Inversiones</a>
+            <a class="hn-tab-link @(IsActive("/Projects/Investments") ? "active" : "")"
+               asp-page="/Projects/Investments/Index"><i class="bi bi-cash-coin hn-tab-icon"></i> Inversiones</a>
         }
 
         @if (canReseller)
         {
-            <a class="btn btn-lg project-sub-btn @(IsActive("/Projects/Resellers") ? "project-sub-btn-active" : "project-sub-btn-reseller")"
-               asp-page="/Projects/Resellers/Index">Reseller</a>
+            <a class="hn-tab-link @(IsActive("/Projects/Resellers") ? "active" : "")"
+               asp-page="/Projects/Resellers/Index"><i class="bi bi-diagram-3 hn-tab-icon"></i> Reseller</a>
         }
 
-    </div>
-</div>
-
-<style>
-    .project-sub-btn {
-        border-radius: 999px;
-        padding: .55rem 1.05rem;
-        font-weight: 700;
-        letter-spacing: .02em;
-    }
-
-    .project-sub-btn-projects {
-        border-color: #2563eb;
-        color: #1d4ed8;
-        background: linear-gradient(135deg, rgba(59,130,246,.17), rgba(96,165,250,.10));
-    }
-
-    .project-sub-btn-invest {
-        border-color: #0f766e;
-        color: #0f766e;
-        background: linear-gradient(135deg, rgba(20,184,166,.17), rgba(45,212,191,.08));
-    }
-
-    .project-sub-btn-reseller {
-        border-color: #9333ea;
-        color: #7e22ce;
-        background: linear-gradient(135deg, rgba(168,85,247,.15), rgba(196,181,253,.08));
-    }
-
-    .project-sub-btn-active {
-        border-color: #1d4ed8;
-        color: #fff;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        box-shadow: 0 10px 24px rgba(37,99,235,.26);
-    }
-</style>
+</nav>

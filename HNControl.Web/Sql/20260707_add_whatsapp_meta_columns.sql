@@ -4,7 +4,7 @@
 -- Es idempotente: se puede correr varias veces sin dañar datos.
 -- ============================================================================
 
--- WhatsApp · Meta Cloud API (reemplazo de OpenWA)
+-- WhatsApp · Meta Cloud API
 ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "WhatsAppWabaId" character varying(64) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SystemConfigurations"

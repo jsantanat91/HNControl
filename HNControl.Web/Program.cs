@@ -1165,7 +1165,7 @@ ALTER TABLE IF EXISTS public.systemconfigurations
 ALTER TABLE IF EXISTS public.systemconfigurations
     ADD COLUMN IF NOT EXISTS "WhatsAppPayrollReceiptTemplate" character varying(2000) NOT NULL DEFAULT '';
 
--- Meta WhatsApp Cloud API (reemplazo de OpenWA)
+-- Meta WhatsApp Cloud API
 ALTER TABLE IF EXISTS public."SystemConfigurations"
     ADD COLUMN IF NOT EXISTS "WhatsAppWabaId" character varying(64) NOT NULL DEFAULT '';
 ALTER TABLE IF EXISTS public."SystemConfigurations"

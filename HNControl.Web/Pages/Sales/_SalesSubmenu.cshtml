@@ -15,53 +15,48 @@
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogView)
         || await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesCatalogManage);
 
-    string Btn(string href, string text, string cls)
+    string Tab(string href)
     {
-        var active = path.StartsWith(href.ToLowerInvariant()) ? "text-white" : "";
-        var outline = path.StartsWith(href.ToLowerInvariant()) ? "" : "btn-outline-" + cls;
-        return $"btn btn-sm px-3 py-2 fw-semibold {(string.IsNullOrWhiteSpace(outline) ? "btn-" + cls : outline)} {active}";
+        var active = path.StartsWith(href.ToLowerInvariant()) ? "active" : "";
+        return $"hn-tab-link {active}";
     }
 }
 
-<div class="card border-0 shadow-soft mb-3">
-    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
-        <span class="text-muted small me-2">Comercial:</span>
+<nav class="hn-context-tabs" aria-label="Subm&oacute;dulos de ventas">
         @if (canDashboard)
         {
-            <a href="/Ventas" class="@Btn("/ventas","Dashboard","primary")">Dashboard</a>
+            <a href="/Ventas" class="@Tab("/ventas")"><i class="bi bi-speedometer2 hn-tab-icon"></i> Dashboard</a>
         }
         @if (canProspects)
         {
-            <a href="/Ventas/Prospectos" class="@Btn("/ventas/prospectos","Prospecto","warning")">Prospecto</a>
+            <a href="/Ventas/Prospectos" class="@Tab("/ventas/prospectos")"><i class="bi bi-person-plus hn-tab-icon"></i> Prospecto</a>
         }
         @if (HNControl.Web.Models.AppRoles.IsGlobalAdmin(User) && canQuotes)
         {
-            <a href="/Ventas/Cotizaciones" class="btn btn-sm px-3 py-2 fw-semibold @(isQuotesActive ? "btn-info text-white" : "btn-outline-info")">Cotizaci&oacute;n</a>
+            <a href="/Ventas/Cotizaciones" class="hn-tab-link @(isQuotesActive ? "active" : "")"><i class="bi bi-file-earmark-text hn-tab-icon"></i> Cotizaci&oacute;n</a>
         }
         @if (canMyQuotes)
         {
-            <a href="/Ventas/MisCotizaciones" class="@Btn("/ventas/miscotizaciones","Mis cotizaciones","info")">Mis cotizaciones</a>
+            <a href="/Ventas/MisCotizaciones" class="@Tab("/ventas/miscotizaciones")"><i class="bi bi-journal-check hn-tab-icon"></i> Mis cotizaciones</a>
         }
         @if (canWorkflow)
         {
-            <a href="/Ventas/Workflow" class="@Btn("/ventas/workflow","Workflow","success")">Workflow</a>
+            <a href="/Ventas/Workflow" class="@Tab("/ventas/workflow")"><i class="bi bi-kanban hn-tab-icon"></i> Workflow</a>
         }
         @if (canGestion)
         {
-            <a href="/Ventas/Gestion" class="@Btn("/ventas/gestion","Gestion","secondary")">Gesti&oacute;n</a>
+            <a href="/Ventas/Gestion" class="@Tab("/ventas/gestion")"><i class="bi bi-briefcase hn-tab-icon"></i> Gesti&oacute;n</a>
         }
         @if (canCalls)
         {
-            <a href="/Ventas/Llamadas" class="@Btn("/ventas/llamadas","Llamadas","danger")">Llamadas</a>
+            <a href="/Ventas/Llamadas" class="@Tab("/ventas/llamadas")"><i class="bi bi-telephone hn-tab-icon"></i> Llamadas</a>
         }
         @if (canTemplates)
         {
-            <a href="/Ventas/Plantillas" class="@Btn("/ventas/plantillas","Plantillas","dark")">Plantillas</a>
+            <a href="/Ventas/Plantillas" class="@Tab("/ventas/plantillas")"><i class="bi bi-collection hn-tab-icon"></i> Plantillas</a>
         }
         @if (canCatalog)
         {
-            <a href="/Admin/Quotes/Catalog" class="btn btn-sm px-3 py-2 fw-semibold @(isCatalogActive ? "btn-dark text-white" : "btn-outline-dark")">Cat&aacute;logo</a>
+            <a href="/Admin/Quotes/Catalog" class="hn-tab-link @(isCatalogActive ? "active" : "")"><i class="bi bi-grid hn-tab-icon"></i> Cat&aacute;logo</a>
         }
-    </div>
-</div>
-
+</nav>

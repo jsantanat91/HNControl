@@ -20,7 +20,6 @@ services:
       # Llaves de DataProtection persistentes (cifran WhatsApp/SMTP/MercadoPago/CSD...).
       # Deben sobrevivir a reconstrucciones del contenedor o los secretos se vuelven indescifrables.
       DataProtection__KeysPath: "/app/dp-keys"
-
     volumes:
       - hncontrol_uploads:/app/App_Data/uploads
       - hncontrol_dpkeys:/app/dp-keys
@@ -31,8 +30,7 @@ services:
     expose:
       - "8080"
 
-  # WhatsApp ahora usa la Cloud API oficial de Meta (graph.facebook.com).
-  # Ya no se despliega el gateway OpenWA (openwacontrol).
+  # WhatsApp usa la Cloud API oficial de Meta (graph.facebook.com).
 
 volumes:
   hncontrol_uploads:

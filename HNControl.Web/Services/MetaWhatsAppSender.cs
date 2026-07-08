@@ -9,7 +9,7 @@ namespace HNControl.Web.Services;
 
 /// <summary>
 /// Envia WhatsApp mediante la Cloud API oficial de Meta (graph.facebook.com).
-/// Reemplaza al gateway OpenWA. La configuracion vive en SystemConfigurations:
+/// La configuracion vive en SystemConfigurations:
 ///  - WhatsAppGatewayUrl      -> Phone Number ID de Meta
 ///  - WhatsAppApiKeyProtected -> Access Token permanente (cifrado con DataProtection)
 ///  - WhatsAppGraphApiVersion -> version del Graph API (default v21.0)
