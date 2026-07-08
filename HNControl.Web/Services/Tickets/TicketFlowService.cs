@@ -704,10 +704,14 @@ public class TicketFlowService : ITicketFlowService
                 .Select(x => x.WhatsAppTicketTemplateName)
                 .FirstOrDefaultAsync(ct);
 
+            // Meta rechaza parametros de plantilla con saltos de linea, tabs o 4+ espacios.
+            // El resumen del ticket puede traerlos, asi que lo aplanamos a una sola linea.
+            var param = SanitizeTemplateParam(message);
+
             await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
                 phone,
                 templateName,
-                new[] { message },
+                new[] { param },
                 FallbackText: message), ct);
         }
         catch (Exception ex)
@@ -715,6 +719,16 @@ public class TicketFlowService : ITicketFlowService
             // No interrumpir el flujo principal, pero registrar para poder diagnosticar.
             _log.LogWarning(ex, "No se pudo enviar WhatsApp de ticket a {Phone}", phone);
         }
+    }
+
+    /// <summary>
+    /// Convierte un texto a una sola linea apta para parametro de plantilla de WhatsApp:
+    /// sin saltos de linea/tabs ni espacios multiples, y con longitud acotada.
+    /// </summary>
+    private static string SanitizeTemplateParam(string text)
+    {
+        var flat = System.Text.RegularExpressions.Regex.Replace(text ?? "", @"\s+", " ").Trim();
+        return flat.Length > 600 ? flat[..600] : flat;
     }
 
     private async Task<List<string>> GetInternalWhatsAppRecipientsAsync(CancellationToken ct)
