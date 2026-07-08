@@ -4,6 +4,7 @@ using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HNControl.Web.Services.Tickets;
 
@@ -14,14 +15,16 @@ public class TicketFlowService : ITicketFlowService
     private readonly IEmailSender _email;
     private readonly IWhatsAppSender _whatsApp;
     private readonly IConfiguration _cfg;
+    private readonly ILogger<TicketFlowService> _log;
 
-    public TicketFlowService(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IWhatsAppSender whatsApp, IConfiguration cfg)
+    public TicketFlowService(ApplicationDbContext db, IFileStorage storage, IEmailSender email, IWhatsAppSender whatsApp, IConfiguration cfg, ILogger<TicketFlowService> log)
     {
         _db = db;
         _storage = storage;
         _email = email;
         _whatsApp = whatsApp;
         _cfg = cfg;
+        _log = log;
     }
 
     public async Task<Ticket> CreatePublicAsync(
@@ -707,9 +710,10 @@ public class TicketFlowService : ITicketFlowService
                 new[] { message },
                 FallbackText: message), ct);
         }
-        catch
+        catch (Exception ex)
         {
-            // No interrumpir el flujo principal por errores de WhatsApp.
+            // No interrumpir el flujo principal, pero registrar para poder diagnosticar.
+            _log.LogWarning(ex, "No se pudo enviar WhatsApp de ticket a {Phone}", phone);
         }
     }
 
