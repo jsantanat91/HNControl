@@ -180,28 +180,28 @@ public class LoginModel : PageModel
             {
                 var cfg = await LoadSystemConfigSafeAsync();
                 var now = DateTime.Now;
+                var employeeName = string.IsNullOrWhiteSpace(employee?.FullName) ? user.Email : employee.FullName;
+                const string minutosValidez = "10";
                 var message = WhatsAppTemplateRenderer.Render(
                     cfg?.WhatsAppOtpTemplate,
                     DefaultWhatsAppOtpTemplate,
                     new Dictionary<string, string?>
                     {
-                        ["NombreEmpleado"] = string.IsNullOrWhiteSpace(employee?.FullName) ? user.Email : employee.FullName,
+                        ["NombreEmpleado"] = employeeName,
                         ["CorreoEmpleado"] = string.IsNullOrWhiteSpace(employee?.Email) ? email : employee.Email,
                         ["Codigo"] = code,
                         ["Fecha"] = now.ToString("yyyy-MM-dd"),
                         ["Hora"] = now.ToString("HH:mm"),
-                        ["MinutosValidez"] = "10"
+                        ["MinutosValidez"] = minutosValidez
                     });
 
-                // Mensaje iniciado por el negocio: requiere plantilla aprobada (categoria
-                // Authentication). El unico parametro es el codigo; si no hay plantilla
-                // configurada, cae a texto libre (solo entrega en ventana 24h / pruebas).
+                // Plantilla Utility "folio" (hn_folio). Params: {{1}}Nombre {{2}}Folio.
+                // Si no hay plantilla configurada, cae a texto libre (ventana 24h / pruebas).
                 await _whatsApp.SendTemplateAsync(new WhatsAppTemplateMessage(
                     phone,
                     cfg?.WhatsAppOtpTemplateName,
-                    new[] { code },
-                    FallbackText: message,
-                    AuthenticationCode: true));
+                    new[] { employeeName, code },
+                    FallbackText: message));
                 whatsAppSent = true;
             }
             catch (Exception ex)

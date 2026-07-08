@@ -440,9 +440,9 @@
                     <div class="col-12 col-lg-6">
                         <label class="form-label">Codigo OTP de inicio de sesion (texto/preview)</label>
                         <textarea class="form-control" asp-for="Input.WhatsAppOtpTemplate" rows="4"></textarea>
-                        <label class="form-label mt-2">Nombre de plantilla OTP (Authentication)</label>
-                        <input class="form-control" asp-for="Input.WhatsAppOtpTemplateName" placeholder="Ej: hn_otp_login" />
-                        <div class="form-text">Plantilla categoría <b>Authentication</b>. Parámetro: {{1}} = código.</div>
+                        <label class="form-label mt-2">Nombre de plantilla OTP / folio (Utility)</label>
+                        <input class="form-control" asp-for="Input.WhatsAppOtpTemplateName" placeholder="Ej: hn_folio" />
+                        <div class="form-text">Utility (folio). Params: {{1}}Nombre {{2}}Folio.</div>
                     </div>
 
                     <div class="col-12 col-lg-6">
