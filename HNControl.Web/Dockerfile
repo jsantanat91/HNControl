@@ -13,7 +13,13 @@ RUN apt-get update \
         libreoffice-writer \
         fonts-dejavu \
         fonts-liberation \
+        tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Zona horaria de operación (México). Hace que DateTime.Now/Today sean hora local.
+ENV TZ=America/Mexico_City
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENV PG_DUMP_PATH=pg_dump
 ENV PSQL_PATH=psql

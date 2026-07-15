@@ -54,7 +54,7 @@ public class IndexModel : PageModel
         if (variablePct > 1m) variablePct = 1m;
         var baseQ = Employee.SalaryBase / 2m;
         var estimatedQ = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * variablePct), 2);
-        var today = DateTime.UtcNow.Date;
+        var today = AppTime.Today;
 
         Items = deds.Select(d =>
         {
@@ -98,7 +98,7 @@ public class IndexModel : PageModel
         if (d == null) return NotFound();
 
         d.IsActive = false;
-        d.EndDate ??= DateTime.UtcNow.Date;
+        d.EndDate ??= AppTime.Today;
         d.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -195,20 +195,27 @@ public class IndexModel : PageModel
 
     private async Task FinalizeExpiredAsync(string userId)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = AppTime.Today;
         var now = DateTime.UtcNow;
 
-        var toClose = await _db.EmployeeDeductions
+        var baseQ = (Employee?.SalaryBase ?? 0m) / 2m;
+        // estimado aprox. para modos porcentuales; el cierre por plazo no depende de esto.
+        var estimatedQ = Math.Round(baseQ * 0.80m, 2);
+
+        var active = await _db.EmployeeDeductions
             .Where(d => d.UserId == userId && d.IsActive)
-            .Where(d => (d.EndDate != null && d.EndDate.Value < today)
-                        || (d.RemainingAmount != null && d.RemainingAmount.Value <= 0m))
             .ToListAsync();
+
+        var toClose = active
+            .Where(d => PayrollDeductionMath.IsCompleted(d, today, baseQ, estimatedQ))
+            .ToList();
 
         if (!toClose.Any()) return;
 
         foreach (var d in toClose)
         {
             d.IsActive = false;
+            d.EndDate ??= today;
             d.UpdatedAt = now;
         }
 

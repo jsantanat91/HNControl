@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -53,7 +54,7 @@ public class CreateModel : PageModel
         if (Input.Type == EmployeeDeductionType.ComisionVenta)
             Input.Direction = EmployeeDeductionDirection.Bonus;
 
-        var start = Input.StartDate ?? now.Date;
+        var start = Input.StartDate ?? AppTime.Today;
         var freq = Input.Frequency;
         var applyHalf = freq == EmployeeDeductionFrequency.Monthly
             ? (Input.ApplyOnHalf ?? EmployeeDeductionApplyOnHalf.First)
@@ -63,7 +64,7 @@ public class CreateModel : PageModel
         // Bono: aplicacion unica en la quincena actual.
         if (Input.Direction == EmployeeDeductionDirection.Bonus)
         {
-            var (bonusStart, bonusEnd) = ResolveCurrentPeriod(DateTime.Now.Date);
+            var (bonusStart, bonusEnd) = ResolveCurrentPeriod(AppTime.Today);
             start = bonusStart;
             Input.StartDate = bonusStart;
             Input.EndDate = bonusEnd;
@@ -74,7 +75,7 @@ public class CreateModel : PageModel
         }
         else if (oneShotDeduct)
         {
-            var (oneStart, oneEnd) = ResolveSelectedPeriod(DateTime.Now.Date, Input.SingleApplyIn);
+            var (oneStart, oneEnd) = ResolveSelectedPeriod(AppTime.Today, Input.SingleApplyIn);
             start = oneStart;
             Input.StartDate = oneStart;
             Input.EndDate = oneEnd;
@@ -162,7 +163,7 @@ public class CreateModel : PageModel
         [Range(0, 100)]
         public decimal RatePercent { get; set; } = 0m;
 
-        public DateTime? StartDate { get; set; } = DateTime.UtcNow.Date;
+        public DateTime? StartDate { get; set; } = AppTime.Today;
         public DateTime? EndDate { get; set; } = null;
 
         public SingleApplyOption SingleApplyIn { get; set; } = SingleApplyOption.Current;

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -57,7 +58,7 @@ public class EditModel : PageModel
             RatePercent = Math.Round(d.Rate * 100m, 2),
             StartDate = d.StartDate,
             EndDate = d.EndDate,
-            SingleApplyIn = ResolveSingleApplyOption(d.StartDate.Date, DateTime.Now.Date),
+            SingleApplyIn = ResolveSingleApplyOption(d.StartDate.Date, AppTime.Today),
             TotalAmount = d.TotalAmount,
             RemainingAmount = d.RemainingAmount,
             IsActive = d.IsActive
@@ -97,7 +98,7 @@ public class EditModel : PageModel
         // Bono: aplicacion unica en quincena actual.
         if (Input.Direction == EmployeeDeductionDirection.Bonus)
         {
-            var (bonusStart, bonusEnd) = ResolveCurrentPeriod(DateTime.Now.Date);
+            var (bonusStart, bonusEnd) = ResolveCurrentPeriod(AppTime.Today);
             start = bonusStart;
             Input.StartDate = bonusStart;
             Input.EndDate = bonusEnd;
@@ -108,7 +109,7 @@ public class EditModel : PageModel
         }
         else if (oneShotDeduct)
         {
-            var (oneStart, oneEnd) = ResolveSelectedPeriod(DateTime.Now.Date, Input.SingleApplyIn);
+            var (oneStart, oneEnd) = ResolveSelectedPeriod(AppTime.Today, Input.SingleApplyIn);
             start = oneStart;
             Input.StartDate = oneStart;
             Input.EndDate = oneEnd;
@@ -183,7 +184,7 @@ public class EditModel : PageModel
         [Range(0, 100)]
         public decimal RatePercent { get; set; } = 0m;
 
-        public DateTime? StartDate { get; set; } = DateTime.UtcNow.Date;
+        public DateTime? StartDate { get; set; } = AppTime.Today;
         public DateTime? EndDate { get; set; } = null;
         public SingleApplyOption SingleApplyIn { get; set; } = SingleApplyOption.Current;
 

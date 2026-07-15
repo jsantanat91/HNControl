@@ -161,6 +161,37 @@ public static class PayrollDeductionMath
         return new PayrollDeductionEval(amount, remainingToDate, paidPeriods, totalPeriods);
     }
 
+    /// <summary>
+    /// Indica si el ajuste ya terminó a la fecha dada: venció (EndDate), agotó su plazo
+    /// (TermCount / periodos totales) o su saldo llegó a 0. Los ajustes indefinidos
+    /// (sin plazo, sin total, sin saldo) nunca se consideran completados.
+    /// </summary>
+    public static bool IsCompleted(EmployeeDeduction d, DateTime asOf, decimal baseQuincenal, decimal estimatedQuincenal)
+    {
+        var date = asOf.Date;
+
+        // Venció por fecha.
+        if (d.EndDate.HasValue && d.EndDate.Value.Date < date)
+            return true;
+
+        // El admin fijó saldo agotado explícitamente.
+        if (d.RemainingAmount.HasValue && d.RemainingAmount.Value <= 0m)
+            return true;
+
+        // Plazo cumplido: ya pasaron TODOS los periodos programados. Usamos "estrictamente
+        // mayor" para que el último periodo aún alcance a cobrarse antes de cerrar.
+        var amount = ResolveAmount(d, baseQuincenal, estimatedQuincenal);
+        var totalPeriods = ResolveTotalPeriods(d, amount);
+        if (totalPeriods.HasValue && totalPeriods.Value > 0)
+        {
+            var occurred = CountPeriodsOccurred(d.StartDate.Date, date, d.Frequency, d.ApplyOnHalf);
+            if (occurred > totalPeriods.Value)
+                return true;
+        }
+
+        return false;
+    }
+
     public static decimal ResolveAmount(EmployeeDeduction d, decimal baseQuincenal, decimal estimatedQuincenal)
     {
         var amount = d.Mode switch
