@@ -239,6 +239,7 @@ builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 // EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
 builder.Services.AddScoped<IWhatsAppSender, MetaWhatsAppSender>();
+builder.Services.AddScoped<IPayrollDeductionLedger, PayrollDeductionLedgerService>();
 
 // PDF renderer para órdenes de servicio
 builder.Services.AddScoped<IServiceOrderPdfRenderer, ServiceOrderPdfRenderer>();
@@ -296,6 +297,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureSalesFeasibilitySchemaAsync(db);
     await EnsureClientPortalSchemaAsync(db);
     await EnsureSystemConfigurationSchemaAsync(db);
+    await EnsureDeductionLedgerSchemaAsync(db);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await EnsureEmployeeNumbersAsync(db);
@@ -1185,6 +1187,35 @@ ALTER TABLE IF EXISTS public."SystemConfigurations"
     catch (PostgresException ex) when (ex.SqlState == "42501")
     {
         Console.WriteLine($"[WARN] EnsureSystemConfigurationSchemaAsync omitido por permisos (owner requerido): {ex.MessageText}");
+    }
+}
+
+static async Task EnsureDeductionLedgerSchemaAsync(ApplicationDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS public."EmployeeDeductionApplications" (
+    "Id" uuid NOT NULL PRIMARY KEY,
+    "DeductionId" uuid NOT NULL,
+    "UserId" character varying(64) NOT NULL DEFAULT '',
+    "PeriodStart" timestamp with time zone NOT NULL,
+    "PeriodEnd" timestamp with time zone NOT NULL,
+    "PayrollDate" timestamp with time zone NOT NULL,
+    "Amount" numeric NOT NULL DEFAULT 0,
+    "Direction" integer NOT NULL DEFAULT 1,
+    "Concept" character varying(200) NOT NULL DEFAULT '',
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS "IX_EmployeeDeductionApplications_DeductionId"
+    ON public."EmployeeDeductionApplications" ("DeductionId");
+CREATE UNIQUE INDEX IF NOT EXISTS "UX_EmployeeDeductionApplications_Ded_Period"
+    ON public."EmployeeDeductionApplications" ("DeductionId", "PeriodStart", "PeriodEnd");
+""");
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        Console.WriteLine($"[WARN] EnsureDeductionLedgerSchemaAsync omitido por permisos: {ex.MessageText}");
     }
 }
 

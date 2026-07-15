@@ -85,6 +85,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     // Nómina (Deducciones)
     // --------------------
     public DbSet<EmployeeDeduction> EmployeeDeductions => Set<EmployeeDeduction>();
+    public DbSet<EmployeeDeductionApplication> EmployeeDeductionApplications => Set<EmployeeDeductionApplication>();
     public DbSet<PayrollReceiptDispatch> PayrollReceiptDispatches => Set<PayrollReceiptDispatch>();
 
     // --------------------

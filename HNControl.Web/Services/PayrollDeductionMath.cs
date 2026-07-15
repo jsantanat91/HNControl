@@ -192,6 +192,69 @@ public static class PayrollDeductionMath
         return false;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    //  Ledger: avance/saldo basado en aplicaciones REALES (no inferido por fechas)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Monto total finito del ajuste (para saldo). Prioridad: TotalAmount, luego
+    /// TermCount*importe, luego RemainingAmount (saldo inicial). Null = indefinido.
+    /// </summary>
+    public static decimal? EffectiveTotalAmount(EmployeeDeduction d, decimal perPeriodAmount)
+    {
+        if (d.TotalAmount.HasValue && d.TotalAmount.Value > 0m)
+            return d.TotalAmount.Value;
+        if (d.TermCount.HasValue && d.TermCount.Value > 0 && perPeriodAmount > 0m)
+            return Math.Round(d.TermCount.Value * perPeriodAmount, 2);
+        if (d.RemainingAmount.HasValue && d.RemainingAmount.Value > 0m)
+            return d.RemainingAmount.Value;
+        return null;
+    }
+
+    /// <summary>
+    /// Importe a aplicar en un periodo, dado lo ya aplicado (ledger). Respeta plazo
+    /// (TermCount) y saldo (EffectiveTotal). Devuelve 0 si ya no debe cobrarse.
+    /// </summary>
+    public static decimal ComputeLedgerPeriodAmount(
+        EmployeeDeduction d, decimal baseQuincenal, decimal estimatedQuincenal,
+        decimal alreadyPaidAmount, int alreadyPaidCount)
+    {
+        var scheduled = ResolveAmount(d, baseQuincenal, estimatedQuincenal);
+        if (scheduled <= 0m) return 0m;
+
+        var totalPeriods = ResolveTotalPeriods(d, scheduled);
+        if (totalPeriods.HasValue && alreadyPaidCount >= totalPeriods.Value)
+            return 0m;
+
+        var effectiveTotal = EffectiveTotalAmount(d, scheduled);
+        if (effectiveTotal.HasValue)
+        {
+            var remaining = Math.Max(0m, effectiveTotal.Value - alreadyPaidAmount);
+            scheduled = Math.Min(scheduled, remaining);
+        }
+
+        return Math.Round(Math.Max(0m, scheduled), 2);
+    }
+
+    /// <summary>
+    /// Indica si el ajuste ya se completó según el ledger (plazo o saldo). Indefinidos: false.
+    /// </summary>
+    public static bool IsLedgerCompleted(
+        EmployeeDeduction d, decimal baseQuincenal, decimal estimatedQuincenal,
+        decimal paidAmount, int paidCount)
+    {
+        var scheduled = ResolveAmount(d, baseQuincenal, estimatedQuincenal);
+        var totalPeriods = ResolveTotalPeriods(d, scheduled);
+        if (totalPeriods.HasValue && paidCount >= totalPeriods.Value)
+            return true;
+
+        var effectiveTotal = EffectiveTotalAmount(d, scheduled);
+        if (effectiveTotal.HasValue && paidAmount >= effectiveTotal.Value - 0.005m)
+            return true;
+
+        return false;
+    }
+
     public static decimal ResolveAmount(EmployeeDeduction d, decimal baseQuincenal, decimal estimatedQuincenal)
     {
         var amount = d.Mode switch

@@ -56,9 +56,36 @@ public class IndexModel : PageModel
         var estimatedQ = Math.Round((baseQ * 0.80m) + (baseQ * 0.20m * variablePct), 2);
         var today = AppTime.Today;
 
+        // Ledger real (fuente de verdad del avance/saldo). Si un ajuste tiene aplicaciones
+        // registradas, mandan sobre la inferencia por fechas.
+        var ledger = (await _db.EmployeeDeductionApplications
+            .AsNoTracking()
+            .Where(a => a.UserId == UserId)
+            .GroupBy(a => a.DeductionId)
+            .Select(g => new { DeductionId = g.Key, Paid = g.Sum(x => x.Amount), Count = g.Count() })
+            .ToListAsync())
+            .ToDictionary(x => x.DeductionId, x => (x.Paid, x.Count));
+
         Items = deds.Select(d =>
         {
             var eval = PayrollDeductionMath.EvaluateForDate(d, baseQ, estimatedQ, today);
+
+            decimal? perPeriod = eval.AmountForPeriod;
+            decimal? remaining = eval.RemainingToDate;
+            int? paidPeriods = eval.PaidPeriods;
+            int? totalPeriods = eval.TotalPeriods;
+
+            if (ledger.TryGetValue(d.Id, out var led))
+            {
+                var scheduled = PayrollDeductionMath.ResolveAmount(d, baseQ, estimatedQ);
+                var effectiveTotal = PayrollDeductionMath.EffectiveTotalAmount(d, scheduled);
+                paidPeriods = led.Count;
+                totalPeriods = PayrollDeductionMath.ResolveTotalPeriods(d, scheduled);
+                remaining = effectiveTotal.HasValue ? Math.Max(0m, effectiveTotal.Value - led.Paid) : (decimal?)null;
+                // Importe del próximo periodo, respetando lo ya pagado.
+                perPeriod = PayrollDeductionMath.ComputeLedgerPeriodAmount(d, baseQ, estimatedQ, led.Paid, led.Count);
+            }
+
             return new Row
             {
                 Id = d.Id,
@@ -76,10 +103,10 @@ public class IndexModel : PageModel
                 RemainingAmount = d.RemainingAmount,
                 TotalAmount = d.TotalAmount,
                 TermCount = d.TermCount,
-                DisplayPerPeriodAmount = eval.AmountForPeriod,
-                DisplayRemainingAmount = eval.RemainingToDate,
-                DisplayPaidPeriods = eval.PaidPeriods,
-                DisplayTotalPeriods = eval.TotalPeriods
+                DisplayPerPeriodAmount = perPeriod,
+                DisplayRemainingAmount = remaining,
+                DisplayPaidPeriods = paidPeriods,
+                DisplayTotalPeriods = totalPeriods
             };
         }).ToList();
 
@@ -195,27 +222,22 @@ public class IndexModel : PageModel
 
     private async Task FinalizeExpiredAsync(string userId)
     {
+        // El cierre por plazo/saldo lo gobierna el ledger al confirmar cada pago.
+        // Aquí solo cerramos por vencimiento (EndDate) o saldo manual agotado.
         var today = AppTime.Today;
         var now = DateTime.UtcNow;
 
-        var baseQ = (Employee?.SalaryBase ?? 0m) / 2m;
-        // estimado aprox. para modos porcentuales; el cierre por plazo no depende de esto.
-        var estimatedQ = Math.Round(baseQ * 0.80m, 2);
-
-        var active = await _db.EmployeeDeductions
+        var toClose = await _db.EmployeeDeductions
             .Where(d => d.UserId == userId && d.IsActive)
+            .Where(d => (d.EndDate != null && d.EndDate.Value < today)
+                        || (d.RemainingAmount != null && d.RemainingAmount.Value <= 0m))
             .ToListAsync();
-
-        var toClose = active
-            .Where(d => PayrollDeductionMath.IsCompleted(d, today, baseQ, estimatedQ))
-            .ToList();
 
         if (!toClose.Any()) return;
 
         foreach (var d in toClose)
         {
             d.IsActive = false;
-            d.EndDate ??= today;
             d.UpdatedAt = now;
         }
 

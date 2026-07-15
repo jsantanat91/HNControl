@@ -19,16 +19,18 @@ public class DashboardModel : PageModel
     private readonly IEmailSender _emailSender;
     private readonly IWhatsAppSender _whatsApp;
     private readonly IFileStorage _storage;
+    private readonly IPayrollDeductionLedger _deductionLedger;
     private const string DefaultWhatsAppPayrollReceiptTemplate =
         "Hola {NombreEmpleado}, tu recibo de nomina del periodo {Periodo} esta disponible. Neto: {TotalNeto}. Ingresa al portal para consultarlo.";
 
-    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IWhatsAppSender whatsApp, IFileStorage storage)
+    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IWhatsAppSender whatsApp, IFileStorage storage, IPayrollDeductionLedger deductionLedger)
     {
         _db = db;
         _payrollReceipt = payrollReceipt;
         _emailSender = emailSender;
         _whatsApp = whatsApp;
         _storage = storage;
+        _deductionLedger = deductionLedger;
     }
 
     public record KpiVm(
@@ -382,6 +384,9 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
             dispatch.SentAt = DateTime.UtcNow;
             dispatch.LastError = null;
             await _db.SaveChangesAsync();
+
+            // Asienta el ledger de deducciones/bonos aplicados en este periodo (avance/saldo real).
+            await _deductionLedger.RecordApplicationsAsync(userId, periodStart, periodEnd, payrollDate);
 
             FlashSuccess = $"Pago confirmado y correo enviado a {employee.FullName} ({data.Email}).";
         }

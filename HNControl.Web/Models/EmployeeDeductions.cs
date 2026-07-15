@@ -141,3 +141,33 @@ public class EmployeeDeduction
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>
+/// Ledger de aplicaciones: una fila por (deduccion x corrida de nomina confirmada).
+/// Es la fuente de verdad del avance/saldo real (en vez de inferir por fechas).
+/// </summary>
+public class EmployeeDeductionApplication
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>FK a EmployeeDeduction (sin navegación para no inferir relación en EF).</summary>
+    public Guid DeductionId { get; set; }
+
+    [MaxLength(64)]
+    public string UserId { get; set; } = "";
+
+    /// <summary>Periodo de nomina en que se aplico (identifica la corrida, evita duplicados).</summary>
+    public DateTime PeriodStart { get; set; }
+    public DateTime PeriodEnd { get; set; }
+    public DateTime PayrollDate { get; set; }
+
+    /// <summary>Importe realmente aplicado en ese periodo.</summary>
+    public decimal Amount { get; set; }
+
+    public EmployeeDeductionDirection Direction { get; set; } = EmployeeDeductionDirection.Deduct;
+
+    [MaxLength(200)]
+    public string Concept { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

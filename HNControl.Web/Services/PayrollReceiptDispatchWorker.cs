@@ -70,6 +70,7 @@ public class PayrollReceiptDispatchWorker : BackgroundService
         var email = scope.ServiceProvider.GetRequiredService<IEmailSender>();
         var whatsApp = scope.ServiceProvider.GetRequiredService<IWhatsAppSender>();
         var receipt = scope.ServiceProvider.GetRequiredService<IPayrollReceiptService>();
+        var deductionLedger = scope.ServiceProvider.GetRequiredService<IPayrollDeductionLedger>();
         var systemConfig = await LoadSystemConfigSafeAsync(db, ct);
 
         var employees = await db.EmployeeProfiles
@@ -145,6 +146,9 @@ public class PayrollReceiptDispatchWorker : BackgroundService
                 log.SentAt = DateTime.UtcNow;
                 log.LastError = null;
                 await db.SaveChangesAsync(ct);
+
+                // Ledger de deducciones/bonos aplicados (avance/saldo real).
+                await deductionLedger.RecordApplicationsAsync(emp.UserId, start, end, today, ct);
             }
             catch (Exception ex)
             {
