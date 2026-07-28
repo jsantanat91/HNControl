@@ -10,6 +10,8 @@ namespace HNControl.Web.Services.Tickets;
 
 public class TicketFlowService : ITicketFlowService
 {
+    private static readonly bool TicketNotificationsEnabled = false;
+
     private readonly ApplicationDbContext _db;
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
@@ -550,6 +552,9 @@ public class TicketFlowService : ITicketFlowService
 
     private async Task NotifyTicketCreatedAsync(Ticket ticket, string? clientName, string? branch, CancellationToken ct)
     {
+        if (!TicketNotificationsEnabled)
+            return;
+
         await NotifyInternalAsync(
             subject: $"[{ticket.TicketNumber}] Ticket creado ({ToSourceLabel(ticket.Source)})",
             bodyHtml: BuildTicketEmailBody(
@@ -587,6 +592,9 @@ public class TicketFlowService : ITicketFlowService
         CancellationToken ct,
         bool forceCustomer = false)
     {
+        if (!TicketNotificationsEnabled)
+            return;
+
         var (clientName, branch) = await ResolveClientContextAsync(ticket, ct);
 
         await NotifyInternalAsync(
@@ -890,4 +898,3 @@ public class TicketFlowService : ITicketFlowService
         return $"TKT-{year}-{(count + 1):D5}";
     }
 }
-

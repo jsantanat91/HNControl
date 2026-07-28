@@ -1,4 +1,4 @@
-﻿@using HNControl.Web.Models
+@using HNControl.Web.Models
 @using HNControl.Web.Data
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
@@ -275,13 +275,9 @@
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index">
+                    <a class="hn-side-link" href="https://support.hubnet-solutions.net/" target="_blank" rel="noopener">
                         <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                         <span class="hn-side-text">Tickets</span>
-                        @if (ticketsBadgeCount > 0)
-                        {
-                            <span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>
-                        }
                     </a>
                     <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")">
@@ -506,13 +502,9 @@
                     }
                     @if (Has(AppModules.Tickets))
                     {
-                        <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index">
+                        <a class="hn-side-link" href="https://support.hubnet-solutions.net/" target="_blank" rel="noopener">
                             <span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span>
                             <span class="hn-side-text">Tickets</span>
-                            @if (ticketsBadgeCount > 0)
-                            {
-                                <span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>
-                            }
                         </a>
                     }
                     @if (Has(AppModules.Leaves))
@@ -648,7 +640,7 @@
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
                     </details>
-                    <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span>@if (ticketsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>}</a>
+                    <a class="hn-side-link" href="https://support.hubnet-solutions.net/" target="_blank" rel="noopener"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a>
                     <details class="hn-side-group" @(isSalesPath ? "open" : "")>
                         <summary class="hn-side-link @Active("/Ventas")"><span class="hn-side-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="hn-side-text">Ventas</span></summary>
                         <div class="hn-side-sub">
@@ -788,7 +780,7 @@
                         </details>
                     }
                     @if (Has(AppModules.Tickets))
-                    { <a class="hn-side-link @Active("/Tickets")" asp-page="/Tickets/Index"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span>@if (ticketsBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@ticketsBadgeCount</span>}</a> }
+                    { <a class="hn-side-link" href="https://support.hubnet-solutions.net/" target="_blank" rel="noopener"><span class="hn-side-icon"><i class="bi bi-life-preserver"></i></span><span class="hn-side-text">Tickets</span></a> }
                     @if (Has(AppModules.Leaves))
                     { <a class="hn-side-link @Active("/Leaves")" asp-page="/Leaves/Index"><span class="hn-side-icon"><i class="bi bi-calendar2-week"></i></span><span class="hn-side-text">Vacaciones</span>@if (leavesBadgeCount > 0){<span class="badge rounded-pill bg-danger ms-auto">@leavesBadgeCount</span>}</a> }
                     @if (Has(AppModules.Exams))
@@ -856,3 +848,4 @@ else
     @RenderSection("Scripts", required: false)
 </body>
 </html>
+
