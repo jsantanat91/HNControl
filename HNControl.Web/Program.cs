@@ -287,7 +287,16 @@ using (var scope = app.Services.CreateScope())
 
     var db = services.GetRequiredService<ApplicationDbContext>();
     await EnsureLegacyBrokenMigrationMarkedAsAppliedAsync(db);
-    await db.Database.MigrateAsync();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+    {
+        app.Logger.LogCritical(ex,
+            "Database migration requires the table owner. For the October 2026 document update, run Sql/20261022_repair_document_signatures.sql in the HN Control database as its owner, then restart. Do not skip migrations or mark them applied without updating the schema.");
+        throw;
+    }
     await EnsureQuoteSchemaAsync(db);
     await EnsureBillingSchemaAsync(db);
     await EnsureSecuritySchemaAsync(db);
