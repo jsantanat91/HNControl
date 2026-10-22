@@ -122,7 +122,7 @@ public class TemplateDocxService : ITemplateDocxService
         var firmaFecha = BuildDigitalSignatureDate(doc);
         var firmaCorreo = BuildDigitalSignatureEmail(doc);
 
-        return new Dictionary<string, string>
+        var replacements = new Dictionary<string, string>
         {
             ["RSCLIENTE"] = legalName,
             ["RLCLIENTE"] = signer,
@@ -148,6 +148,11 @@ public class TemplateDocxService : ITemplateDocxService
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, doc.ClientServiceContract?.Label, doc.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
         };
+        AddSignatureFields(replacements, "SIGNCLIENT", doc.SignedByName, doc.SignedByEmail,
+            doc.SignedAt, firmaHash);
+        AddSignatureFields(replacements, "SIGNHN", doc.ProviderSignedByName, doc.ProviderSignedByEmail,
+            doc.ProviderSignedAt, BuildProviderSignatureHash(doc));
+        return replacements;
     }
 
     private static Dictionary<string, string> BuildContractReplacements(ClientLegalDocument doc, Client client, ClientServiceContract? contract)
@@ -200,6 +205,16 @@ public class TemplateDocxService : ITemplateDocxService
         var shortDate = delivery.DeliveryDate.ToString("dd/MM/yyyy", new CultureInfo("es-MX"));
         var r = new Dictionary<string, string>
         {
+            // Replace legacy literal names before inserting client values. Otherwise a real
+            // representative named like the old sample could be replaced with the provider.
+            ["Naturasol S.A. de C.V."] = Safe(client.Name),
+            ["Sistema BioTime PRO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, "Servicio contratado"),
+            ["Jorge Alberto Santana Torres"] = Safe(delivery.ProviderSignedByName, tpl.NOMBRETECNICO, "Responsable HN"),
+            ["RamsÃ©s Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
+            ["Ramses Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
+            ["Oficinas Corporativas"] = Safe(delivery.DeliveryLocation),
+            ["15 de julio 2025"] = shortDate,
+
             ["RSCLIENTE"] = Safe(client.Name),
             ["RLCLIENTE"] = Safe(client.LegalRepresentative, "-"),
             ["CORREOFACTURA"] = Safe(client.BillingEmail, "-"),
@@ -209,17 +224,8 @@ public class TemplateDocxService : ITemplateDocxService
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.ProviderSignedByName, "Técnico asignado"),
             ["SEGMENTOLAN"] = Safe(tpl.SEGMENTOLAN, ""),
             ["IPPUBLICA"] = Safe(tpl.IPPUBLICA, ""),
-            ["FIRMACLIENTE"] = DeliverySignature(delivery.SignedByName, delivery.SignedByEmail, delivery.SignedAt),
-            ["FIRMAHN"] = DeliverySignature(delivery.ProviderSignedByName, delivery.ProviderSignedByEmail, delivery.ProviderSignedAt),
-
-            // Compatibilidad con documento previo.
-            ["Naturasol S.A. de C.V."] = Safe(client.Name),
-            ["Sistema BioTime PRO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, "Servicio contratado"),
-            ["Jorge Alberto Santana Torres"] = Safe(delivery.ProviderSignedByName, tpl.NOMBRETECNICO, "Responsable HN"),
-            ["RamsÃ©s Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
-            ["Ramses Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
-            ["Oficinas Corporativas"] = Safe(delivery.DeliveryLocation),
-            ["15 de julio 2025"] = shortDate
+            ["FIRMACLIENTE"] = DeliverySignature(delivery.SignedByName, delivery.SignedByEmail, delivery.SignedAt, BuildDeliverySignatureHash(delivery, false)),
+            ["FIRMAHN"] = DeliverySignature(delivery.ProviderSignedByName, delivery.ProviderSignedByEmail, delivery.ProviderSignedAt, BuildDeliverySignatureHash(delivery, true))
         };
 
         for (var i = 1; i <= 5; i++)
@@ -234,12 +240,39 @@ public class TemplateDocxService : ITemplateDocxService
             r[$"ECANTIDAD{i:00}"] = Safe(h.Cantidad, "");
         }
 
+        AddSignatureFields(r, "SIGNCLIENT", delivery.SignedByName, delivery.SignedByEmail,
+            delivery.SignedAt, BuildDeliverySignatureHash(delivery, false));
+        AddSignatureFields(r, "SIGNHN", delivery.ProviderSignedByName, delivery.ProviderSignedByEmail,
+            delivery.ProviderSignedAt, BuildDeliverySignatureHash(delivery, true));
         return r;
     }
 
-    private static string DeliverySignature(string? name, string? email, DateTime? signedAt) => signedAt.HasValue
-        ? $"Firmado digitalmente por {name} ({email}), {signedAt:dd/MM/yyyy HH:mm} UTC."
+    private static string DeliverySignature(string? name, string? email, DateTime? signedAt, string hash) => signedAt.HasValue
+        ? $"Firmado digitalmente por {name} ({email}), {signedAt:dd/MM/yyyy HH:mm} UTC. Hash: {hash}"
         : "PENDIENTE DE FIRMA";
+
+    private static void AddSignatureFields(Dictionary<string, string> replacements, string prefix,
+        string? name, string? email, DateTime? signedAt, string hash)
+    {
+        // Separate paragraphs allow Word/LibreOffice to wrap naturally without fixed-height boxes.
+        replacements[prefix + "STATUS"] = signedAt.HasValue ? "Firmado digitalmente" : "PENDIENTE DE FIRMA";
+        replacements[prefix + "NAME"] = signedAt.HasValue ? Safe(name, "-") : "-";
+        replacements[prefix + "EMAIL"] = signedAt.HasValue ? Safe(email, "-") : "-";
+        replacements[prefix + "DATE"] = signedAt.HasValue
+            ? signedAt.Value.ToUniversalTime().ToString("dd/MM/yyyy HH:mm 'UTC'", CultureInfo.InvariantCulture) : "-";
+        replacements[prefix + "HASH"] = signedAt.HasValue ? hash : "-";
+    }
+
+    private static string BuildDeliverySignatureHash(ProjectDeliveryFormat delivery, bool provider)
+    {
+        var signedAt = provider ? delivery.ProviderSignedAt : delivery.SignedAt;
+        if (!signedAt.HasValue) return "-";
+        var name = provider ? delivery.ProviderSignedByName : delivery.SignedByName;
+        var email = provider ? delivery.ProviderSignedByEmail : delivery.SignedByEmail;
+        var role = provider ? "HN" : "CLIENTE";
+        var payload = $"{delivery.Id}|ACTA|{role}|{name}|{email}|{signedAt.Value.ToUniversalTime():O}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
+    }
 
     private static string BuildContractServiceName(ClientServiceContract? contract, string? templateService)
     {
@@ -417,9 +450,15 @@ public class TemplateDocxService : ITemplateDocxService
     private static string BuildProviderSignatureText(ClientLegalDocument doc)
     {
         if (!doc.ProviderSignedAt.HasValue) return "PENDIENTE DE FIRMA HN SOLUTIONS";
-        var payload = $"{doc.Id}|HN|{doc.ProviderSignedByUserId}|{doc.ProviderSignedByEmail}|{doc.ProviderSignedAt:O}";
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
+        var hash = BuildProviderSignatureHash(doc);
         return $"Firmado digitalmente por {doc.ProviderSignedByName} ({doc.ProviderSignedByEmail}), en representación de HN Solutions, el {doc.ProviderSignedAt:dd/MM/yyyy HH:mm} UTC. Hash: {hash}";
+    }
+
+    private static string BuildProviderSignatureHash(ClientLegalDocument doc)
+    {
+        if (!doc.ProviderSignedAt.HasValue) return "-";
+        var payload = $"{doc.Id}|HN|{doc.ProviderSignedByUserId}|{doc.ProviderSignedByEmail}|{doc.ProviderSignedAt:O}";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
     }
 
     private static ContractTemplateData ParseContractTemplateData(string? raw)
