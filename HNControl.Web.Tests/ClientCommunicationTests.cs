@@ -175,10 +175,12 @@ internal static class ClientCommunicationTests
     {
         public bool Fail { get; set; }
         public List<(string To, IReadOnlyCollection<string> Cc, byte[]? Attachment, string? AttachmentName)> Messages { get; } = new();
+        public List<string> Bodies { get; } = new();
         public Task SendAsync(string toEmail, string subject, string htmlBody, byte[]? attachmentBytes = null, string? attachmentName = null, string? attachmentContentType = null, IReadOnlyCollection<string>? ccEmails = null)
         {
             if (Fail) throw new InvalidOperationException("Simulated SMTP failure");
             Messages.Add((toEmail, ccEmails ?? Array.Empty<string>(), attachmentBytes, attachmentName));
+            Bodies.Add(htmlBody);
             return Task.CompletedTask;
         }
     }

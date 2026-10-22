@@ -5,14 +5,42 @@
     ViewData["Title"] = "Correo de bienvenida";
 }
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-    <div><h1 class="h4">Correo de bienvenida</h1><p class="text-muted mb-0">Revise los datos y el contenido antes de enviarlo.</p></div>
+    <div><h1 class="h4">Correo de bienvenida</h1><p class="text-muted mb-0">Seleccione el contrato y revise el correo antes de enviarlo.</p></div>
     <a class="btn btn-outline-secondary" asp-page="Details" asp-route-id="@Model.Client?.Id">Volver al cliente</a>
 </div>
+@if (Model.ContractOptions.Count > 0)
+{
+    <div class="card mb-3"><div class="card-body">
+        <form method="get" asp-page="Welcome" asp-route-clientId="@Model.Client?.Id" class="row g-3 align-items-end">
+            <div class="col-md-9">
+                <label asp-for="ContractId" class="form-label fw-semibold">Contrato para esta bienvenida</label>
+                <select asp-for="ContractId" class="form-select" required
+                        onchange="document.getElementById('welcome-preview').hidden = true; this.form.requestSubmit();">
+                    <option value="">Seleccione un contrato</option>
+                    @foreach (var contract in Model.ContractOptions)
+                    {
+                        <option value="@contract.Id">@contract.Label</option>
+                    }
+                </select>
+                <div class="form-text">Se enviará únicamente la liga del contrato seleccionado.</div>
+            </div>
+            <div class="col-md-3"><button type="submit" class="btn btn-outline-primary w-100">Ver correo</button></div>
+        </form>
+    </div></div>
+}
 @if (Model.Error != null)
 {
     <div class="alert alert-danger">@Model.Error <a asp-page="Documents" asp-route-clientId="@Model.Client?.Id">Ir a Contrato / NDA</a></div>
 }
+else if (!Model.ContractId.HasValue && Model.ContractOptions.Count > 1)
+{
+    <div class="alert alert-info">Este cliente tiene varios contratos. Seleccione uno para preparar su bienvenida.</div>
+}
+<section id="welcome-preview">
+@if (!string.IsNullOrWhiteSpace(Model.HtmlBody))
+{
 <div class="card mb-3"><div class="card-body">
+    <div class="mb-2"><strong>Contrato:</strong> @Model.SelectedContractLabel</div>
     <div><strong>Para:</strong> @Model.Recipient</div>
     <div><strong>CC:</strong> @(Model.InternalCopies.Count == 0 ? "Sin copias internas" : string.Join(", ", Model.InternalCopies))</div>
     <div><strong>Asunto:</strong> @ClientCommunicationTemplates.WelcomeSubject</div>
@@ -20,5 +48,8 @@
 <iframe title="Vista previa del correo de bienvenida" sandbox="" srcdoc="@Model.HtmlBody" style="width:100%;height:850px;border:1px solid #dbe5ef;border-radius:12px;background:white"></iframe>
 <form method="post" class="d-flex justify-content-end my-3" onsubmit="this.querySelector('button').disabled=true;">
     <input type="hidden" name="clientId" value="@Model.Client?.Id" />
-    <button type="submit" class="btn btn-primary" disabled="@(Model.Error != null)">Enviar correo de bienvenida</button>
+    <input type="hidden" name="ContractId" value="@Model.ContractId" />
+    <button type="submit" class="btn btn-primary" disabled="@(!Model.CanSend)">Enviar bienvenida de este contrato</button>
 </form>
+}
+</section>

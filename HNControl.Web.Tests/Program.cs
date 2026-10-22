@@ -69,6 +69,7 @@ if (args.Length > 1)
 }
 await ClientCommunicationTests.RunAsync(service, Check);
 await DeliveryCommunicationTests.RunAsync(service, Check);
+await WelcomeContractSelectionTests.RunAsync(Check);
 SignatureLayoutTests.Run(service, Check);
 Console.WriteLine($"All {count} checks passed.");
 
