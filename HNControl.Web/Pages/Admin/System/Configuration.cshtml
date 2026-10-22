@@ -141,6 +141,15 @@
 
                 <hr />
 
+                <form method="post" asp-page-handler="SaveDocumentNotifications" class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold" asp-for="Input.DocumentNotificationEmails">Correos internos para documentos de clientes</label>
+                        <textarea class="form-control" asp-for="Input.DocumentNotificationEmails" rows="4" maxlength="4000" placeholder="administracion@empresa.com"></textarea>
+                        <div class="form-text">Agregue, edite o elimine correos, uno por renglón. Recibirán copia de bienvenida, invitaciones de firma y confirmaciones de contratos y actas de entrega. Deje la lista vacía para desactivar las copias internas. Los destinatarios del cliente se toman de su propia ficha.</div>
+                    </div>
+                    <div class="col-12"><button class="btn btn-primary" type="submit">Guardar destinatarios de documentos</button></div>
+                </form>
+                <hr />
                 <form method="post" asp-page-handler="SaveSmtp" class="row g-3">
                     <div class="col-12">
                         <div class="fw-semibold">SMTP editable</div>

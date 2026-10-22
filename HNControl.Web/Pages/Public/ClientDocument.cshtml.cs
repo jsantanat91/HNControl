@@ -7,140 +7,96 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Public;
 
-public class ClientDocumentModel : PageModel
+public class ClientDocumentModel(
+    ApplicationDbContext db, IFileStorage storage, ClientDocumentSigningService signing,
+    ILogger<ClientDocumentModel> logger) : PageModel
 {
-    private readonly ApplicationDbContext _db;
-    private readonly IFileStorage _storage;
-    private readonly IEmailSender _email;
-    private readonly ITemplateDocxService _docxTemplates;
-    private readonly IOfficePdfConverter _officePdfConverter;
-
-    public ClientDocumentModel(
-        ApplicationDbContext db,
-        IFileStorage storage,
-        IEmailSender email,
-        ITemplateDocxService docxTemplates,
-        IOfficePdfConverter officePdfConverter)
-    {
-        _db = db;
-        _storage = storage;
-        _email = email;
-        _docxTemplates = docxTemplates;
-        _officePdfConverter = officePdfConverter;
-    }
-
     public ClientLegalDocument? DocumentRef { get; set; }
     public string? Error { get; set; }
+    [TempData] public string? Notice { get; set; }
+
+    private static bool CanRead(ClientLegalDocument doc) => doc.SignedAt.HasValue
+        || (doc.Status == ClientLegalDocumentStatus.SentForSignature && doc.TokenExpiresAt > DateTime.UtcNow);
 
     public async Task<IActionResult> OnGetAsync(string token)
     {
-        DocumentRef = await _db.ClientLegalDocuments
-            .Include(x => x.Client)
-            .FirstOrDefaultAsync(x => x.PublicToken == token);
-        return DocumentRef == null ? NotFound() : Page();
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        DocumentRef = await db.ClientLegalDocuments.Include(x => x.Client).FirstOrDefaultAsync(x => x.PublicToken == token);
+        return DocumentRef == null || !CanRead(DocumentRef) ? NotFound() : Page();
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(string token)
     {
-        var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.PublicToken == token);
-        if (doc == null) return NotFound();
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        var doc = await db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.PublicToken == token);
+        if (doc == null || !CanRead(doc)) return NotFound();
         if (string.IsNullOrWhiteSpace(doc.PdfStoragePath)) return BadRequest("Aún no hay PDF.");
-
         var fileName = $"{(doc.DocumentType == ClientLegalDocumentType.NDA ? "nda" : "contrato")}_{doc.Id:N}.pdf";
-        var (stream, contentType, _) = await _storage.OpenAsync(doc.PdfStoragePath, fileName);
+        var (stream, contentType, _) = await storage.OpenAsync(doc.PdfStoragePath, fileName);
         return File(stream, contentType, fileName);
     }
 
-    public async Task<IActionResult> OnPostSignAsync(string token, string signerName, string signerEmail, string sigDataUrl)
+    public async Task<IActionResult> OnPostSignAsync(string token, string signerName, string signerEmail, string sigDataUrl, bool acceptTerms)
     {
-        var doc = await _db.ClientLegalDocuments
-            .Include(x => x.Client)
-            .Include(x => x.ClientServiceContract)
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        var doc = await db.ClientLegalDocuments.Include(x => x.Client).Include(x => x.ClientServiceContract)
             .FirstOrDefaultAsync(x => x.PublicToken == token);
-        if (doc == null) return NotFound();
-
+        if (doc == null || !CanRead(doc)) return NotFound();
+        if (doc.SignedAt.HasValue) return RedirectToPage(new { token });
+        DocumentRef = doc;
         signerName = (signerName ?? "").Trim();
         signerEmail = (signerEmail ?? "").Trim();
-
-        if (string.IsNullOrWhiteSpace(signerName) || string.IsNullOrWhiteSpace(signerEmail))
+        if (signerName.Length is < 2 or > 200 || signerEmail.Length > 256 || !ClientCommunicationTemplates.IsEmail(signerEmail) || !acceptTerms)
         {
-            DocumentRef = doc;
-            Error = "Nombre y correo son obligatorios para firmar.";
+            Error = "Ingrese su nombre y correo válidos y confirme la aceptación del documento.";
             return Page();
         }
-
         var bytes = ParseDataUrl(sigDataUrl);
-        if (bytes == null || bytes.Length < 200)
+        if (bytes == null)
         {
-            DocumentRef = doc;
-            Error = "La firma es inválida, vuelve a dibujarla.";
+            Error = "La firma es inválida. Vuelva a dibujarla.";
             return Page();
         }
-
-        var (sigPath, _, _) = await _storage.SaveBytesAsync(bytes, $"clients/{doc.ClientId}/legal/{doc.Id}/signatures", $"sig_{DateTime.UtcNow:yyyyMMddHHmmss}.png", "image/png");
-        doc.SignatureStoragePath = sigPath;
-        doc.SignedByName = signerName;
-        doc.SignedByEmail = signerEmail;
-        doc.SignedAt = DateTime.UtcNow;
-        doc.Status = ClientLegalDocumentStatus.Signed;
-        doc.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        if (doc.Client == null)
-        {
-            DocumentRef = doc;
-            Error = "No se encontró la información del cliente para regenerar el PDF.";
-            return Page();
-        }
-
-        var docxBytes = _docxTemplates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
-        var pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{doc.DocumentType}_{doc.Id:N}");
-        if (pdfBytes == null || pdfBytes.Length == 0)
-        {
-            DocumentRef = doc;
-            Error = "No se pudo convertir la plantilla Word a PDF. Verifica LibreOffice/soffice en el servidor.";
-            return Page();
-        }
-
-        var (pdfPath, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"clients/{doc.ClientId}/legal", $"legal_{doc.DocumentType}_{doc.Id:N}.pdf", "application/pdf");
-        doc.PdfStoragePath = pdfPath;
-        doc.PdfGeneratedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
         try
         {
-            await _email.SendAsync(
-                signerEmail,
-                $"Documento firmado: {doc.Title}",
-                $"""
-                <p>Gracias {System.Net.WebUtility.HtmlEncode(signerName)},</p>
-                <p>Se registró tu firma digital del documento <b>{System.Net.WebUtility.HtmlEncode(doc.Title)}</b>.</p>
-                <p>Adjuntamos el PDF firmado para tu control.</p>
-                """,
-                pdfBytes,
-                $"{doc.Title.Replace(' ', '_')}.pdf",
-                "application/pdf");
+            var (sigPath, _, _) = await storage.SaveBytesAsync(bytes, $"clients/{doc.ClientId}/legal/{doc.Id}/signatures", $"sig_{Guid.NewGuid():N}.png", "image/png");
+            doc.SignatureStoragePath = sigPath;
+            doc.SignedByName = signerName;
+            doc.SignedByEmail = signerEmail;
+            doc.SignedAt = DateTime.UtcNow;
+            // Conversion and storage must succeed before persisting the signature and final status.
+            await signing.SaveSignedPdfAsync(doc);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "No se pudo registrar firma cliente para {DocumentId}", doc.Id);
+            db.ChangeTracker.Clear();
+            DocumentRef = await db.ClientLegalDocuments.Include(x => x.Client).FirstAsync(x => x.Id == doc.Id);
+            Error = "No se pudo confirmar la firma y generar el PDF. Actualice la página y vuelva a intentar. Si continúa el problema, contacte a HN Solutions.";
+            return Page();
         }
-
+        if (ClientDocumentSigningService.IsCompleted(doc))
+        {
+            try { await signing.NotifyCompletedAsync(doc.Id); }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Correo de confirmación pendiente para {DocumentId}", doc.Id);
+                Notice = "Su firma quedó registrada. El PDF está disponible; el envío de la confirmación por correo quedó pendiente de reintento por Administración.";
+            }
+        }
         return RedirectToPage(new { token });
     }
 
     private static byte[]? ParseDataUrl(string? dataUrl)
     {
-        if (string.IsNullOrWhiteSpace(dataUrl)) return null;
-        var comma = dataUrl.IndexOf(',');
-        if (comma < 0) return null;
-        var b64 = dataUrl[(comma + 1)..];
+        if (dataUrl == null || !dataUrl.StartsWith("data:image/png;base64,", StringComparison.Ordinal)
+            || dataUrl.Length > 2_800_000) return null;
         try
         {
-            return Convert.FromBase64String(b64);
+            var bytes = Convert.FromBase64String(dataUrl[(dataUrl.IndexOf(',') + 1)..]);
+            return bytes.Length is >= 200 and <= 2_000_000
+                && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ? bytes : null;
         }
-        catch
-        {
-            return null;
-        }
+        catch (FormatException) { return null; }
     }
 }

@@ -12,6 +12,10 @@ public enum PacProvider
 
 public class SystemConfiguration
 {
+    public const string DefaultDocumentNotificationEmails = "jsantana@hubnet-solutions.net\ndtaboada@hubnet-solutions.net";
+    [MaxLength(4000)]
+    public string DocumentNotificationEmails { get; set; } = DefaultDocumentNotificationEmails;
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [MaxLength(180)]

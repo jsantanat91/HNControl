@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -7,114 +7,72 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HNControl.Web.Pages.Public;
 
-public class DeliveryDocumentModel : PageModel
+public class DeliveryDocumentModel(ApplicationDbContext db, IFileStorage storage,
+    DeliveryDocumentSigningService signing, ILogger<DeliveryDocumentModel> logger) : PageModel
 {
-    private readonly ApplicationDbContext _db;
-    private readonly IFileStorage _storage;
-    private readonly IProjectDeliveryPdfRenderer _pdf;
-    private readonly IEmailSender _email;
-
-    public DeliveryDocumentModel(ApplicationDbContext db, IFileStorage storage, IProjectDeliveryPdfRenderer pdf, IEmailSender email)
-    {
-        _db = db;
-        _storage = storage;
-        _pdf = pdf;
-        _email = email;
-    }
-
     public ProjectDeliveryFormat? Item { get; set; }
     public string? Error { get; set; }
+    private static bool CanRead(ProjectDeliveryFormat item) => item.SignedAt.HasValue
+        || (item.Status == ProjectDeliveryFormatStatus.SentForSignature && item.TokenExpiresAt > DateTime.UtcNow);
 
     public async Task<IActionResult> OnGetAsync(string token)
     {
-        Item = await _db.ProjectDeliveryFormats
-            .Include(x => x.Client)
-            .Include(x => x.Project)
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        Item = await db.ProjectDeliveryFormats.Include(x => x.Client).Include(x => x.Project)
             .FirstOrDefaultAsync(x => x.PublicToken == token);
-        return Item == null ? NotFound() : Page();
+        return Item == null || !CanRead(Item) ? NotFound() : Page();
     }
 
     public async Task<IActionResult> OnGetDownloadPdfAsync(string token)
     {
-        var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.PublicToken == token);
-        if (item == null) return NotFound();
-        if (string.IsNullOrWhiteSpace(item.PdfStoragePath)) return BadRequest("Aun no hay PDF.");
-        var (stream, contentType, _) = await _storage.OpenAsync(item.PdfStoragePath, $"acta_entrega_{item.Id:N}.pdf");
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        var item = await db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.PublicToken == token);
+        if (item == null || !CanRead(item)) return NotFound();
+        if (string.IsNullOrWhiteSpace(item.PdfStoragePath)) return BadRequest("Aún no hay PDF.");
+        var (stream, contentType, _) = await storage.OpenAsync(item.PdfStoragePath, $"acta_entrega_{item.Id:N}.pdf");
         return File(stream, contentType, $"acta_entrega_{item.Id:N}.pdf");
     }
 
-    public async Task<IActionResult> OnPostSignAsync(string token, string signerName, string signerEmail, string sigDataUrl)
+    public async Task<IActionResult> OnPostSignAsync(string token, string signerName, string signerEmail, string sigDataUrl, bool acceptTerms)
     {
-        var item = await _db.ProjectDeliveryFormats
-            .Include(x => x.Client)
+        if (string.IsNullOrWhiteSpace(token)) return NotFound();
+        var item = await db.ProjectDeliveryFormats.Include(x => x.Client).Include(x => x.Project)
             .FirstOrDefaultAsync(x => x.PublicToken == token);
-        if (item == null) return NotFound();
-
+        if (item == null || !CanRead(item)) return NotFound();
+        if (item.SignedAt.HasValue) return RedirectToPage(new { token });
+        Item = item;
         signerName = (signerName ?? "").Trim();
         signerEmail = (signerEmail ?? "").Trim();
-        if (string.IsNullOrWhiteSpace(signerName) || string.IsNullOrWhiteSpace(signerEmail))
+        if (signerName.Length is < 2 or > 200 || signerEmail.Length > 256
+            || !ClientCommunicationTemplates.IsEmail(signerEmail) || !acceptTerms)
         {
-            Item = item;
-            Error = "Nombre y correo son obligatorios.";
+            Error = "Ingrese su nombre y correo válidos y confirme la aceptación del acta.";
             return Page();
         }
-
-        var bytes = ParseDataUrl(sigDataUrl);
-        if (bytes == null || bytes.Length < 200)
+        var bytes = SignatureDataUrl.ParsePng(sigDataUrl);
+        if (bytes == null)
         {
-            Item = item;
-            Error = "Firma invalida.";
+            Error = "La firma es inválida. Vuelva a dibujarla.";
             return Page();
         }
-
-        var (sigPath, _, _) = await _storage.SaveBytesAsync(bytes, $"projects/delivery/{item.Id}/signatures", $"sig_{DateTime.UtcNow:yyyyMMddHHmmss}.png", "image/png");
-        item.SignatureStoragePath = sigPath;
-        item.SignedByName = signerName;
-        item.SignedByEmail = signerEmail;
-        item.SignedAt = DateTime.UtcNow;
-        item.Status = ProjectDeliveryFormatStatus.Signed;
-        item.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        var pdfBytes = await _pdf.RenderAsync(item);
-        var (pdfPath, _, _) = await _storage.SaveBytesAsync(pdfBytes, $"projects/delivery/{item.Id}", $"acta_{item.Id:N}.pdf", "application/pdf");
-        item.PdfStoragePath = pdfPath;
-        item.PdfGeneratedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
         try
         {
-            await _email.SendAsync(
-                signerEmail,
-                $"Acta firmada: {item.Title}",
-                $"""
-                <p>Gracias {System.Net.WebUtility.HtmlEncode(signerName)},</p>
-                <p>Tu firma digital quedo registrada correctamente.</p>
-                <p>Adjuntamos el acta firmada en PDF.</p>
-                """,
-                pdfBytes,
-                $"acta_firmada_{item.Id:N}.pdf",
-                "application/pdf");
+            var (sigPath, _, _) = await storage.SaveBytesAsync(bytes, $"projects/delivery/{item.Id}/signatures", $"sig_{Guid.NewGuid():N}.png", "image/png");
+            item.SignatureStoragePath = sigPath;
+            item.SignedByName = signerName;
+            item.SignedByEmail = signerEmail;
+            item.SignedAt = DateTime.UtcNow;
+            await signing.SavePdfAsync(item);
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "No se pudo registrar firma de acta {DeliveryId}", item.Id);
+            db.ChangeTracker.Clear();
+            Item = await db.ProjectDeliveryFormats.Include(x => x.Client).Include(x => x.Project).FirstAsync(x => x.Id == item.Id);
+            Error = "No se pudo confirmar la firma y generar el PDF. Actualice la página y vuelva a intentar. Si continúa el problema, contacte a HN Solutions.";
+            return Page();
         }
-
+        // The HN countersignature is performed after the client signature, from the internal detail page.
         return RedirectToPage(new { token });
-    }
-
-    private static byte[]? ParseDataUrl(string? dataUrl)
-    {
-        if (string.IsNullOrWhiteSpace(dataUrl)) return null;
-        var comma = dataUrl.IndexOf(',');
-        if (comma < 0) return null;
-        try
-        {
-            return Convert.FromBase64String(dataUrl[(comma + 1)..]);
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

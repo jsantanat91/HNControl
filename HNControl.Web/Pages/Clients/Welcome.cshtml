@@ -1,0 +1,24 @@
+@page "{clientId:guid}"
+@model HNControl.Web.Pages.Clients.WelcomeModel
+@using HNControl.Web.Services
+@{
+    ViewData["Title"] = "Correo de bienvenida";
+}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+    <div><h1 class="h4">Correo de bienvenida</h1><p class="text-muted mb-0">Revise los datos y el contenido antes de enviarlo.</p></div>
+    <a class="btn btn-outline-secondary" asp-page="Details" asp-route-id="@Model.Client?.Id">Volver al cliente</a>
+</div>
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger">@Model.Error <a asp-page="Documents" asp-route-clientId="@Model.Client?.Id">Ir a Contrato / NDA</a></div>
+}
+<div class="card mb-3"><div class="card-body">
+    <div><strong>Para:</strong> @Model.Recipient</div>
+    <div><strong>CC:</strong> @(Model.InternalCopies.Count == 0 ? "Sin copias internas" : string.Join(", ", Model.InternalCopies))</div>
+    <div><strong>Asunto:</strong> @ClientCommunicationTemplates.WelcomeSubject</div>
+</div></div>
+<iframe title="Vista previa del correo de bienvenida" sandbox="" srcdoc="@Model.HtmlBody" style="width:100%;height:850px;border:1px solid #dbe5ef;border-radius:12px;background:white"></iframe>
+<form method="post" class="d-flex justify-content-end my-3" onsubmit="this.querySelector('button').disabled=true;">
+    <input type="hidden" name="clientId" value="@Model.Client?.Id" />
+    <button type="submit" class="btn btn-primary" disabled="@(Model.Error != null)">Enviar correo de bienvenida</button>
+</form>

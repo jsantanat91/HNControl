@@ -1,4 +1,5 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
+using System.Security.Claims;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -12,29 +13,29 @@ namespace HNControl.Web.Pages.Projects.Delivery;
 public class DetailsModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    private readonly IProjectDeliveryPdfRenderer _pdf;
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
-    private readonly ITemplateDocxService _docxTemplates;
-    private readonly IOfficePdfConverter _officePdfConverter;
+    private readonly DeliveryDocumentSigningService _signing;
+    private readonly DocumentNotificationRecipients _recipients;
+    private readonly ILogger<DetailsModel> _logger;
 
     public DetailsModel(
         ApplicationDbContext db,
-        IProjectDeliveryPdfRenderer pdf,
         IFileStorage storage,
         IEmailSender email,
         IConfiguration cfg,
-        ITemplateDocxService docxTemplates,
-        IOfficePdfConverter officePdfConverter)
+        DeliveryDocumentSigningService signing,
+        DocumentNotificationRecipients recipients,
+        ILogger<DetailsModel> logger)
     {
         _db = db;
-        _pdf = pdf;
         _storage = storage;
         _email = email;
         _cfg = cfg;
-        _docxTemplates = docxTemplates;
-        _officePdfConverter = officePdfConverter;
+        _signing = signing;
+        _recipients = recipients;
+        _logger = logger;
     }
 
     public ProjectDeliveryFormat? Item { get; set; }
@@ -61,9 +62,18 @@ public class DetailsModel : PageModel
         var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
 
-        await RegeneratePdfAsync(item);
-        Flash = "PDF generado.";
-        FlashType = "success";
+        try
+        {
+            await RegeneratePdfAsync(item);
+            Flash = "PDF generado desde la plantilla Word.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generando acta {DeliveryId}", id);
+            Flash = "No se pudo generar el PDF. Las actas con firmas no se modifican; para borradores, verifique LibreOffice en el servidor.";
+            FlashType = "danger";
+        }
         return RedirectToPage(new { id });
     }
 
@@ -75,10 +85,25 @@ public class DetailsModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
 
+        if (item.SignedAt.HasValue)
+        {
+            Flash = "La firma del cliente ya está registrada. Complete la firma HN o envíe la confirmación final.";
+            FlashType = "info";
+            return RedirectToPage(new { id });
+        }
         if (string.IsNullOrWhiteSpace(item.PdfStoragePath))
-            await RegeneratePdfAsync(item);
+        {
+            try { await RegeneratePdfAsync(item); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error preparando acta {DeliveryId}", id);
+                Flash = "No se pudo preparar el acta desde la plantilla Word. Verifique LibreOffice antes de enviar la firma.";
+                FlashType = "danger";
+                return RedirectToPage(new { id });
+            }
+        }
 
-        if (string.IsNullOrWhiteSpace(item.ReceiverEmail))
+        if (!ClientCommunicationTemplates.IsEmail(item.ReceiverEmail))
         {
             Flash = "El formato no tiene correo de receptor.";
             FlashType = "danger";
@@ -86,6 +111,7 @@ public class DetailsModel : PageModel
         }
 
         item.Status = ProjectDeliveryFormatStatus.SentForSignature;
+        item.TokenExpiresAt = DateTime.UtcNow.AddMonths(2);
         item.SentAt = DateTime.UtcNow;
         item.UpdatedAt = DateTime.UtcNow;
         if (string.IsNullOrWhiteSpace(item.PublicToken))
@@ -109,6 +135,8 @@ public class DetailsModel : PageModel
             }
         }
 
+        try
+        {
         await _email.SendAsync(
             item.ReceiverEmail,
             $"Firma requerida · {item.Title}",
@@ -116,11 +144,19 @@ public class DetailsModel : PageModel
             <p>Hola {System.Net.WebUtility.HtmlEncode(item.ReceiverName)},</p>
             <p>Se generó un formato de entrega para tu firma digital:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al finalizar, recibirás el acta firmada en PDF.</p>
+            <p>Al completar las firmas del cliente y HN Solutions, recibirás el acta final firmada en PDF.</p>
             """,
             attachment,
             $"acta_entrega_{item.Id:N}.pdf",
-            "application/pdf");
+            "application/pdf", await _recipients.GetAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enviando invitación de acta {DeliveryId}", id);
+            Flash = "No se pudo confirmar el envío. Revise SMTP y los correos recibidos antes de reintentar.";
+            FlashType = "warning";
+            return RedirectToPage(new { id });
+        }
 
         Flash = "Acta enviada para firma.";
         FlashType = "success";
@@ -201,27 +237,70 @@ public class DetailsModel : PageModel
 
     private async Task RegeneratePdfAsync(ProjectDeliveryFormat item)
     {
+        if (item.SignedAt.HasValue || item.ProviderSignedAt.HasValue)
+            throw new InvalidOperationException("El acta tiene firmas y no puede regenerarse.");
         var dbItem = await _db.ProjectDeliveryFormats
             .Include(x => x.Client)
             .Include(x => x.Project)
             .FirstAsync(x => x.Id == item.Id);
 
-        byte[]? bytes = null;
-        if (dbItem.Client != null)
-        {
-            var docxBytes = _docxTemplates.BuildDeliveryDocx(dbItem, dbItem.Client, dbItem.Project);
-            bytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"acta_{dbItem.Id:N}");
-        }
+        dbItem.SigningSnapshotJson = null;
+        await _signing.SavePdfAsync(dbItem);
+    }
 
-        if (bytes == null)
-            bytes = await _pdf.RenderAsync(item);
-        else
-            bytes = await _pdf.AppendEvidencePagesAsync(dbItem, bytes);
-        var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"projects/delivery/{item.Id}", $"acta_{item.Id:N}.pdf", "application/pdf");
-        item.PdfStoragePath = path;
-        item.PdfGeneratedAt = DateTime.UtcNow;
-        item.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+    public async Task<IActionResult> OnPostSignProviderAsync(Guid id, bool acceptTerms)
+    {
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        if (!acceptTerms) return BadRequest("Confirme la aceptación del acta en representación de HN Solutions.");
+        var item = await _db.ProjectDeliveryFormats.Include(x => x.Client).Include(x => x.Project).FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+        if (!item.SignedAt.HasValue) return BadRequest("Primero debe firmar el cliente.");
+        if (!item.ProviderSignedAt.HasValue)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var account = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (account == null || !ClientCommunicationTemplates.IsEmail(account.Email))
+                return BadRequest("Su cuenta administradora debe tener un correo válido.");
+            var name = await _db.EmployeeProfiles.Where(x => x.UserId == userId).Select(x => x.FullName).FirstOrDefaultAsync();
+            item.ProviderSignedByName = string.IsNullOrWhiteSpace(name) ? account.UserName ?? account.Email : name;
+            item.ProviderSignedByEmail = account.Email;
+            item.ProviderSignedByUserId = account.Id;
+            item.ProviderSignedAt = DateTime.UtcNow;
+            try { await _signing.SavePdfAsync(item); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo guardar firma HN del acta {DeliveryId}", id);
+                Flash = "No se pudo guardar la firma HN y su PDF. Actualice la página y vuelva a intentar; verifique el convertidor PDF si continúa el problema.";
+                FlashType = "danger";
+                return RedirectToPage(new { id });
+            }
+        }
+        return await SendFinalConfirmationAsync(id);
+    }
+
+    public async Task<IActionResult> OnPostSendConfirmationAsync(Guid id)
+    {
+        var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
+        if (item == null) return NotFound();
+        if (!item.IsFullySigned) return BadRequest("El acta requiere ambas firmas.");
+        return await SendFinalConfirmationAsync(id);
+    }
+
+    private async Task<IActionResult> SendFinalConfirmationAsync(Guid id)
+    {
+        try
+        {
+            await _signing.NotifyCompletedAsync(id);
+            Flash = "Acta firmada. Confirmación enviada al cliente y a los destinatarios internos configurados.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Confirmación pendiente del acta {DeliveryId}", id);
+            Flash = "Ambas firmas y el PDF están guardados, pero el correo quedó pendiente. Revise SMTP y use Enviar confirmación final para reintentar.";
+            FlashType = "warning";
+        }
+        return RedirectToPage(new { id });
     }
 
 }

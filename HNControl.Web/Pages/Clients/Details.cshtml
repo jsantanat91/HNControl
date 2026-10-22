@@ -33,6 +33,7 @@
         {
             <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
             <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
+            <a class="btn btn-outline-primary" asp-page="/Clients/Welcome" asp-route-clientId="@Model.Client.Id">Enviar correo de bienvenida</a>
             <a class="btn btn-outline-success" asp-page="/Projects/Delivery/Create" asp-route-clientId="@Model.Client.Id">Formato entrega</a>
             <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
         }

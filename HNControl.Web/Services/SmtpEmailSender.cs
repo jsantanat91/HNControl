@@ -40,7 +40,8 @@ public class SmtpEmailSender : IEmailSender
         string htmlBody,
         byte[]? attachmentBytes = null,
         string? attachmentName = null,
-        string? attachmentContentType = null)
+        string? attachmentContentType = null,
+        IReadOnlyCollection<string>? ccEmails = null)
     {
         var dbCfg = await LoadDbSmtpConfigSafeAsync();
 
@@ -72,7 +73,7 @@ public class SmtpEmailSender : IEmailSender
 
         foreach (var profile in profiles)
         {
-            var message = BuildMessage(profile.FromName, profile.FromEmail, toEmail, subject, htmlBody, attachmentBytes, attachmentName, attachmentContentType);
+            var message = BuildMessage(profile.FromName, profile.FromEmail, toEmail, subject, htmlBody, attachmentBytes, attachmentName, attachmentContentType, ccEmails);
 
             try
             {
@@ -152,11 +153,18 @@ public class SmtpEmailSender : IEmailSender
         string htmlBody,
         byte[]? attachmentBytes,
         string? attachmentName,
-        string? attachmentContentType)
+        string? attachmentContentType,
+        IReadOnlyCollection<string>? ccEmails)
     {
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromEmail));
         message.To.Add(MailboxAddress.Parse(toEmail));
+        foreach (var address in (ccEmails ?? Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var mailbox = MailboxAddress.Parse(address);
+            if (!message.To.Mailboxes.Any(x => x.Address.Equals(mailbox.Address, StringComparison.OrdinalIgnoreCase)))
+                message.Cc.Add(mailbox);
+        }
         message.Subject = subject;
 
         var builder = new BodyBuilder { HtmlBody = htmlBody };

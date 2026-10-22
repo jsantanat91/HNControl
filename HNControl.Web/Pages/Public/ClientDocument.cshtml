@@ -21,7 +21,7 @@
             <div class="text-muted small mb-3">
                 Cliente: <b>@(Model.DocumentRef.Client?.Name ?? "-")</b>
                 · Tipo: <b>@(Model.DocumentRef.DocumentType == ClientLegalDocumentType.NDA ? "NDA" : "Contrato")</b>
-                · Estatus: <b>@(Model.DocumentRef.Status == ClientLegalDocumentStatus.Signed ? "Firmado" : "Pendiente")</b>
+                · Estatus: <b>@(HNControl.Web.Services.ClientDocumentSigningService.IsCompleted(Model.DocumentRef) ? "Firmado" : Model.DocumentRef.SignedAt.HasValue ? "Pendiente de firma HN Solutions" : "Pendiente de su firma")</b>
             </div>
 
             <a class="btn btn-outline-primary btn-sm" href="?handler=DownloadPdf&token=@RouteData.Values["token"]">Descargar PDF actual</a>
@@ -33,15 +33,27 @@
         <div class="alert alert-danger">@Model.Error</div>
     }
 
-    @if (Model.DocumentRef.Status == ClientLegalDocumentStatus.Signed)
+    @if (!string.IsNullOrWhiteSpace(Model.Notice))
+    {
+        <div class="alert alert-warning">@Model.Notice</div>
+    }
+    @if (Model.DocumentRef.SignedAt.HasValue)
     {
         <div class="alert alert-success">
             Documento firmado por <b>@Model.DocumentRef.SignedByName</b> · @Model.DocumentRef.SignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            @if (Model.DocumentRef.DocumentType == ClientLegalDocumentType.Contract && !Model.DocumentRef.ProviderSignedAt.HasValue)
+            {
+                <p class="mb-0 mt-2">Su firma está registrada. Cuando HN Solutions complete su firma, enviaremos el PDF final por correo al cliente y a Administración.</p>
+            }
+            @if (Model.DocumentRef.ProviderSignedAt.HasValue)
+            {
+                <p class="mb-0 mt-2">Firmado por HN Solutions: <strong>@Model.DocumentRef.ProviderSignedByName</strong> · @Model.DocumentRef.ProviderSignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</p>
+            }
         </div>
     }
     else
     {
-        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover">
+        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover" onsubmit="return captureSig()">
             <div class="card-header fw-semibold">Firma digital</div>
             <div class="card-body">
                 <input type="hidden" name="token" value="@RouteData.Values["token"]" />
@@ -49,11 +61,11 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Nombre de quien firma</label>
-                        <input class="form-control" name="signerName" value="@Model.DocumentRef.Client?.LegalRepresentative" required />
+                        <input class="form-control" name="signerName" maxlength="200" value="@Model.DocumentRef.Client?.LegalRepresentative" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Correo de quien firma</label>
-                        <input class="form-control" name="signerEmail" value="@(Model.DocumentRef.Client?.BillingEmail ?? Model.DocumentRef.Client?.Email)" required />
+                        <input type="email" maxlength="256" class="form-control" name="signerEmail" value="@(Model.DocumentRef.Client?.LegalEmail ?? Model.DocumentRef.Client?.Email ?? Model.DocumentRef.Client?.BillingEmail)" required />
                     </div>
                     <div class="col-12">
                         <label class="form-label">Dibuja tu firma</label>
@@ -61,11 +73,16 @@
                             <canvas id="sigCanvas" class="w-100" style="height:220px; touch-action:none;"></canvas>
                         </div>
                         <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="clearSig()">Limpiar</button>
+                        <div id="signatureError" class="text-danger mt-2" hidden>Dibuje su firma antes de continuar.</div>
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="acceptTerms" required />
+                            <label class="form-check-label" for="acceptTerms">He revisado el documento y acepto firmarlo electrónicamente en representación del cliente.</label>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="card-footer">
-                <button class="btn btn-primary" type="submit" onclick="captureSig()">Firmar documento</button>
+                <button class="btn btn-primary" type="submit">Firmar documento</button>
             </div>
         </form>
     }
@@ -75,6 +92,7 @@
 {
     <script>
         const canvas = document.getElementById('sigCanvas');
+        let hasSignature = false;
         if (canvas) {
             const ctx = canvas.getContext('2d');
             const resize = () => {
@@ -82,6 +100,7 @@
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = Math.floor(rect.width * dpr);
                 canvas.height = Math.floor(rect.height * dpr);
+                hasSignature = false;
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 ctx.lineWidth = 2.5;
                 ctx.lineCap = 'round';
@@ -106,6 +125,7 @@
                 ctx.moveTo(lx, ly);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
+                hasSignature = true;
                 lx = p.x; ly = p.y;
                 ev.preventDefault();
             };
@@ -123,11 +143,17 @@
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSignature = false;
         }
 
         function captureSig() {
-            if (!canvas) return;
+            if (!canvas || !hasSignature) {
+                document.getElementById('signatureError').hidden = false;
+                return false;
+            }
             document.getElementById('sigDataUrl').value = canvas.toDataURL('image/png');
+            canvas.closest('form').querySelector('button[type=submit]').disabled = true;
+            return true;
         }
     </script>
 }

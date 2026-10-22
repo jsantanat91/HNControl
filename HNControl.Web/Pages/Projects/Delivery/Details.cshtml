@@ -26,7 +26,10 @@
         {
             <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Volver</a>
         }
-        <a class="btn btn-outline-primary" asp-page="/Projects/Delivery/Edit" asp-route-id="@Model.Item.Id">Editar</a>
+        @if (!Model.Item.SignedAt.HasValue && !Model.Item.ProviderSignedAt.HasValue)
+        {
+            <a class="btn btn-outline-primary" asp-page="/Projects/Delivery/Edit" asp-route-id="@Model.Item.Id">Editar</a>
+        }
         <form method="post" asp-page-handler="Delete" onsubmit="return confirm('¿Eliminar este formato de entrega?');">
             <button class="btn btn-outline-danger" type="submit">Eliminar</button>
         </form>
@@ -76,9 +79,9 @@
     </div>
     <div class="col-12 col-xl-4">
         @{
-            var status = Model.Item.Status == ProjectDeliveryFormatStatus.Signed ? "Firmado" :
+            var status = Model.Item.IsFullySigned ? "Firmado por ambas partes" : Model.Item.SignedAt.HasValue ? "Pendiente firma HN" :
                          Model.Item.Status == ProjectDeliveryFormatStatus.SentForSignature ? "En firma" : "Borrador";
-            var badge = Model.Item.Status == ProjectDeliveryFormatStatus.Signed ? "text-bg-success" :
+            var badge = Model.Item.IsFullySigned ? "text-bg-success" :
                         Model.Item.Status == ProjectDeliveryFormatStatus.SentForSignature ? "text-bg-warning" : "text-bg-secondary";
         }
         <div class="card shadow-soft hn-hover mb-3">
@@ -87,6 +90,17 @@
                 <div class="small"><b>Recibe:</b> @Model.Item.ReceiverName</div>
                 <div class="small"><b>Correo:</b> @Model.Item.ReceiverEmail</div>
                 <div class="small"><b>Tel:</b> @Model.Item.ReceiverPhone</div>
+                @if (Model.Item.SignedAt.HasValue)
+                {
+                    <div class="small mt-2"><b>Firma del cliente:</b> @Model.Item.SignedByName</div>
+                    <div class="small text-muted">@Model.Item.SignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                }
+                @if (Model.Item.ProviderSignedAt.HasValue)
+                {
+                    <div class="small"><b>Firma HN:</b> @Model.Item.ProviderSignedByName</div>
+                    <div class="small text-muted">@Model.Item.ProviderSignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                    <div class="small mt-2">@(Model.Item.CompletionEmailSentAt.HasValue ? "Confirmación enviada." : "Confirmación por correo pendiente.")</div>
+                }
                 <hr />
                 <div class="small text-muted">Liga publica de firma</div>
                 <div class="input-group input-group-sm mb-2">
@@ -95,14 +109,30 @@
                 </div>
                 <div class="d-grid gap-2">
                     <form method="post" asp-page-handler="GeneratePdf">
-                        <button class="btn btn-outline-primary w-100" type="submit">Generar PDF</button>
+                        <button class="btn btn-outline-primary w-100" type="submit" disabled="@(Model.Item.SignedAt.HasValue || Model.Item.ProviderSignedAt.HasValue)">Generar PDF</button>
                     </form>
                     <form method="post" asp-page-handler="SendForSignature">
-                        <button class="btn btn-primary w-100" type="submit">Enviar firma digital</button>
+                        <button class="btn btn-primary w-100" type="submit" disabled="@Model.Item.SignedAt.HasValue">Enviar firma digital</button>
                     </form>
                     <form method="post" asp-page-handler="DownloadPdf">
                         <button class="btn btn-outline-dark w-100" type="submit" @(string.IsNullOrWhiteSpace(Model.Item.PdfStoragePath) ? "disabled" : "")>Descargar PDF</button>
                     </form>
+                    @if (AppRoles.IsGlobalAdmin(User) && Model.Item.SignedAt.HasValue && !Model.Item.ProviderSignedAt.HasValue)
+                    {
+                        <form method="post" asp-page-handler="SignProvider" class="border rounded p-3" onsubmit="this.querySelector('button').disabled=true;">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="providerAcceptance" required />
+                                <label class="form-check-label small" for="providerAcceptance">He revisado el PDF y acepto firmar el acta en representación de HN Solutions con mi cuenta administradora.</label>
+                            </div>
+                            <button class="btn btn-success w-100" type="submit">Firmar por HN y enviar acta final</button>
+                        </form>
+                    }
+                    @if (Model.Item.IsFullySigned && !Model.Item.CompletionEmailSentAt.HasValue)
+                    {
+                        <form method="post" asp-page-handler="SendConfirmation" onsubmit="this.querySelector('button').disabled=true;">
+                            <button class="btn btn-outline-success w-100" type="submit">Enviar confirmación final</button>
+                        </form>
+                    }
                 </div>
             </div>
         </div>

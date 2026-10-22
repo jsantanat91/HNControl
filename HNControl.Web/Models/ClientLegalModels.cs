@@ -57,7 +57,18 @@ public class ClientLegalDocument
     public DateTime? PdfGeneratedAt { get; set; }
     public DateTime? SentAt { get; set; }
 
+    [MaxLength(200)] public string? ProviderSignedByName { get; set; }
+    [MaxLength(256)] public string? ProviderSignedByEmail { get; set; }
+    [MaxLength(64)] public string? ProviderSignedByUserId { get; set; }
+    public DateTime? ProviderSignedAt { get; set; }
+    public DateTime? CompletionEmailSentAt { get; set; }
+    public string? SigningSnapshotJson { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool IsFullySigned => SignedAt.HasValue && ProviderSignedAt.HasValue;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [ConcurrencyCheck]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -121,6 +132,15 @@ public class ProjectDeliveryFormat
     public DateTime? PdfGeneratedAt { get; set; }
     public DateTime? SentAt { get; set; }
 
+    [MaxLength(200)] public string? ProviderSignedByName { get; set; }
+    [MaxLength(256)] public string? ProviderSignedByEmail { get; set; }
+    [MaxLength(64)] public string? ProviderSignedByUserId { get; set; }
+    public DateTime? ProviderSignedAt { get; set; }
+    public DateTime? CompletionEmailSentAt { get; set; }
+    public string? SigningSnapshotJson { get; set; }
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool IsFullySigned => SignedAt.HasValue && ProviderSignedAt.HasValue;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [ConcurrencyCheck]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

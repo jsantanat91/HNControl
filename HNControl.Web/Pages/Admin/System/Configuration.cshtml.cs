@@ -13,7 +13,7 @@ using Npgsql;
 
 namespace HNControl.Web.Pages.Admin.SystemPages;
 
-[Authorize(Roles = AppRoles.Admin)]
+[Authorize(Roles = AppRoles.Admin + "," + AppRoles.SuperAdmin)]
 public class ConfigurationModel : PageModel
 {
     public const string DefaultWhatsAppOtpTemplate =
@@ -58,6 +58,7 @@ public class ConfigurationModel : PageModel
     public class InputModel
     {
         public Guid? Id { get; set; }
+        [MaxLength(4000)] public string DocumentNotificationEmails { get; set; } = SystemConfiguration.DefaultDocumentNotificationEmails;
 
         [MaxLength(180)] public string CompanyName { get; set; } = "";
         [MaxLength(180)] public string CompanyLegalName { get; set; } = "";
@@ -124,6 +125,28 @@ public class ConfigurationModel : PageModel
     public async Task<IActionResult> OnPostSaveAsync()
     {
         return await OnPostSaveGeneralAsync();
+    }
+
+    public async Task<IActionResult> OnPostSaveDocumentNotificationsAsync()
+    {
+        try
+        {
+            if ((Input.DocumentNotificationEmails ?? "").Length > 4000)
+                throw new ArgumentException("La lista de correos no puede superar 4000 caracteres.");
+            var addresses = DocumentNotificationRecipients.Parse(Input.DocumentNotificationEmails);
+            var entity = await GetOrCreateAsync();
+            entity.DocumentNotificationEmails = string.Join("\n", addresses);
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            Flash = "Destinatarios internos guardados. Se usarán en bienvenida, contratos y actas de entrega.";
+            FlashType = "success";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            Flash = ex.Message;
+            FlashType = "danger";
+        }
+        return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostSaveGeneralAsync()
@@ -566,6 +589,7 @@ public class ConfigurationModel : PageModel
             CompanyFiscalZipCode = cfg.CompanyFiscalZipCode,
             CompanyFiscalAddress = cfg.CompanyFiscalAddress,
             BillingEmail = cfg.BillingEmail,
+            DocumentNotificationEmails = cfg.DocumentNotificationEmails,
             SmtpHost = cfg.SmtpHost,
             SmtpPort = cfg.SmtpPort,
             SmtpUser = cfg.SmtpUser,
@@ -655,6 +679,7 @@ public class ConfigurationModel : PageModel
                 BillingEmail = ReadString(reader, "BillingEmail"),
                 CompanyLogoStoragePath = ReadString(reader, "CompanyLogoStoragePath"),
                 CompanyLogoOriginalFileName = ReadString(reader, "CompanyLogoOriginalFileName"),
+                DocumentNotificationEmails = ReadString(reader, "DocumentNotificationEmails", SystemConfiguration.DefaultDocumentNotificationEmails),
                 SmtpHost = ReadString(reader, "SmtpHost"),
                 SmtpPort = ReadInt(reader, "SmtpPort", 587),
                 SmtpUser = ReadString(reader, "SmtpUser"),

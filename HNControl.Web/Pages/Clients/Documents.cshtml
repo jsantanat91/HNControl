@@ -19,6 +19,7 @@
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.Client.Id">Volver cliente</a>
+        <a class="btn btn-outline-primary" asp-page="/Clients/Welcome" asp-route-clientId="@Model.Client.Id">Enviar correo de bienvenida</a>
     </div>
 </div>
 
@@ -156,6 +157,18 @@
                                         {
                                             <div><strong>Firmado por:</strong> @d.SignedBy</div>
                                             <div class="text-muted">@d.SignedAt</div>
+                                            @if (d.ProviderSigned)
+                                            {
+                                                <div><strong>Firma HN Solutions:</strong> @d.ProviderSignedBy</div>
+                                            }
+                                            @if (d.ConfirmationSent)
+                                            {
+                                                <div class="text-success">Confirmación enviada al cliente y a Administración.</div>
+                                            }
+                                            else if (d.ProviderSigned || d.Type == "NDA")
+                                            {
+                                                <div class="text-warning">Confirmación por correo pendiente.</div>
+                                            }
                                         }
                                         else
                                         {
@@ -169,11 +182,12 @@
                                         <form method="post" asp-page-handler="RegeneratePdf">
                                             <input type="hidden" name="clientId" value="@Model.Client.Id" />
                                             <input type="hidden" name="docId" value="@d.Id" />
-                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerar PDF</button>
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit" disabled="@(d.IsSigned || d.ProviderSigned)">Regenerar PDF</button>
                                         </form>
                                         <button
                                             type="button"
                                             class="btn btn-sm btn-outline-primary js-open-sign-modal"
+                                            disabled="@d.IsSigned"
                                             data-doc-id="@d.Id"
                                             data-doc-title="@title">
                                             Enviar firma
@@ -183,6 +197,26 @@
                                             <input type="hidden" name="docId" value="@d.Id" />
                                             <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar PDF</button>
                                         </form>
+                                        @if (Model.CanSignForProvider && d.Type != "NDA" && d.IsSigned && !d.ProviderSigned)
+                                        {
+                                            <form method="post" asp-page-handler="SignProvider" class="border rounded p-3 w-100" onsubmit="this.querySelector('button').disabled=true;">
+                                                <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                                <input type="hidden" name="docId" value="@d.Id" />
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="accept-@d.Id" required />
+                                                    <label class="form-check-label small" for="accept-@d.Id">He revisado el PDF y acepto firmar este contrato en representación de HN Solutions con mi cuenta administradora.</label>
+                                                </div>
+                                                <button class="btn btn-sm btn-success" type="submit">Firmar por HN y enviar contrato final</button>
+                                            </form>
+                                        }
+                                        @if (d.IsSigned && (d.ProviderSigned || d.Type == "NDA") && !d.ConfirmationSent)
+                                        {
+                                            <form method="post" asp-page-handler="SendConfirmation" onsubmit="this.querySelector('button').disabled=true;">
+                                                <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                                <input type="hidden" name="docId" value="@d.Id" />
+                                                <button class="btn btn-sm btn-outline-success" type="submit">Enviar confirmación final</button>
+                                            </form>
+                                        }
                                     </div>
                                 </div>
                             </article>

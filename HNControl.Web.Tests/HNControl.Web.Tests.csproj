@@ -8,4 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="../HNControl.Web/HNControl.Web.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.24" />
+  </ItemGroup>
 </Project>

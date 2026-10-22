@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -62,6 +62,7 @@ public class EditModel : PageModel
     {
         var item = await _db.ProjectDeliveryFormats.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
+        if (item.SignedAt.HasValue || item.ProviderSignedAt.HasValue) return BadRequest("El acta tiene firmas y no puede editarse.");
 
         DeliveryId = id;
         await LoadCatalogsAsync();
@@ -77,6 +78,7 @@ public class EditModel : PageModel
 
         var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
+        if (item.SignedAt.HasValue || item.ProviderSignedAt.HasValue) return BadRequest("El acta tiene firmas y no puede editarse.");
         ExistingEvidences = ProjectDeliveryPayload.Parse(item.ServiceSummary).Evidences;
 
         if (!ModelState.IsValid) return Page();
@@ -113,6 +115,10 @@ public class EditModel : PageModel
         item.DeliveryDate = Input.DeliveryDate.Date;
         item.PdfStoragePath = null;
         item.PdfGeneratedAt = null;
+        item.SigningSnapshotJson = null;
+        item.Status = ProjectDeliveryFormatStatus.Draft;
+        item.PublicToken = Guid.NewGuid().ToString("N");
+        item.TokenExpiresAt = null;
         item.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -123,18 +129,23 @@ public class EditModel : PageModel
     {
         var item = await _db.ProjectDeliveryFormats.FirstOrDefaultAsync(x => x.Id == id);
         if (item == null) return NotFound();
+        if (item.SignedAt.HasValue || item.ProviderSignedAt.HasValue) return BadRequest("El acta tiene firmas y sus evidencias no pueden modificarse.");
 
         var payload = ProjectDeliveryPayload.Parse(item.ServiceSummary);
         var evidence = payload.Evidences.FirstOrDefault(x => string.Equals(x.StoragePath, storagePath, StringComparison.Ordinal));
         if (evidence != null)
         {
             payload.Evidences.Remove(evidence);
-            await _storage.DeleteIfExistsAsync(evidence.StoragePath ?? "");
             item.ServiceSummary = ProjectDeliveryPayload.Serialize(payload);
             item.PdfStoragePath = null;
             item.PdfGeneratedAt = null;
+            item.SigningSnapshotJson = null;
+            item.Status = ProjectDeliveryFormatStatus.Draft;
+            item.PublicToken = Guid.NewGuid().ToString("N");
+            item.TokenExpiresAt = null;
             item.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            await _storage.DeleteIfExistsAsync(evidence.StoragePath ?? "");
         }
 
         return RedirectToPage(new { id });

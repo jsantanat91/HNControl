@@ -67,6 +67,8 @@ if (args.Length > 1)
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(args[1]))!);
     File.WriteAllBytes(args[1], service.BuildClientLegalDocx(doc, client, cases[0].Item1));
 }
+await ClientCommunicationTests.RunAsync(service, Check);
+await DeliveryCommunicationTests.RunAsync(service, Check);
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class TestEnvironment(string root) : IWebHostEnvironment

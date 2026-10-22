@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Globalization;
+using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -20,6 +21,10 @@ public class DocumentsModel : PageModel
     private readonly IConfiguration _cfg;
     private readonly ITemplateDocxService _docxTemplates;
     private readonly IOfficePdfConverter _officePdfConverter;
+    private readonly ClientDocumentSigningService _signing;
+    private readonly IActionAccessService _actions;
+    private readonly ILogger<DocumentsModel> _logger;
+    private readonly DocumentNotificationRecipients _recipients;
 
     public DocumentsModel(
         ApplicationDbContext db,
@@ -28,7 +33,11 @@ public class DocumentsModel : PageModel
         IEmailSender email,
         IConfiguration cfg,
         ITemplateDocxService docxTemplates,
-        IOfficePdfConverter officePdfConverter)
+        IOfficePdfConverter officePdfConverter,
+        ClientDocumentSigningService signing,
+        IActionAccessService actions,
+        ILogger<DocumentsModel> logger,
+        DocumentNotificationRecipients recipients)
     {
         _db = db;
         _pdf = pdf;
@@ -37,12 +46,17 @@ public class DocumentsModel : PageModel
         _cfg = cfg;
         _docxTemplates = docxTemplates;
         _officePdfConverter = officePdfConverter;
+        _signing = signing;
+        _actions = actions;
+        _logger = logger;
+        _recipients = recipients;
     }
 
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
     public List<LegalDocRow> Docs { get; set; } = new();
     public List<SignContactOption> SignContacts { get; set; } = new();
+    public bool CanSignForProvider => AppRoles.IsGlobalAdmin(User);
 
     [TempData] public string? Flash { get; set; }
     [TempData] public string? FlashType { get; set; }
@@ -58,7 +72,10 @@ public class DocumentsModel : PageModel
         string? SignedAt,
         string? SignedBy,
         Guid? ContractId,
-        string? ContractLabel);
+        string? ContractLabel,
+        bool ProviderSigned,
+        string? ProviderSignedBy,
+        bool ConfirmationSent);
 
     public record SignContactOption(
         Guid Id,
@@ -69,18 +86,22 @@ public class DocumentsModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid clientId)
     {
+        if (!await CanManageAsync(clientId)) return Forbid();
         await LoadAsync(clientId);
         return Client == null ? NotFound() : Page();
     }
 
     public async Task<IActionResult> OnPostGenerateAsync(Guid clientId, ClientLegalDocumentType type, Guid? contractId)
     {
+        if (!await CanManageAsync(clientId)) return Forbid();
+        if (!Enum.IsDefined(type)) return BadRequest();
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == clientId);
         if (client == null) return NotFound();
 
         var contract = contractId.HasValue
             ? await _db.ClientServiceContracts.FirstOrDefaultAsync(x => x.Id == contractId.Value && x.ClientId == clientId)
             : null;
+        if (contractId.HasValue && contract == null) return BadRequest("El contrato no pertenece al cliente.");
 
         var doc = await _db.ClientLegalDocuments
             .FirstOrDefaultAsync(x =>
@@ -101,6 +122,12 @@ public class DocumentsModel : PageModel
             _db.ClientLegalDocuments.Add(doc);
         }
 
+        if (doc.SignedAt.HasValue || doc.ProviderSignedAt.HasValue)
+        {
+            Flash = "El documento ya contiene firmas y no puede reemplazarse.";
+            FlashType = "warning";
+            return RedirectToPage(new { clientId });
+        }
         doc.Status = ClientLegalDocumentStatus.Draft;
         var documentSubject = FirstNonEmpty(contract?.Label, client.Name);
         doc.Title = type == ClientLegalDocumentType.NDA
@@ -133,10 +160,18 @@ public class DocumentsModel : PageModel
 
     public async Task<IActionResult> OnPostSendForSignatureAsync(Guid clientId, Guid docId, Guid? contactId)
     {
+        if (!await CanManageAsync(clientId)) return Forbid();
         var doc = await _db.ClientLegalDocuments
             .Include(x => x.Client)
             .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
         if (doc == null) return NotFound();
+
+        if (doc.SignedAt.HasValue)
+        {
+            Flash = "La firma del cliente ya está registrada. Complete la firma HN o envíe la confirmación final.";
+            FlashType = "info";
+            return RedirectToPage(new { clientId });
+        }
 
         if (string.IsNullOrWhiteSpace(doc.PdfStoragePath))
         {
@@ -215,12 +250,12 @@ public class DocumentsModel : PageModel
             <p>Hola {System.Net.WebUtility.HtmlEncode(recipientName)},</p>
             <p>Ya puedes revisar y firmar digitalmente el siguiente documento:</p>
             <p><a href="{signUrl}">{signUrl}</a></p>
-            <p>Al firmarlo, recibirás el PDF actualizado con la firma digital.</p>
+            <p>Cuando se completen las firmas requeridas, recibirás el PDF final firmado.</p>
             <p>Saludos,<br/>HN Control</p>
             """,
             attachment,
             attachmentName,
-            "application/pdf");
+            "application/pdf", await _recipients.GetAsync());
 
         Flash = "Documento enviado para firma digital.";
         FlashType = "success";
@@ -229,6 +264,7 @@ public class DocumentsModel : PageModel
 
     public async Task<IActionResult> OnPostDownloadAsync(Guid clientId, Guid docId)
     {
+        if (!await CanManageAsync(clientId)) return Forbid();
         var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
         if (doc == null) return NotFound();
         if (string.IsNullOrWhiteSpace(doc.PdfStoragePath)) return BadRequest("No hay PDF.");
@@ -240,6 +276,7 @@ public class DocumentsModel : PageModel
 
     public async Task<IActionResult> OnPostRegeneratePdfAsync(Guid clientId, Guid docId)
     {
+        if (!await CanManageAsync(clientId)) return Forbid();
         var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
         if (doc == null) return NotFound();
 
@@ -292,21 +329,27 @@ public class DocumentsModel : PageModel
                 x.Id,
                 x.DocumentType == ClientLegalDocumentType.NDA ? "NDA" : "Contrato",
                 x.Title,
+                x.SignedAt.HasValue && x.DocumentType == ClientLegalDocumentType.Contract && !x.ProviderSignedAt.HasValue ? "Pendiente firma HN" :
                 x.Status == ClientLegalDocumentStatus.Draft ? "Borrador" :
                 x.Status == ClientLegalDocumentStatus.SentForSignature ? "En firma" : "Firmado",
                 !string.IsNullOrWhiteSpace(x.PdfStoragePath),
-                x.Status == ClientLegalDocumentStatus.Signed,
+                x.SignedAt.HasValue,
                 x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                 x.SignedAt.HasValue ? x.SignedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : null,
                 x.SignedByName,
                 x.ClientServiceContractId,
-                x.ClientServiceContract != null ? x.ClientServiceContract.Label : null
+                x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
+                x.ProviderSignedAt.HasValue,
+                x.ProviderSignedByName,
+                x.CompletionEmailSentAt.HasValue
             ))
             .ToListAsync();
     }
 
     private async Task RegeneratePdfAsync(ClientLegalDocument doc)
     {
+        if (doc.SignedAt.HasValue || doc.ProviderSignedAt.HasValue)
+            throw new InvalidOperationException("El documento ya contiene firmas. Se conserva su PDF firmado sin modificar las condiciones.");
         var dbDoc = await _db.ClientLegalDocuments
             .Include(x => x.Client)
             .Include(x => x.ClientServiceContract)
@@ -327,6 +370,7 @@ public class DocumentsModel : PageModel
                 dbDoc.ContractEndDate = dbDoc.ClientServiceContract.ContractEndDate;
             }
 
+            dbDoc.SigningSnapshotJson = ClientSigningSnapshot.Capture(dbDoc.Client, dbDoc.ClientServiceContract);
             var docxBytes = _docxTemplates.BuildClientLegalDocx(dbDoc, dbDoc.Client, dbDoc.ClientServiceContract);
             pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{dbDoc.DocumentType}_{dbDoc.Id:N}");
         }
@@ -340,6 +384,77 @@ public class DocumentsModel : PageModel
         dbDoc.PdfGeneratedAt = DateTime.UtcNow;
         dbDoc.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    public async Task<IActionResult> OnPostSignProviderAsync(Guid clientId, Guid docId, bool acceptTerms)
+    {
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        if (!acceptTerms) return BadRequest("Confirme la aceptación del contrato en representación de HN Solutions.");
+        var doc = await _db.ClientLegalDocuments.Include(x => x.Client).Include(x => x.ClientServiceContract)
+            .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
+        if (doc == null) return NotFound();
+        if (doc.DocumentType != ClientLegalDocumentType.Contract || !doc.SignedAt.HasValue)
+            return BadRequest("Primero debe firmar el cliente.");
+        if (!doc.ProviderSignedAt.HasValue)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var account = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (account == null || !ClientCommunicationTemplates.IsEmail(account.Email))
+                return BadRequest("La cuenta administradora debe tener un correo válido para firmar.");
+            var name = await _db.EmployeeProfiles.Where(x => x.UserId == userId).Select(x => x.FullName).FirstOrDefaultAsync();
+            doc.ProviderSignedByName = FirstNonEmpty(name, account.UserName, account.Email);
+            doc.ProviderSignedByEmail = account.Email;
+            doc.ProviderSignedByUserId = account.Id;
+            doc.ProviderSignedAt = DateTime.UtcNow;
+            try
+            {
+                await _signing.SaveSignedPdfAsync(doc);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo guardar firma HN de {DocumentId}", docId);
+                Flash = "No se pudo guardar la firma HN y su PDF. Actualice la página y vuelva a intentar; verifique el convertidor PDF si el problema continúa.";
+                FlashType = "danger";
+                return RedirectToPage(new { clientId });
+            }
+        }
+        return await SendFinalConfirmationAsync(clientId, docId);
+    }
+
+    public async Task<IActionResult> OnPostSendConfirmationAsync(Guid clientId, Guid docId)
+    {
+        if (!await CanManageAsync(clientId)) return Forbid();
+        var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
+        if (doc == null) return NotFound();
+        if (!ClientDocumentSigningService.IsCompleted(doc)) return BadRequest("Faltan firmas para enviar la confirmación final.");
+        return await SendFinalConfirmationAsync(clientId, docId);
+    }
+
+    private async Task<IActionResult> SendFinalConfirmationAsync(Guid clientId, Guid docId)
+    {
+        try
+        {
+            await _signing.NotifyCompletedAsync(docId);
+            Flash = "Documento firmado. Confirmación enviada al cliente y a los destinatarios internos configurados.";
+            FlashType = "success";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Confirmación pendiente para documento {DocumentId}", docId);
+            Flash = "Las firmas y el PDF quedaron guardados, pero el correo no pudo confirmarse. Revise SMTP y use Enviar confirmación final para reintentar.";
+            FlashType = "warning";
+        }
+        return RedirectToPage(new { clientId });
+    }
+
+    private async Task<bool> CanManageAsync(Guid clientId)
+    {
+        if (AppRoles.IsGlobalAdmin(User)) return true;
+        if (!await _actions.HasActionAsync(User, AppActions.ClientsEdit)) return false;
+        if (await _actions.HasActionAsync(User, AppActions.ClientsView)) return true;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return await _actions.HasActionAsync(User, AppActions.ClientsViewOwn)
+            && await _db.Clients.AnyAsync(x => x.Id == clientId && x.OwnerUserId == userId);
     }
 
     private static string BuildTemplateTerms(ClientLegalDocumentType type, Client client, ClientServiceContract? contract)

@@ -19,6 +19,13 @@ public class TemplateDocxService : ITemplateDocxService
 
     public byte[] BuildClientLegalDocx(ClientLegalDocument document, Client client, ClientServiceContract? contract)
     {
+        if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
+        {
+            var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson)
+                ?? throw new InvalidOperationException("No se pudo leer la versión del contrato preparada para firma.");
+            client = snapshot.Client;
+            contract = snapshot.Contract;
+        }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
             : "Contrato_Blanco.docx";
@@ -33,6 +40,13 @@ public class TemplateDocxService : ITemplateDocxService
 
     public byte[] BuildDeliveryDocx(ProjectDeliveryFormat delivery, Client client, Project? project)
     {
+        if (!string.IsNullOrWhiteSpace(delivery.SigningSnapshotJson))
+        {
+            var snapshot = JsonSerializer.Deserialize<DeliverySigningSnapshot>(delivery.SigningSnapshotJson)
+                ?? throw new InvalidOperationException("No se pudo leer la versión del acta preparada para firma.");
+            client = snapshot.Client;
+            project = snapshot.ProjectTitle == null ? null : new Project { Title = snapshot.ProjectTitle };
+        }
         var bytes = LoadTemplateBytes("Acta_Entrega_Material_Servicios.docx");
         var replacements = BuildDeliveryReplacements(delivery, client, project);
         return ReplaceDocumentXml(bytes, replacements);
@@ -127,7 +141,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["HASHFIRMA"] = firmaHash,
             ["FIRMAHASH"] = firmaHash,
             ["SELLODIGITAL"] = firmaHash,
-            ["FIRMAHN"] = firmaHash,
+            ["FIRMAHN"] = BuildProviderSignatureText(doc),
             ["FIRMAFECHA"] = firmaFecha,
             ["FIRMACORREO"] = firmaCorreo,
             ["FIRMAINFO"] = firma,
@@ -168,7 +182,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["HASHFIRMA"] = firmaHash,
             ["FIRMAHASH"] = firmaHash,
             ["SELLODIGITAL"] = firmaHash,
-            ["FIRMAHN"] = firmaHash,
+            ["FIRMAHN"] = BuildProviderSignatureText(doc),
             ["FIRMAFECHA"] = firmaFecha,
             ["FIRMACORREO"] = firmaCorreo,
             ["FIRMAINFO"] = firma,
@@ -187,20 +201,21 @@ public class TemplateDocxService : ITemplateDocxService
         var r = new Dictionary<string, string>
         {
             ["RSCLIENTE"] = Safe(client.Name),
+            ["RLCLIENTE"] = Safe(client.LegalRepresentative, "-"),
+            ["CORREOFACTURA"] = Safe(client.BillingEmail, "-"),
             ["FECHAHOY"] = dt,
             ["DIRECCIONC"] = Safe(client.FiscalAddress, client.Address, delivery.DeliveryLocation, "-"),
             ["NOMBREPROYECTO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, delivery.Title, "-"),
-            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.SignedByName, "TÃ©cnico asignado"),
+            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.ProviderSignedByName, "Técnico asignado"),
             ["SEGMENTOLAN"] = Safe(tpl.SEGMENTOLAN, ""),
             ["IPPUBLICA"] = Safe(tpl.IPPUBLICA, ""),
-            ["FIRMACLIENTE"] = delivery.Status == ProjectDeliveryFormatStatus.Signed
-                ? Safe(delivery.SignedByName, delivery.ReceiverName, "-")
-                : "PENDIENTE DE FIRMA",
+            ["FIRMACLIENTE"] = DeliverySignature(delivery.SignedByName, delivery.SignedByEmail, delivery.SignedAt),
+            ["FIRMAHN"] = DeliverySignature(delivery.ProviderSignedByName, delivery.ProviderSignedByEmail, delivery.ProviderSignedAt),
 
             // Compatibilidad con documento previo.
             ["Naturasol S.A. de C.V."] = Safe(client.Name),
             ["Sistema BioTime PRO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, "Servicio contratado"),
-            ["Jorge Alberto Santana Torres"] = Safe(delivery.SignedByName, tpl.NOMBRETECNICO, "Responsable HN"),
+            ["Jorge Alberto Santana Torres"] = Safe(delivery.ProviderSignedByName, tpl.NOMBRETECNICO, "Responsable HN"),
             ["RamsÃ©s Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Ramses Estrada Gaona"] = Safe(delivery.ReceiverName, "Recibe cliente"),
             ["Oficinas Corporativas"] = Safe(delivery.DeliveryLocation),
@@ -221,6 +236,10 @@ public class TemplateDocxService : ITemplateDocxService
 
         return r;
     }
+
+    private static string DeliverySignature(string? name, string? email, DateTime? signedAt) => signedAt.HasValue
+        ? $"Firmado digitalmente por {name} ({email}), {signedAt:dd/MM/yyyy HH:mm} UTC."
+        : "PENDIENTE DE FIRMA";
 
     private static string BuildContractServiceName(ClientServiceContract? contract, string? templateService)
     {
@@ -252,7 +271,7 @@ public class TemplateDocxService : ITemplateDocxService
         return $"{name} {capacity}";
     }
 
-    private static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)
+    public static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)
     {
         var explicitTerm = ExtractContractTermFromNotes(contract?.Notes);
         if (!string.IsNullOrWhiteSpace(explicitTerm))
@@ -357,7 +376,7 @@ public class TemplateDocxService : ITemplateDocxService
     
     private static string BuildDigitalSignatureText(ClientLegalDocument doc, string fallbackName)
     {
-        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+        if (!doc.SignedAt.HasValue)
             return "PENDIENTE DE FIRMA";
 
         var signer = Safe(doc.SignedByName, fallbackName);
@@ -370,7 +389,7 @@ public class TemplateDocxService : ITemplateDocxService
 
     private static string BuildDigitalSignatureHash(ClientLegalDocument doc, string fallbackName)
     {
-        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+        if (!doc.SignedAt.HasValue)
             return "PENDIENTE DE FIRMA";
 
         var signer = Safe(doc.SignedByName, fallbackName);
@@ -381,7 +400,7 @@ public class TemplateDocxService : ITemplateDocxService
 
     private static string BuildDigitalSignatureDate(ClientLegalDocument doc)
     {
-        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+        if (!doc.SignedAt.HasValue)
             return "PENDIENTE DE FIRMA";
 
         return doc.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
@@ -389,10 +408,18 @@ public class TemplateDocxService : ITemplateDocxService
 
     private static string BuildDigitalSignatureEmail(ClientLegalDocument doc)
     {
-        if (doc.Status != ClientLegalDocumentStatus.Signed || !doc.SignedAt.HasValue)
+        if (!doc.SignedAt.HasValue)
             return "PENDIENTE DE FIRMA";
 
         return Safe(doc.SignedByEmail, "-");
+    }
+
+    private static string BuildProviderSignatureText(ClientLegalDocument doc)
+    {
+        if (!doc.ProviderSignedAt.HasValue) return "PENDIENTE DE FIRMA HN SOLUTIONS";
+        var payload = $"{doc.Id}|HN|{doc.ProviderSignedByUserId}|{doc.ProviderSignedByEmail}|{doc.ProviderSignedAt:O}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
+        return $"Firmado digitalmente por {doc.ProviderSignedByName} ({doc.ProviderSignedByEmail}), en representación de HN Solutions, el {doc.ProviderSignedAt:dd/MM/yyyy HH:mm} UTC. Hash: {hash}";
     }
 
     private static ContractTemplateData ParseContractTemplateData(string? raw)

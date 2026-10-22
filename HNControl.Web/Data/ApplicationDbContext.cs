@@ -917,6 +917,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
         b.Entity<SystemConfiguration>(e =>
         {
+            e.Property(x => x.DocumentNotificationEmails).HasMaxLength(4000)
+                .HasDefaultValue(SystemConfiguration.DefaultDocumentNotificationEmails);
             e.HasKey(x => x.Id);
             e.Property(x => x.CompanyName).HasMaxLength(180);
             e.Property(x => x.CompanyLegalName).HasMaxLength(180);

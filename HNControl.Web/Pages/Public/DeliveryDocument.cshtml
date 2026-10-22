@@ -30,15 +30,23 @@
         <div class="alert alert-danger">@Model.Error</div>
     }
 
-    @if (Model.Item.Status == ProjectDeliveryFormatStatus.Signed)
+    @if (Model.Item.SignedAt.HasValue)
     {
         <div class="alert alert-success">
             Firmado por <b>@Model.Item.SignedByName</b> · @Model.Item.SignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            @if (Model.Item.ProviderSignedAt.HasValue)
+            {
+                <p class="mb-0 mt-2">Firmado por HN Solutions: <strong>@Model.Item.ProviderSignedByName</strong> · @Model.Item.ProviderSignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</p>
+            }
+            else
+            {
+                <p class="mb-0 mt-2">Su firma está registrada. Cuando HN Solutions complete su firma, enviaremos el acta final por correo al cliente y a los destinatarios internos configurados.</p>
+            }
         </div>
     }
     else
     {
-        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover">
+        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover" onsubmit="return captureSig()">
             <div class="card-header fw-semibold">Firma digital del receptor</div>
             <div class="card-body">
                 <input type="hidden" name="token" value="@RouteData.Values["token"]" />
@@ -46,11 +54,11 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Nombre</label>
-                        <input class="form-control" name="signerName" value="@Model.Item.ReceiverName" required />
+                        <input class="form-control" name="signerName" maxlength="200" value="@Model.Item.ReceiverName" required />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Correo</label>
-                        <input class="form-control" name="signerEmail" value="@Model.Item.ReceiverEmail" required />
+                        <input class="form-control" type="email" maxlength="256" name="signerEmail" value="@Model.Item.ReceiverEmail" required />
                     </div>
                     <div class="col-12">
                         <label class="form-label">Firma</label>
@@ -58,11 +66,16 @@
                             <canvas id="sigCanvas" class="w-100" style="height:220px; touch-action:none;"></canvas>
                         </div>
                         <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="clearSig()">Limpiar</button>
+                        <div id="signatureError" class="text-danger mt-2" hidden>Dibuje su firma antes de continuar.</div>
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="acceptTerms" required />
+                            <label class="form-check-label" for="acceptTerms">He revisado el acta y acepto firmarla electrónicamente en representación del cliente.</label>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="card-footer">
-                <button class="btn btn-primary" type="submit" onclick="captureSig()">Firmar acta</button>
+                <button class="btn btn-primary" type="submit">Firmar acta</button>
             </div>
         </form>
     }
@@ -72,6 +85,7 @@
 {
     <script>
         const canvas = document.getElementById('sigCanvas');
+        let hasSignature = false;
         if (canvas) {
             const ctx = canvas.getContext('2d');
             const resize = () => {
@@ -79,6 +93,7 @@
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = Math.floor(rect.width * dpr);
                 canvas.height = Math.floor(rect.height * dpr);
+                hasSignature = false;
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 ctx.lineWidth = 2.5;
                 ctx.lineCap = 'round';
@@ -103,6 +118,7 @@
                 ctx.moveTo(lx, ly);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
+                hasSignature = true;
                 lx = p.x; ly = p.y;
                 ev.preventDefault();
             };
@@ -123,13 +139,19 @@
             ctx.save();
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSignature = false;
             ctx.restore();
             const hidden = document.getElementById('sigDataUrl');
             if (hidden) hidden.value = '';
         }
         function captureSig() {
-            if (!canvas) return;
+            if (!canvas || !hasSignature) {
+                document.getElementById('signatureError').hidden = false;
+                return false;
+            }
             document.getElementById('sigDataUrl').value = canvas.toDataURL('image/png');
+            canvas.closest('form').querySelector('button[type=submit]').disabled = true;
+            return true;
         }
     </script>
 }

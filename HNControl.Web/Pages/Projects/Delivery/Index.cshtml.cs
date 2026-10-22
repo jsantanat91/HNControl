@@ -29,6 +29,7 @@ public class IndexModel : PageModel
                 x.Client != null ? x.Client.Name : "-",
                 x.Project != null ? x.Project.Title : "-",
                 x.DeliveryDate.ToString("yyyy-MM-dd"),
+                x.SignedAt.HasValue && !x.ProviderSignedAt.HasValue ? "Pendiente firma HN" :
                 x.Status == ProjectDeliveryFormatStatus.Draft ? "Borrador" :
                 x.Status == ProjectDeliveryFormatStatus.SentForSignature ? "En firma" : "Firmado",
                 x.ReceiverName,

@@ -2,5 +2,5 @@
 
 public interface IEmailSender
 {
-    Task SendAsync(string toEmail, string subject, string htmlBody, byte[]? attachmentBytes = null, string? attachmentName = null, string? attachmentContentType = null);
+    Task SendAsync(string toEmail, string subject, string htmlBody, byte[]? attachmentBytes = null, string? attachmentName = null, string? attachmentContentType = null, IReadOnlyCollection<string>? ccEmails = null);
 }

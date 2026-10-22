@@ -238,6 +238,9 @@ builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 
 // EMAIL: evitamos ambigüedad con Identity.UI IEmailSender
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
+builder.Services.AddScoped<ClientDocumentSigningService>();
+builder.Services.AddScoped<DocumentNotificationRecipients>();
+builder.Services.AddScoped<DeliveryDocumentSigningService>();
 builder.Services.AddScoped<IWhatsAppSender, MetaWhatsAppSender>();
 builder.Services.AddScoped<IPayrollDeductionLedger, PayrollDeductionLedgerService>();
 
