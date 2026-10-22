@@ -108,6 +108,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddControllers();
 builder.Services.AddScoped<MobileJwtTokenService>();
+builder.Services.AddScoped<SystemHealthReader>();
 
 // --------------------
 // Permisos por módulo (Employee)

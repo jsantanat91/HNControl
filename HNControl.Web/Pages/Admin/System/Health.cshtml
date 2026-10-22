@@ -1,0 +1,71 @@
+@page
+@model HNControl.Web.Pages.Admin.SystemPages.HealthModel
+@using HNControl.Web.Services
+@{
+    ViewData["Title"] = "Salud del sistema";
+    var health = Model.Health;
+    var database = health.Checks.FirstOrDefault(x => x.Name == "Base de datos");
+}
+<div class="hn-page-heading">
+    <div><div class="hn-eyebrow">TU PLATAFORMA DE OPERACIÓN</div><h1>Salud del sistema<span class="hn-title-dot">.</span></h1>
+    <p>Estado del servicio, versión instalada y notas de cada actualización.</p></div>
+    <a class="btn btn-outline-secondary" asp-page="Health"><i class="bi bi-arrow-clockwise me-2" aria-hidden="true"></i>Actualizar</a>
+</div>
+<div class="row g-3 mb-3 hn-health-metrics">
+    <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+        <div class="hn-metric-label"><span class="hn-metric-icon"><i class="bi bi-database" aria-hidden="true"></i></span>Base de datos</div>
+        <div class="hn-metric-value">@(database?.Healthy == true ? "Conectada" : "No disponible")</div>
+        <div class="hn-metric-foot">Conexión consultada en este momento</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+        <div class="hn-metric-label"><span class="hn-metric-icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>Tiempo en ejecución</div>
+        <div class="hn-metric-value">@SystemHealthReader.FormatUptime(health.Uptime)</div>
+        <div class="hn-metric-foot">Desde el inicio del proceso actual</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+        <div class="hn-metric-label"><span class="hn-metric-icon"><i class="bi bi-memory" aria-hidden="true"></i></span>Memoria de HN Control</div>
+        <div class="hn-metric-value">@SystemHealthReader.FormatBytes(health.ProcessMemoryBytes)</div>
+        <div class="hn-metric-foot">Proceso web · @health.AvailableProcessors procesadores disponibles</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+        <div class="hn-metric-label"><span class="hn-metric-icon"><i class="bi bi-device-hdd" aria-hidden="true"></i></span>Espacio disponible</div>
+        <div class="hn-metric-value">@SystemHealthReader.FormatBytes(health.DiskAvailableBytes)</div>
+        <div class="hn-metric-foot">Volumen de archivos · total @SystemHealthReader.FormatBytes(health.DiskTotalBytes)</div>
+    </div></div></div>
+</div>
+<p class="hn-query-time"><i class="bi bi-clock me-1" aria-hidden="true"></i>Consulta: @health.CheckedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm:ss zzz")</p>
+<div class="hn-feature-banner hn-version-banner">
+    <div><div class="hn-eyebrow">HN CONTROL · INSTALADO</div><h2>Versión <span>@ApplicationRelease.Version</span></h2>
+    <p>Tu operación de siempre, con una nueva presentación.</p></div>
+    <div class="hn-version-stamp"><i class="bi bi-journal-text" aria-hidden="true"></i><span>VERSIÓN ACTUAL</span><strong>v@(ApplicationRelease.Version)</strong></div>
+</div>
+<ul class="nav nav-tabs hn-health-tabs" role="tablist">
+    <li class="nav-item" role="presentation"><button class="nav-link active" id="health-tab" data-bs-toggle="tab" data-bs-target="#health-panel" type="button" role="tab" aria-controls="health-panel" aria-selected="true">Salud del sistema</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link" id="releases-tab" data-bs-toggle="tab" data-bs-target="#releases-panel" type="button" role="tab" aria-controls="releases-panel" aria-selected="false">Versiones y novedades</button></li>
+</ul>
+<div class="tab-content">
+    <section class="tab-pane fade show active" id="health-panel" role="tabpanel" aria-labelledby="health-tab" tabindex="0">
+        <div class="hn-section-heading"><div><div class="hn-eyebrow">DIAGNÓSTICO OPERATIVO</div><h2>Estado de los servicios</h2></div><span class="badge text-bg-light border">Solo lectura</span></div>
+        <div class="row g-3">
+        @foreach (var check in health.Checks)
+        {
+            <div class="col-md-6"><div class="card h-100"><div class="card-body hn-health-check">
+                <span class="hn-check-icon @(check.Healthy == true ? "is-ok" : check.Healthy == false ? "is-warning" : "is-unknown")"><i class="bi @(check.Healthy == true ? "bi-check-circle" : "bi-info-circle")" aria-hidden="true"></i></span>
+                <div><h3>@check.Name</h3><p>@check.Description</p><span class="hn-check-status">@check.Status</span></div>
+            </div></div></div>
+        }
+        </div>
+        <p class="text-muted small mt-4">Las mediciones corresponden al proceso y al volumen visibles para esta instancia. Esta consulta no envía correos, no prueba pagos ni reinicia servicios.</p>
+    </section>
+    <section class="tab-pane fade" id="releases-panel" role="tabpanel" aria-labelledby="releases-tab" tabindex="0">
+        <div class="hn-section-heading"><div><div class="hn-eyebrow">HISTORIAL DE ACTUALIZACIONES</div><h2>Lo nuevo en HN Control</h2></div></div>
+        @foreach (var release in ApplicationRelease.History)
+        {
+            <article class="card mb-3"><div class="card-body hn-release-note">
+                <div class="d-flex flex-wrap justify-content-between gap-2 mb-3"><span class="hn-release-pill">v@(release.Version)</span><time datetime="@release.Date.ToString("yyyy-MM-dd")" class="text-muted small">@release.Date.ToString("dd MMM yyyy")</time></div>
+                <h3>@release.Title</h3>
+                <ul>@foreach (var change in release.Changes) { <li><span>@change.Type</span><p>@change.Description</p></li> }</ul>
+            </div></article>
+        }
+    </section>
+</div>

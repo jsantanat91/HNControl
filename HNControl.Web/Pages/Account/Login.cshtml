@@ -1,32 +1,31 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Account.LoginModel
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Ingreso";
+    ViewData["RefreshLogin"] = true;
 }
 
-<div class="row justify-content-between align-items-center g-4">
-    <div class="col-lg-6 d-none d-lg-flex">
-        <div class="w-100 p-4 p-xl-5 hn-auth-intro">
-            <span class="hn-auth-kicker mb-3">Plataforma interna</span>
-
-            <h1 class="display-4 fw-bold lh-sm mb-3">
-                BIENVENIDO A<br />
-                <span class="text-white">HN CONTROL</span>
-            </h1>
-
-            <p class="fs-5 mb-2">Gestiona operación, tickets, proyectos e inventario desde un solo panel.</p>
-            <p class="mb-0">Seguimiento completo para clientes, técnicos y administración.</p>
+<div class="hn-login-grid">
+    <section class="hn-login-story" aria-label="HN Control">
+        <div class="hn-login-brand"><span>HN</span><div><strong>HN Control</strong><small>GESTIÓN Y OPERACIÓN</small></div></div>
+        <div class="hn-login-story-content">
+            <div class="hn-eyebrow">TU OPERACIÓN, A LA VISTA</div>
+            <h1>Cada servicio.<br />Cada persona.<br /><span>En un solo lugar.</span></h1>
+            <p>Conecta a tu equipo con lo que importa. Clientes, servicios y proyectos, desde una misma plataforma.</p>
+            <div class="hn-login-modules" aria-hidden="true">
+                <strong><i class="bi bi-grid me-2"></i>Tu centro de operación</strong>
+                <div class="hn-login-module-grid"><div><i class="bi bi-people"></i><small>EQUIPO</small></div><div><i class="bi bi-clipboard-check"></i><small>SERVICIOS</small></div><div><i class="bi bi-kanban"></i><small>PROYECTOS</small></div></div>
+            </div>
         </div>
-    </div>
-
-    <div class="col-12 col-md-8 col-lg-5 col-xl-4">
-        <div class="card hn-auth-card">
-            <div class="card-body p-4 p-lg-5">
-                <div class="text-center mb-4">
-                    <h1 class="h2 m-0 fw-bold text-white">INICIAR SESIÓN</h1>
-                </div>
-
+        <div class="hn-login-story-footer"><span><i class="bi bi-lock me-1" aria-hidden="true"></i>Acceso privado a tu operación</span><span>HUBNET SOLUTIONS</span></div>
+    </section>
+    <section class="hn-login-panel" aria-labelledby="login-title">
+        <div class="hn-login-form-wrap">
+            <div class="hn-login-symbol" aria-hidden="true"><i class="bi bi-grid-1x2"></i></div>
+            <div class="hn-eyebrow">BIENVENIDO A HN CONTROL</div>
+            <h2 id="login-title">Todo bajo control.</h2>
+            <p>Inicia sesión para acceder a tu plataforma de operación.</p>
                 @if (!string.IsNullOrWhiteSpace(Model.Error))
                 {
                     <div class="alert alert-danger">@Model.Error</div>
@@ -73,13 +72,10 @@
 
                     <button class="btn btn-primary w-100 py-2 fw-semibold" type="submit">@(Model.Input.AwaitingTwoFactor ? "Validar código" : "Iniciar sesión")</button>
                 </form>
-            </div>
+            <div class="hn-login-help"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>Acceso restringido. Si necesitas ayuda con tu cuenta, contacta al administrador de tu plataforma.</span></div>
         </div>
-
-        <div class="text-center text-light small mt-3">
-            &copy; @DateTime.Now.Year · HN Control
-        </div>
-    </div>
+        <div class="hn-login-panel-footer"><span>HN Control · v@(HNControl.Web.Services.ApplicationRelease.Version)</span><span>Una plataforma de Hubnet Solutions</span></div>
+    </section>
 </div>
 
 @section Scripts {

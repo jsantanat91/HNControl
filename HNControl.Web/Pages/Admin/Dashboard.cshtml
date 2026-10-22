@@ -1,19 +1,26 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.DashboardModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Panel";
 }
 
-<div class="hn-dashboard-hero mb-3">
+<div class="hn-page-heading">
     <div>
-        <h1 class="h4 m-0">Panel ejecutivo</h1>
-        <div class="text-muted small">Operacion, KPI y seguimiento diario</div>
+        <div class="hn-eyebrow">TU PLATAFORMA DE OPERACIÓN</div>
+        <h1>Panel ejecutivo<span class="hn-title-dot">.</span></h1>
+        <p>El estado de tu equipo, tus servicios y tu operación diaria.</p>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-primary" asp-page="/Performance/Rate">Calificar</a>
         <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Exportar nomina</a>
     </div>
+</div>
+
+<div class="hn-feature-banner">
+    <div><div class="hn-eyebrow">TODO CONECTADO</div><h2>Tu operación.<br />En una sola <span>vista.</span></h2>
+    <p>Personas, clientes y servicios.<br />La información que necesitas para dar el siguiente paso.</p></div>
+    <div class="hn-feature-mark" aria-hidden="true"><strong>HN</strong><small>CONTROL</small></div>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.FlashSuccess))
@@ -29,7 +36,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-blue">
             <div class="card-body">
-                <div class="text-muted small">Empleados</div>
+                <div class="text-muted small"><i class="bi bi-people" aria-hidden="true"></i>Empleados</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.Employees</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Employees/Index">Ver</a>
             </div>
@@ -38,7 +45,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
-                <div class="text-muted small">Ordenes en revision</div>
+                <div class="text-muted small"><i class="bi bi-clipboard-check" aria-hidden="true"></i>Ordenes en revision</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OrdersInReview</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/ServiceOrders/Index">Ver</a>
             </div>
@@ -47,7 +54,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
-                <div class="text-muted small">SLA vencidos (proyectos)</div>
+                <div class="text-muted small"><i class="bi bi-hourglass-split" aria-hidden="true"></i>SLA vencidos (proyectos)</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OverdueProjects</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Projects/Index">Ver</a>
             </div>
@@ -56,7 +63,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-amber">
             <div class="card-body">
-                <div class="text-muted small">Viaticos pendientes</div>
+                <div class="text-muted small"><i class="bi bi-wallet2" aria-hidden="true"></i>Viaticos pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingViaticWeeks</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Viaticos/Index">Ver</a>
             </div>
@@ -66,7 +73,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-green">
             <div class="card-body">
-                <div class="text-muted small">Vacaciones pendientes</div>
+                <div class="text-muted small"><i class="bi bi-calendar2-week" aria-hidden="true"></i>Vacaciones pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingLeaveRequests</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Leaves/Index">Ver</a>
             </div>
@@ -75,7 +82,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-blue">
             <div class="card-body">
-                <div class="text-muted small">Examenes por calificar</div>
+                <div class="text-muted small"><i class="bi bi-journal-check" aria-hidden="true"></i>Examenes por calificar</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.ExamsToGrade</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Exams/Index">Ver</a>
             </div>
@@ -84,7 +91,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
-                <div class="text-muted small">Inventario · ordenes pendientes</div>
+                <div class="text-muted small"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>Inventario · ordenes pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingInventoryOrders</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Inventory/Approvals/Index">Ver</a>
             </div>
@@ -93,7 +100,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
-                <div class="text-muted small">Inventario · bajo stock</div>
+                <div class="text-muted small"><i class="bi bi-box-seam" aria-hidden="true"></i>Inventario · bajo stock</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.LowStockItems</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Inventory/Items/Index">Ver</a>
             </div>
@@ -102,7 +109,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-green">
             <div class="card-body">
-                <div class="text-muted small">Tickets abiertos</div>
+                <div class="text-muted small"><i class="bi bi-chat-square-text" aria-hidden="true"></i>Tickets abiertos</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OpenTickets</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index">Ver</a>
             </div>
@@ -111,7 +118,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-amber">
             <div class="card-body">
-                <div class="text-muted small">Tickets SLA vencido</div>
+                <div class="text-muted small"><i class="bi bi-alarm" aria-hidden="true"></i>Tickets SLA vencido</div>
                 <div class="fs-3 fw-bold text-danger">@Model.Kpi.TicketSlaBreached</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index" asp-route-status="open">Ver</a>
             </div>
@@ -120,7 +127,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
-                <div class="text-muted small">Cotizaciones aceptadas (mes)</div>
+                <div class="text-muted small"><i class="bi bi-file-earmark-check" aria-hidden="true"></i>Cotizaciones aceptadas (mes)</div>
                 <div class="fs-3 fw-bold text-success">@Model.Kpi.QuotesAcceptedMonth</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Quotes/Requests" asp-route-status="Accepted">Ver</a>
             </div>
@@ -129,7 +136,7 @@
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
-                <div class="text-muted small">Ventas cotizadas (mes)</div>
+                <div class="text-muted small"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i>Ventas cotizadas (mes)</div>
                 <div class="fs-4 fw-bold text-success">@Model.Kpi.QuotesRevenueMonth.ToString("C0")</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Quotes/Requests" asp-route-status="Accepted">Detalle</a>
             </div>

@@ -94,9 +94,13 @@
             }
         }
     </style>
+    @if (ViewData["RefreshLogin"] is true)
+    {
+        <link rel="stylesheet" href="~/css/hn-refresh.css" asp-append-version="true" />
+    }
     @RenderSection("Styles", required: false)
 </head>
-<body>
+<body class="@(ViewData["RefreshLogin"] is true ? "hn-refresh hn-auth-refresh" : "")">
     <div class="hn-auth-wrap">
         <main class="container py-4">
             @RenderBody()
