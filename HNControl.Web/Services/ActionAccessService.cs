@@ -11,12 +11,14 @@ public class ActionAccessService : IActionAccessService
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _http;
     private readonly IModuleAccessService _modules;
+    private readonly ModuleAvailability _features;
 
-    public ActionAccessService(ApplicationDbContext db, IHttpContextAccessor http, IModuleAccessService modules)
+    public ActionAccessService(ApplicationDbContext db, IHttpContextAccessor http, IModuleAccessService modules, ModuleAvailability features)
     {
         _db = db;
         _http = http;
         _modules = modules;
+        _features = features;
     }
 
     public async Task<HashSet<string>> GetAllowedActionsAsync(ClaimsPrincipal user)
@@ -83,6 +85,7 @@ public class ActionAccessService : IActionAccessService
 
     public async Task<bool> HasActionAsync(ClaimsPrincipal user, string actionKey)
     {
+        if (!_features.IsActionEnabled(actionKey)) return false;
         if (string.IsNullOrWhiteSpace(actionKey)) return true;
         if (AppRoles.IsGlobalAdmin(user)) return true;
         if (user?.Identity?.IsAuthenticated != true) return false;
@@ -90,8 +93,9 @@ public class ActionAccessService : IActionAccessService
         return set.Contains(actionKey);
     }
 
-    private static void Store(HttpContext? ctx, HashSet<string> set)
+    private void Store(HttpContext? ctx, HashSet<string> set)
     {
+        set.RemoveWhere(x => !_features.IsActionEnabled(x));
         if (ctx == null) return;
         ctx.Items[CacheKey] = set;
     }

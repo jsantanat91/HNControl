@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -14,12 +14,14 @@ namespace HNControl.Web.Pages.Sales;
 public class DashboardModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    private readonly ModuleAvailability _features;
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly IActionAccessService _actions;
 
-    public DashboardModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IActionAccessService actions)
+    public DashboardModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IActionAccessService actions, ModuleAvailability features)
     {
         _db = db;
+        _features = features;
         _userMgr = userMgr;
         _actions = actions;
     }
@@ -131,32 +133,35 @@ public class DashboardModel : PageModel
             .Take(10)
             .ToList();
 
-        var callsQuery = _db.SalesCallLogs
-            .AsNoTracking()
-            .Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
-        if (!hasViewAll)
-            callsQuery = callsQuery.Where(x => x.UserId == userId);
+        if (_features.SalesCallsEnabled)
+        {
+            var callsQuery = _db.SalesCallLogs
+                .AsNoTracking()
+                .Where(x => x.CreatedAt >= fromUtc && x.CreatedAt < toUtc);
+            if (!hasViewAll)
+                callsQuery = callsQuery.Where(x => x.UserId == userId);
 
-        var callRows = await callsQuery.ToListAsync();
-        var userIds = callRows.Select(x => x.UserId).Distinct().ToList();
-        var userMap = await _db.EmployeeProfiles
-            .AsNoTracking()
-            .Where(x => userIds.Contains(x.UserId))
-            .ToDictionaryAsync(x => x.UserId, x => x.FullName);
+            var callRows = await callsQuery.ToListAsync();
+            var userIds = callRows.Select(x => x.UserId).Distinct().ToList();
+            var userMap = await _db.EmployeeProfiles
+                .AsNoTracking()
+                .Where(x => userIds.Contains(x.UserId))
+                .ToDictionaryAsync(x => x.UserId, x => x.FullName);
 
-        SellerCalls = callRows
-            .GroupBy(x => x.UserId)
-            .Select(g =>
-            {
-                var seller = userMap.TryGetValue(g.Key, out var fullName) ? fullName : g.Key;
-                var calls = g.Count();
-                var connected = g.Count(x => x.Result == SalesCallResult.Connected || x.Result == SalesCallResult.Completed);
-                var avg = calls > 0 ? (decimal)g.Average(x => x.DurationSeconds) : 0m;
-                return new SellerCallStat(seller, calls, connected, Math.Round(avg, 1));
-            })
-            .OrderByDescending(x => x.Calls)
-            .Take(10)
-            .ToList();
+            SellerCalls = callRows
+                .GroupBy(x => x.UserId)
+                .Select(g =>
+                {
+                    var seller = userMap.TryGetValue(g.Key, out var fullName) ? fullName : g.Key;
+                    var calls = g.Count();
+                    var connected = g.Count(x => x.Result == SalesCallResult.Connected || x.Result == SalesCallResult.Completed);
+                    var avg = calls > 0 ? (decimal)g.Average(x => x.DurationSeconds) : 0m;
+                    return new SellerCallStat(seller, calls, connected, Math.Round(avg, 1));
+                })
+                .OrderByDescending(x => x.Calls)
+                .Take(10)
+                .ToList();
+        }
 
         var oppIds = opps.Select(x => x.Id).ToHashSet();
         RecentAudit = await _db.SalesAuditLogs

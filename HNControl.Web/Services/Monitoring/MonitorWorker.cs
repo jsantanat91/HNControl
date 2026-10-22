@@ -28,6 +28,8 @@ public class MonitorWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        using (var scope = _scopeFactory.CreateScope())
+            if (!scope.ServiceProvider.GetRequiredService<ModuleAvailability>().MonitoringEnabled) return;
         // loop simple: cada 5s revisa que targets ya les toca
         while (!stoppingToken.IsCancellationRequested)
         {

@@ -15,10 +15,12 @@ namespace HNControl.Web.Controllers.Mobile;
 public class EmployeeController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly ModuleAvailability _features;
 
-    public EmployeeController(ApplicationDbContext db)
+    public EmployeeController(ApplicationDbContext db, ModuleAvailability features)
     {
         _db = db;
+        _features = features;
     }
 
     public record EmployeeProfileDto(
@@ -287,7 +289,9 @@ public class EmployeeController : ControllerBase
             .OrderBy(x => x.StartDate)
             .FirstOrDefaultAsync();
 
-        var examItems = await _db.ExamAssignments.AsNoTracking().Where(x => x.UserId == userId).ToListAsync();
+        var examItems = _features.ExamsEnabled
+            ? await _db.ExamAssignments.AsNoTracking().Where(x => x.UserId == userId).ToListAsync()
+            : new List<ExamAssignment>();
         var exams = new ExamsDto(
             examItems.Count(x => x.Status == ExamAssignmentStatus.Assigned),
             examItems.Count(x => x.Status == ExamAssignmentStatus.InProgress),

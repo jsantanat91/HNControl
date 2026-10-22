@@ -18,6 +18,8 @@
     </div>
 </div>
 
+@if (Model.FlashOk != null) { <div class="alert alert-success">@Model.FlashOk</div> }
+@if (Model.FlashError != null) { <div class="alert alert-warning">@Model.FlashError</div> }
 @if (Model.Carriers.Count == 0)
 {
     <div class="alert alert-light border">Sin carriers a&uacute;n.</div>
@@ -64,7 +66,12 @@ else
                             {
                                 <span class="text-muted small">Sin portal</span>
                             }
-                            <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@c.Id">Editar</a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@c.Id">Editar</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@c.Id" onsubmit="return confirm('¿Eliminar este carrier? Solo se permite si no tiene servicios ligados.');">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>

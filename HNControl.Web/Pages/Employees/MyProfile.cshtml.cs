@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -15,12 +15,14 @@ public class MyProfileModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly ApplicationDbContext _db;
+    private readonly ModuleAvailability _features;
     private readonly IFileStorage _storage;
 
-    public MyProfileModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db, IFileStorage storage)
+    public MyProfileModel(UserManager<ApplicationUser> userMgr, ApplicationDbContext db, IFileStorage storage, ModuleAvailability features)
     {
         _userMgr = userMgr;
         _db = db;
+        _features = features;
         _storage = storage;
     }
 
@@ -112,7 +114,7 @@ public class MyProfileModel : PageModel
         await LoadPayrollAsync(userId);
         await LoadEval360Async(userId);
         await LoadLeavesAsync(userId);
-        await LoadExamsAsync(userId);
+        if (_features.ExamsEnabled) await LoadExamsAsync(userId);
         await LoadTicketsAsync(userId);
         await LoadKpiHistoryAsync(userId);
     }

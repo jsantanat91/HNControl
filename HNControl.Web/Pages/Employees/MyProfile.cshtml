@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Employees.MyProfileModel
 @using HNControl.Web.Models
 @{
@@ -216,7 +216,7 @@ else
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
+        <div hn-module="exams" class="col-12 col-md-6 col-xl-3">
             <div class="card shadow-soft hn-hover h-100 stat-card">
                 <div class="card-body">
                     <div class="text-muted small">Ex&aacute;menes pendientes</div>
@@ -545,7 +545,7 @@ else
                                 <div class="text-muted small">Vacaciones</div>
                                 <div class="fw-semibold">@Model.VacYear</div>
                             </div>
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Leaves/Index">Abrir</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Leaves/Index" data-module-panel="Mis vacaciones e incidencias">Abrir</a>
                         </div>
                         <div class="d-flex justify-content-between mt-3">
                             <div>
@@ -561,7 +561,7 @@ else
                     </div>
                 </div>
 
-                <div class="card shadow-soft hn-hover profile-card">
+                <div hn-module="exams" class="card shadow-soft hn-hover profile-card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>

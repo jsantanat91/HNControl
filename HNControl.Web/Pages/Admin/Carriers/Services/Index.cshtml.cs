@@ -21,6 +21,34 @@ public class IndexModel : PageModel
 
     public List<Client> Clients { get; set; } = new();
     public List<ClientCarrierService> Services { get; set; } = new();
+    [TempData] public string? FlashOk { get; set; }
+    [TempData] public string? FlashError { get; set; }
+
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+    {
+        if (!User.IsInRole(AppRoles.Admin)) return Forbid();
+        var service = await _db.ClientCarrierServices.FindAsync(id);
+        if (service == null) return NotFound();
+        // Preserve monitoring history but stop any target whose service is removed.
+        var targets = await _db.MonitorTargets.Where(t => t.ClientCarrierServiceId == id).ToListAsync();
+        foreach (var target in targets)
+        {
+            target.IsActive = false;
+            target.ClientCarrierServiceId = null;
+            target.UpdatedAt = DateTime.UtcNow;
+        }
+        _db.ClientCarrierServices.Remove(service);
+        try
+        {
+            await _db.SaveChangesAsync(); // Atomic: targets and service (with its notes) change together.
+            FlashOk = "Servicio eliminado. Sus contratos se conservan y sus monitores quedan detenidos.";
+        }
+        catch (DbUpdateException)
+        {
+            FlashError = "No se pudo eliminar el servicio. Revisa sus relaciones e intenta nuevamente.";
+        }
+        return RedirectToPage(new { ClientId, Q });
+    }
 
     public async Task OnGetAsync()
     {

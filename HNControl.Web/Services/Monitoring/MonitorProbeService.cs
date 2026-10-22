@@ -11,15 +11,18 @@ public class MonitorProbeService : IMonitorProbeService
 {
     private readonly ILogger<MonitorProbeService> _log;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ModuleAvailability _features;
 
-    public MonitorProbeService(ILogger<MonitorProbeService> log, IHttpClientFactory httpClientFactory)
+    public MonitorProbeService(ILogger<MonitorProbeService> log, IHttpClientFactory httpClientFactory, ModuleAvailability features)
     {
         _log = log;
         _httpClientFactory = httpClientFactory;
+        _features = features;
     }
 
     public async Task<ProbeResult> ProbeAsync(MonitorTarget target, CancellationToken ct = default)
     {
+        if (!_features.MonitoringEnabled) throw new InvalidOperationException("El monitoreo está suspendido.");
         // 1) Determina el "host" a probar
         var host = !string.IsNullOrWhiteSpace(target.IpAddress)
             ? target.IpAddress.Trim()

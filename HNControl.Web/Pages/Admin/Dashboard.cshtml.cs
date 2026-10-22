@@ -15,6 +15,7 @@ namespace HNControl.Web.Pages.Admin;
 public class DashboardModel : PageModel
 {
     private readonly ApplicationDbContext _db;
+    private readonly ModuleAvailability _features;
     private readonly IPayrollReceiptService _payrollReceipt;
     private readonly IEmailSender _emailSender;
     private readonly IWhatsAppSender _whatsApp;
@@ -23,9 +24,10 @@ public class DashboardModel : PageModel
     private const string DefaultWhatsAppPayrollReceiptTemplate =
         "Hola {NombreEmpleado}, tu recibo de nomina del periodo {Periodo} esta disponible. Neto: {TotalNeto}. Ingresa al portal para consultarlo.";
 
-    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IWhatsAppSender whatsApp, IFileStorage storage, IPayrollDeductionLedger deductionLedger)
+    public DashboardModel(ApplicationDbContext db, IPayrollReceiptService payrollReceipt, IEmailSender emailSender, IWhatsAppSender whatsApp, IFileStorage storage, IPayrollDeductionLedger deductionLedger, ModuleAvailability features)
     {
         _db = db;
+        _features = features;
         _payrollReceipt = payrollReceipt;
         _emailSender = emailSender;
         _whatsApp = whatsApp;
@@ -125,9 +127,9 @@ public class DashboardModel : PageModel
             .Where(x => x.Status == LeaveRequestStatus.Pending)
             .CountAsync();
 
-        var examsToGrade = await _db.ExamAssignments
+        var examsToGrade = _features.ExamsEnabled ? await _db.ExamAssignments
             .Where(x => x.Status == ExamAssignmentStatus.Submitted)
-            .CountAsync();
+            .CountAsync() : 0;
 
         var pendingInvOrders = await _db.InventoryMovements
             .Where(m => m.Status == InventoryMovementStatus.Pending)
@@ -216,15 +218,18 @@ public class DashboardModel : PageModel
         OrdersLabelsJson = JsonSerializer.Serialize(labels);
         OrdersValuesJson = JsonSerializer.Serialize(values);
 
-        var ex = await _db.ExamAssignments
-            .AsNoTracking()
-            .GroupBy(a => a.Status)
-            .OrderBy(g => g.Key)
-            .Select(g => new { Status = g.Key.ToString(), Cnt = g.Count() })
-            .ToListAsync();
+        if (_features.ExamsEnabled)
+        {
+            var ex = await _db.ExamAssignments
+                .AsNoTracking()
+                .GroupBy(a => a.Status)
+                .OrderBy(g => g.Key)
+                .Select(g => new { Status = g.Key.ToString(), Cnt = g.Count() })
+                .ToListAsync();
 
-        ExamStatusLabelsJson = JsonSerializer.Serialize(ex.Select(x => x.Status));
-        ExamStatusValuesJson = JsonSerializer.Serialize(ex.Select(x => x.Cnt));
+            ExamStatusLabelsJson = JsonSerializer.Serialize(ex.Select(x => x.Status));
+            ExamStatusValuesJson = JsonSerializer.Serialize(ex.Select(x => x.Cnt));
+        }
 
         var inv = await _db.InventoryMovements
             .AsNoTracking()

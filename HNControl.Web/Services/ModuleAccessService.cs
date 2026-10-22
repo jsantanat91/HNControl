@@ -10,11 +10,13 @@ public class ModuleAccessService : IModuleAccessService
     private const string CacheKey = "__hn_allowed_modules";
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _http;
+    private readonly ModuleAvailability _features;
 
-    public ModuleAccessService(ApplicationDbContext db, IHttpContextAccessor http)
+    public ModuleAccessService(ApplicationDbContext db, IHttpContextAccessor http, ModuleAvailability features)
     {
         _db = db;
         _http = http;
+        _features = features;
     }
 
     public async Task<HashSet<string>> GetAllowedModulesAsync(ClaimsPrincipal user)
@@ -88,6 +90,7 @@ public class ModuleAccessService : IModuleAccessService
 
     public async Task<bool> HasAccessAsync(ClaimsPrincipal user, string moduleKey)
     {
+        if (!_features.IsEnabled(moduleKey)) return false;
         if (string.IsNullOrWhiteSpace(moduleKey)) return true;
         if (user?.Identity?.IsAuthenticated != true) return false;
         if (AppRoles.IsGlobalAdmin(user)) return true;
@@ -96,8 +99,9 @@ public class ModuleAccessService : IModuleAccessService
         return set.Contains(moduleKey);
     }
 
-    private static void Store(HttpContext? ctx, HashSet<string> set)
+    private void Store(HttpContext? ctx, HashSet<string> set)
     {
+        set.RemoveWhere(x => !_features.IsEnabled(x));
         if (ctx == null) return;
         ctx.Items[CacheKey] = set;
     }

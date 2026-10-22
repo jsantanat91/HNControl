@@ -75,11 +75,11 @@
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-calendar2-week" aria-hidden="true"></i>Vacaciones pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingLeaveRequests</div>
-                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Leaves/Index">Ver</a>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Leaves/Index" data-module-panel="Vacaciones e incidencias">Ver</a>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div hn-module="exams" class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-blue">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-journal-check" aria-hidden="true"></i>Examenes por calificar</div>
@@ -292,7 +292,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4">
+    <div hn-module="exams" class="col-lg-4">
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Examenes (estatus)</div>
             <div class="card-body">
@@ -308,7 +308,7 @@
             <div class="card-header fw-semibold">Acciones rapidas</div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
+                    <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index" data-module-panel="Vacaciones e incidencias"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
                     <a class="btn btn-outline-secondary" asp-page="/Tickets/Index"><i class="bi bi-life-preserver me-1"></i> Tickets</a>
@@ -414,7 +414,7 @@
     };
 
     window.hnCharts?.decorate(exCfg);
-    new Chart(document.getElementById('examAdminChart'), exCfg);
+    if (document.getElementById('examAdminChart')) new Chart(document.getElementById('examAdminChart'), exCfg);
 
     const invLabels = @Html.Raw(Model.InvLabelsJson);
     const invIn = @Html.Raw(Model.InvInValuesJson);

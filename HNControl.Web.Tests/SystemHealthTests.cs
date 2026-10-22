@@ -71,6 +71,6 @@ internal static class SystemHealthTests
             "Diagnóstico administrativo no se almacena en cachés compartidas");
         var assemblyVersion = typeof(ApplicationRelease).Assembly.GetName().Version;
         check(assemblyVersion?.ToString(3) == ApplicationRelease.Version && ApplicationRelease.History[0].Version == ApplicationRelease.Version,
-            "Versión instalada, compilación y release notes coinciden en 2.5.1");
+            "Versión instalada, compilación y release notes coinciden");
     }
 }

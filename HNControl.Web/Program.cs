@@ -109,6 +109,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
+builder.Services.AddSingleton<ModuleAvailability>();
 
 // --------------------
 // Permisos por módulo (Employee)
@@ -127,14 +128,9 @@ builder.Services.AddHttpClient("whatsapp", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 builder.Services.AddScoped<IMonitorProbeService, MonitorProbeService>();
-builder.Services.AddHostedService<MonitorWorker>();
-
-// --------------------
-// Monitoreo
-// --------------------
-builder.Services.AddHttpClient("monitoring");
-builder.Services.AddScoped<IMonitorProbeService, MonitorProbeService>();
-builder.Services.AddHostedService<MonitorWorker>();
+// Suspended by default; no polling, history writes or automatic monitoring tickets.
+if (builder.Configuration.GetValue<bool>("Features:MonitoringEnabled"))
+    builder.Services.AddHostedService<MonitorWorker>();
 
 // --------------------
 // Razor Pages routing / auth conventions
@@ -427,6 +423,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRequestLocalization();
 app.UseRouting();
+app.UseMiddleware<ModuleSuspensionMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

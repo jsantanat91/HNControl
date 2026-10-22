@@ -42,6 +42,8 @@
     </div>
 </form>
 
+@if (Model.FlashOk != null) { <div class="alert alert-success">@Model.FlashOk</div> }
+@if (Model.FlashError != null) { <div class="alert alert-warning">@Model.FlashError</div> }
 @if (Model.Services.Count == 0)
 {
     <div class="alert alert-light border">Sin resultados.</div>
@@ -103,6 +105,9 @@ else
                         <div class="mt-auto pt-3 d-flex justify-content-end gap-2">
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-id="@s.Id">Editar</a>
                             <a class="btn btn-sm btn-outline-secondary" asp-page="/Carriers/Client" asp-route-id="@s.ClientId">Ver</a>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id" asp-route-ClientId="@Model.ClientId" asp-route-Q="@Model.Q" onsubmit="return confirm('¿Eliminar este servicio y su bitácora? El contrato del cliente se conserva. Sus monitores quedarán detenidos.');">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+                            </form>
                         </div>
                     </div>
                 </div>
