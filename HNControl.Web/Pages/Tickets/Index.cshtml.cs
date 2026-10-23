@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
+using HNControl.Web.Services;
 using HNControl.Web.Services.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -17,11 +18,13 @@ public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _db;
     private readonly ITicketFlowService _flow;
+    private readonly ServiceOrderCreationNotifications _notifications;
 
-    public IndexModel(ApplicationDbContext db, ITicketFlowService flow)
+    public IndexModel(ApplicationDbContext db, ITicketFlowService flow, ServiceOrderCreationNotifications notifications)
     {
         _db = db;
         _flow = flow;
+        _notifications = notifications;
     }
 
     public bool IsAdmin => AppRoles.IsGlobalAdmin(User);
@@ -204,12 +207,15 @@ public class IndexModel : PageModel
             Status = ServiceOrderStatus.Created,
             Title = title,
             Description = $"Ticket origen: {ticket.TicketNumber}\n\n{description}",
-            EstimatedEndDate = due,
+            EstimatedEndDate = TimeUtil.UtcDate(due),
+            PublicToken = Guid.NewGuid().ToString("N"),
             CreatedAt = DateTime.UtcNow
         };
 
         _db.ServiceOrders.Add(order);
+        _notifications.QueueCreated(order, scheduledDateConfirmed: false);
         await _db.SaveChangesAsync();
+        TempData[ServiceOrderCreationNotifications.NoticeKey] = (await _notifications.NotifyCreatedAsync(order.Id)).UserMessage;
 
         UiMessage = $"Orden de servicio creada: {order.Title}";
         UiMessageType = "success";

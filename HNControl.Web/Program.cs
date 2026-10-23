@@ -237,6 +237,7 @@ builder.Services.AddScoped<ISecretProtector, SecretProtector>();
 builder.Services.AddScoped<HNControl.Web.Services.IEmailSender, HNControl.Web.Services.SmtpEmailSender>();
 builder.Services.AddScoped<ClientDocumentSigningService>();
 builder.Services.AddScoped<DocumentNotificationRecipients>();
+builder.Services.AddScoped<ServiceOrderCreationNotifications>();
 builder.Services.AddScoped<DeliveryDocumentSigningService>();
 builder.Services.AddScoped<IWhatsAppSender, MetaWhatsAppSender>();
 builder.Services.AddScoped<IPayrollDeductionLedger, PayrollDeductionLedgerService>();
@@ -291,7 +292,7 @@ using (var scope = app.Services.CreateScope())
     catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
     {
         app.Logger.LogCritical(ex,
-            "Database migration requires the table owner. For the October 2026 document update, run Sql/20261022_repair_document_signatures.sql in the HN Control database as its owner, then restart. Do not skip migrations or mark them applied without updating the schema.");
+            "Database migration requires the table owner. Apply the pending migrations as the owner. For the October 2026 updates, use Sql/20261022_repair_document_signatures.sql (documents) and Sql/20261023_engineering_notification_emails.sql (Engineering recipients) as applicable, then restart. Do not skip migrations or mark them applied without updating the schema.");
         throw;
     }
     await EnsureQuoteSchemaAsync(db);

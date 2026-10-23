@@ -11,7 +11,7 @@ public static class ClientCommunicationTemplates
     public static bool IsEmail(string? value) => !string.IsNullOrWhiteSpace(value)
         && new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(value);
     public static string E(string? value) => WebUtility.HtmlEncode(value ?? "");
-    public static string Layout(string title, string content) => $$"""
+    public static string Layout(string title, string content, string signature = "Administración y Finanzas") => $$"""
         <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
         <body style="margin:0;background:#f1f5f9;color:#243247;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65">
         <table role="presentation" style="width:100%;border-collapse:collapse"><tr><td style="padding:24px 12px">
@@ -19,7 +19,7 @@ public static class ClientCommunicationTemplates
         <tr><td style="background:#102c4a;padding:28px 32px;color:#fff"><div style="font-size:12px;letter-spacing:2px;color:#9bd5ff">HN SOLUTIONS</div>
         <h1 style="font-size:25px;line-height:1.3;margin:12px 0 0">{{E(title)}}</h1></td></tr>
         <tr><td style="padding:28px 32px">{{content}}
-        <p style="margin-top:30px;border-top:1px solid #e2e8f0;padding-top:22px">Cordialmente,<br><strong>Administración y Finanzas</strong><br>HN Solutions</p>
+        <p style="margin-top:30px;border-top:1px solid #e2e8f0;padding-top:22px">Cordialmente,<br><strong>{{E(signature)}}</strong><br>HN Solutions</p>
         </td></tr></table></td></tr></table></body></html>
         """;
 

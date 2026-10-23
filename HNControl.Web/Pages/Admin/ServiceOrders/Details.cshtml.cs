@@ -16,19 +16,30 @@ public class DetailsModel : PageModel
     private readonly IFileStorage _storage;
     private readonly IEmailSender _email;
     private readonly IConfiguration _cfg;
+    private readonly ServiceOrderCreationNotifications _notifications;
 
-    public DetailsModel(ApplicationDbContext db, IServiceOrderPdfRenderer pdf, IFileStorage storage, IEmailSender email, IConfiguration cfg)
+    public DetailsModel(ApplicationDbContext db, IServiceOrderPdfRenderer pdf, IFileStorage storage, IEmailSender email, IConfiguration cfg, ServiceOrderCreationNotifications notifications)
     {
         _db = db;
         _pdf = pdf;
         _storage = storage;
         _email = email;
         _cfg = cfg;
+        _notifications = notifications;
     }
 
     public ServiceOrder? Order { get; set; }
     public string PublicUrl { get; set; } = "";
     public string? Info { get; set; }
+    public ServiceOrderNotificationState CreationNotifications { get; set; } = new(false, false, false, false);
+
+    public async Task<IActionResult> OnPostRetryCreationNotificationsAsync(Guid id)
+    {
+        if (!User.IsInRole(AppRoles.Admin)) return Forbid();
+        if (!await _db.ServiceOrders.AnyAsync(x => x.Id == id)) return NotFound();
+        TempData[ServiceOrderCreationNotifications.NoticeKey] = (await _notifications.NotifyCreatedAsync(id)).UserMessage;
+        return RedirectToPage(new { id });
+    }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
@@ -267,6 +278,8 @@ public class DetailsModel : PageModel
             .Include(o => o.Signatures)
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (Order != null) CreationNotifications = await _notifications.GetStateAsync(id);
 
         var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
         if (Order != null && !string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))

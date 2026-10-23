@@ -73,6 +73,9 @@ await WelcomeContractSelectionTests.RunAsync(Check);
 await SystemHealthTests.RunAsync(root, Check);
 await ModuleSuspensionTests.RunAsync(Check);
 await CarrierDeletionTests.RunAsync(Check);
+await EngineeringNotificationSettingsTests.RunAsync(Check);
+await ServiceOrderCreationNotificationTests.RunAsync(Check);
+await ServiceOrderCreationPathsTests.RunAsync(Check);
 SignatureLayoutTests.Run(service, Check);
 Console.WriteLine($"All {count} checks passed.");
 

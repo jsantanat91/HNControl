@@ -4507,6 +4507,10 @@ namespace HNControl.Web.Migrations
                         .IsRequired().ValueGeneratedOnAdd().HasMaxLength(4000)
                         .HasColumnType("character varying(4000)")
                         .HasDefaultValue("jsantana@hubnet-solutions.net\ndtaboada@hubnet-solutions.net");
+                    b.Property<string>("EngineeringNotificationEmails")
+                        .IsRequired().ValueGeneratedOnAdd().HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasDefaultValue("jsantana@hubnet-solutions.net\ndtaboada@hubnet-solutions.net");
                     b.HasKey("Id");
 
                     b.HasIndex("UpdatedAt");

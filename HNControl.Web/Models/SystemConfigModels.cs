@@ -16,6 +16,10 @@ public class SystemConfiguration
     [MaxLength(4000)]
     public string DocumentNotificationEmails { get; set; } = DefaultDocumentNotificationEmails;
 
+    public const string DefaultEngineeringNotificationEmails = "jsantana@hubnet-solutions.net\ndtaboada@hubnet-solutions.net";
+    [MaxLength(4000)]
+    public string EngineeringNotificationEmails { get; set; } = DefaultEngineeringNotificationEmails;
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [MaxLength(180)]

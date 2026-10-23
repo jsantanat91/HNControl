@@ -1,5 +1,18 @@
 # HN Control — notas de versión
 
+## 2.5.3 · 23 de octubre de 2026
+
+- Nueva sección **Configuración → General → Correos de Ingeniería para órdenes de servicio**, con los destinatarios iniciales `jsantana@hubnet-solutions.net` y `dtaboada@hubnet-solutions.net`. Permite agregar, editar o eliminar direcciones; una lista vacía desactiva solo estos avisos internos.
+- Al guardar una orden se envían mensajes separados a Ingeniería y al cliente. Conservan el diseño del correo de bienvenida; el cliente recibe su referencia, servicio y fecha programada, sin notas internas ni vínculos administrativos.
+- Aplica al alta directa, a la conversión de factibilidad y a órdenes generadas desde tickets. Las fechas automáticas de factibilidad y la fecha límite de un ticket no se anuncian como una visita confirmada.
+- Corregida la creación de órdenes desde tickets: cada orden recibe su identificador público único y su fecha límite se normaliza para PostgreSQL.
+- La auditoría conserva las fechas iniciales del aviso, aunque el flujo operativo modifique posteriormente el inicio de la orden. Un error SMTP conserva la orden y permite reintentar desde su detalle administrativo solo los canales pendientes. No se envían avisos retroactivos a órdenes históricas.
+- Los correos de contratos, NDA, actas, bienvenida y PDF de órdenes mantienen su flujo existente.
+
+**Antes de desplegar:** requiere la migración `20261023000100_AddEngineeringNotificationEmails`. Dado el antecedente de permisos del usuario de aplicación, ejecutar completo `HNControl.Web/Sql/20261023_engineering_notification_emails.sql` en pgAdmin, en la base de HN Control y con el propietario de las tablas o `postgres`; después desplegar y reiniciar. El script agrega únicamente la columna de destinatarios y registra esta migración dentro de la misma transacción. Es idempotente y no cambia propietarios ni permisos. Si la aplicación tiene permisos de migración, puede aplicar la migración EF al iniciar.
+
+Los envíos utilizan la configuración SMTP existente. La confirmación de envío significa aceptación por SMTP; una interrupción del proceso entre esa aceptación y el registro en base de datos puede requerir conciliación manual antes de reintentar.
+
 ## 2.5.2 · 22 de octubre de 2026
 
 - Documentos (biblioteca), Monitoreo de carriers, Llamadas de ventas y Exámenes quedan suspendidos: se ocultan sus accesos, se bloquean rutas y API y no se inicia el monitoreo automático. Se conserva el código y la información.

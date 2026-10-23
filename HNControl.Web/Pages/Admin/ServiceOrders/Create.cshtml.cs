@@ -14,7 +14,12 @@ namespace HNControl.Web.Pages.Admin.ServiceOrders;
 public class CreateModel : PageModel
 {
     private readonly ApplicationDbContext _db;
-    public CreateModel(ApplicationDbContext db) => _db = db;
+    private readonly ServiceOrderCreationNotifications _notifications;
+    public CreateModel(ApplicationDbContext db, ServiceOrderCreationNotifications notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
@@ -121,7 +126,9 @@ public class CreateModel : PageModel
         if (order.Type != ServiceOrderType.Global)
             await EnsureChecklistFromTemplateAsync(order, order.Type, workItemId: null);
 
+        _notifications.QueueCreated(order);
         await _db.SaveChangesAsync();
+        TempData[ServiceOrderCreationNotifications.NoticeKey] = (await _notifications.NotifyCreatedAsync(order.Id)).UserMessage;
 
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }

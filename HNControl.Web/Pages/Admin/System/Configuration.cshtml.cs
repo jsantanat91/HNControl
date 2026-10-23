@@ -59,6 +59,7 @@ public class ConfigurationModel : PageModel
     {
         public Guid? Id { get; set; }
         [MaxLength(4000)] public string DocumentNotificationEmails { get; set; } = SystemConfiguration.DefaultDocumentNotificationEmails;
+        [MaxLength(4000)] public string EngineeringNotificationEmails { get; set; } = SystemConfiguration.DefaultEngineeringNotificationEmails;
 
         [MaxLength(180)] public string CompanyName { get; set; } = "";
         [MaxLength(180)] public string CompanyLegalName { get; set; } = "";
@@ -139,6 +140,30 @@ public class ConfigurationModel : PageModel
             entity.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             Flash = "Destinatarios internos guardados. Se usarán en bienvenida, contratos y actas de entrega.";
+            FlashType = "success";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            Flash = ex.Message;
+            FlashType = "danger";
+        }
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveEngineeringNotificationsAsync()
+    {
+        try
+        {
+            if ((Input.EngineeringNotificationEmails ?? "").Length > 4000)
+                throw new ArgumentException("La lista de correos no puede superar 4000 caracteres.");
+            var addresses = DocumentNotificationRecipients.Parse(Input.EngineeringNotificationEmails);
+            var entity = await GetOrCreateAsync();
+            entity.EngineeringNotificationEmails = string.Join("\n", addresses);
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            Flash = addresses.Count == 0
+                ? "Notificaciones a Ingeniería desactivadas. Los avisos al cliente continúan activos."
+                : "Destinatarios de Ingeniería guardados. Recibirán las notificaciones de nuevas órdenes de servicio.";
             FlashType = "success";
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -590,6 +615,7 @@ public class ConfigurationModel : PageModel
             CompanyFiscalAddress = cfg.CompanyFiscalAddress,
             BillingEmail = cfg.BillingEmail,
             DocumentNotificationEmails = cfg.DocumentNotificationEmails,
+            EngineeringNotificationEmails = cfg.EngineeringNotificationEmails,
             SmtpHost = cfg.SmtpHost,
             SmtpPort = cfg.SmtpPort,
             SmtpUser = cfg.SmtpUser,
@@ -645,7 +671,7 @@ public class ConfigurationModel : PageModel
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
         {
-            Flash = "La configuracion API de Mercado Pago aun no esta en el esquema de BD. Se cargo modo compatible sin esos campos.";
+            Flash = "La configuración requiere una actualización de esquema en la base de datos. Se cargaron los campos disponibles en modo compatible.";
             FlashType = "warning";
 
             return await LoadLatestConfigCompatibleRawAsync();
@@ -680,6 +706,7 @@ public class ConfigurationModel : PageModel
                 CompanyLogoStoragePath = ReadString(reader, "CompanyLogoStoragePath"),
                 CompanyLogoOriginalFileName = ReadString(reader, "CompanyLogoOriginalFileName"),
                 DocumentNotificationEmails = ReadString(reader, "DocumentNotificationEmails", SystemConfiguration.DefaultDocumentNotificationEmails),
+                EngineeringNotificationEmails = ReadString(reader, "EngineeringNotificationEmails", SystemConfiguration.DefaultEngineeringNotificationEmails),
                 SmtpHost = ReadString(reader, "SmtpHost"),
                 SmtpPort = ReadInt(reader, "SmtpPort", 587),
                 SmtpUser = ReadString(reader, "SmtpUser"),
@@ -946,7 +973,7 @@ public class ConfigurationModel : PageModel
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
         {
-            throw new InvalidOperationException("Configuración requiere actualización de esquema en BD (faltan columnas de API). Ejecuta el script de actualización con usuario OWNER y vuelve a intentar.", ex);
+            throw new InvalidOperationException("Configuración requiere actualización de esquema en BD (faltan columnas). Ejecuta la migración pendiente con el propietario de las tablas y vuelve a intentar.", ex);
         }
         if (entity != null) return entity;
 

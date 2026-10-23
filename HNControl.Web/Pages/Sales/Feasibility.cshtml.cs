@@ -18,12 +18,14 @@ public class FeasibilityModel : PageModel
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userMgr;
     private readonly IActionAccessService _actions;
+    private readonly ServiceOrderCreationNotifications _notifications;
 
-    public FeasibilityModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IActionAccessService actions)
+    public FeasibilityModel(ApplicationDbContext db, UserManager<ApplicationUser> userMgr, IActionAccessService actions, ServiceOrderCreationNotifications notifications)
     {
         _db = db;
         _userMgr = userMgr;
         _actions = actions;
+        _notifications = notifications;
     }
 
     [BindProperty]
@@ -357,6 +359,7 @@ public class FeasibilityModel : PageModel
             CurrentArea = ServiceOrderWorkflowArea.Levantamiento
         };
         _db.ServiceOrders.Add(order);
+        _notifications.QueueCreated(order, scheduledDateConfirmed: false);
         await _db.SaveChangesAsync();
 
         row.ConvertedServiceOrderId = order.Id;
@@ -365,6 +368,7 @@ public class FeasibilityModel : PageModel
         await _db.SaveChangesAsync();
 
         Message = "Factibilidad convertida a orden.";
+        TempData[ServiceOrderCreationNotifications.NoticeKey] = (await _notifications.NotifyCreatedAsync(order.Id)).UserMessage;
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
