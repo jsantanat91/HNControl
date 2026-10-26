@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## 2.5.4 · 26 de octubre de 2026
+
+- Acta de entrega: contacto de soporte actualizado en el encabezado y en la sección de soporte a **Llamada y WhatsApp 5526014566** y **soporte@hubnet-solutions.com.mx**.
+- Órdenes de servicio: etiqueta **Finalizada** en verde en los listados de administración y empleados.
+
+Cambios de presentación y plantilla. No requiere migraciones ni SQL adicional.
+
 ## 2.5.3 · 23 de octubre de 2026
 
 - Nueva sección **Configuración → General → Correos de Ingeniería para órdenes de servicio**, con los destinatarios iniciales `jsantana@hubnet-solutions.net` y `dtaboada@hubnet-solutions.net`. Permite agregar, editar o eliminar direcciones; una lista vacía desactiva solo estos avisos internos.

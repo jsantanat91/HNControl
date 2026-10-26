@@ -3,9 +3,14 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.3";
+    public const string Version = "2.5.4";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.4", new DateOnly(2026, 10, 26), "Contacto de soporte y estado de órdenes", new[]
+        {
+            new ReleaseChange("Acta de entrega", "Contacto de soporte actualizado a Llamada y WhatsApp 5526014566 y soporte@hubnet-solutions.com.mx."),
+            new ReleaseChange("Órdenes", "La etiqueta Finalizada se distingue en verde en los listados administrativos y de empleados.")
+        }),
         new ReleaseNote("2.5.3", new DateOnly(2026, 10, 23), "Avisos de órdenes de servicio", new[]
         {
             new ReleaseChange("Configuración", "Lista editable de correos de Ingeniería, independiente de los destinatarios de documentos de clientes."),

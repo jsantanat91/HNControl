@@ -79,7 +79,7 @@ else
                     : "hn-chip-type";
             var statusKey = (status.text ?? "").ToLowerInvariant();
             var statusChip = statusKey.Contains("final")
-                ? "hn-chip-status-closed"
+                ? "hn-chip-status-closed hn-badge-green"
                 : statusKey.Contains("rechaz")
                     ? "hn-chip-status-down"
                     : statusKey.Contains("proceso") || statusKey.Contains("revisi")

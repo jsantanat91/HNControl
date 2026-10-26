@@ -92,7 +92,7 @@
                                             <div class="small text-muted">Tomada por: @r.ClaimedBy</div>
                                             <div class="mt-2 d-flex gap-1 flex-wrap">
                                                 <span class="hn-chip hn-chip-type">@type.text</span>
-                                                <span class="hn-chip hn-chip-neutral">@status.text</span>
+                                                <span class="hn-chip hn-chip-neutral @(r.Status == ServiceOrderStatus.Finalized ? "hn-badge-green" : "")">@status.text</span>
                                             </div>
                                             <div class="mt-auto pt-2 d-flex gap-2 flex-wrap">
                                                 <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
@@ -139,7 +139,7 @@
                                 <div class="small text-muted">Tomada por: @r.ClaimedBy</div>
                                 <div class="mt-2 d-flex gap-1 flex-wrap">
                                     <span class="hn-chip hn-chip-type">@type.text</span>
-                                    <span class="hn-chip hn-chip-status-down">@status.text</span>
+                                    <span class="hn-chip hn-chip-status-down @(r.Status == ServiceOrderStatus.Finalized ? "hn-badge-green" : "")">@status.text</span>
                                 </div>
                                 <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
                                     <a class="btn btn-sm btn-outline-primary" asp-page="/ServiceOrders/Work" asp-route-id="@r.Id">Abrir</a>
