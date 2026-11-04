@@ -2,88 +2,129 @@
 @model HNControl.Web.Pages.Projects.EditModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Editar proyecto";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Editar proyecto</h1>
-        <div class="text-muted small">Ajusta datos base y contratos heredados.</div>
+        <div class="text-muted small">Información del proyecto y servicios vinculados.</div>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@Model.Input.Id">Volver</a>
     </div>
-</div>
+            </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" class="card shadow-soft hn-workflow-form">
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
         <div asp-validation-summary="All" class="text-danger small mb-2"></div>
 
-        <div class="row g-3">
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">01</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Proyecto y cliente</span>
+                    <span class="hn-form-section-hint">Contratos vinculados y estado del proyecto.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-md-8">
-                <label class="form-label">Nombre del proyecto</label>
+                <label class="form-label" asp-for="Input.Title">Nombre del proyecto</label>
                 <input class="form-control" asp-for="Input.Title" />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Estado</label>
+                <label class="form-label" asp-for="Input.Status">Estado</label>
                 <select class="form-select" asp-for="Input.Status">
                     <option value="@ProjectStatus.Open">Abierto</option>
                     <option value="@ProjectStatus.Closed">Cerrado</option>
                 </select>
             </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Cliente</label>
+            <div class="col-12">
+                <label class="form-label" for="clientSelect">Cliente</label>
                 <select id="clientSelect" class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems"></select>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">Responsable</label>
+            <div class="col-12">
+                <label class="form-label" for="contractSelect">Contratos del cliente</label>
+                <select id="contractSelect" class="form-select" asp-for="Input.ContractIds" asp-items="Model.ContractItems" multiple size="6"></select>
+                <div class="hn-related-context mt-2" id="relatedDataStatus" role="status" aria-live="polite"></div>
+                <button type="button" id="relatedDataRetry" class="hn-field-action" hidden>Reintentar consulta</button>
+                <div class="form-text">Selecciona los contratos que alimentan este proyecto (datos/accesos del cliente).</div>
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">02</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Responsable y programación</span>
+                    <span class="hn-form-section-hint">Coordinación y fechas previstas.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-12">
+                <label class="form-label" asp-for="Input.ResponsibleUserId">Responsable</label>
                 <select class="form-select" asp-for="Input.ResponsibleUserId" asp-items="Model.EmployeeItems"></select>
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">Fecha y hora de inicio</label>
+                <label class="form-label" asp-for="Input.StartDate">Fecha y hora de inicio</label>
                 <input class="form-control" asp-for="Input.StartDate" asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" />
             </div>
             <div class="col-md-6">
-                <label class="form-label">Fecha y hora de termino estimado (SLA)</label>
+                <label class="form-label" asp-for="Input.EstimatedEndDate">Fecha y hora de termino estimado (SLA)</label>
                 <input class="form-control" asp-for="Input.EstimatedEndDate" asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" />
             </div>
-
-            <div class="col-12">
-                <label class="form-label">Contratos ligados (herencia)</label>
-                <select id="contractSelect" class="form-select" asp-for="Input.ContractIds" asp-items="Model.ContractItems" multiple size="6"></select>
-                <div class="form-text">Selecciona los contratos que alimentan este proyecto (datos/accesos del cliente).</div>
             </div>
-
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">03</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Objetivo y alcance</span>
+                    <span class="hn-form-section-hint">Qué se busca lograr y qué trabajo incluye el proyecto.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-12">
-                <label class="form-label">Objetivo</label>
+                <label class="form-label" asp-for="Input.Objective">Objetivo</label>
                 <input class="form-control" asp-for="Input.Objective" />
             </div>
             <div class="col-12">
-                <label class="form-label">Alcance</label>
+                <label class="form-label" asp-for="Input.Scope">Alcance</label>
                 <textarea class="form-control" asp-for="Input.Scope" rows="2"></textarea>
             </div>
+            </div>
+        </section>
+        <details class="hn-form-section" open data-form-optional>
+            <summary class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">04</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Detalles adicionales</span>
+                    <span class="hn-form-section-hint">Descripción, excepciones de acceso y comentarios internos.</span>
+                </span>
+            </summary>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-12">
-                <label class="form-label">Descripcion</label>
+                <label class="form-label" asp-for="Input.Description">Descripcion</label>
                 <textarea class="form-control" asp-for="Input.Description" rows="3"></textarea>
             </div>
             <div class="col-12">
-                <label class="form-label">Notas de acceso internas</label>
+                <label class="form-label" asp-for="Input.AccessNotes">Notas de acceso internas</label>
                 <textarea class="form-control" asp-for="Input.AccessNotes" rows="3"></textarea>
             </div>
             <div class="col-12">
-                <label class="form-label">Comentarios</label>
+                <label class="form-label" asp-for="Input.Comments">Comentarios</label>
                 <textarea class="form-control" asp-for="Input.Comments" rows="2"></textarea>
             </div>
-        </div>
+            </div>
+        </details>
     </div>
-    <div class="card-footer d-flex gap-2">
+    <div class="card-footer d-flex flex-wrap gap-2 hn-form-actions">
         <button class="btn btn-primary" type="submit">Guardar cambios</button>
         <a class="btn btn-outline-secondary" asp-page="/Projects/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>
@@ -91,30 +132,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script>
-        (function () {
-            const clientSelect = document.getElementById('clientSelect');
-            const contractSelect = document.getElementById('contractSelect');
-
-            async function reloadContracts() {
-                const clientId = clientSelect?.value;
-                if (!clientId || !contractSelect) return;
-                const url = `?handler=Contracts&clientId=${encodeURIComponent(clientId)}`;
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                if (!res.ok) return;
-                const data = await res.json();
-                contractSelect.innerHTML = '';
-                for (const row of data) {
-                    const opt = document.createElement('option');
-                    opt.value = row.id;
-                    opt.textContent = row.text;
-                    contractSelect.appendChild(opt);
-                }
-            }
-
-            if (clientSelect) {
-                clientSelect.addEventListener('change', reloadContracts);
-            }
-        })();
-    </script>
+    <script src="~/js/hn-related-records.js" asp-append-version="true"></script>
 }

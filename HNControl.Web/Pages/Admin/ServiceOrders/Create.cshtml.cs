@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -27,6 +27,7 @@ public class CreateModel : PageModel
 
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ContractItems { get; set; } = default!;
+    public List<ServiceOrderFormData.ContractOption> ContractOptions { get; set; } = new();
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
@@ -56,19 +57,24 @@ public class CreateModel : PageModel
         public string Description { get; set; } = "";
     }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(Guid? clientId = null, Guid? projectId = null, Guid? contractId = null)
     {
-        await LoadListsAsync();
-
-        if (Input.ClientId == Guid.Empty)
+        if (clientId.HasValue && await _db.Clients.AnyAsync(c => c.Id == clientId && c.IsActive && !c.IsTemporaryLead))
+            Input.ClientId = clientId.Value;
+        if (projectId.HasValue && await _db.Projects.AnyAsync(p => p.Id == projectId && p.ClientId == Input.ClientId))
+            Input.ProjectId = projectId;
+        if (contractId.HasValue)
         {
-            var firstClient = await _db.Clients
-                .Where(c => c.IsActive && !c.IsTemporaryLead)
-                .OrderBy(c => c.Name)
-                .Select(c => c.Id)
-                .FirstOrDefaultAsync();
-            if (firstClient != Guid.Empty) Input.ClientId = firstClient;
+            var contract = await _db.ClientServiceContracts.AsNoTracking().FirstOrDefaultAsync(c =>
+                c.Id == contractId && c.ClientId == Input.ClientId &&
+                (!Input.ProjectId.HasValue || c.ProjectId == null || c.ProjectId == Input.ProjectId));
+            if (contract != null)
+            {
+                Input.ClientServiceContractId = contract.Id;
+                Input.ProjectId ??= contract.ProjectId;
+            }
         }
+        await LoadListsAsync();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -85,19 +91,9 @@ public class CreateModel : PageModel
             return Page();
         }
 
-        if (Input.ClientServiceContractId.HasValue)
-        {
-            var ok = await _db.ClientServiceContracts.AnyAsync(c =>
-                c.Id == Input.ClientServiceContractId.Value &&
-                c.ClientId == Input.ClientId &&
-                (!Input.ProjectId.HasValue || c.ProjectId == null || c.ProjectId == Input.ProjectId));
-
-            if (!ok)
-            {
-                Error = "El contrato seleccionado no pertenece al cliente/proyecto.";
-                return Page();
-            }
-        }
+        Error = await ServiceOrderFormData.ValidateAsync(_db, Input.ClientId, Input.ProjectId,
+            Input.ClientServiceContractId, Input.StartDate, Input.ExpectedEndDate);
+        if (Error != null) return Page();
 
         var order = new ServiceOrder
         {
@@ -133,38 +129,11 @@ public class CreateModel : PageModel
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
-    public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
-    {
-        var items = await _db.Projects
-            .Where(p => p.ClientId == clientId)
-            .OrderByDescending(p => p.StartDate)
-            .Select(p => new { id = p.Id, text = p.Title })
-            .ToListAsync();
+    public async Task<JsonResult> OnGetProjectsAsync(Guid clientId) =>
+        new(await ServiceOrderFormData.ProjectsAsync(_db, clientId));
 
-        return new JsonResult(items);
-    }
-
-    public async Task<JsonResult> OnGetContractsAsync(Guid clientId, Guid? projectId)
-    {
-        var q = _db.ClientServiceContracts.AsQueryable().Where(c => c.ClientId == clientId);
-
-        if (projectId.HasValue)
-            q = q.Where(c => c.ProjectId == null || c.ProjectId == projectId);
-
-        var items = await q
-            .OrderBy(c => c.ServiceType)
-            .ThenBy(c => c.Label)
-            .Select(c => new
-            {
-                id = c.Id,
-                text = $"{c.ServiceType} - {c.Label}" +
-                       (!string.IsNullOrWhiteSpace(c.Branch) ? $" - Sucursal: {c.Branch}" : "") +
-                       (c.ContractEndDate.HasValue ? $" - vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
-            })
-            .ToListAsync();
-
-        return new JsonResult(items);
-    }
+    public async Task<JsonResult> OnGetContractsAsync(Guid clientId, Guid? projectId) =>
+        new(await ServiceOrderFormData.ContractsAsync(_db, clientId, projectId));
 
     private async Task LoadListsAsync()
     {
@@ -180,8 +149,10 @@ public class CreateModel : PageModel
         TypeItems = new SelectList(Enum.GetValues<ServiceOrderType>()
             .Select(t => new { Id = t, Name = t.GetDisplayName() }), "Id", "Name");
 
-        ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
-        ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
+        var clientId = Input?.ClientId ?? Guid.Empty;
+        ProjectItems = new SelectList(await ServiceOrderFormData.ProjectsAsync(_db, clientId), "Id", "Text", Input?.ProjectId);
+        ContractOptions = await ServiceOrderFormData.ContractsAsync(_db, clientId, Input?.ProjectId);
+        ContractItems = new SelectList(ContractOptions, "Id", "Text", Input?.ClientServiceContractId);
     }
 
     private async Task EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)

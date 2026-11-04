@@ -15,7 +15,7 @@
     return;
 }
 
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
     <div>
         <h1 class="h4 m-0">@Model.Client.Name</h1>
         <div class="mt-1">
@@ -27,14 +27,13 @@
         </div>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 hn-client-actions">
         <a class="btn btn-outline-secondary" asp-page="/Clients/Index">Volver</a>
         @if (Model.CanEdit)
         {
             <a class="btn btn-outline-primary" asp-page="/Clients/Edit" asp-route-id="@Model.Client.Id">Editar</a>
             <a class="btn btn-outline-dark" asp-page="/Clients/Documents" asp-route-clientId="@Model.Client.Id">Contrato / NDA</a>
             <a class="btn btn-outline-primary" asp-page="/Clients/Welcome" asp-route-clientId="@Model.Client.Id">Enviar correo de bienvenida</a>
-            <a class="btn btn-outline-success" asp-page="/Projects/Delivery/Create" asp-route-clientId="@Model.Client.Id">Formato entrega</a>
             <a class="btn btn-primary" asp-page="/Clients/Services/Create" asp-route-clientId="@Model.Client.Id">+ Agregar contrato</a>
         }
     </div>
@@ -75,7 +74,7 @@
                                                 }
                                                 <span class="badge @c.StatusBadgeClass">@c.StatusText</span>
                                             </div>
-                                            <div class="text-muted small">@c.ContractEndDateText</div>
+                                            @if (c.ContractEndDateText != "-") { <div class="text-muted small" title="Fin de vigencia">@c.ContractEndDateText</div> }
                                         </div>
 
                                         <div class="fw-semibold mb-1">@c.Label</div>
@@ -89,17 +88,22 @@
                                             <span class="badge text-bg-light border">Plazo: @c.ContractTermText</span>
                                         </div>
 
-                                        <div class="small text-muted mb-1">
-                                            Cuenta: @(string.IsNullOrWhiteSpace(c.AccountNumber) ? "-" : c.AccountNumber)
-                                            &middot; #Contrato: @(string.IsNullOrWhiteSpace(c.ContractNumber) ? "-" : c.ContractNumber)
-                                        </div>
-                                        <div class="small mb-1">
-                                            Proveedor: <b>@(string.IsNullOrWhiteSpace(c.Provider) ? "-" : c.Provider)</b>
-                                        </div>
-                                        <div class="small mb-1">
-                                            @(c.BillingRecurrence == "Eventual" ? "Importe único del evento antes IVA:" : "Monto mensual antes IVA:") <b>@c.MonthlyAmountText</b>
-                                            &middot; Venta: <span class="text-muted">@c.SalesReference</span>
-                                        </div>
+                                        <dl class="hn-contract-facts">
+                                            <div><dt>@(c.BillingRecurrence == "Eventual" || c.BillingRecurrence == "Unica" ? "Importe único antes de IVA" : c.BillingRecurrence == "Mensual" ? "Mensualidad antes de IVA" : "Importe antes de IVA")</dt><dd>@c.MonthlyAmountText</dd></div>
+                                            @if (!string.IsNullOrWhiteSpace(c.ContractNumber))
+                                            {
+                                                <div><dt>Contrato</dt><dd>@c.ContractNumber</dd></div>
+                                            }
+                                        </dl>
+                                        @if (!string.IsNullOrWhiteSpace(c.BranchAddress))
+                                        {
+                                            <div class="small text-muted">@c.BranchAddress</div>
+                                        }
+                                        <details class="hn-contract-more">
+                                            <summary>Datos técnicos y referencias</summary>
+                                            @if (!string.IsNullOrWhiteSpace(c.Provider)) { <div class="small mb-1">Proveedor: <b>@c.Provider</b></div> }
+                                            @if (!string.IsNullOrWhiteSpace(c.AccountNumber) && c.AccountNumber != Model.Client.ClientCode) { <div class="small text-muted mb-1">Cuenta: @c.AccountNumber</div> }
+                                            @if (!string.IsNullOrWhiteSpace(c.SalesReference) && c.SalesReference != "-") { <div class="small text-muted mb-1">Venta: @c.SalesReference</div> }
                                         @if (c.TechnicalSummary.Any())
                                         {
                                             <div class="small text-muted mb-1">
@@ -109,13 +113,14 @@
                                                 }
                                             </div>
                                         }
-                                        @if (!string.IsNullOrWhiteSpace(c.BranchAddress))
-                                        {
-                                            <div class="small text-muted mb-1">Direcci&oacute;n sucursal: @c.BranchAddress</div>
-                                        }
-                                        <div class="small text-muted">Proyecto: @c.ProjectTitle</div>
+                                            @if (!string.IsNullOrWhiteSpace(c.ProjectTitle) && c.ProjectTitle != "-") { <div class="small text-muted">Proyecto: @c.ProjectTitle</div> }
+                                        </details>
                                     </div>
-                                    <div class="card-footer bg-transparent border-0 pt-0 d-flex gap-2 justify-content-end">
+                                    <div class="card-footer bg-transparent border-0 pt-0 d-flex flex-wrap gap-2 justify-content-end">
+                                        @if (User.IsInRole(AppRoles.Admin) && Model.Client.IsActive && !Model.Client.IsTemporaryLead)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Create" asp-route-clientId="@Model.Client.Id" asp-route-contractId="@c.Id">Crear orden</a>
+                                        }
                                         @if (c.HasContractFile)
                                         {
                                             <a class="btn btn-sm btn-outline-secondary"
@@ -148,7 +153,7 @@
             </div>
 
             <div class="card-footer text-muted small">
-                Tip pro: liga el contrato a un <b>Proyecto</b> para que las &Oacute;rdenes de Servicio queden trazables (mantenimientos vs servicio espec&iacute;fico).
+                Crea una orden desde el contrato para conservar el cliente, servicio y proyecto vinculados.
             </div>
         </div>
     </div>

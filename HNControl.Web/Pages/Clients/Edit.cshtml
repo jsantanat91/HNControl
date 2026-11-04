@@ -1,10 +1,11 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.Clients.EditModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Editar cliente";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Editar cliente</h1>
         <div class="text-muted small">Los contratos/servicios se gestionan en la ficha del cliente.</div>
@@ -17,7 +18,7 @@
             <a class="btn btn-outline-primary" asp-page="/Clients/Details" asp-route-id="@Model.Input.Id">Ficha</a>
         }
     </div>
-</div>
+            </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
@@ -32,92 +33,115 @@
 
 <div class="mb-2">
     <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.Input.ClientCode</span>
-</div>
+            </div>
 
-<form method="post" class="card shadow-soft hn-hover">
+<form method="post" class="card shadow-soft hn-workflow-form">
     <div class="card-body">
+<div asp-validation-summary="All" class="text-danger small"></div>
         <input type="hidden" asp-for="Input.Id" />
 
-        <div class="row g-3">
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">01</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Identidad y contacto</span>
+                    <span class="hn-form-section-hint">Los datos principales que usarás en contratos y comunicaciones.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-md-4">
-                <label class="form-label">Tipo</label>
+                <label class="form-label" asp-for="Input.Kind">Tipo</label>
                 <select class="form-select" asp-for="Input.Kind" asp-items="Model.KindItems"></select>
             </div>
-
             <div class="col-md-8">
-                <label class="form-label">Razón Social</label>
+                <label class="form-label" asp-for="Input.Name">Razón Social</label>
                 <input class="form-control" asp-for="Input.Name" />
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">RFC</label>
+                <label class="form-label" asp-for="Input.Rfc">RFC</label>
                 <input class="form-control" asp-for="Input.Rfc" />
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">Correo</label>
-                <input class="form-control" asp-for="Input.Email" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Telefono</label>
-                <input class="form-control" asp-for="Input.Phone" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Nombre de contacto</label>
+                <label class="form-label" asp-for="Input.ContactName">Nombre de contacto</label>
                 <input class="form-control" asp-for="Input.ContactName" placeholder="Ej: Juan Perez" />
             </div>
-
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.Email">Correo</label>
+                <input class="form-control" asp-for="Input.Email" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.Phone">Teléfono</label>
+                <input class="form-control" asp-for="Input.Phone" />
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">02</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Domicilio y atención</span>
+                    <span class="hn-form-section-hint">Ubicación del cliente y responsable comercial.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-12">
-                <label class="form-label">Direccion</label>
+                <label class="form-label" asp-for="Input.Address">Dirección</label>
                 <input class="form-control" asp-for="Input.Address" />
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">Estado</label>
+                <label class="form-label" asp-for="Input.State">Estado</label>
                 <select class="form-select" asp-for="Input.State" asp-items="Model.StateItems">
                     <option value="">Selecciona estado...</option>
                 </select>
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">Municipio / Alcaldia</label>
+                <label class="form-label" asp-for="Input.Municipality">Municipio / Alcaldia</label>
                 <input class="form-control" asp-for="Input.Municipality" list="municipalityOptions" />
                 <datalist id="municipalityOptions"></datalist>
             </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Representante legal (opcional)</label>
-                <input class="form-control" asp-for="Input.LegalRepresentative" />
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Input.OwnerUserId">Responsable comercial</label>
+                <select class="form-select" asp-for="Input.OwnerUserId" asp-items="Model.OwnerItems"></select>
             </div>
-
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">03</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Facturación y datos legales</span>
+                    <span class="hn-form-section-hint">Reutiliza la información de contacto cuando corresponda.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-md-6">
-                <label class="form-label">Giro / actividad</label>
+                <label class="form-label" asp-for="Input.BillingEmail">Correo de facturación</label>
+                <input class="form-control" asp-for="Input.BillingEmail" />
+<button type="button" class="hn-field-action" data-copy-target="Input_BillingEmail" data-copy-source="Input_Email">Usar correo de contacto</button><span class="hn-field-feedback" data-copy-feedback role="status"></span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.LegalRepresentative">Representante legal (opcional)</label>
+                <input class="form-control" asp-for="Input.LegalRepresentative" />
+<button type="button" class="hn-field-action" data-copy-target="Input_LegalRepresentative" data-copy-source="Input_ContactName">Usar nombre de contacto</button><span class="hn-field-feedback" data-copy-feedback role="status"></span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.BusinessLine">Giro / actividad</label>
                 <input class="form-control" asp-for="Input.BusinessLine" />
             </div>
-
             <div class="col-md-6">
-                <label class="form-label">Correo facturacion</label>
-                <input class="form-control" asp-for="Input.BillingEmail" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Domicilio Fiscal</label>
+                <label class="form-label" for="fiscalAddressInput">Domicilio Fiscal</label>
                 <input class="form-control" asp-for="Input.FiscalAddress" id="fiscalAddressInput" />
                 <div class="form-check mt-1">
                     <input class="form-check-input" type="checkbox" id="copyAddressCheck" />
                     <label class="form-check-label small" for="copyAddressCheck">Mismo que Domicilio</label>
                 </div>
             </div>
-
             <div class="col-md-4">
-                <label class="form-label">Código Postal</label>
+                <label class="form-label" asp-for="Input.FiscalZipCode">Código Postal</label>
                 <input class="form-control" asp-for="Input.FiscalZipCode" />
             </div>
-
             <div class="col-md-4">
-                <label class="form-label">Régimen Fiscal</label>
+                <label class="form-label" asp-for="Input.FiscalRegimeCode">Régimen Fiscal</label>
                 <select class="form-select" asp-for="Input.FiscalRegimeCode">
                     @foreach (var it in HNControl.Web.Models.SatCatalogs.RegimenFiscal)
                     {
@@ -125,9 +149,8 @@
                     }
                 </select>
             </div>
-
             <div class="col-md-4">
-                <label class="form-label">Uso de CFDI</label>
+                <label class="form-label" asp-for="Input.CfdiUseCodeDefault">Uso de CFDI</label>
                 <select class="form-select" asp-for="Input.CfdiUseCodeDefault">
                     @foreach (var it in HNControl.Web.Models.SatCatalogs.UsoCfdi)
                     {
@@ -135,14 +158,11 @@
                     }
                 </select>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">Vendedor (Owner)</label>
-                <select class="form-select" asp-for="Input.OwnerUserId" asp-items="Model.OwnerItems"></select>
             </div>
-        </div>
+        </section>
     </div>
 
-    <div class="card-footer d-flex gap-2">
+    <div class="card-footer d-flex flex-wrap gap-2 hn-form-actions">
         <button class="btn btn-primary" type="submit">Guardar cambios</button>
         <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>

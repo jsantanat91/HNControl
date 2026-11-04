@@ -13,15 +13,13 @@ namespace HNControl.Web.Pages.Projects;
 [Authorize(Roles = AppRoles.Admin)]
 public class EditModel : PageModel
 {
-    public record ContractOption(Guid Id, string Name);
-
     private readonly ApplicationDbContext _db;
 
     public EditModel(ApplicationDbContext db) => _db = db;
 
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
-    public SelectList ContractItems { get; set; } = default!;
+    public MultiSelectList ContractItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
 
@@ -97,6 +95,12 @@ public class EditModel : PageModel
     {
         await LoadListsAsync();
         await LoadContractItemsAsync(Input.ClientId, Input.ContractIds);
+        if (!await _db.Clients.AnyAsync(c => c.Id == Input.ClientId && !c.IsTemporaryLead))
+            ModelState.AddModelError("Input.ClientId", "Selecciona un cliente registrado.");
+        var selectedContracts = Input.ContractIds.Distinct().ToList();
+        if (await _db.ClientServiceContracts.CountAsync(c => c.ClientId == Input.ClientId && selectedContracts.Contains(c.Id)) != selectedContracts.Count)
+            ModelState.AddModelError("Input.ContractIds", "Selecciona únicamente contratos del cliente indicado.");
+
 
         if (!ModelState.IsValid)
             return Page();
@@ -144,22 +148,8 @@ public class EditModel : PageModel
         return RedirectToPage("/Projects/Details", new { id = p.Id });
     }
 
-    public async Task<IActionResult> OnGetContractsAsync(Guid clientId)
-    {
-        var rows = await _db.ClientServiceContracts
-            .AsNoTracking()
-            .Where(c => c.ClientId == clientId)
-            .OrderBy(c => c.ServiceType)
-            .ThenBy(c => c.Label)
-            .Select(c => new
-            {
-                c.Id,
-                text = $"{c.Label} [{c.ServiceType}] · Cuenta {c.AccountNumber}"
-            })
-            .ToListAsync();
-
-        return new JsonResult(rows);
-    }
+    public async Task<IActionResult> OnGetContractsAsync(Guid clientId) =>
+        new JsonResult(await ServiceOrderFormData.ContractsAsync(_db, clientId, null));
 
     private async Task LoadListsAsync()
     {
@@ -172,19 +162,8 @@ public class EditModel : PageModel
 
     private async Task LoadContractItemsAsync(Guid clientId, List<Guid>? selectedIds = null)
     {
-        var rows = clientId == Guid.Empty
-            ? new List<ContractOption>()
-            : await _db.ClientServiceContracts
-                .AsNoTracking()
-                .Where(c => c.ClientId == clientId)
-                .OrderBy(c => c.ServiceType)
-                .ThenBy(c => c.Label)
-                .Select(c => new ContractOption(
-                    c.Id,
-                    $"{c.Label} [{c.ServiceType}] · Cuenta {c.AccountNumber}"))
-                .ToListAsync();
-
-        ContractItems = new SelectList(rows, "Id", "Name", selectedIds ?? new List<Guid>());
+        var rows = await ServiceOrderFormData.ContractsAsync(_db, clientId, null);
+        ContractItems = new MultiSelectList(rows, "Id", "Text", selectedIds ?? new List<Guid>());
     }
 
     private async Task AssignContractsAsync(Guid projectId, Guid clientId, List<Guid>? selectedIds)
@@ -193,7 +172,7 @@ public class EditModel : PageModel
         var selected = selectedIds.Distinct().ToHashSet();
 
         var contracts = await _db.ClientServiceContracts
-            .Where(c => c.ClientId == clientId)
+            .Where(c => c.ClientId == clientId || c.ProjectId == projectId)
             .ToListAsync();
 
         foreach (var c in contracts)

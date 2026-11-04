@@ -1,5 +1,16 @@
 # HN Control — notas de versión
 
+## 2.5.6 · 4 de noviembre de 2026
+
+- Formularios de alta y edición de clientes, contratos, órdenes y proyectos organizados por secciones. Observaciones, archivos y detalles opcionales se despliegan cuando se necesitan; los datos existentes y errores permanecen visibles.
+- Ayudas para reutilizar correo de contacto, nombre de contacto como representante y domicilio del cliente; los campos capturados no se sobrescriben. Los paquetes pueden completar nombre, importe y tipo de servicio.
+- Ficha del cliente con contratos más compactos, referencias técnicas desplegables y menos datos vacíos. Acceso para crear una orden desde el contrato o desde el proyecto con sus relaciones precargadas.
+- Órdenes: proyecto y contrato se renderizan desde el servidor y se conservan al corregir errores. Validación de pertenencia al cliente y de fechas, sin descartar errores de captura al editar ni desplazar los días programados por la zona horaria.
+- Proyectos: selección de contratos con casillas, búsqueda y contador. Al cambiar cliente se limpian las opciones anteriores; la carga muestra errores y permite reintentar. Se comprueba que los contratos pertenezcan al cliente y se desvinculan los del cliente anterior si cambia el cliente del proyecto.
+- Selectores dependientes protegidos contra respuestas atrasadas. Se espera a completar la carga antes de guardar.
+
+No requiere migración SQL. Verificado con pruebas automáticas y datos locales de demostración; no se enviaron correos reales ni se modificaron datos de producción.
+
 ## 2.5.5 · 4 de noviembre de 2026
 
 - Modalidad **Eventual** al crear y editar servicios del cliente. Fechas obligatorias, inclusivas, de un día hasta un mes calendario; importe único mayor a cero.

@@ -1,0 +1,49 @@
+/* Client and operations forms: shared structure without changing module controls. */
+.hn-workflow-form { overflow: visible; }
+.hn-workflow-form > .card-body { padding: 0; }
+.hn-form-section { margin: 0; padding: 1.5rem 1.75rem; border: 0; border-bottom: 1px solid #e6ebf3; }
+.hn-form-section:last-child { border-bottom: 0; }
+.hn-form-section-heading { display: flex; align-items: flex-start; gap: .85rem; margin-bottom: 1.25rem; }
+.hn-form-step { display: grid; place-items: center; flex: 0 0 2rem; height: 2rem; border-radius: .65rem; background: #edf3ff; color: #285dd9; font-size: .7rem; font-weight: 800; letter-spacing: .04em; }
+.hn-form-section-title { display: block; font-size: .98rem; font-weight: 750; color: #192b46; line-height: 1.5; }
+.hn-form-section-hint { display: block; margin-top: .15rem; color: #66758d; font-size: .8rem; line-height: 1.5; font-weight: 400; }
+details.hn-form-section > summary { cursor: pointer; list-style: none; }
+details.hn-form-section > summary::-webkit-details-marker { display: none; }
+details.hn-form-section > summary::after { content: '+'; margin-left: auto; color: #285dd9; font-size: 1.3rem; }
+details.hn-form-section[open] > summary::after { content: '−'; }
+details.hn-form-section:not([open]) > summary { margin-bottom: 0; }
+.hn-workflow-form > .card-body > .validation-summary-errors { margin: 1.25rem 1.75rem; padding: .85rem; border-radius: .5rem; background: #fff1f2; }
+.hn-workflow-form .validation-summary-valid { display: none; }
+.hn-workflow-form .form-label { font-weight: 600; font-size: .8rem; }
+.hn-workflow-form .form-text { font-size: .76rem; line-height: 1.5; }
+.hn-workflow-form .form-control, .hn-workflow-form .form-select { min-height: 2.6rem; }
+.hn-workflow-form textarea.form-control { min-height: 5rem; }
+.hn-workflow-form select[multiple] { min-height: 7.5rem; }
+.hn-workflow-form .service-type-chip:focus-within { outline: 2px solid #285dd9; outline-offset: 3px; }
+.hn-workflow-form .hn-form-actions { padding: 1rem 1.75rem; background: #f8faff; border-top: 1px solid #e6ebf3; border-radius: 0 0 var(--bs-card-border-radius, .75rem) var(--bs-card-border-radius, .75rem); }
+.hn-field-action { display: inline-flex; gap: .3rem; align-items: center; margin-top: .4rem; padding: .15rem 0; background: transparent; border: 0; color: #2158c4; font-size: .76rem; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.hn-field-action:disabled { color: #738098; cursor: default; }
+.hn-field-feedback { display: block; color: #52627b; font-size: .76rem; margin-top: .3rem; }
+.hn-related-context { border: 1px solid #d9e6fc; border-radius: .6rem; padding: .8rem 1rem; background: #f4f8ff; color: #344c70; font-size: .8rem; line-height: 1.6; }
+.hn-related-context:empty { display: none; }
+.hn-related-context.is-error { color: #a32936; border-color: #f2ccd0; background: #fff5f6; }
+.hn-contract-picker-list { max-height: 15rem; overflow-y: auto; border: 1px solid #dce5f1; border-radius: .6rem; }
+.hn-contract-choice { display: flex; align-items: flex-start; gap: .7rem; padding: .7rem .85rem; border-bottom: 1px solid #edf1f7; font-size: .8rem; cursor: pointer; }
+.hn-contract-choice:last-child { border-bottom: 0; }
+.hn-contract-choice:has(input:checked) { background: #f0f5ff; color: #1d4bb3; }
+.hn-contract-choice .form-check-input { flex-shrink: 0; }
+.hn-contract-choice[hidden] { display: none; }
+.hn-contract-more { border-top: 1px solid #e8edf5; margin-top: .9rem; padding-top: .7rem; }
+.hn-contract-more summary { cursor: pointer; color: #526c91; font-size: .76rem; font-weight: 600; }
+.hn-contract-more[open] summary { margin-bottom: .6rem; }
+.hn-contract-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: .8rem 0; }
+.hn-contract-facts dt { color: #748298; font-size: .72rem; font-weight: 500; }
+.hn-contract-facts dd { margin: .2rem 0 0; color: #1d3352; font-size: .88rem; font-weight: 650; overflow-wrap: anywhere; }
+.hn-client-actions { flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+@media (max-width: 767.98px) {
+    .hn-form-section { padding: 1.1rem; }
+    .hn-form-section-heading { gap: .65rem; }
+    .hn-workflow-form .hn-form-actions { padding: 1rem; }
+    .hn-workflow-form .hn-form-actions .btn { flex: 1 1 auto; }
+    .hn-client-actions { justify-content: flex-start; }
+}

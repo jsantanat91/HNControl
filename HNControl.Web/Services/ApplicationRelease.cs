@@ -3,9 +3,17 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.5";
+    public const string Version = "2.5.6";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.6", new DateOnly(2026, 11, 4), "Formularios conectados y más claros", new[]
+        {
+            new ReleaseChange("Diseño", "Altas y ediciones de clientes, contratos, órdenes y proyectos organizadas por secciones, con detalles opcionales desplegables y controles adaptables a móvil."),
+            new ReleaseChange("Clientes", "Fichas de contratos más compactas y ayudas para reutilizar correo de contacto, representante, domicilio y datos de paquetes sin sobrescribir campos capturados."),
+            new ReleaseChange("Órdenes", "Creación desde un contrato o proyecto con datos vinculados; las selecciones se conservan cuando hay errores y se valida que pertenezcan al mismo cliente."),
+            new ReleaseChange("Proyectos", "Contratos seleccionables con casillas y búsqueda. Carga de datos con mensajes de error y reintento, sin conservar opciones de otro cliente."),
+            new ReleaseChange("Publicación", "Esta versión no requiere migraciones de base de datos.")
+        }),
         new ReleaseNote("2.5.5", new DateOnly(2026, 11, 4), "Conectividad para eventos", new[]
         {
             new ReleaseChange("Clientes", "Contratos eventuales de un día hasta un mes con fechas inclusivas e importe único."),

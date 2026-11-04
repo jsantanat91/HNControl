@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -24,6 +24,7 @@ public class EditModel : PageModel
     public SelectList StatusItems { get; set; } = default!;
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ContractItems { get; set; } = default!;
+    public List<ServiceOrderFormData.ContractOption> ContractOptions { get; set; } = new();
 
     [BindProperty] public InputModel? Input { get; set; }
 
@@ -75,8 +76,6 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
-        await LoadListsAsync();
-
         var order = await _db.ServiceOrders
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(x => x.Id == id);
@@ -92,13 +91,15 @@ public class EditModel : PageModel
             ProjectId = order.ProjectId,
             ClientServiceContractId = order.ClientServiceContractId,
             AssignedUserId = order.AssignedUserId,
-            StartDate = (order.StartedAt ?? order.CreatedAt).ToLocalTime().Date,
-            ExpectedEndDate = (order.EstimatedEndDate ?? (order.StartedAt ?? order.CreatedAt).AddDays(2)).ToLocalTime().Date,
+            StartDate = ServiceOrderFormData.EditableDate(order.StartedAt ?? order.CreatedAt),
+            ExpectedEndDate = ServiceOrderFormData.EditableDate(order.EstimatedEndDate ?? (order.StartedAt ?? order.CreatedAt).AddDays(2)),
             Description = order.Description ?? ""
         };
 
         WorkItems = order.WorkItems.OrderBy(w => w.SortOrder).ToList();
         NewWorkItem.Type = order.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : order.Type;
+
+        await LoadListsAsync();
 
         return Page();
     }
@@ -108,46 +109,23 @@ public class EditModel : PageModel
         await LoadListsAsync();
 
         if (Input == null) return NotFound();
+        WorkItems = await _db.ServiceOrderWorkItems.Where(w => w.OrderId == Input.Id).OrderBy(w => w.SortOrder).ToListAsync();
+        NewWorkItem.Type = Input.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : Input.Type;
 
-        // âš ï¸ Esta pÃ¡gina tiene 2 forms (Editar orden / Agregar actividad).
-        // Al postear el form principal, el binder tambiÃ©n intenta validar NewWorkItem (Title requerido)
-        // y eso hace que "parezca" que no guarda aunque el tÃ­tulo de la orden sÃ­ venga.
-        // SoluciÃ³n: validamos SOLO Input aquÃ­.
-        ModelState.Clear();
+        // Exclude the activity form while preserving binding errors from the main form.
+        foreach (var key in ModelState.Keys.Where(key => key == nameof(NewWorkItem) || key.StartsWith(nameof(NewWorkItem) + ".")).ToList())
+            ModelState.Remove(key);
         TryValidateModel(Input, nameof(Input));
 
         if (!ModelState.IsValid)
         {
-            // ðŸ‘‰ Antes esto se veÃ­a como â€œno hace nadaâ€ porque no habÃ­a summary.
-            Error = "No se pudo guardar. " + string.Join(" | ",
-                ModelState
-                    .Where(kvp => kvp.Value?.Errors.Count > 0)
-                    .Select(kvp => $"{kvp.Key}: {string.Join(", ", kvp.Value!.Errors.Select(e => e.ErrorMessage))}"));
-
-            // Mantener la tabla de actividades visible aunque el model tenga errores.
-            WorkItems = await _db.ServiceOrderWorkItems
-                .Where(w => w.OrderId == Input.Id)
-                .OrderBy(w => w.SortOrder)
-                .ToListAsync();
-
-            NewWorkItem.Type = Input.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : Input.Type;
+            Error = "No se pudo guardar. Revisa los campos señalados.";
             return Page();
         }
 
-        // ValidaciÃ³n de consistencia
-        if (Input.ClientServiceContractId.HasValue)
-        {
-            var ok = await _db.ClientServiceContracts.AnyAsync(c =>
-                c.Id == Input.ClientServiceContractId.Value &&
-                c.ClientId == Input.ClientId &&
-                (!Input.ProjectId.HasValue || c.ProjectId == null || c.ProjectId == Input.ProjectId));
-
-            if (!ok)
-            {
-                Error = "El contrato seleccionado no pertenece al cliente/proyecto.";
-                return Page();
-            }
-        }
+        Error = await ServiceOrderFormData.ValidateAsync(_db, Input.ClientId, Input.ProjectId,
+            Input.ClientServiceContractId, Input.StartDate, Input.ExpectedEndDate);
+        if (Error != null) return Page();
 
         var order = await _db.ServiceOrders
             .Include(o => o.WorkItems)
@@ -395,43 +373,14 @@ public class EditModel : PageModel
     }
 
     // Handlers JSON
-    public async Task<JsonResult> OnGetProjectsAsync(Guid clientId)
-    {
-        var items = await _db.Projects
-            .Where(p => p.ClientId == clientId)
-            .OrderByDescending(p => p.StartDate)
-            .Select(p => new { id = p.Id, text = p.Title })
-            .ToListAsync();
+    public async Task<JsonResult> OnGetProjectsAsync(Guid clientId) =>
+        new(await ServiceOrderFormData.ProjectsAsync(_db, clientId));
 
-        return new JsonResult(items);
-    }
-
-    public async Task<JsonResult> OnGetContractsAsync(Guid clientId, Guid? projectId)
-    {
-        var q = _db.ClientServiceContracts.AsQueryable().Where(c => c.ClientId == clientId);
-
-        if (projectId.HasValue)
-            q = q.Where(c => c.ProjectId == null || c.ProjectId == projectId);
-
-        var items = await q
-            .OrderBy(c => c.ServiceType)
-            .ThenBy(c => c.Label)
-            .Select(c => new
-            {
-                id = c.Id,
-                text = $"{c.ServiceType} - {c.Label}" +
-                       (!string.IsNullOrWhiteSpace(c.Branch) ? $" - Sucursal: {c.Branch}" : "") +
-                       (c.ContractEndDate.HasValue ? $" - vence {c.ContractEndDate.Value:yyyy-MM-dd}" : "")
-            })
-            .ToListAsync();
-
-        return new JsonResult(items);
-    }
+    public async Task<JsonResult> OnGetContractsAsync(Guid clientId, Guid? projectId) =>
+        new(await ServiceOrderFormData.ContractsAsync(_db, clientId, projectId));
 
     private async Task<IActionResult> ReloadAndShowAsync(Guid id)
     {
-        await LoadListsAsync();
-
         var order = await _db.ServiceOrders
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
@@ -448,13 +397,15 @@ public class EditModel : PageModel
             ProjectId = order.ProjectId,
             ClientServiceContractId = order.ClientServiceContractId,
             AssignedUserId = order.AssignedUserId,
-            StartDate = (order.StartedAt ?? order.CreatedAt).ToLocalTime().Date,
-            ExpectedEndDate = (order.EstimatedEndDate ?? (order.StartedAt ?? order.CreatedAt).AddDays(2)).ToLocalTime().Date,
+            StartDate = ServiceOrderFormData.EditableDate(order.StartedAt ?? order.CreatedAt),
+            ExpectedEndDate = ServiceOrderFormData.EditableDate(order.EstimatedEndDate ?? (order.StartedAt ?? order.CreatedAt).AddDays(2)),
             Description = order.Description ?? ""
         };
 
         WorkItems = order.WorkItems.OrderBy(w => w.SortOrder).ToList();
         NewWorkItem.Type = order.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : order.Type;
+
+        await LoadListsAsync();
 
         return Page();
     }
@@ -521,8 +472,10 @@ public class EditModel : PageModel
 
         StatusItems = new SelectList(statuses, "Id", "Name");
 
-        ProjectItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
-        ContractItems = new SelectList(Enumerable.Empty<object>(), "Id", "Title");
+        var clientId = Input?.ClientId ?? Guid.Empty;
+        ProjectItems = new SelectList(await ServiceOrderFormData.ProjectsAsync(_db, clientId), "Id", "Text", Input?.ProjectId);
+        ContractOptions = await ServiceOrderFormData.ContractsAsync(_db, clientId, Input?.ProjectId);
+        ContractItems = new SelectList(ContractOptions, "Id", "Text", Input?.ClientServiceContractId);
     }
 }
 

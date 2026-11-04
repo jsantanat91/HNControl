@@ -29,6 +29,7 @@ public class EditModel : PageModel
     public Guid ClientId { get; set; }
     public string ClientName { get; set; } = "";
     public string ClientCode { get; set; } = "";
+    public string ClientAddress { get; set; } = "";
 
     public bool HasContractFile => Contract != null && !string.IsNullOrWhiteSpace(Contract.SignedContractStoragePath);
     public string ContractFileName => Contract?.SignedContractOriginalFileName ?? "contrato.pdf";
@@ -128,6 +129,7 @@ public class EditModel : PageModel
         ClientId = Contract.ClientId;
         ClientName = Contract.Client?.Name ?? "";
         ClientCode = Contract.Client?.ClientCode ?? "";
+        ClientAddress = Contract.Client?.Address ?? "";
 
         await LoadProjectsAsync(ClientId);
         await LoadSalesOpportunitiesAsync(ClientId);
@@ -189,6 +191,7 @@ public class EditModel : PageModel
         ClientId = Contract.ClientId;
         ClientName = Contract.Client?.Name ?? "";
         ClientCode = Contract.Client?.ClientCode ?? "";
+        ClientAddress = Contract.Client?.Address ?? "";
 
         await LoadProjectsAsync(ClientId);
         await LoadSalesOpportunitiesAsync(ClientId);

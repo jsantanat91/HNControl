@@ -1,8 +1,9 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @using HNControl.Web.Services
 @model HNControl.Web.Pages.Admin.ServiceOrders.EditModel
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "Editar orden";
 }
 
 @if (Model.Input == null)
@@ -11,7 +12,7 @@
     return;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Editar orden</h1>
         <div class="text-muted small">Ajusta datos generales; cualquier tecnico podra tomar la orden para trabajarla.</div>
@@ -19,88 +20,117 @@
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Volver</a>
     </div>
-</div>
+            </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" asp-page="./Edit" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-hover">
+<form method="post" asp-page="./Edit" asp-route-id="@Model.Input.Id" class="card shadow-soft hn-workflow-form">
     @Html.AntiForgeryToken()
     <div class="card-body">
         <div asp-validation-summary="All" class="text-danger small mb-2"></div>
         <input type="hidden" asp-for="Input.Id" />
 
-        <div class="row g-3">
-            <div class="col-md-8">
-                <label class="form-label">Titulo</label>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">01</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Cliente y servicio</span>
+                    <span class="hn-form-section-hint">Conserva la relación de la orden con el cliente, proyecto y contrato.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-6">
+                <label class="form-label" for="clientSelect">Cliente</label>
+                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="clientSelect"></select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="projectSelect">Proyecto (opcional)</label>
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect" data-selected="@Model.Input.ProjectId">
+                    <option value="">-- Sin proyecto --</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="contractSelect">Servicio contratado (opcional)</label>
+                <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems" id="contractSelect" data-selected="@Model.Input.ClientServiceContractId">
+                    <option value="">-- Sin contrato ligado --</option>
+                </select>
+                <div class="hn-related-context mt-2" id="relatedDataStatus" role="status" aria-live="polite"></div>
+                <button type="button" id="relatedDataRetry" class="hn-field-action" hidden>Reintentar consulta</button>
+                <div class="hn-related-context mt-2" id="contractContext"></div>
+                <div class="d-flex flex-wrap gap-3">
+                    <button type="button" class="hn-field-action" id="useContractProject" hidden>Vincular también el proyecto del contrato</button>
+                    <button type="button" class="hn-field-action" id="useContractTitle" hidden>Usar nombre del servicio en el título</button>
+                </div>
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">02</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Trabajo a realizar</span>
+                    <span class="hn-form-section-hint">Información de la intervención y su estado actual.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-12">
+                <label class="form-label" asp-for="Input.Title">Título</label>
                 <input class="form-control" asp-for="Input.Title" />
             </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Status</label>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.Status">Estado</label>
                 <select class="form-select" asp-for="Input.Status" asp-items="Model.StatusItems"></select>
             </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Tipo</label>
+            <div class="col-md-6">
+                <label class="form-label" for="orderTypeSelect">Tipo</label>
                 @if (Model.WorkItems.Count > 0 || Model.Input.Type == HNControl.Web.Models.ServiceOrderType.Global)
                 {
-                    <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems" disabled></select>
+                    <select id="orderTypeSelect" class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems" disabled></select>
                     <input type="hidden" asp-for="Input.Type" />
                     <div class="text-muted small mt-1">Esta orden es <strong>Global</strong>. El tipo real se maneja por actividad.</div>
                 }
                 else
                 {
-                    <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
+                    <select id="orderTypeSelect" class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
                 }
             </div>
-
-            <div class="col-md-8">
-                <label class="form-label">Responsable inicial (opcional)</label>
+            <div class="col-12">
+                <label class="form-label" asp-for="Input.Description">Descripción</label>
+                <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">03</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Programación</span>
+                    <span class="hn-form-section-hint">Fechas de atención y término esperado.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.AssignedUserId">Responsable inicial (opcional)</label>
                 <select class="form-select" asp-for="Input.AssignedUserId" asp-items="Model.EmployeeItems">
                     <option value="">-- Sin responsable inicial --</option>
                 </select>
             </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Cliente</label>
-                <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="clientSelect"></select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Proyecto (opcional)</label>
-                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems" id="projectSelect" data-selected="@Model.Input.ProjectId">
-                    <option value="">-- Sin proyecto --</option>
-                </select>
-            </div>
-
-            <div class="col-12">
-                <label class="form-label">Servicio contratado (opcional)</label>
-                <select class="form-select" asp-for="Input.ClientServiceContractId" asp-items="Model.ContractItems" id="contractSelect" data-selected="@Model.Input.ClientServiceContractId">
-                    <option value="">-- Sin contrato ligado --</option>
-                </select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Inicio</label>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Input.StartDate">Inicio</label>
                 <input class="form-control" type="date" asp-for="Input.StartDate" />
             </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Fecha esperada fin</label>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Input.ExpectedEndDate">Término esperado</label>
                 <input class="form-control" type="date" asp-for="Input.ExpectedEndDate" />
             </div>
-
-            <div class="col-12">
-                <label class="form-label">Descripcion</label>
-                <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
             </div>
-        </div>
+        </section>
     </div>
 
-    <div class="card-footer d-flex gap-2">
+    <div class="card-footer d-flex flex-wrap gap-2 hn-form-actions">
         <button class="btn btn-primary" type="submit">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@Model.Input.Id">Cancelar</a>
     </div>
@@ -147,7 +177,7 @@
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Descripcion</label>
+                    <label class="form-label">Descripción</label>
                     <input class="form-control" asp-for="NewWorkItem.Description" placeholder="Ej: revision, limpieza, pruebas" />
                     <span asp-validation-for="NewWorkItem.Description" class="text-danger small"></span>
                 </div>
@@ -204,89 +234,13 @@
             }
         }
     </div>
-</div>
+            </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
-    <script>
-        async function refreshProjectsAndContracts() {
-            const clientId = document.getElementById('clientSelect')?.value;
-            const projectSelect = document.getElementById('projectSelect');
-            const contractSelect = document.getElementById('contractSelect');
-            if (!clientId) return;
-
-            // Projects
-            try {
-                const r = await fetch(`?handler=Projects&clientId=${clientId}`);
-                const items = await r.json();
-
-                // Si el servidor ya tenia valor (por ejemplo al recargar la pagina), lo guardamos en data-selected.
-                const desired = projectSelect.value || projectSelect.dataset.selected;
-                projectSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
-                items.forEach(x => {
-                    const opt = document.createElement('option');
-                    opt.value = x.id;
-                    opt.textContent = x.text;
-                    projectSelect.appendChild(opt);
-                });
-                if (desired) projectSelect.value = desired;
-                projectSelect.dataset.selected = projectSelect.value;
-            } catch { }
-
-            await refreshContracts();
-        }
-
-        async function refreshContracts() {
-            const clientId = document.getElementById('clientSelect')?.value;
-            const projectId = document.getElementById('projectSelect')?.value;
-            const contractSelect = document.getElementById('contractSelect');
-            if (!clientId) return;
-
-            const url = projectId
-                ? `?handler=Contracts&clientId=${clientId}&projectId=${projectId}`
-                : `?handler=Contracts&clientId=${clientId}`;
-
-            try {
-                const r = await fetch(url);
-                const items = await r.json();
-
-                const desired = contractSelect.value || contractSelect.dataset.selected;
-                contractSelect.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
-                items.forEach(x => {
-                    const opt = document.createElement('option');
-                    opt.value = x.id;
-                    opt.textContent = x.text;
-                    contractSelect.appendChild(opt);
-                });
-                if (desired) contractSelect.value = desired;
-                contractSelect.dataset.selected = contractSelect.value;
-            } catch { }
-        }
-
-        document.getElementById('clientSelect')?.addEventListener('change', () => {
-            // Cambio cliente: la seleccion previa puede dejar de ser valida.
-            const projectSelect = document.getElementById('projectSelect');
-            const contractSelect = document.getElementById('contractSelect');
-            if (projectSelect) projectSelect.dataset.selected = '';
-            if (contractSelect) contractSelect.dataset.selected = '';
-            refreshProjectsAndContracts();
-        });
-        document.getElementById('projectSelect')?.addEventListener('change', () => {
-            const projectSelect = document.getElementById('projectSelect');
-            const contractSelect = document.getElementById('contractSelect');
-            if (projectSelect) projectSelect.dataset.selected = projectSelect.value;
-            if (contractSelect) contractSelect.dataset.selected = '';
-            refreshContracts();
-        });
-
-        document.getElementById('contractSelect')?.addEventListener('change', () => {
-            const contractSelect = document.getElementById('contractSelect');
-            if (contractSelect) contractSelect.dataset.selected = contractSelect.value;
-        });
-
-        refreshProjectsAndContracts();
-    </script>
+    <script type="application/json" id="contractOptions">@Html.Raw(global::System.Text.Json.JsonSerializer.Serialize(Model.ContractOptions, new global::System.Text.Json.JsonSerializerOptions(global::System.Text.Json.JsonSerializerDefaults.Web)))</script>
+    <script src="~/js/hn-related-records.js" asp-append-version="true"></script>
 }
 
 

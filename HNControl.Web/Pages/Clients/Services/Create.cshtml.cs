@@ -34,12 +34,15 @@ public class CreateModel : PageModel
 
     public string ClientName { get; set; } = "";
     public string ClientCode { get; set; } = "";
+    public string ClientAddress { get; set; } = "";
 
     public SelectList ServiceTypeItems =>
         new(Enum.GetValues<ClientServiceType>().Select(x => new { Id = x, Name = x.ToString() }), "Id", "Name");
 
     public SelectList ProjectItems { get; set; } = default!;
     public SelectList ServicePackageItems { get; set; } = default!;
+    public record PackageOption(Guid Id, string Name, decimal? Price, string? Type);
+    public List<PackageOption> PackageOptions { get; set; } = new();
     public SelectList SalesOpportunityItems { get; set; } = default!;
 
     [BindProperty] public InputModel Input { get; set; } = new();
@@ -127,6 +130,7 @@ public class CreateModel : PageModel
 
         ClientName = client.Name;
         ClientCode = client.ClientCode;
+        ClientAddress = client.Address ?? "";
         await LoadProjectsAsync();
         await LoadServicePackagesAsync();
         await LoadSalesOpportunitiesAsync();
@@ -158,6 +162,7 @@ public class CreateModel : PageModel
 
         ClientName = client.Name;
         ClientCode = client.ClientCode;
+        ClientAddress = client.Address ?? "";
         await LoadProjectsAsync();
         await LoadServicePackagesAsync();
         await LoadSalesOpportunitiesAsync();
@@ -333,12 +338,13 @@ public class CreateModel : PageModel
             .OrderBy(x => x.Name)
             .Select(x => new
             {
-                x.Id,
-                Label = x.Name + (x.UnitPrice.HasValue ? $" Â· {x.UnitPrice.Value.ToString("C2")}" : " Â· Precio manual")
+                x.Id, x.Name, x.UnitPrice, x.VariantValue,
+                Label = x.Name + (x.UnitPrice.HasValue ? $" · {x.UnitPrice.Value.ToString("C2")}" : " · Precio manual")
             })
             .ToListAsync();
 
         ServicePackageItems = new SelectList(rows, "Id", "Label");
+        PackageOptions = rows.Select(x => new PackageOption(x.Id, x.Name, x.UnitPrice, x.VariantValue)).ToList();
     }
 
     private async Task LoadSalesOpportunitiesAsync()
@@ -352,8 +358,8 @@ public class CreateModel : PageModel
             {
                 x.Id,
                 Label = (x.QuoteRequest != null ? x.QuoteRequest.Folio : "Venta")
-                    + " Â· " + x.WorkflowStage
-                    + " Â· " + x.Status
+                    + " · " + x.WorkflowStage
+                    + " · " + x.Status
             })
             .ToListAsync();
 

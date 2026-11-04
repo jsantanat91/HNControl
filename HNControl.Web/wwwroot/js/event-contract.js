@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const update = () => {
         const eventual = mode.value === 'Eventual';
         document.getElementById('contractAmountLabel').textContent = eventual
-            ? 'Importe único del evento (antes de IVA)' : 'Monto del servicio (antes de IVA)';
+            ? 'Importe único antes de IVA' : 'Importe antes de IVA';
         start.required = end.required = amount.required = eventual;
         term.closest('.col-md-3').hidden = eventual;
         if (eventual) term.value = 'Eventual';

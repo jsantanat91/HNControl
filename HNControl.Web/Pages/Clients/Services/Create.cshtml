@@ -5,39 +5,48 @@
     ViewData["Title"] = "Agregar contrato";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 m-0">Agregar contrato</h1>
         <div class="text-muted small">@Model.ClientName</div>
             <div class="mt-1"><span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-3 py-2 fw-semibold">@Model.ClientCode</span></div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Volver</a>
-</div>
+            </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover" novalidate>
+<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-workflow-form" novalidate>
     <div class="card-body">
         <input type="hidden" asp-for="ClientId" />
         <input type="hidden" asp-for="FeasibilityId" />
         <div asp-validation-summary="All" class="alert alert-warning mb-3"></div>
 
-        <div class="row g-3">
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">01</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Servicio a contratar</span>
+                    <span class="hn-form-section-hint">Elige un paquete o captura el servicio; verás solo sus datos técnicos.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-12">
-                <label class="form-label">Paquete de servicio (inventario)</label>
+                <label class="form-label" asp-for="Input.ServicePackageId">Paquete de servicio (inventario)</label>
                 <select class="form-select" asp-for="Input.ServicePackageId" asp-items="Model.ServicePackageItems">
                     <option value="">-- Captura manual --</option>
                 </select>
-                <div class="form-text">Opcional. Si lo eliges, se prellena para contrato/cotización.</div>
+                <div class="form-text">Opcional. Consulta el paquete y usa sus datos para completar los campos vacíos.</div>
+                <button type="button" class="hn-field-action" id="useServicePackage" hidden>Usar datos del paquete</button>
+                <div class="hn-field-feedback" id="packageFeedback" role="status"></div>
             </div>
-
-            <input type="hidden" asp-for="Input.ServiceType" id="primaryServiceType" />
+<input type="hidden" asp-for="Input.ServiceType" id="primaryServiceType" />
 
             <div class="col-12">
-                <label class="form-label">Servicios incluidos</label>
+                <div class="form-label" id="includedServicesLabel">Servicios incluidos</div>
                 <div class="d-flex flex-wrap gap-2">
                     @foreach (var serviceType in new[] { "Internet", "Telefonia", "CCTV", "Seguridad", "Servidores", "Hardware", "Otro" })
                     {
@@ -45,11 +54,11 @@
                         <label class="btn btn-sm @(isChecked ? "btn-primary" : "btn-outline-primary") service-type-chip">
                             @if (isChecked)
                             {
-                                <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" checked />
+                                <input class="visually-hidden service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" checked />
                             }
                             else
                             {
-                                <input class="d-none service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" />
+                                <input class="visually-hidden service-type-toggle" type="checkbox" name="Input.SelectedServiceTypes" value="@serviceType" />
                             }
                             @serviceType
                         </label>
@@ -57,19 +66,17 @@
                 </div>
                 <div class="form-text">Puedes seleccionar mas de un servicio. Se activan campos tecnicos segun corresponda.</div>
             </div>
-
             <div class="col-12">
-                <label class="form-label">Nombre del contrato</label>
+                <label class="form-label" asp-for="Input.Label">Nombre del servicio / contrato</label>
                 <input class="form-control" asp-for="Input.Label" placeholder="Ej: Internet corporativo / CCTV Matamoros" />
                 <div class="form-text">Se usa en Ordenes de Servicio y reportes.</div>
             </div>
-
             <div class="col-12 contract-tech-section" data-tech-section="Internet">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de Internet</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Capacidad MB</label>
+                            <label class="form-label" asp-for="Input.InternetCapacity">Capacidad MB</label>
                             <select class="form-select" asp-for="Input.InternetCapacity">
                                 <option value="">-- Seleccionar --</option>
                                 @foreach (var mb in new[] { "10", "20", "30", "50", "100", "200", "300", "500", "1000", "Otro" })
@@ -79,39 +86,37 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label">Capacidad personalizada</label>
+                            <label class="form-label" asp-for="Input.InternetCapacityOther">Capacidad personalizada</label>
                             <input class="form-control" asp-for="Input.InternetCapacityOther" placeholder="Ej: 2 Gbps / enlace simetrico dedicado" />
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="col-12 contract-tech-section" data-tech-section="Telefonia">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de Telefonia</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Extensiones</label>
+                            <label class="form-label" asp-for="Input.TelephonyExtensions">Extensiones</label>
                             <input class="form-control" asp-for="Input.TelephonyExtensions" placeholder="Ej: 25" />
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Troncales</label>
+                            <label class="form-label" asp-for="Input.TelephonyTrunks">Troncales</label>
                             <input class="form-control" asp-for="Input.TelephonyTrunks" placeholder="Ej: 4" />
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">DID</label>
+                            <label class="form-label" asp-for="Input.TelephonyDids">DID</label>
                             <input class="form-control" asp-for="Input.TelephonyDids" placeholder="Ej: 10 numeros" />
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="col-12 contract-tech-section" data-tech-section="CCTV">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de CCTV</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Canales</label>
+                            <label class="form-label" asp-for="Input.CctvChannels">Canales</label>
                             <select class="form-select" asp-for="Input.CctvChannels">
                                 <option value="">-- Seleccionar --</option>
                                 @foreach (var ch in new[] { "2", "4", "6", "8", "16", "32", "Otro" })
@@ -121,19 +126,18 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label">Canales personalizados</label>
+                            <label class="form-label" asp-for="Input.CctvChannelsOther">Canales personalizados</label>
                             <input class="form-control" asp-for="Input.CctvChannelsOther" placeholder="Ej: 48 canales / NVR dedicado" />
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="col-12 contract-tech-section" data-tech-section="Seguridad">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de Seguridad</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Fabricante / plataforma</label>
+                            <label class="form-label" asp-for="Input.SecurityBrand">Fabricante / plataforma</label>
                             <select class="form-select" asp-for="Input.SecurityBrand">
                                 <option value="">-- Seleccionar --</option>
                                 @foreach (var brand in new[] { "Fortinet", "Meraki", "Huawei", "Otro" })
@@ -143,19 +147,18 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label">Detalle personalizado</label>
+                            <label class="form-label" asp-for="Input.SecurityBrandOther">Detalle personalizado</label>
                             <input class="form-control" asp-for="Input.SecurityBrandOther" placeholder="Ej: firewall, licenciamiento, soporte administrado" />
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="col-12 contract-tech-section" data-tech-section="Servidores">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de Servidores</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Sistema operativo</label>
+                            <label class="form-label" asp-for="Input.ServerOs">Sistema operativo</label>
                             <select class="form-select" asp-for="Input.ServerOs">
                                 <option value="">-- Seleccionar --</option>
                                 <option value="Windows Server">Windows Server</option>
@@ -164,66 +167,42 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Nucleos</label>
+                            <label class="form-label" asp-for="Input.ServerCpuCores">Nucleos</label>
                             <input class="form-control" asp-for="Input.ServerCpuCores" placeholder="Ej: 8" />
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">RAM</label>
+                            <label class="form-label" asp-for="Input.ServerRam">RAM</label>
                             <input class="form-control" asp-for="Input.ServerRam" placeholder="Ej: 32 GB" />
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Disco duro</label>
+                            <label class="form-label" asp-for="Input.ServerDisk">Disco duro</label>
                             <input class="form-control" asp-for="Input.ServerDisk" placeholder="Ej: 1 TB SSD" />
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Proveedor</label>
-                <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay" />
-                <datalist id="providers">
-                    <option value="Telmex"></option>
-                    <option value="Totalplay"></option>
-                    <option value="Metrocarrier"></option>
-                    <option value="Axtel"></option>
-                    <option value="Megacable"></option>
-                </datalist>
             </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Numero de cuenta</label>
-                <input class="form-control" asp-for="Input.AccountNumber" />
-                <div class="form-text">Sugerido: @Model.ClientCode</div>
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Numero de contrato</label>
-                <input class="form-control" asp-for="Input.ContractNumber" />
-            </div>
-
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">02</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Modalidad, importe y vigencia</span>
+                    <span class="hn-form-section-hint">Define si es recurrente, un evento o un cargo único.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-md-3">
-                <label class="form-label"><span id="contractAmountLabel">Monto mensual (antes de IVA)</span></label>
-                <input class="form-control" asp-for="Input.MonthlyAmount" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label">Costo de instalacion (antes de IVA)</label>
-                <input class="form-control" asp-for="Input.InstallationCost" type="number" min="0" step="0.01" placeholder="0.00" />
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label">Modalidad y facturación</label>
+                <label class="form-label" asp-for="Input.BillingRecurrence">Modalidad y facturación</label>
                 <select class="form-select" asp-for="Input.BillingRecurrence">
                     <option value="Unica">Unico</option>
                     <option value="Mensual">Recurrente (mensual)</option>
-                    <option value="Eventual">Eventual (evento de un día hasta un mes)</option>
+                    <option value="Eventual">Eventual (1 día a 1 mes)</option>
                     <option value="Anual">Anual</option>
                 </select>
             </div>
-
             <div class="col-md-3">
-                <label class="form-label">Tiempo de contrato</label>
+                <label class="form-label" asp-for="Input.ContractTermOption">Tiempo de contrato</label>
                 <select class="form-select" asp-for="Input.ContractTermOption">
                     <option value="Eventual">Fechas del evento (sin renovación)</option>
                     <option value="12">12 meses</option>
@@ -233,57 +212,112 @@
                     <option value="Indefinido">Indefinido</option>
                 </select>
             </div>
-
-            <div class="col-12">
-                <label class="form-label">Venta relacionada (opcional)</label>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Input.MonthlyAmount"><span id="contractAmountLabel">Importe antes de IVA</span></label>
+                <input class="form-control" asp-for="Input.MonthlyAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" asp-for="Input.InstallationCost">Instalación antes de IVA</label>
+                <input class="form-control" asp-for="Input.InstallationCost" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.ContractStartDate">Inicio</label>
+                <input class="form-control" type="date" asp-for="Input.ContractStartDate" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.ContractEndDate">Vencimiento</label>
+                <input class="form-control" type="date" asp-for="Input.ContractEndDate" />
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">03</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Lugar del servicio</span>
+                    <span class="hn-form-section-hint">Usa el domicilio registrado o indica la sucursal donde se instalará.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Input.Branch">Sucursal</label>
+                <input class="form-control" asp-for="Input.Branch" placeholder="Ej: Matriz / Tultepark / Sucursal Toluca" />
+                <div class="form-text">Se usa para tickets, monitoreo y carrier.</div>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label" asp-for="Input.BranchAddress">Dirección del servicio</label>
+                <input class="form-control" asp-for="Input.BranchAddress" placeholder="Direccion del sitio para soporte y tickets" />
+<button type="button" class="hn-field-action" data-copy-target="Input_BranchAddress" data-copy-value="@Model.ClientAddress">Usar domicilio del cliente</button><span class="hn-field-feedback" data-copy-feedback role="status"></span>
+            </div>
+            </div>
+        </section>
+        <section class="hn-form-section">
+            <header class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">04</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Referencias y seguimiento</span>
+                    <span class="hn-form-section-hint">Identificadores del contrato y vínculos con la operación.</span>
+                </span>
+            </header>
+            <div class="row g-3 hn-form-section-fields">
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Input.Provider">Proveedor</label>
+                <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay" />
+                <datalist id="providers">
+                    <option value="Telmex"></option>
+                    <option value="Totalplay"></option>
+                    <option value="Metrocarrier"></option>
+                    <option value="Axtel"></option>
+                    <option value="Megacable"></option>
+                </datalist>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Input.AccountNumber">Número de cuenta</label>
+                <input class="form-control" asp-for="Input.AccountNumber" />
+                <div class="form-text">Sugerido: @Model.ClientCode</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" asp-for="Input.ContractNumber">Número de contrato</label>
+                <input class="form-control" asp-for="Input.ContractNumber" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.ProjectId">Proyecto ligado (opcional)</label>
+                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
+                    <option value="">-- Sin proyecto --</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" asp-for="Input.SalesOpportunityId">Venta relacionada (opcional)</label>
                 <select class="form-select" asp-for="Input.SalesOpportunityId" asp-items="Model.SalesOpportunityItems">
                     <option value="">-- Sin venta relacionada --</option>
                 </select>
                 <div class="form-text">Vincula el contrato con una cotizacion/venta cerrada del cliente.</div>
             </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Sucursal</label>
-                <input class="form-control" asp-for="Input.Branch" placeholder="Ej: Matriz / Tultepark / Sucursal Toluca" />
-                <div class="form-text">Se usa para tickets, monitoreo y carrier.</div>
             </div>
-
-            <div class="col-md-8">
-                <label class="form-label">Direccion de sucursal (opcional)</label>
-                <input class="form-control" asp-for="Input.BranchAddress" placeholder="Direccion del sitio para soporte y tickets" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Inicio</label>
-                <input class="form-control" type="date" asp-for="Input.ContractStartDate" />
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Vencimiento</label>
-                <input class="form-control" type="date" asp-for="Input.ContractEndDate" />
-            </div>
-
+        </section>
+        <details class="hn-form-section" open data-form-optional>
+            <summary class="hn-form-section-heading">
+                <span class="hn-form-step" aria-hidden="true">05</span>
+                <span>
+                    <span class="hn-form-section-title" role="heading" aria-level="2">Archivo y observaciones</span>
+                    <span class="hn-form-section-hint">Documento firmado y notas adicionales, si ya los tienes.</span>
+                </span>
+            </summary>
+            <div class="row g-3 hn-form-section-fields">
             <div class="col-12">
-                <label class="form-label">Proyecto ligado (opcional)</label>
-                <select class="form-select" asp-for="Input.ProjectId" asp-items="Model.ProjectItems">
-                    <option value="">-- Sin proyecto --</option>
-                </select>
-            </div>
-
-            <div class="col-12">
-                <label class="form-label">Contrato firmado (PDF)</label>
+                <label class="form-label" asp-for="Input.SignedContract">Contrato firmado (PDF)</label>
                 <input class="form-control" type="file" asp-for="Input.SignedContract" accept="application/pdf,.pdf" />
                 <div class="form-text">Maximo 20 MB.</div>
             </div>
-
             <div class="col-12">
-                <label class="form-label">Notas</label>
+                <label class="form-label" asp-for="Input.Notes">Notas</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Notes" placeholder="Observaciones, SLA, plan contratado, etc."></textarea>
             </div>
-        </div>
+            </div>
+        </details>
     </div>
 
-    <div class="card-footer d-flex gap-2">
+    <div class="card-footer d-flex flex-wrap gap-2 hn-form-actions">
         <button class="btn btn-primary" type="submit">Guardar</button>
         <a class="btn btn-outline-secondary" asp-page="/Clients/Details" asp-route-id="@Model.ClientId">Cancelar</a>
     </div>
@@ -291,6 +325,8 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script type="application/json" id="servicePackageOptions">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PackageOptions, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))</script>
+    <script src="~/js/hn-service-package.js" asp-append-version="true"></script>
     <script>
         (() => {
             const toggles = Array.from(document.querySelectorAll('.service-type-toggle'));
@@ -311,6 +347,14 @@
 
             toggles.forEach(x => x.addEventListener('change', refreshServiceSections));
             refreshServiceSections();
+            ['InternetCapacity', 'CctvChannels', 'SecurityBrand'].forEach(name => {
+                const select = document.getElementById('Input_' + name);
+                const custom = document.getElementById('Input_' + name + 'Other');
+                if (!select || !custom) return;
+                const refresh = () => { custom.closest('[class*="col-"]').hidden = select.value !== 'Otro' && !custom.value.trim(); };
+                select.addEventListener('change', refresh);
+                refresh();
+            });
         })();
     </script>
 }
