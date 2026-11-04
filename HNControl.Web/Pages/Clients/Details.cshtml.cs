@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -187,7 +187,7 @@ public class DetailsModel : PageModel
                     x.ContractNumber,
                     (x.MonthlyAmount ?? 0m).ToString("C2"),
                     meta.Recurrence,
-                    meta.TermText,
+                    EventContract.IsEvent(x) ? EventContract.Period(x) : meta.TermText,
                     meta.SalesReference,
                     x.Branch,
                     x.BranchAddress,

@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.4";
+    public const string Version = "2.5.5";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.5", new DateOnly(2026, 11, 4), "Conectividad para eventos", new[]
+        {
+            new ReleaseChange("Clientes", "Contratos eventuales de un día hasta un mes con fechas inclusivas e importe único."),
+            new ReleaseChange("Documentos", "Plantilla independiente de contrato temporal y bienvenida específica para eventos, conservando las firmas y copias configuradas."),
+            new ReleaseChange("Facturación", "Los planes vinculados a contratos eventuales se registran como cobro único.")
+        }),
         new ReleaseNote("2.5.4", new DateOnly(2026, 10, 26), "Contacto de soporte y estado de órdenes", new[]
         {
             new ReleaseChange("Acta de entrega", "Contacto de soporte actualizado a Llamada y WhatsApp 5526014566 y soporte@hubnet-solutions.com.mx."),

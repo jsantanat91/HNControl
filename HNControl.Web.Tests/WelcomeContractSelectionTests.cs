@@ -120,5 +120,22 @@ internal static class WelcomeContractSelectionTests
         var single = Page();
         await single.OnGetAsync(singleClient.Id);
         check(single.ContractId == singleContract.Id && single.CanSend, "Cliente con un solo contrato lo tiene preseleccionado");
+        var eventContract = Contract("HN-0017-05", "Evento congreso", 12);
+        eventContract.Notes = "[META] Recurrencia=Eventual";
+        eventContract.ContractStartDate = new DateTime(2026, 11, 4);
+        eventContract.ContractEndDate = new DateTime(2026, 11, 5);
+        eventContract.MonthlyAmount = 4500;
+        var eventDoc = Document(eventContract, "event.pdf");
+        eventDoc.SigningSnapshotJson = ClientSigningSnapshot.Capture(client, eventContract);
+        db.Add(eventDoc); await db.SaveChangesAsync();
+        var eventPage = Page(eventContract.Id);
+        await eventPage.OnGetAsync(client.Id);
+        check(eventPage.CanSend && eventPage.Subject == ClientCommunicationTemplates.EventWelcomeSubject
+            && eventPage.HtmlBody.Contains("04/11/2026 al 05/11/2026")
+            && !eventPage.HtmlBody.Contains("primeros cinco días"), "Selector muestra bienvenida eventual y fechas correctas");
+        var beforeEvent = email.Messages.Count;
+        check(await eventPage.OnPostAsync(client.Id) is RedirectToPageResult && email.Messages.Count == beforeEvent + 1
+            && email.Bodies.Last().Contains(eventDoc.PublicToken) && email.Messages.Last().Cc.Count == 2,
+            "Envío eventual usa solo su contrato y conserva copias internas");
     }
 }

@@ -15,6 +15,7 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
 {
     public Client? Client { get; private set; }
     public string Recipient { get; private set; } = "";
+    public string Subject { get; private set; } = ClientCommunicationTemplates.WelcomeSubject;
     public string HtmlBody { get; private set; } = "";
     public string? Error { get; private set; }
     public IReadOnlyCollection<string> InternalCopies { get; private set; } = Array.Empty<string>();
@@ -46,7 +47,7 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
         await db.SaveChangesAsync();
         try
         {
-            await email.SendAsync(Recipient, ClientCommunicationTemplates.WelcomeSubject, HtmlBody,
+            await email.SendAsync(Recipient, Subject, HtmlBody,
                 ccEmails: InternalCopies);
             foreach (var doc in documents) doc.SentAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
@@ -65,6 +66,7 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
     private async Task<IActionResult?> PrepareAsync(Guid clientId, bool sending = false)
     {
         Error = null;
+        Subject = ClientCommunicationTemplates.WelcomeSubject;
         HtmlBody = "";
         documents.Clear();
         SelectedContractLabel = "";
@@ -121,7 +123,15 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
         var links = documents.Select(doc => (doc, string.IsNullOrWhiteSpace(baseUrl)
             ? Url.Page("/Public/ClientDocument", null, new { token = doc.PublicToken }, Request.Scheme) ?? ""
             : $"{baseUrl}/Public/ClientDocument/{doc.PublicToken}"));
-        HtmlBody = ClientCommunicationTemplates.Welcome(Client, links);
+        var selectedContract = EventContract.FrozenContract(document!);
+        if (EventContract.IsEvent(selectedContract))
+        {
+            Error = EventContract.Validate(selectedContract!.ContractStartDate, selectedContract.ContractEndDate, selectedContract.MonthlyAmount);
+            if (Error != null) return null;
+            Subject = ClientCommunicationTemplates.EventWelcomeSubject;
+            HtmlBody = ClientCommunicationTemplates.EventWelcome(Client, selectedContract, links);
+        }
+        else HtmlBody = ClientCommunicationTemplates.Welcome(Client, links);
         return null;
     }
 }

@@ -5,6 +5,34 @@ namespace HNControl.Web.Services;
 
 public static class ClientCommunicationTemplates
 {
+    public const string EventWelcomeSubject = "HN Solutions · Bienvenida y coordinación de conectividad para su evento";
+    public static string EventWelcome(Client client, ClientServiceContract contract, IEnumerable<(ClientLegalDocument Document, string Url)> documents)
+    {
+        var links = string.Join("", documents.Select(x => $"<p><a href=\"{E(x.Url)}\">Revisar contrato del evento: {E(x.Document.Title)}</a></p>"));
+        return Layout("Conectividad para su evento", $"""
+            <p>Estimado(a) <strong>{E(client.Name)}</strong>:</p>
+            <p>Gracias por elegir a HN Solutions para la conectividad de su evento. Estos son los datos de su contratación temporal:</p>
+            <h2 style="color:#086db4;font-size:19px">01 · Su evento</h2>
+            <p><strong>Servicio:</strong> {E(contract.Label)}<br>
+            <strong>Contrato:</strong> {E(contract.ContractNumber)}<br>
+            <strong>Periodo:</strong> {E(EventContract.Period(contract))}<br>
+            <strong>Sede:</strong> {E(contract.Branch)} · {E(contract.BranchAddress)}<br>
+            <strong>Importe único del servicio, antes de IVA:</strong> {contract.MonthlyAmount:N2} MXN</p>
+            <p>La contratación concluye en la fecha indicada, sin renovación automática ni cobros mensuales recurrentes. La instalación se cobra por separado cuando figure en su contrato.</p>
+            <h2 style="color:#086db4;font-size:19px">02 · Contrato y coordinación</h2>
+            {links}
+            <p>Revise el alcance y complete la firma electrónica. Al firmar ambas partes recibirá el PDF final. Nuestro equipo coordinará los horarios de montaje, pruebas, operación y retiro de equipos, así como el acceso y la energía necesarios en la sede.</p>
+            <h2 style="color:#086db4;font-size:19px">03 · Facturación y pago</h2>
+            <p>Los anticipos y fechas de pago serán los acordados en la cotización aceptada. La factura se enviará al correo de facturación registrado: {E(client.BillingEmail)}.</p>
+            <p>Banco: BBVA<br>Beneficiario: HUBNET INFRAESTRUCTURE TECHNOLOGY SOLUTIONS<br>
+            Cuenta: 0123904423<br>CLABE: 012 180 00123904423 6<br>Referencia: <strong>{E(client.ClientCode)}</strong></p>
+            <h2 style="color:#086db4;font-size:19px">04 · Atención durante el evento</h2>
+            <p>Llamada y WhatsApp: <a href="https://wa.me/525526014566">5526014566</a><br>
+            <a href="mailto:soporte@hubnet-solutions.com.mx">soporte@hubnet-solutions.com.mx</a><br>
+            <a href="https://support.hubnet-solutions.net">Sistema de tickets</a></p>
+            <p>Para cambios de sede, fechas o requerimientos, contáctenos antes del evento para revisar disponibilidad y condiciones.</p>
+            """);
+    }
     public const string WelcomeSubject = "Bienvenido a HN Solutions: Proceso de Contratación, Facturación y Pago";
     public static string Recipient(Client client) => new[] { client.Email, client.LegalEmail, client.BillingEmail }
         .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim() ?? "";

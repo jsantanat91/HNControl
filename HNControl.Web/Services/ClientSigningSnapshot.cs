@@ -16,7 +16,7 @@ public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract?
         }, contract == null ? null : new ClientServiceContract
         {
             Label = contract.Label, ServiceType = contract.ServiceType, Notes = contract.Notes,
-            Branch = contract.Branch, MonthlyAmount = contract.MonthlyAmount,
+            Branch = contract.Branch, BranchAddress = contract.BranchAddress, ContractNumber = contract.ContractNumber, MonthlyAmount = contract.MonthlyAmount,
             ContractStartDate = contract.ContractStartDate, ContractEndDate = contract.ContractEndDate
         }));
 }

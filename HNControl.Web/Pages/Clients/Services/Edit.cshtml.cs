@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -197,6 +197,12 @@ public class EditModel : PageModel
         ModelState.Remove("Input.ServiceType");
         ModelState.Remove("Input.SelectedServiceTypes");
 
+        if (Input.BillingRecurrence == "Eventual")
+        {
+            var eventError = EventContract.Validate(Input.ContractStartDate, Input.ContractEndDate, Input.MonthlyAmount);
+            if (eventError != null) ModelState.AddModelError("Input.ContractEndDate", eventError);
+            Input.ContractTermOption = "Eventual";
+        }
         if (!ModelState.IsValid)
         {
             Error = BuildModelStateError();
@@ -448,6 +454,7 @@ public class EditModel : PageModel
 
     private static string NormalizeRecurrence(string? recurrence) => (recurrence ?? "").Trim() switch
     {
+        "Eventual" => "Eventual",
         "Unica" => "Unica",
         "Anual" => "Anual",
         _ => "Mensual"
@@ -456,6 +463,7 @@ public class EditModel : PageModel
     private static string NormalizeTerm(string? termOption)
     {
         var value = (termOption ?? "").Trim();
+        if (value == "Eventual") return "Eventual";
         if (value.Equals("Indefinido", StringComparison.OrdinalIgnoreCase))
             return "Indefinido";
 

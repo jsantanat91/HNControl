@@ -141,10 +141,10 @@ public class InternalPdfModel : PageModel
                                 cols.RelativeColumn();
                             });
 
-                            Row(table, "Monto mensual antes de IVA", (contract.MonthlyAmount ?? 0m).ToString("C2"));
+                            Row(table, EventContract.IsEvent(contract) ? "Importe único del evento antes de IVA" : "Monto mensual antes de IVA", (contract.MonthlyAmount ?? 0m).ToString("C2"));
                             Row(table, "Costo de instalacion antes de IVA", tech.InstallationCost.ToString("C2"));
                             Row(table, "Recurrencia", recurrence);
-                            Row(table, "Tiempo de contrato", FormatTerm(term));
+                            Row(table, "Tiempo de contrato", EventContract.IsEvent(contract) ? EventContract.Period(contract) : FormatTerm(term));
                             Row(table, "Inicio", contract.ContractStartDate?.ToString("dd/MM/yyyy"));
                             Row(table, "Vencimiento", contract.ContractEndDate?.ToString("dd/MM/yyyy"));
                             Row(table, "Venta relacionada", saleId);

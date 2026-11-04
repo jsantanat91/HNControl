@@ -215,6 +215,11 @@ public class IndexModel : PageModel
             }
 
             Input.ClientId = contract.ClientId;
+            if (EventContract.IsEvent(contract))
+            {
+                Input.Periodicity = BillingPeriodicity.OneTime;
+                Input.ContractMonths = null;
+            }
         }
 
         var client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Input.ClientId);
@@ -676,6 +681,14 @@ public class IndexModel : PageModel
         _db.BillingInvoiceLines.AddRange(rebuiltLines);
 
         plan.Concept = string.IsNullOrWhiteSpace(concept) ? plan.Concept : concept.Trim();
+        var linkedContract = plan.ClientServiceContractId.HasValue
+            ? await _db.ClientServiceContracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == plan.ClientServiceContractId.Value)
+            : null;
+        if (EventContract.IsEvent(linkedContract))
+        {
+            periodicity = BillingPeriodicity.OneTime;
+            contractMonths = null;
+        }
         plan.Periodicity = periodicity;
         plan.StartDate = startDate.Date;
         var normalizedDay = Math.Clamp(invoiceDay, 1, 31);

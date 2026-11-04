@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## 2.5.5 · 4 de noviembre de 2026
+
+- Modalidad **Eventual** al crear y editar servicios del cliente. Fechas obligatorias, inclusivas, de un día hasta un mes calendario; importe único mayor a cero.
+- Plantilla independiente `Contrato_Eventual.docx` para Internet/WiFi temporal: sede, periodo, alcance, importe, instalación, cierre y ambas firmas. No hereda permanencia ni penalización del contrato mensual.
+- Bienvenida de eventos con el contrato seleccionado y su información congelada para firma, coordinación, pago único y soporte; conserva destinatarios y copias configurados.
+- Ficha del cliente y PDF interno muestran periodo e importe único. Los planes de facturación ligados a eventuales se fuerzan a cobro único al crear o editar.
+
+No requiere migración SQL: utiliza la recurrencia y fechas existentes del contrato. Los contratos anteriores conservan su modalidad. Se recomienda revisión jurídica de la nueva plantilla antes de usarla con clientes; anticipos, horarios y acuerdos específicos deben documentarse en las notas y cotización aceptada. La comprobación automática cubre sustitución de datos y firmas; la revisión visual PDF queda pendiente del conversor LibreOffice.
+
 ## 2.5.4 · 26 de octubre de 2026
 
 - Acta de entrega: contacto de soporte actualizado en el encabezado y en la sección de soporte a **Llamada y WhatsApp 5526014566** y **soporte@hubnet-solutions.com.mx**.

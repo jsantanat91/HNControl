@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -28,7 +28,7 @@ public class TemplateDocxService : ITemplateDocxService
         }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
-            : "Contrato_Blanco.docx";
+            : EventContract.IsEvent(contract) ? "Contrato_Eventual.docx" : "Contrato_Blanco.docx";
 
         var bytes = LoadTemplateBytes(templateName);
         var replacements = document.DocumentType == ClientLegalDocumentType.NDA
@@ -179,7 +179,7 @@ public class TemplateDocxService : ITemplateDocxService
             ["CPC"] = Safe(client.FiscalZipCode, "00000"),
             ["EMAILC"] = Safe(client.BillingEmail, client.Email, "por-confirmar@cliente.com"),
             ["CONTRATOC"] = serviceName,
-            ["PERIODOC"] = $"{Safe(period, tpl.PERIODOC, "12 meses")} (Cancelación Anticipada: 30% de rentas devengadas.)",
+            ["PERIODOC"] = EventContract.IsEvent(contract) ? period : $"{Safe(period, tpl.PERIODOC, "12 meses")} (Cancelación Anticipada: 30% de rentas devengadas.)",
             ["SUCURSALC"] = Safe(tpl.SUCURSALC, contract?.Branch, contract?.Label, "-"),
             ["COSTOCLIENTE"] = monthly,
             ["COSTOINST"] = installationCost,
@@ -192,9 +192,13 @@ public class TemplateDocxService : ITemplateDocxService
             ["FIRMACORREO"] = firmaCorreo,
             ["FIRMAINFO"] = firma,
             ["NOMBREPROYECTO"] = Safe(tpl.NOMBREPROYECTO, contract?.Label, doc.Title, "-"),
-            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-")
+            ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, "-"),
+            ["EVENTOSITIO"] = Safe(contract?.BranchAddress, contract?.Branch, "-"),
+            ["EVENTONUMERO"] = Safe(contract?.ContractNumber, "-"),
+            ["EVENTOALCANCE"] = ClientServiceContractMetadata.StripMeta(contract?.Notes)
         };
-
+        AddSignatureFields(replacements, "SIGNCLIENT", doc.SignedByName, doc.SignedByEmail, doc.SignedAt, firmaHash);
+        AddSignatureFields(replacements, "SIGNHN", doc.ProviderSignedByName, doc.ProviderSignedByEmail, doc.ProviderSignedAt, BuildProviderSignatureHash(doc));
         return replacements;
     }
 
@@ -306,6 +310,12 @@ public class TemplateDocxService : ITemplateDocxService
 
     public static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)
     {
+        if (EventContract.IsEvent(contract))
+        {
+            var error = EventContract.Validate(contract!.ContractStartDate, contract.ContractEndDate, contract.MonthlyAmount);
+            if (error != null) throw new InvalidOperationException(error);
+            return EventContract.Period(contract);
+        }
         var explicitTerm = ExtractContractTermFromNotes(contract?.Notes);
         if (!string.IsNullOrWhiteSpace(explicitTerm))
             return explicitTerm;

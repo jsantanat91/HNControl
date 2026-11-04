@@ -77,6 +77,7 @@ await EngineeringNotificationSettingsTests.RunAsync(Check);
 await ServiceOrderCreationNotificationTests.RunAsync(Check);
 await ServiceOrderCreationPathsTests.RunAsync(Check);
 SignatureLayoutTests.Run(service, Check);
+EventContractTests.Run(service, Check);
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class TestEnvironment(string root) : IWebHostEnvironment
