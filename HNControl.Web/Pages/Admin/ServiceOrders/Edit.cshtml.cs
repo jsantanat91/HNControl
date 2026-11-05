@@ -26,11 +26,12 @@ public class EditModel : PageModel
     public SelectList ContractItems { get; set; } = default!;
     public List<ServiceOrderFormData.ContractOption> ContractOptions { get; set; } = new();
 
-    [BindProperty] public InputModel? Input { get; set; }
+    // Keep each form's validation keys scoped even when the other form was not posted.
+    [BindProperty(Name = nameof(Input))] public InputModel? Input { get; set; }
 
     public List<ServiceOrderWorkItem> WorkItems { get; set; } = new();
 
-    [BindProperty] public NewWorkItemInput NewWorkItem { get; set; } = new();
+    [BindProperty(Name = nameof(NewWorkItem))] public NewWorkItemInput NewWorkItem { get; set; } = new();
 
     public string? Error { get; set; }
 
@@ -38,7 +39,7 @@ public class EditModel : PageModel
     {
         [Required] public Guid Id { get; set; }
 
-        [Required, MaxLength(200)]
+        [Required(ErrorMessage = "Escribe el título de la orden."), MaxLength(200)]
         public string Title { get; set; } = "";
 
         [Required] public ServiceOrderType Type { get; set; }
@@ -67,7 +68,7 @@ public class EditModel : PageModel
         [Required]
         public ServiceOrderType Type { get; set; } = ServiceOrderType.Preventivo;
 
-        [Required, MaxLength(200)]
+        [Required(ErrorMessage = "Escribe el título de la actividad."), MaxLength(200)]
         public string Title { get; set; } = "";
 
         [MaxLength(2000)]
@@ -113,8 +114,7 @@ public class EditModel : PageModel
         NewWorkItem.Type = Input.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : Input.Type;
 
         // Exclude the activity form while preserving binding errors from the main form.
-        foreach (var key in ModelState.Keys.Where(key => key == nameof(NewWorkItem) || key.StartsWith(nameof(NewWorkItem) + ".")).ToList())
-            ModelState.Remove(key);
+        ExcludeOtherFormValidation(nameof(NewWorkItem));
         TryValidateModel(Input, nameof(Input));
 
         if (!ModelState.IsValid)
@@ -222,11 +222,8 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAddWorkItemAsync(Guid id)
     {
-        // IMPORTANTÃSIMO:
-        // Al postear desde el form de actividades, el route-param "id" puede ligar a Input.Id y disparar validaciÃ³n
-        // de otros campos requeridos (Title/Status/etc) y entonces parece que el botÃ³n â€œno hace nadaâ€.
-        // AquÃ­ validamos SOLO NewWorkItem.
-        ModelState.Clear();
+        // Ignore the order form, but retain conversion errors from the submitted activity.
+        ExcludeOtherFormValidation(nameof(Input));
         TryValidateModel(NewWorkItem, nameof(NewWorkItem));
         if (!ModelState.IsValid)
             return await ReloadAndShowAsync(id);
@@ -317,6 +314,14 @@ public class EditModel : PageModel
             await tx.RollbackAsync();
             throw;
         }
+    }
+
+    private void ExcludeOtherFormValidation(string prefix)
+    {
+        foreach (var key in ModelState.Keys.Where(key =>
+            key.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
+            key.StartsWith(prefix + ".", StringComparison.OrdinalIgnoreCase)).ToList())
+            ModelState.Remove(key);
     }
 
     private async Task EnsureChecklistFromTemplateDbAsync(Guid orderId, ServiceOrderType type, Guid? workItemId)

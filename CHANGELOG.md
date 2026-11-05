@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## 2.5.7 · 4 de noviembre de 2026
+
+- Corregido el guardado de órdenes que mostraba «The Title field is required» aun teniendo título: el formulario de actividades ya no genera errores sin prefijo que bloqueen el formulario principal.
+- Validación independiente para editar la orden y agregar actividades, conservando los errores de conversión de fechas y tipos. Los títulos siguen siendo obligatorios, con mensajes en español junto a su campo.
+- Pruebas de regresión con el enlace de modelos y la validación reales de ASP.NET Core, incluyendo edición de órdenes globales y conservación de actividades.
+
+No requiere migración SQL.
+
 ## 2.5.6 · 4 de noviembre de 2026
 
 - Formularios de alta y edición de clientes, contratos, órdenes y proyectos organizados por secciones. Observaciones, archivos y detalles opcionales se despliegan cuando se necesitan; los datos existentes y errores permanecen visibles.

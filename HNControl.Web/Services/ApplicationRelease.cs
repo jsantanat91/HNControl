@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.6";
+    public const string Version = "2.5.7";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.7", new DateOnly(2026, 11, 4), "Corrección al editar órdenes de servicio", new[]
+        {
+            new ReleaseChange("Órdenes", "Guardar una orden con título ya no exige completar el formulario independiente de actividades."),
+            new ReleaseChange("Validación", "Orden y actividades conservan sus propias validaciones y errores de captura. Los avisos de título obligatorio se muestran en español junto al campo correspondiente."),
+            new ReleaseChange("Publicación", "Esta versión no requiere migraciones de base de datos.")
+        }),
         new ReleaseNote("2.5.6", new DateOnly(2026, 11, 4), "Formularios conectados y más claros", new[]
         {
             new ReleaseChange("Diseño", "Altas y ediciones de clientes, contratos, órdenes y proyectos organizadas por secciones, con detalles opcionales desplegables y controles adaptables a móvil."),
