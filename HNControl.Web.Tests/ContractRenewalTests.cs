@@ -119,12 +119,34 @@ internal static class ContractRenewalTests
         var main = current.Descendants(w + "body").Single().Elements(w + "p").Select(Text).ToList();
         var approved = clauses.Select(s => s.Replace("el día 16 calendarios de cada mes", "el día 1 de cada mes")
             .Replace("al corte y “EL USUARIO” se obliga a pagar dichas facturas a más tardar el día 1 (uno) del mes correspondiente.",
-                "al corte. La primera factura se pagará contra entrega del Servicio. A partir de la segunda factura, “EL USUARIO” se obliga a pagar a más tardar el día 15 (quince) del mismo mes del corte."));
-        check(main.SkipWhile(s => s != clauses[0]).SequenceEqual(approved), "El contrato conserva las 26 cláusulas con el corte aprobado en la sexta");
+                "al corte. La primera factura se pagará contra entrega del Servicio. A partir de la segunda factura, “EL USUARIO” se obliga a pagar a más tardar el día 15 (quince) del mismo mes del corte.")
+            .Replace("en la caratula del presente.", "en el apartado de firmas del presente contrato."));
+        check(main.SkipWhile(s => s != clauses[0]).TakeWhile(s => s != "Firmas de conformidad").SequenceEqual(approved),
+            "El contrato conserva las 26 cláusulas y remite al apartado final de firmas");
+        var body = current.Descendants(w + "body").Single();
+        var last = body.Elements().Last(e => e.Name != w + "sectPr");
+        var signers = last.Elements(w + "tr").Single().Elements(w + "tc").ToArray();
+        check(last.Name == w + "tbl" && signers.Length == 2 && signers.All(c =>
+            c.Elements(w + "p").Any(p => Text(p).Length == 0
+                && p.Descendants(w + "pBdr").Elements(w + "bottom").Any()
+                && (int?)p.Element(w + "pPr")?.Element(w + "spacing")?.Attribute(w + "line") >= 1701)
+            && Text(c).Contains("PENDIENTE DE FIRMA"))
+            && last.Descendants(w + "cantSplit").Any(), "Ambos firmantes tienen su línea y su registro al final en un bloque indivisible");
+        var sixth = body.Elements(w + "p").Single(p => Text(p).StartsWith("SEXTA. FORMA DE PAGO."));
+        check((string?)sixth.Element(w + "pPr")?.Element(w + "jc")?.Attribute(w + "val") == "both",
+            "El cuerpo de las cláusulas se justifica en el documento emitido");
+        var checklist = body.Elements(w + "tbl").Single(t => Text(t).Contains("Constancia de situación fiscal"));
+        check(checklist.Descendants(w + "tc").Count(c => Text(c).Contains("☐")) == 5,
+            "Cada documento requerido tiene una casilla independiente");
         check(current.Descendants(w + "t").Any(t => t.Value == "01 de cada mes")
             && main.Any(s => s.Contains("será el día 1 de cada mes.")), "Carátula y cláusula sexta fijan el mismo corte mensual");
         check(main.Any(s => s.Contains("La primera factura se pagará contra entrega del Servicio.") &&
             s.Contains("el día 15 (quince) del mismo mes del corte.")), "El pago posterior a la entrega vence el día 15 del mes del corte");
+        doc.SigningSnapshotJson = """{"Client":{"Name":"Cliente anterior"},"Contract":null,"UsesCorporateServiceTemplate":true}""";
+        var firstCorporate = Body(service.BuildClientLegalDocx(doc, client, null));
+        check(firstCorporate.Descendants(w + "p").Any(p => Text(p) == "Firmas de las partes")
+            && !firstCorporate.Descendants(w + "p").Any(p => Text(p) == "Firmas de conformidad"),
+            "Los contratos preparados en la versión 2.5.10 conservan su carátula original al firmar");
         doc.SigningSnapshotJson = """{"Client":{"Name":"Cliente anterior"},"Contract":null}""";
         var legacy = Body(service.BuildClientLegalDocx(doc, client, null));
         check(legacy.Descendants(w + "tbl").Last().Descendants(w + "p").Select(Text).Where(s => !string.IsNullOrWhiteSpace(s)).SequenceEqual(clauses),

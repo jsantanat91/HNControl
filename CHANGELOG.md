@@ -1,5 +1,10 @@
 # HN Control — notas de versión
 
+## 2.5.11 · 6 de noviembre de 2026
+
+- Contrato de servicios con texto justificado, carátula por secciones y documentación requerida en casillas individuales.
+- Bloques de cliente y proveedor al final del clausulado con espacio para firma manuscrita, representante y registro electrónico. Los documentos ya preparados para firma conservan su plantilla.
+
 ## 2.5.10 · 6 de noviembre de 2026
 
 - Aviso de contratos por vencer en tres meses en Clientes, en la ficha individual y en el portal del cliente.

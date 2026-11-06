@@ -19,26 +19,33 @@ public class TemplateDocxService : ITemplateDocxService
 
     public byte[] BuildClientLegalDocx(ClientLegalDocument document, Client client, ClientServiceContract? contract)
     {
-        var corporateServiceTemplate = document.Status == ClientLegalDocumentStatus.Draft &&
+        var newDraft = document.Status == ClientLegalDocumentStatus.Draft &&
             !document.SignedAt.HasValue && !document.ProviderSignedAt.HasValue && string.IsNullOrEmpty(document.PdfStoragePath);
+        var revision = newDraft ? ClientSigningSnapshot.CurrentServiceTemplateRevision : 0;
         if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
         {
             var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson)
                 ?? throw new InvalidOperationException("No se pudo leer la versión del contrato preparada para firma.");
             client = snapshot.Client;
             contract = snapshot.Contract;
-            corporateServiceTemplate = snapshot.UsesCorporateServiceTemplate;
+            revision = snapshot.ServiceTemplateRevision ?? (snapshot.UsesCorporateServiceTemplate ? 1 : 0);
         }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
             : EventContract.IsEvent(contract) ? "Contrato_Eventual.docx"
-            : corporateServiceTemplate ? "Contrato_Servicios.docx" : "Contrato_Blanco.docx";
+            : revision switch
+            {
+                0 => "Contrato_Blanco.docx",
+                1 => "Contrato_Servicios.docx",
+                2 => "Contrato_Servicios_v2.docx",
+                _ => throw new InvalidOperationException("La revisión de la plantilla del contrato no está disponible.")
+            };
 
         var bytes = LoadTemplateBytes(templateName);
         var replacements = document.DocumentType == ClientLegalDocumentType.NDA
             ? BuildNdaReplacements(document, client)
             : BuildContractReplacements(document, client, contract);
-        if (templateName == "Contrato_Servicios.docx")
+        if (document.DocumentType == ClientLegalDocumentType.Contract && revision > 0 && !EventContract.IsEvent(contract))
             replacements["FECHAHOY"] = AppTime.ToMx(document.CreatedAt).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
         return ReplaceDocumentXml(bytes, replacements);
