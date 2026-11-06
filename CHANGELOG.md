@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## 2.5.8 · 6 de noviembre de 2026
+
+- Contrato eventual rediseñado con logotipo incrustado, tipografía uniforme y tablas para cliente, servicio, vigencia e importes.
+- Condiciones en una sección independiente, encabezado y paginación en todas las hojas. Ambas firmas permanecen en una fila indivisible, sin alturas fijas.
+- Se conservan las ocho cláusulas, los campos de sustitución y los datos congelados para firma. Los contratos recurrentes, NDA y actas conservan sus plantillas.
+
+No requiere migración SQL. Vista previa de dos páginas revisada con exportación de Word; LibreOffice no está instalado en el equipo local. Validada la generación con las pruebas existentes del proyecto.
+
 ## 2.5.7 · 4 de noviembre de 2026
 
 - Corregido el guardado de órdenes que mostraba «The Title field is required» aun teniendo título: el formulario de actividades ya no genera errores sin prefijo que bloqueen el formulario principal.
