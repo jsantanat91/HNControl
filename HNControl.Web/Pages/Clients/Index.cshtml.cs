@@ -47,6 +47,7 @@ public class IndexModel : PageModel
         bool IsTemporaryLead,
         bool IsConvertedFromLead);
     public List<Row> Rows { get; set; } = new();
+    public List<ExpiringContract> Expiring { get; private set; } = new();
 
     public class LeadInput
     {
@@ -83,8 +84,7 @@ public class IndexModel : PageModel
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
 
-        var today = DateTime.Today;
-        var soon = today.AddDays(30);
+        var today = AppTime.Today;
 
         var q = _db.Clients
             .Include(c => c.Contracts)
@@ -106,6 +106,10 @@ public class IndexModel : PageModel
             }
         }
 
+        if (!showLeads)
+            Expiring = await ContractRenewals.UpcomingAsync(q.SelectMany(c => c.Contracts), today);
+        var expiryCounts = Expiring.ToLookup(c => c.ClientId);
+
         var name = (Name ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
             q = q.Where(c => c.Name.ToLower().Contains(name.ToLower()));
@@ -121,7 +125,7 @@ public class IndexModel : PageModel
         Rows = clients.Select(c =>
         {
             var total = c.Contracts.Count;
-            var expSoon = c.Contracts.Count(x => x.ContractEndDate.HasValue && x.ContractEndDate.Value.Date <= soon);
+            var expSoon = expiryCounts[c.Id].Count();
 
             var top = c.Contracts
                 .GroupBy(x => x.ServiceType)
@@ -148,6 +152,32 @@ public class IndexModel : PageModel
                 c.ConvertedToFormalAt.HasValue
             );
         }).ToList();
+    }
+
+    public async Task<IActionResult> OnPostRenewAsync(Guid clientId, Guid contractId, long revision, bool agreed, bool inClientFile)
+    {
+        var admin = AppRoles.IsGlobalAdmin(User);
+        if (!admin && !await _actions.HasActionAsync(User, AppActions.ClientsEdit)) return Forbid();
+        var scope = _db.ClientServiceContracts.Where(c => c.ClientId == clientId);
+        if (!admin && !await _actions.HasActionAsync(User, AppActions.ClientsView))
+        {
+            var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(owner) || !await _actions.HasActionAsync(User, AppActions.ClientsViewOwn))
+                return Forbid();
+            scope = scope.Where(c => c.Client!.OwnerUserId == owner);
+        }
+        if (!agreed) return BadRequest();
+        var renewed = await ContractRenewals.RenewAsync(scope, contractId, revision, AppTime.Today);
+        var message = renewed ? "Se registró la renovación del contrato." :
+            "No se pudo registrar la renovación. Vuelve a consultar el plazo y el vencimiento en la ficha del contrato.";
+        if (inClientFile)
+        {
+            TempData["ClientDetailsInfo"] = message;
+            TempData["ClientDetailsInfoType"] = renewed ? "success" : "warning";
+            return RedirectToPage("/Clients/Details", new { id = clientId });
+        }
+        TempData[renewed ? "Success" : "Error"] = message;
+        return RedirectToPage("/Clients/Index", new { Name, Page, PageSize });
     }
 
     public async Task<IActionResult> OnPostToggleActiveAsync(Guid id, string? name, string? view, int page = 1, int pageSize = 20)

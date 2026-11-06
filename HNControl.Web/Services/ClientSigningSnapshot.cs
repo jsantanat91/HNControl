@@ -6,7 +6,9 @@ namespace HNControl.Web.Services;
 // Freeze the template inputs when the document is prepared, before either party signs.
 public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract? Contract)
 {
-    public static string Capture(Client client, ClientServiceContract? contract) => JsonSerializer.Serialize(
+    public bool UsesCorporateServiceTemplate { get; init; }
+
+    public static string Capture(Client client, ClientServiceContract? contract, bool corporateServiceTemplate = true) => JsonSerializer.Serialize(
         new ClientSigningSnapshot(new Client
         {
             Name = client.Name, Rfc = client.Rfc, LegalRepresentative = client.LegalRepresentative,
@@ -18,5 +20,5 @@ public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract?
             Label = contract.Label, ServiceType = contract.ServiceType, Notes = contract.Notes,
             Branch = contract.Branch, BranchAddress = contract.BranchAddress, ContractNumber = contract.ContractNumber, MonthlyAmount = contract.MonthlyAmount,
             ContractStartDate = contract.ContractStartDate, ContractEndDate = contract.ContractEndDate
-        }));
+        }) { UsesCorporateServiceTemplate = corporateServiceTemplate });
 }

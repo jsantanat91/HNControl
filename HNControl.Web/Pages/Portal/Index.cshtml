@@ -40,6 +40,8 @@
             </div>
         </div>
 
+        <partial name="_ContractExpiryNotice" model="@(new ContractExpiryNotice(Model.Expiring, false, InPortal: true))" />
+
         @if (TempData["PortalInfo"] is string info)
         {
             var infoType = (TempData["PortalInfoType"] as string) ?? "info";
@@ -131,7 +133,7 @@
                         <span>Abrir ticket</span>
                     </div>
                     <div class="pf-card-body">
-                        <form method="post" asp-page-handler="CreateTicket" class="pf-form">
+                        <form method="post" asp-page-handler="CreateTicket" id="solicitud-cliente" class="pf-form">
                             <div>
                                 <label class="pf-label">Asunto</label>
                                 <input asp-for="TicketForm.Titulo" class="pf-input" />

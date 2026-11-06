@@ -14,7 +14,8 @@ public class ClientDocumentSigningService(
     public async Task SaveSignedPdfAsync(ClientLegalDocument doc)
     {
         if (doc.Client == null) throw new InvalidOperationException("No se encontró al cliente.");
-        doc.SigningSnapshotJson ??= ClientSigningSnapshot.Capture(doc.Client, doc.ClientServiceContract);
+        // A document already issued without a snapshot used the original template.
+        doc.SigningSnapshotJson ??= ClientSigningSnapshot.Capture(doc.Client, doc.ClientServiceContract, corporateServiceTemplate: false);
         doc.Status = IsCompleted(doc) ? ClientLegalDocumentStatus.Signed : ClientLegalDocumentStatus.SentForSignature;
         var word = templates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
         var pdf = await converter.TryConvertDocxToPdfAsync(word, $"legal_{doc.Id:N}");

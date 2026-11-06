@@ -119,7 +119,7 @@ public static class ClientServiceContractMetadata
         return string.Join(Environment.NewLine, lines).Trim();
     }
 
-    private static Dictionary<string, string> ParseMeta(string? notes)
+    internal static Dictionary<string, string> ParseMeta(string? notes)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var line in (notes ?? string.Empty).Split('\n'))

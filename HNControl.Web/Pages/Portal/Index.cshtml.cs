@@ -41,6 +41,7 @@ public class IndexModel : PageModel
     public decimal TotalPagado { get; set; }
     public List<AccountRunVm> AccountRuns { get; set; } = new();
     public List<ContractVm> ActiveContracts { get; set; } = new();
+    public List<ExpiringContract> Expiring { get; private set; } = new();
     public List<ContactVm> Contacts { get; set; } = new();
     public List<DomiciliationVm> Domiciliations { get; set; } = new();
     public string PayerEmailHint { get; set; } = "";
@@ -70,14 +71,14 @@ public class IndexModel : PageModel
         public string Descripcion { get; set; } = "";
 
         [MaxLength(180)]
-        public string ContactoNombre { get; set; } = "";
+        public string? ContactoNombre { get; set; }
 
         [MaxLength(256)]
         [EmailAddress]
-        public string ContactoCorreo { get; set; } = "";
+        public string? ContactoCorreo { get; set; }
 
         [MaxLength(60)]
-        public string ContactoTelefono { get; set; } = "";
+        public string? ContactoTelefono { get; set; }
 
         public Guid? ContractId { get; set; }
         public Guid? ClientContactId { get; set; }
@@ -102,12 +103,18 @@ public class IndexModel : PageModel
         public string ConfirmPassword { get; set; } = "";
     }
 
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnGetAsync(Guid? renewContract = null)
     {
         var auth = await EnsureClientAuthAsync();
         if (!auth.ok) return auth.redirect!;
 
-        await LoadPageDataAsync(auth.clientId!.Value);
+        await LoadPageDataAsync(auth.clientId!.Value, renewContract);
+        if (Expiring.FirstOrDefault(c => c.Id == renewContract) is { } renewal)
+        {
+            TicketForm.ContractId = renewal.Id;
+            TicketForm.Titulo = $"Renovación de contrato {renewal.Number}".Trim();
+            TicketForm.Descripcion = $"Solicito información para renovar {renewal.Service}, con vencimiento el {renewal.Term.End:dd/MM/yyyy}.";
+        }
 
         // Precargamos el monto a pagar con el saldo pendiente (si hay).
         if (TotalPendiente > 0)
@@ -124,39 +131,43 @@ public class IndexModel : PageModel
     {
         var auth = await EnsureClientAuthAsync();
         if (!auth.ok) return auth.redirect!;
-        if (!ModelState.IsValid)
+        var clientId = auth.clientId!.Value;
+        if (ModelState.Any(field => field.Key.StartsWith(nameof(TicketForm) + ".", StringComparison.OrdinalIgnoreCase)
+            && field.Value?.Errors.Count > 0))
         {
-            await LoadPageDataAsync(auth.clientId!.Value);
+            await LoadPageDataAsync(clientId);
             TempData["PortalInfo"] = "Completa los datos obligatorios para abrir ticket.";
             TempData["PortalInfoType"] = "danger";
             return Page();
         }
 
+        var client = await _db.Clients.AsNoTracking().SingleOrDefaultAsync(c => c.Id == clientId);
+        if (client == null || !client.IsActive) return Forbid("ClientPortal");
         var defaultContact = await _db.ClientContacts
             .AsNoTracking()
-            .Where(x => x.ClientId == auth.clientId.Value && x.IsPrimary)
+            .Where(x => x.ClientId == clientId && x.IsPrimary)
             .OrderByDescending(x => x.UpdatedAt)
             .FirstOrDefaultAsync();
 
         var name = string.IsNullOrWhiteSpace(TicketForm.ContactoNombre)
-            ? (defaultContact?.Name ?? Client?.ContactName ?? Client?.Name ?? "")
+            ? (defaultContact?.Name ?? client.ContactName ?? client.Name)
             : TicketForm.ContactoNombre.Trim();
         var email = string.IsNullOrWhiteSpace(TicketForm.ContactoCorreo)
-            ? (defaultContact?.Email ?? Client?.Email ?? "")
+            ? (defaultContact?.Email ?? client.Email ?? "")
             : TicketForm.ContactoCorreo.Trim();
         var phone = string.IsNullOrWhiteSpace(TicketForm.ContactoTelefono)
-            ? (defaultContact?.Phone ?? Client?.Phone ?? "")
+            ? (defaultContact?.Phone ?? client.Phone ?? "")
             : TicketForm.ContactoTelefono.Trim();
 
         try
         {
             await _tickets.CreatePublicAsync(
-                ClientCode,
+                client.ClientCode,
                 TicketForm.ContractId,
                 name,
                 email,
                 phone,
-                Client?.Address ?? "",
+                client.Address ?? "",
                 TicketForm.Titulo.Trim(),
                 TicketForm.Descripcion.Trim(),
                 clientContactId: TicketForm.ClientContactId,
@@ -338,7 +349,7 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
-    private async Task LoadPageDataAsync(Guid clientId)
+    private async Task LoadPageDataAsync(Guid clientId, Guid? selectedContract = null)
     {
         Client = await _db.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (Client == null) return;
@@ -377,22 +388,30 @@ public class IndexModel : PageModel
         TotalPendiente = AccountRuns.Where(x => !x.Pagada).Sum(x => x.Total);
         TotalPagado = AccountRuns.Where(x => x.Pagada).Sum(x => x.Total);
 
-        var nowDate = DateTime.Today;
-        ActiveContracts = await _db.ClientServiceContracts
+        var nowDate = AppTime.Today;
+        var contracts = await _db.ClientServiceContracts
             .AsNoTracking()
             .Where(c => c.ClientId == clientId
                 && (!c.ContractEndDate.HasValue || c.ContractEndDate.Value.Date >= nowDate))
             .OrderBy(c => c.ServiceType)
             .ThenBy(c => c.Label)
-            .Take(80)
-            .Select(c => new ContractVm(
-                c.Id,
-                c.ServiceType.ToString(),
-                c.Label,
-                string.IsNullOrWhiteSpace(c.Branch) ? "-" : c.Branch,
-                c.ContractEndDate.HasValue ? c.ContractEndDate.Value.ToString("yyyy-MM-dd") : "Sin vencimiento",
-                !string.IsNullOrWhiteSpace(c.SignedContractStoragePath)))
+            .Select(c => new ClientServiceContract
+            {
+                Id = c.Id, ClientId = c.ClientId, Label = c.Label, ContractNumber = c.ContractNumber, Branch = c.Branch,
+                ServiceType = c.ServiceType, Notes = c.Notes, ContractStartDate = c.ContractStartDate,
+                ContractEndDate = c.ContractEndDate, SignedContractStoragePath = c.SignedContractStoragePath, UpdatedAt = c.UpdatedAt
+            })
             .ToListAsync();
+        if (Client.IsActive && !Client.IsTemporaryLead)
+            Expiring = contracts.Select(c => ContractRenewals.Upcoming(c, Client.Name, nowDate)).OfType<ExpiringContract>()
+                .OrderBy(c => c.Term.End).ThenBy(c => c.Number).ToList();
+        ActiveContracts = contracts.Select(c => (Contract: c, End: c.ContractEndDate ?? ContractRenewals.Term(c)?.End))
+            .Where(x => x.End == null || x.End >= nowDate)
+            .Where((x, index) => index < 80 || x.Contract.Id == selectedContract || x.Contract.Id == TicketForm.ContractId)
+            .Select(x => new ContractVm(x.Contract.Id, x.Contract.ServiceType.ToString(), x.Contract.Label,
+                string.IsNullOrWhiteSpace(x.Contract.Branch) ? "-" : x.Contract.Branch,
+                x.End?.ToString("yyyy-MM-dd") ?? "Sin vencimiento", !string.IsNullOrWhiteSpace(x.Contract.SignedContractStoragePath)))
+            .ToList();
 
         Contacts = await _db.ClientContacts
             .AsNoTracking()

@@ -1,0 +1,59 @@
+@model ContractExpiryNotice
+@if (Model.Contracts.Count == 0) { return; }
+<section class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3" aria-label="Vencimientos de contratos">
+    <div>
+        <strong>@(Model.Contracts.Count == 1 ? "1 contrato por vencer" : $"{Model.Contracts.Count} contratos por vencer")</strong>
+        <div class="small">El plazo contratado termina dentro de los próximos tres meses.</div>
+    </div>
+    <button type="button" class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#contractExpiry">Ver vencimientos</button>
+</section>
+<div class="modal fade" id="contractExpiry" tabindex="-1" aria-labelledby="contractExpiryTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="contractExpiryTitle">Contratos por vencer</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group list-group-flush">
+                @foreach (var c in Model.Contracts)
+                {
+                    <li class="list-group-item px-0 py-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                @if (!Model.InPortal && !Model.InClientFile) { <div class="small text-muted">@c.ClientName</div> }
+                                <strong>@c.Service</strong>
+                                <div class="small">@string.Join(" · ", new[] { c.Number, c.Branch }.Where(s => !string.IsNullOrWhiteSpace(s)))</div>
+                            </div>
+                            <span class="badge text-bg-warning">Vence el @c.Term.End.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        @if (c.CalculatedEnd)
+                        {
+                            <div class="small text-muted mt-1">Vencimiento calculado con el inicio y el plazo registrados.</div>
+                        }
+                        @if (Model.CanRenew)
+                        {
+                            <details class="mt-2">
+                                <summary class="text-primary">Renovar contrato</summary>
+                                <form method="post" asp-page="/Clients/Index" asp-page-handler="Renew" class="border rounded p-3 mt-2">
+                                    <input type="hidden" name="clientId" value="@c.ClientId" />
+                                    <input type="hidden" name="contractId" value="@c.Id" />
+                                    <input type="hidden" name="revision" value="@c.Revision" />
+                                    <input type="hidden" name="inClientFile" value="@Model.InClientFile.ToString()" />
+                                    <p class="mb-2">Renovación por <strong>@c.Term.Months meses</strong>, del @c.Term.End.AddDays(1).ToString("dd/MM/yyyy") al <strong>@c.Term.NextEnd.ToString("dd/MM/yyyy")</strong>.</p>
+                                    <label class="d-block mb-2"><input type="checkbox" name="agreed" value="true" required /> El cliente ya aceptó este plazo.</label>
+                                    <button class="btn btn-primary btn-sm" type="submit">Registrar renovación</button>
+                                </form>
+                            </details>
+                        }
+                        else if (Model.InPortal)
+                        {
+                            <a class="btn btn-sm btn-outline-primary mt-2" asp-page="/Portal/Index" asp-route-renewContract="@c.Id" asp-fragment="solicitud-cliente">Solicitar renovación</a>
+                        }
+                    </li>
+                }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

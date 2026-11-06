@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## 2.5.10 · 6 de noviembre de 2026
+
+- Aviso de contratos por vencer en tres meses en Clientes, en la ficha individual y en el portal del cliente.
+- Registro de renovaciones acordadas desde Clientes y solicitud desde el portal. Se excluyen los contratos eventuales, de cargo único e indefinidos.
+- Contrato marco de servicios con carátula corporativa, ambas firmas y sus 26 cláusulas. Los documentos preparados para firma con la plantilla original conservan esa versión.
+- La carátula, la cláusula sexta del nuevo contrato y la bienvenida recurrente indican corte el día 1, primera factura contra entrega y vencimiento de los pagos posteriores el día 15 del mismo mes.
+
 ## 2.5.9 · 6 de noviembre de 2026
 
 - PDF de orden de servicio en formato carta con folio, cliente, datos de atención y término estimado en lugar de SLA. El servicio y su capacidad se obtienen del contrato vinculado. Los contratos eventuales muestran el periodo del evento.

@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.9";
+    public const string Version = "2.5.10";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.10", new DateOnly(2026, 11, 6), "Vencimientos y renovación de contratos", new[]
+        {
+            new ReleaseChange("Clientes", "Aviso de vencimiento con tres meses de anticipación y registro manual de la renovación acordada."),
+            new ReleaseChange("Portal", "El cliente puede consultar el vencimiento y solicitar la renovación de su servicio."),
+            new ReleaseChange("Documentos", "Nueva presentación del contrato marco de servicios, con carátula, firmas y 26 cláusulas en formato de lectura continua."),
+            new ReleaseChange("Facturación", "El contrato y la bienvenida recurrente indican corte el día 1, primera factura contra entrega y pagos posteriores el día 15 del mismo mes.")
+        }),
         new ReleaseNote("2.5.9", new DateOnly(2026, 11, 6), "Orden de servicio y huellas de firma", new[]
         {
             new ReleaseChange("PDF", "Formato corporativo con folio de la orden, término estimado, tablas de verificación y paginación."),

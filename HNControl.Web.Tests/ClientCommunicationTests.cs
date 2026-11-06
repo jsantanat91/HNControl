@@ -39,6 +39,8 @@ internal static class ClientCommunicationTests
         check(body.Contains("HN-0022") && body.Contains("24 meses") && body.Contains("Empresa &amp; Asociados &lt;Prueba&gt;"), "Bienvenida usa datos reales y codifica HTML");
         check(body.Contains("https://wa.me/525526014566") && body.Contains("soporte@hubnet-solutions.com.mx"), "Soporte y WhatsApp correctos");
         check(body.Contains("012 180 00123904423 6") && body.Contains("0123904423"), "Datos bancarios conservados");
+        check(body.Contains("día 1 de cada mes") && body.Contains("día 15 del mismo mes del corte")
+            && body.Contains("primera factura se paga contra entrega") && !body.Contains("15 y el 30"), "Bienvenida recurrente con el mismo corte y vencimiento de pago del contrato");
         Directory.CreateDirectory("artifacts/welcome-check");
         await File.WriteAllTextAsync("artifacts/welcome-check/bienvenida.html", body);
 

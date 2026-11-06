@@ -26,6 +26,8 @@
     <div class="alert alert-danger py-2">@err</div>
 }
 
+<partial name="_ContractExpiryNotice" model="@(new ContractExpiryNotice(Model.Expiring, Model.CanEdit))" />
+
 @if (isLeads && Model.CanCreateLead)
 {
     <div class="card shadow-soft hn-hover mb-3">

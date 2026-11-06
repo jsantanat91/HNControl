@@ -19,21 +19,27 @@ public class TemplateDocxService : ITemplateDocxService
 
     public byte[] BuildClientLegalDocx(ClientLegalDocument document, Client client, ClientServiceContract? contract)
     {
+        var corporateServiceTemplate = document.Status == ClientLegalDocumentStatus.Draft &&
+            !document.SignedAt.HasValue && !document.ProviderSignedAt.HasValue && string.IsNullOrEmpty(document.PdfStoragePath);
         if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
         {
             var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson)
                 ?? throw new InvalidOperationException("No se pudo leer la versión del contrato preparada para firma.");
             client = snapshot.Client;
             contract = snapshot.Contract;
+            corporateServiceTemplate = snapshot.UsesCorporateServiceTemplate;
         }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
-            : EventContract.IsEvent(contract) ? "Contrato_Eventual.docx" : "Contrato_Blanco.docx";
+            : EventContract.IsEvent(contract) ? "Contrato_Eventual.docx"
+            : corporateServiceTemplate ? "Contrato_Servicios.docx" : "Contrato_Blanco.docx";
 
         var bytes = LoadTemplateBytes(templateName);
         var replacements = document.DocumentType == ClientLegalDocumentType.NDA
             ? BuildNdaReplacements(document, client)
             : BuildContractReplacements(document, client, contract);
+        if (templateName == "Contrato_Servicios.docx")
+            replacements["FECHAHOY"] = AppTime.ToMx(document.CreatedAt).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
 
         return ReplaceDocumentXml(bytes, replacements);
     }

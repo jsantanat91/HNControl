@@ -30,6 +30,7 @@ public class DetailsModel : PageModel
     }
 
     public Client? Client { get; set; }
+    public List<ExpiringContract> Expiring { get; private set; } = new();
     public bool CanEdit { get; set; }
     public bool CanViewAllClients { get; set; }
     public bool CanViewOwnClients { get; set; }
@@ -145,15 +146,18 @@ public class DetailsModel : PageModel
             .Select(p => new { p.Id, p.Title })
             .ToDictionaryAsync(x => x.Id, x => x.Title);
 
-        var today = DateTime.Today;
-        var soon = today.AddDays(30);
+        var today = AppTime.Today;
+        if (Client.IsActive && !Client.IsTemporaryLead)
+            Expiring = Client.Contracts.Select(c => ContractRenewals.Upcoming(c, Client.Name, today))
+                .OfType<ExpiringContract>().OrderBy(c => c.Term.End).ThenBy(c => c.Number).ToList();
 
         Contracts = Client.Contracts
             .OrderBy(x => x.ServiceType)
             .ThenBy(x => x.Label)
             .Select(x =>
             {
-                var end = x.ContractEndDate?.Date;
+                var term = ContractRenewals.Term(x);
+                var end = x.ContractEndDate?.Date ?? term?.End;
                 var status = "Activo";
                 var badge = "text-bg-success";
 
@@ -162,7 +166,7 @@ public class DetailsModel : PageModel
                     status = "Vencido";
                     badge = "text-bg-danger";
                 }
-                else if (end.HasValue && end.Value <= soon)
+                else if (term?.IsDue(today) == true)
                 {
                     status = "Por vencer";
                     badge = "text-bg-warning";

@@ -45,6 +45,8 @@
     <div class="alert alert-@infoType">@info</div>
 }
 
+<partial name="_ContractExpiryNotice" model="@(new ContractExpiryNotice(Model.Expiring, Model.CanEdit, InClientFile: true))" />
+
 <div class="row g-3">
     <div class="col-12">
         <div class="card shadow-soft hn-hover">

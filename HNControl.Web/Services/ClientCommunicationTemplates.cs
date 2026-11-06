@@ -78,9 +78,8 @@ public static class ClientCommunicationTemplates
             Sistema de tickets: <a href="https://support.hubnet-solutions.net">support.hubnet-solutions.net</a><br>
             Correo: <a href="mailto:soporte@hubnet-solutions.com.mx">soporte@hubnet-solutions.com.mx</a></p>
             <h2 style="font-size:19px;color:#086db4;margin-top:28px">02 · Facturación y fechas de pago</h2>
-            <p>Una vez contratado el servicio, las facturas se emitirán durante los primeros cinco días de cada mes y se enviarán en formato PDF y XML al correo de facturación registrado{{(string.IsNullOrWhiteSpace(client.BillingEmail) ? "." : $": <strong>{E(client.BillingEmail)}</strong>.")}}</p>
-            <p>Los días de corte son el <strong>15 y el 30 de cada mes</strong>. Se asignará el corte más próximo posterior a la instalación de su servicio.</p>
-            <p>La <strong>primera factura se paga contra entrega del servicio</strong>. Posteriormente, la fecha límite de pago será el día 30 para el corte del día 15, o el día 15 para el corte del día 30, según corresponda.</p>
+            <p>La fecha de corte es el <strong>día 1 de cada mes</strong>. Dentro de los cinco días siguientes al corte recibirá su factura en PDF y XML en el correo de facturación registrado{{(string.IsNullOrWhiteSpace(client.BillingEmail) ? "." : $": <strong>{E(client.BillingEmail)}</strong>.")}}</p>
+            <p>La <strong>primera factura se paga contra entrega del servicio</strong>. A partir de la segunda factura, la fecha límite de pago es el <strong>día 15 del mismo mes del corte</strong>.</p>
             <h2 style="font-size:19px;color:#086db4;margin-top:28px">03 · Datos bancarios</h2>
             <p>Para realizar sus pagos mensuales, utilice los siguientes datos:</p>
             <table role="presentation" style="width:100%;background:#f8fafc;border-collapse:collapse">
