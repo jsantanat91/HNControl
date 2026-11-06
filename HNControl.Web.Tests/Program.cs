@@ -80,6 +80,7 @@ SignatureLayoutTests.Run(service, Check);
 EventContractTests.Run(service, Check);
 await RelatedFormDataTests.RunAsync(Check);
 await ServiceOrderEditBindingTests.RunAsync(Check);
+await ServiceOrderReportTests.RunAsync(root, Check);
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class TestEnvironment(string root) : IWebHostEnvironment

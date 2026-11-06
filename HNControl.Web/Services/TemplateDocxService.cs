@@ -160,7 +160,7 @@ public class TemplateDocxService : ITemplateDocxService
         var tpl = ParseContractTemplateData(doc.TermsBody);
         var nowText = DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         var period = BuildContractPeriod(doc, contract);
-        var serviceName = BuildContractServiceName(contract, tpl.CONTRATOC);
+        var serviceName = ClientServiceContractMetadata.ServiceName(contract, tpl.CONTRATOC);
         var monthly = Safe((contract?.MonthlyAmount ?? doc.MonthlyAmount ?? 0m).ToString("N2", new CultureInfo("es-MX")), tpl.COSTOCLIENTE);
         var installationCost = Safe(FormatMoney(ExtractInstallationCostFromNotes(contract?.Notes)), tpl.COSTOINST);
         var firma = BuildDigitalSignatureText(doc, Safe(client.LegalRepresentative, client.ContactName));
@@ -276,36 +276,6 @@ public class TemplateDocxService : ITemplateDocxService
         var role = provider ? "HN" : "CLIENTE";
         var payload = $"{delivery.Id}|ACTA|{role}|{name}|{email}|{signedAt.Value.ToUniversalTime():O}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))[..16];
-    }
-
-    private static string BuildContractServiceName(ClientServiceContract? contract, string? templateService)
-    {
-        var name = Safe(contract?.Label, templateService, "Servicio de telecomunicaciones");
-        if (contract == null)
-            return name;
-
-        var technical = ClientServiceContractMetadata.ParseTechnical(contract.Notes);
-        var hasInternet = contract.ServiceType == ClientServiceType.Internet
-            || technical.ServiceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase);
-        if (!hasInternet)
-            return name;
-
-        var capacity = technical.InternetCapacity.Equals("Otro", StringComparison.OrdinalIgnoreCase)
-            ? technical.InternetCapacityOther
-            : technical.InternetCapacity;
-        if (string.IsNullOrWhiteSpace(capacity))
-            return name;
-
-        // Standard selections are stored as a number; custom capacities can carry their own units.
-        if (Regex.IsMatch(capacity, @"^\d+(?:[.,]\d+)?$"))
-            capacity += " MB";
-
-        if (name.EndsWith(" " + capacity, StringComparison.OrdinalIgnoreCase))
-            return name;
-
-        // Prefer the technical capacity over a speed previously included in the contract label.
-        name = Regex.Replace(name, @"\s+\d+(?:[.,]\d+)?\s*(?:MB|Mbps|GB|Gbps)\s*$", "", RegexOptions.IgnoreCase);
-        return $"{name} {capacity}";
     }
 
     public static string BuildContractPeriod(ClientLegalDocument doc, ClientServiceContract? contract)

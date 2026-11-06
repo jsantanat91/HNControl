@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## 2.5.9 · 6 de noviembre de 2026
+
+- PDF de orden de servicio en formato carta con folio, cliente, datos de atención y término estimado en lugar de SLA. El servicio y su capacidad se obtienen del contrato vinculado. Los contratos eventuales muestran el periodo del evento.
+- Lista de verificación con encabezados por página, evidencias y firmas del técnico y del cliente. Cada captura disponible lleva una huella SHA-256 que incorpora la orden, el rol, el nombre, la fecha y los bytes de la firma. El pie incluye una huella separada de los datos de la orden.
+- Para aplicar el diseño a un PDF anterior, usa **Generar PDF** en el detalle administrativo de la orden.
+
 ## 2.5.8 · 6 de noviembre de 2026
 
 - Contrato eventual rediseñado con logotipo incrustado, tipografía uniforme y tablas para cliente, servicio, vigencia e importes.

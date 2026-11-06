@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
+using HNControl.Web.Models;
 
 namespace HNControl.Web.Services;
 
@@ -50,6 +52,37 @@ public static class ClientServiceContractMetadata
         "Hardware",
         "Otro"
     ];
+
+    public static string ServiceName(ClientServiceContract? contract, string? templateService = null)
+    {
+        var name = new[] { contract?.Label, templateService }.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim()
+            ?? "Servicio de telecomunicaciones";
+        if (contract == null)
+            return name;
+
+        var technical = ParseTechnical(contract.Notes);
+        var hasInternet = contract.ServiceType == ClientServiceType.Internet
+            || technical.ServiceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase);
+        if (!hasInternet)
+            return name;
+
+        var capacity = technical.InternetCapacity.Equals("Otro", StringComparison.OrdinalIgnoreCase)
+            ? technical.InternetCapacityOther
+            : technical.InternetCapacity;
+        if (string.IsNullOrWhiteSpace(capacity))
+            return name;
+
+        // Standard selections are stored as a number; custom capacities can carry their own units.
+        if (Regex.IsMatch(capacity, @"^\d+(?:[.,]\d+)?$"))
+            capacity += " MB";
+
+        if (name.EndsWith(" " + capacity, StringComparison.OrdinalIgnoreCase))
+            return name;
+
+        // Prefer the technical capacity over a speed previously included in the contract label.
+        name = Regex.Replace(name, @"\s+\d+(?:[.,]\d+)?\s*(?:MB|Mbps|GB|Gbps)\s*$", "", RegexOptions.IgnoreCase);
+        return $"{name} {capacity}";
+    }
 
     public static ClientServiceTechnicalMetadata ParseTechnical(string? notes)
     {
