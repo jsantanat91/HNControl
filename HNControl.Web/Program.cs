@@ -109,6 +109,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
+builder.Services.AddScoped<ServiceInventoryService>();
 builder.Services.AddSingleton<ModuleAvailability>();
 
 // --------------------

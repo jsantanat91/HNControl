@@ -29,7 +29,7 @@ internal static class SignatureLayoutTests
         var pendingDelivery = templates.BuildDeliveryDocx(delivery, client, null);
         Validate(pendingNda, false, "NDA pendiente", check);
         Validate(pendingDelivery, false, "Acta pendiente", check);
-        check(Text(Read(pendingDelivery)).Contains("Cliente: Jorge Alberto Santana Torres"),
+        check(Text(Read(pendingDelivery)).Contains("Representante legalJorge Alberto Santana Torres"),
             "Acta conserva al representante aunque su nombre coincida con el ejemplo de la plantilla antigua");
         File.WriteAllBytes("artifacts/signature-layout/nda-pendiente.docx", pendingNda);
         File.WriteAllBytes("artifacts/signature-layout/acta-pendiente.docx", pendingDelivery);

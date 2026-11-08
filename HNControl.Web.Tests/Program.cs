@@ -83,6 +83,9 @@ await ServiceOrderEditBindingTests.RunAsync(Check);
 await ServiceOrderReportTests.RunAsync(root, Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
+EventDeliveryDesignTests.Run(service, Check);
+await UnsignedDocumentDeletionTests.RunAsync(service, Check);
+await ServiceInventoryTests.RunAsync(Check);
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class TestEnvironment(string root) : IWebHostEnvironment

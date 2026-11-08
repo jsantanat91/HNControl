@@ -1,0 +1,25 @@
+@page "{id:guid?}"
+@model HNControl.Web.Pages.Admin.ServiceInventory.AccountModel
+@{ ViewData["Title"] = Model.Id.HasValue ? "Administrar cuenta" : "Nueva cuenta de carrier"; }
+<link rel="stylesheet" href="~/css/service-inventory.css" asp-append-version="true" />
+<div class="service-inventory inv-editor">
+    <header class="inv-header"><div><div class="inv-eyebrow">INVENTARIO SERVICIOS · CUENTAS</div><h1>@ViewData["Title"]<span>.</span></h1><p>Una cuenta puede reunir varios equipos y servicios del mismo carrier.</p></div><a class="btn btn-light" asp-page="Index" asp-route-Tab="cuentas">Volver al inventario</a></header>
+    <form method="post" class="inv-form">
+        <input type="hidden" asp-for="Input.RecordId" /><input type="hidden" asp-for="Input.Version" />
+        <div asp-validation-summary="All" class="text-danger inv-validation" role="alert"></div>
+        <section class="inv-section"><div class="inv-section-heading"><span>01</span><div><h2>Identifica la cuenta</h2><p>Datos de acceso al portal del proveedor.</p></div></div><div class="inv-fields">
+            <div><label asp-for="Input.CarrierKey">Carrier</label><select asp-for="Input.CarrierKey" class="form-select" data-carrier-selector>@foreach (var carrier in ServiceInventoryCatalog.Carriers) { <option value="@carrier.Id">@carrier.Name</option> }</select><span asp-validation-for="Input.CarrierKey" class="text-danger"></span></div>
+            <div data-other-carrier><label asp-for="Input.OtherCarrierName">Nombre del carrier</label><input asp-for="Input.OtherCarrierName" class="form-control" maxlength="120" /></div>
+            <div><label asp-for="Input.Label">Nombre de la cuenta</label><input asp-for="Input.Label" class="form-control" maxlength="140" placeholder="Ej. Starlink · Operaciones" /><span asp-validation-for="Input.Label" class="text-danger"></span></div>
+            <div><label asp-for="Input.Email">Correo de acceso</label><input asp-for="Input.Email" class="form-control" type="email" maxlength="256" autocomplete="off" /><span asp-validation-for="Input.Email" class="text-danger"></span></div>
+            <div><label asp-for="Input.AccountNumber">Número de cuenta</label><input asp-for="Input.AccountNumber" class="form-control" maxlength="120" /><small>Opcional. Identificador asignado por el carrier.</small></div>
+        </div></section>
+        <section class="inv-section"><div class="inv-section-heading"><span>02</span><div><h2>Acceso protegido</h2><p>@(Model.Id.HasValue ? "La contraseña guardada solo se puede copiar." : "Ingresa la contraseña una sola vez al registrar esta cuenta.")</p></div></div>
+            @if (!Model.Id.HasValue) { <div class="inv-fields"><div><label for="Password">Contraseña del carrier</label><input id="Password" name="Password" type="password" value="" class="form-control" autocomplete="new-password" maxlength="1024" required /><span asp-validation-for="Password" class="text-danger"></span><small>Se almacena cifrada y no se muestra después de guardar. Si hay un error en el formulario, vuelve a escribirla.</small></div></div> }
+            else { <div class="inv-secret-panel"><div><strong>••••••••••••</strong><p>Contraseña guardada · @Model.ServicesCount servicio(s) vinculado(s)</p></div><button type="button" class="btn btn-primary" data-copy-password="@Model.Id" data-copy-url="@Url.Page("Index", "CopyPassword")">Copiar contraseña</button></div><div id="inventory-copy-status" class="inv-copy-status" role="status" aria-live="polite"></div> }
+        </section>
+        <section class="inv-section"><div class="inv-section-heading"><span>03</span><div><h2>Control de la cuenta</h2><p>Conserva su información y administra su disponibilidad.</p></div></div><div><label asp-for="Input.Notes">Notas internas</label><textarea asp-for="Input.Notes" class="form-control" rows="3" maxlength="2000" placeholder="Contacto, referencias o indicaciones de administración. No agregues contraseñas aquí."></textarea></div><div class="form-check form-switch inv-state-switch"><input asp-for="Input.IsActive" class="form-check-input" /><label asp-for="Input.IsActive" class="form-check-label">Cuenta activa</label></div><p class="inv-help">Al desactivarla se conserva su información y ya no estará disponible para asociar nuevos servicios. Los servicios existentes mantienen su propio estado.</p></section>
+        <footer class="inv-form-footer"><a class="btn btn-light" asp-page="Index" asp-route-Tab="cuentas">Cancelar</a><button type="submit" class="btn btn-primary">@(Model.Id.HasValue ? "Guardar cambios" : "Guardar cuenta")</button></footer>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /><script src="~/js/service-inventory.js" asp-append-version="true"></script> }

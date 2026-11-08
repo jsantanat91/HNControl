@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using HNControl.Web.Models;
 
 namespace HNControl.Web.Services;
@@ -22,6 +23,7 @@ public class TemplateDocxService : ITemplateDocxService
         var newDraft = document.Status == ClientLegalDocumentStatus.Draft &&
             !document.SignedAt.HasValue && !document.ProviderSignedAt.HasValue && string.IsNullOrEmpty(document.PdfStoragePath);
         var revision = newDraft ? ClientSigningSnapshot.CurrentServiceTemplateRevision : 0;
+        var eventRevision = newDraft ? ClientSigningSnapshot.CurrentEventTemplateRevision : 1;
         if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
         {
             var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson)
@@ -29,10 +31,16 @@ public class TemplateDocxService : ITemplateDocxService
             client = snapshot.Client;
             contract = snapshot.Contract;
             revision = snapshot.ServiceTemplateRevision ?? (snapshot.UsesCorporateServiceTemplate ? 1 : 0);
+            eventRevision = snapshot.EventTemplateRevision ?? 1;
         }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
-            : EventContract.IsEvent(contract) ? "Contrato_Eventual.docx"
+            : EventContract.IsEvent(contract) ? eventRevision switch
+            {
+                1 => "Contrato_Eventual.docx",
+                2 => "Contrato_Eventual_v2.docx",
+                _ => throw new InvalidOperationException("La revisión de la plantilla eventual no está disponible.")
+            }
             : revision switch
             {
                 0 => "Contrato_Blanco.docx",
@@ -45,24 +53,66 @@ public class TemplateDocxService : ITemplateDocxService
         var replacements = document.DocumentType == ClientLegalDocumentType.NDA
             ? BuildNdaReplacements(document, client)
             : BuildContractReplacements(document, client, contract);
-        if (document.DocumentType == ClientLegalDocumentType.Contract && revision > 0 && !EventContract.IsEvent(contract))
+        if (document.DocumentType == ClientLegalDocumentType.Contract &&
+            (EventContract.IsEvent(contract) ? eventRevision >= 2 : revision > 0))
             replacements["FECHAHOY"] = AppTime.ToMx(document.CreatedAt).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        if (document.DocumentType == ClientLegalDocumentType.Contract && EventContract.IsEvent(contract) && eventRevision >= 2
+            && replacements["ESTADOC"] == "MÃ©xico")
+            replacements["ESTADOC"] = "México";
 
         return ReplaceDocumentXml(bytes, replacements);
     }
 
     public byte[] BuildDeliveryDocx(ProjectDeliveryFormat delivery, Client client, Project? project)
     {
+        var revision = string.IsNullOrEmpty(delivery.PdfStoragePath) && !delivery.SignedAt.HasValue && !delivery.ProviderSignedAt.HasValue
+            ? DeliverySigningSnapshot.CurrentTemplateRevision : 1;
         if (!string.IsNullOrWhiteSpace(delivery.SigningSnapshotJson))
         {
             var snapshot = JsonSerializer.Deserialize<DeliverySigningSnapshot>(delivery.SigningSnapshotJson)
                 ?? throw new InvalidOperationException("No se pudo leer la versión del acta preparada para firma.");
             client = snapshot.Client;
             project = snapshot.ProjectTitle == null ? null : new Project { Title = snapshot.ProjectTitle };
+            revision = snapshot.TemplateRevision ?? 1;
         }
-        var bytes = LoadTemplateBytes("Acta_Entrega_Material_Servicios.docx");
+        var bytes = LoadTemplateBytes(revision switch
+        {
+            1 => "Acta_Entrega_Material_Servicios.docx",
+            2 => "Acta_Entrega_Material_Servicios_v2.docx",
+            _ => throw new InvalidOperationException("La revisión de la plantilla del acta no está disponible.")
+        });
         var replacements = BuildDeliveryReplacements(delivery, client, project);
-        return ReplaceDocumentXml(bytes, replacements);
+        return ReplaceDocumentXml(bytes, replacements, revision >= 2
+            ? xml => RemoveUnusedDeliveryRows(xml, delivery.ServiceSummary, delivery.EquipmentSummary)
+            : null);
+    }
+
+    private static string RemoveUnusedDeliveryRows(string xml, string? serviceSummary, string? equipmentSummary)
+    {
+        var data = ParseDeliveryTemplateData(serviceSummary, equipmentSummary);
+        var document = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        bool HasService(int index) => index < data.Services.Count &&
+            new[] { data.Services[index].Servicio, data.Services[index].Modalidad, data.Services[index].Plazo }.Any(x => !string.IsNullOrWhiteSpace(x));
+        bool HasEquipment(int index) => index < data.Equipment.Count &&
+            new[] { data.Equipment[index].Equipo, data.Equipment[index].Cantidad }.Any(x => !string.IsNullOrWhiteSpace(x));
+        foreach (var row in document.Descendants(w + "tr").ToList())
+        {
+            var text = string.Concat(row.Descendants(w + "t").Select(x => x.Value));
+            var service = Regex.Match(text, @"SERVICIO(\d{2})");
+            var equipment = Regex.Match(text, @"EQUIPO(\d{2})");
+            if (service.Success)
+            {
+                var index = int.Parse(service.Groups[1].Value, CultureInfo.InvariantCulture) - 1;
+                if (!HasService(index) && (index != 0 || Enumerable.Range(0, 5).Any(HasService))) row.Remove();
+            }
+            else if (equipment.Success)
+            {
+                var index = int.Parse(equipment.Groups[1].Value, CultureInfo.InvariantCulture) - 1;
+                if (!HasEquipment(index) && (index != 0 || Enumerable.Range(0, 5).Any(HasEquipment))) row.Remove();
+            }
+        }
+        return document.ToString(SaveOptions.DisableFormatting);
     }
 
     private byte[] LoadTemplateBytes(string fileName)
@@ -73,7 +123,7 @@ public class TemplateDocxService : ITemplateDocxService
         return File.ReadAllBytes(path);
     }
 
-    private static byte[] ReplaceDocumentXml(byte[] docxBytes, IReadOnlyDictionary<string, string> replacements)
+    private static byte[] ReplaceDocumentXml(byte[] docxBytes, IReadOnlyDictionary<string, string> replacements, Func<string, string>? prepareXml = null)
     {
         using var input = new MemoryStream(docxBytes);
         using var output = new MemoryStream();
@@ -91,6 +141,7 @@ public class TemplateDocxService : ITemplateDocxService
                 {
                     using var sr = new StreamReader(inStream, Encoding.UTF8, true);
                     var xml = sr.ReadToEnd();
+                    if (prepareXml != null) xml = prepareXml(xml);
                     foreach (var kv in replacements)
                     {
                         if (string.IsNullOrWhiteSpace(kv.Key)) continue;
@@ -236,6 +287,9 @@ public class TemplateDocxService : ITemplateDocxService
             ["RLCLIENTE"] = Safe(client.LegalRepresentative, "-"),
             ["CORREOFACTURA"] = Safe(client.BillingEmail, "-"),
             ["FECHAHOY"] = dt,
+            ["ACTAFOLIO"] = $"ACT-{delivery.Id.ToString("N")[..8].ToUpperInvariant()}",
+            ["LUGARENTREGA"] = Safe(delivery.DeliveryLocation, "-"),
+            ["RECEPTORACTA"] = Safe(delivery.ReceiverName, client.LegalRepresentative, client.ContactName, "-"),
             ["DIRECCIONC"] = Safe(client.FiscalAddress, client.Address, delivery.DeliveryLocation, "-"),
             ["NOMBREPROYECTO"] = Safe(project?.Title, tpl.NOMBREPROYECTO, delivery.Title, "-"),
             ["NOMBRETECNICO"] = Safe(tpl.NOMBRETECNICO, delivery.ProviderSignedByName, "Técnico asignado"),
@@ -253,6 +307,7 @@ public class TemplateDocxService : ITemplateDocxService
             r[$"SERVICIO{i:00}"] = Safe(s.Servicio, "");
             r[$"SMODAL{i:00}"] = Safe(s.Modalidad, "");
             r[$"SPLAZO{i:00}"] = Safe(s.Plazo, "");
+            r[$"SATISFACCION{i:00}"] = new[] { s.Servicio, s.Modalidad, s.Plazo }.Any(x => !string.IsNullOrWhiteSpace(x)) ? "Sí" : "-";
             r[$"EQUIPO{i:00}"] = Safe(h.Equipo, "");
             r[$"ECANTIDAD{i:00}"] = Safe(h.Cantidad, "");
         }

@@ -7,8 +7,10 @@ namespace HNControl.Web.Services;
 public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract? Contract)
 {
     public const int CurrentServiceTemplateRevision = 2;
+    public const int CurrentEventTemplateRevision = 2;
     public bool UsesCorporateServiceTemplate { get; init; }
     public int? ServiceTemplateRevision { get; init; }
+    public int? EventTemplateRevision { get; init; }
 
     public static string Capture(Client client, ClientServiceContract? contract, bool corporateServiceTemplate = true) => JsonSerializer.Serialize(
         new ClientSigningSnapshot(new Client
@@ -25,6 +27,7 @@ public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract?
         })
         {
             UsesCorporateServiceTemplate = corporateServiceTemplate,
-            ServiceTemplateRevision = corporateServiceTemplate ? CurrentServiceTemplateRevision : 0
+            ServiceTemplateRevision = corporateServiceTemplate ? CurrentServiceTemplateRevision : 0,
+            EventTemplateRevision = corporateServiceTemplate ? CurrentEventTemplateRevision : 1
         });
 }

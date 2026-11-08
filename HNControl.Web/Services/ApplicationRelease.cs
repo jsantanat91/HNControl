@@ -3,9 +3,18 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.11";
+    public const string Version = "2.5.12";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.12", new DateOnly(2026, 11, 8), "Inventario de servicios y formatos corporativos", new[]
+        {
+            new ReleaseChange("Inventario Servicios", "Módulo independiente para cuentas de carriers, antenas, servicios, costos, datos de red y asignación a clientes."),
+            new ReleaseChange("Accesos", "Contraseñas cifradas, capturadas una sola vez y disponibles para copiar por administradores."),
+            new ReleaseChange("Documentos", "Contrato eventual y acta de entrega con secciones, texto justificado y espacios de firma; se conserva la plantilla de documentos ya preparados."),
+            new ReleaseChange("Soporte", "El acta destaca WhatsApp 55 2601 4566 como canal preferente del NOC, además del correo y portal de soporte."),
+            new ReleaseChange("Clientes", "Los documentos sin firmas se pueden eliminar desde Contrato / NDA; su enlace público queda desactivado y el servicio contratado se conserva."),
+            new ReleaseChange("Publicación", "Requiere la migración de las nuevas tablas de Inventario Servicios. El módulo Carriers conserva sus datos.")
+        }),
         new ReleaseNote("2.5.11", new DateOnly(2026, 11, 6), "Carátula y firmas del contrato de servicios", new[]
         {
             new ReleaseChange("Contratos", "Carátula organizada por cliente, servicio, tarifas y documentación requerida, con una casilla por documento."),

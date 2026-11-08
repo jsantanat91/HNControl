@@ -179,6 +179,15 @@
 
                                 <div class="card-footer bg-transparent border-0 pt-0">
                                     <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                        @if (!d.IsSigned && !d.ProviderSigned && d.Status != "Firmado")
+                                        {
+                                            <form method="post" asp-page-handler="Delete" class="me-auto"
+                                                  onsubmit="return confirm('¿Eliminar este documento sin firmas? El enlace enviado al cliente dejará de funcionar. El servicio contratado se conservará.');">
+                                                <input type="hidden" name="clientId" value="@Model.Client.Id" />
+                                                <input type="hidden" name="docId" value="@d.Id" />
+                                                <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash" aria-hidden="true"></i> Eliminar</button>
+                                            </form>
+                                        }
                                         <form method="post" asp-page-handler="RegeneratePdf">
                                             <input type="hidden" name="clientId" value="@Model.Client.Id" />
                                             <input type="hidden" name="docId" value="@d.Id" />

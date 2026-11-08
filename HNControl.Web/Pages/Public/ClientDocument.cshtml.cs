@@ -71,7 +71,8 @@ public class ClientDocumentModel(
         {
             logger.LogError(ex, "No se pudo registrar firma cliente para {DocumentId}", doc.Id);
             db.ChangeTracker.Clear();
-            DocumentRef = await db.ClientLegalDocuments.Include(x => x.Client).FirstAsync(x => x.Id == doc.Id);
+            DocumentRef = await db.ClientLegalDocuments.Include(x => x.Client).FirstOrDefaultAsync(x => x.Id == doc.Id);
+            if (DocumentRef == null) return NotFound();
             Error = "No se pudo confirmar la firma y generar el PDF. Actualice la página y vuelva a intentar. Si continúa el problema, contacte a HN Solutions.";
             return Page();
         }

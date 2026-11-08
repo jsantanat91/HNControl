@@ -294,6 +294,41 @@ public class DocumentsModel : PageModel
         return RedirectToPage(new { clientId });
     }
 
+    public async Task<IActionResult> OnPostDeleteAsync(Guid clientId, Guid docId)
+    {
+        if (!await CanManageAsync(clientId)) return Forbid();
+        var document = await _db.ClientLegalDocuments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
+        if (document == null) return NotFound();
+
+        // Check signatures in the DELETE itself: a concurrent signature must win
+        // over a stale card or confirmation dialog.
+        var removed = await _db.ClientLegalDocuments
+            .Where(x => x.Id == docId && x.ClientId == clientId
+                && !x.SignedAt.HasValue && !x.ProviderSignedAt.HasValue
+                && x.Status != ClientLegalDocumentStatus.Signed
+                && (x.SignatureStoragePath == null || x.SignatureStoragePath == "")
+                && x.UpdatedAt == document.UpdatedAt)
+            .ExecuteDeleteAsync();
+        if (removed == 0)
+        {
+            Flash = "El documento contiene una firma o fue actualizado. Recarga la lista para revisar su estado; no se eliminó.";
+            FlashType = "warning";
+            return RedirectToPage(new { clientId });
+        }
+
+        // Removing the document also invalidates its public signing/download URL.
+        // Keep the underlying service and its operational records intact.
+        if (!string.IsNullOrWhiteSpace(document.PdfStoragePath))
+        {
+            try { await _storage.DeleteIfExistsAsync(document.PdfStoragePath); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Could not clean PDF for deleted unsigned document {DocumentId}", docId); }
+        }
+        Flash = "Documento eliminado y enlace de firma desactivado. El servicio contratado se conserva en la ficha del cliente.";
+        FlashType = "success";
+        return RedirectToPage(new { clientId });
+    }
+
     private async Task LoadAsync(Guid clientId)
     {
         Client = await _db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.Id == clientId);

@@ -1,0 +1,70 @@
+@page
+@model HNControl.Web.Pages.Admin.ServiceInventory.IndexModel
+@using global::System.Globalization
+@{
+    ViewData["Title"] = "Inventario Servicios";
+    var mx = CultureInfo.GetCultureInfo("es-MX");
+}
+<link rel="stylesheet" href="~/css/service-inventory.css" asp-append-version="true" />
+<div class="service-inventory">
+    <header class="inv-header">
+        <div><div class="inv-eyebrow">CONECTIVIDAD · OPERACIÓN</div><h1>Inventario Servicios<span>.</span></h1><p>Cuentas, equipos y conexiones. Cada servicio en su lugar.</p></div>
+        <div class="inv-header-actions"><a class="btn btn-outline-primary" asp-page="Account">+ Nueva cuenta</a><a class="btn btn-primary" asp-page="Service">+ Nuevo servicio</a></div>
+    </header>
+    @if (!string.IsNullOrEmpty(Model.FlashOk)) { <div class="alert alert-success" role="status">@Model.FlashOk</div> }
+    <div class="inv-kpis">
+        <div class="inv-kpi"><span>Servicios activos</span><strong>@Model.ActiveCount</strong><small>Conexiones en operación</small></div>
+        <div class="inv-kpi"><span>Sin cliente asignado</span><strong>@Model.AvailableCount</strong><small>Servicios activos disponibles</small></div>
+        <div class="inv-kpi inv-kpi-emphasis"><span>Costo mensual activo</span><strong>@Model.MonthlyCost.ToString("C2", mx)<em> MXN</em></strong><small>@(Model.UnpricedCount > 0 ? $"{Model.UnpricedCount} servicio(s) sin costo registrado" : "Según los costos registrados")</small></div>
+        <a class="inv-kpi inv-kpi-link" asp-page="Index" asp-route-Assignment="porvencer"><span>Vencen en 30 días</span><strong>@Model.ExpiringCount</strong><small>Consultar plazos de contrato →</small></a>
+    </div>
+    <nav class="inv-tabs" aria-label="Secciones del inventario">
+        <a asp-page="Index" asp-route-Tab="servicios" class="@(Model.Tab == "servicios" ? "active" : "")" aria-current="@(Model.Tab == "servicios" ? "page" : null)">Servicios y equipos</a>
+        <a asp-page="Index" asp-route-Tab="cuentas" class="@(Model.Tab == "cuentas" ? "active" : "")" aria-current="@(Model.Tab == "cuentas" ? "page" : null)">Cuentas de carriers</a>
+    </nav>
+    <form method="get" class="inv-filters">
+        <input type="hidden" name="Tab" value="@Model.Tab" />
+        <div class="inv-search"><label for="Q">Buscar</label><input asp-for="Q" class="form-control" placeholder="@(Model.Tab == "cuentas" ? "Cuenta, correo o número…" : "Servicio, serie, kit, cliente o ubicación…")" /></div>
+        <div><label for="Carrier">Carrier</label><select asp-for="Carrier" class="form-select"><option value="">Todos</option>@foreach (var carrier in ServiceInventoryCatalog.Carriers) { <option value="@carrier.Id">@carrier.Name</option> }</select></div>
+        @if (Model.Tab == "servicios") {
+            <div><label for="ClientId">Cliente</label><select asp-for="ClientId" asp-items="Model.Clients" class="form-select"><option value="">Todos</option></select></div>
+            <div><label for="Assignment">Asignación</label><select asp-for="Assignment" class="form-select"><option value="">Todas</option><option value="asignados">Con cliente</option><option value="disponibles">Sin cliente</option><option value="porvencer">Vencen en 30 días</option></select></div>
+        }
+        <div><label for="Status">Estado</label><select asp-for="Status" class="form-select"><option value="activos">Activos</option><option value="inactivos">Inactivos</option><option value="todos">Todos</option></select></div>
+        <button type="submit" class="btn btn-primary">Filtrar</button><a asp-page="Index" asp-route-Tab="@Model.Tab" class="btn btn-light">Limpiar</a>
+    </form>
+    <div id="inventory-copy-status" class="inv-copy-status" role="status" aria-live="polite"></div>
+    <form id="inventory-copy-form" method="post" asp-page-handler="CopyPassword" hidden></form>
+    @if (Model.Total == 0) {
+        <div class="inv-empty"><span class="inv-empty-symbol">◎</span><h2>@(Model.Tab == "cuentas" ? "No hay cuentas en esta vista" : "No hay servicios en esta vista")</h2><p>Agrega un registro o ajusta los filtros para encontrar lo que buscas.</p><a class="btn btn-primary" asp-page="@(Model.Tab == "cuentas" ? "Account" : "Service")">@(Model.Tab == "cuentas" ? "Registrar cuenta" : "Registrar servicio")</a></div>
+    }
+    <div class="inv-grid">
+    @if (Model.Tab == "cuentas") {
+        foreach (var account in Model.Accounts) {
+            <article class="inv-card">
+                <div class="inv-card-top"><div class="inv-logo inv-logo-@account.CarrierKey">@if (!string.IsNullOrEmpty(ServiceInventoryDisplay.Logo(account.CarrierKey))) { <img src="@ServiceInventoryDisplay.Logo(account.CarrierKey)" alt="@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)" /> } else { <span>@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)</span> }</div><span class="inv-status @(account.IsActive ? "is-active" : "is-inactive")">@(account.IsActive ? "Activa" : "Inactiva")</span></div>
+                <h2>@account.Label</h2><p class="inv-email">@account.Email</p>
+                <dl class="inv-card-data"><div><dt>Carrier</dt><dd>@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)</dd></div><div><dt>Número de cuenta</dt><dd>@(string.IsNullOrEmpty(account.AccountNumber) ? "Sin registrar" : account.AccountNumber)</dd></div><div><dt>Servicios vinculados</dt><dd>@account.Services <small>· @account.ActiveServices activos</small></dd></div></dl>
+                <div class="inv-password-line"><span>Contraseña protegida</span><span aria-hidden="true">••••••••</span></div>
+                <footer class="inv-card-actions"><a class="btn btn-outline-primary btn-sm" asp-page="Account" asp-route-id="@account.Id">Administrar</a>@if (account.IsActive) { <a class="btn btn-light btn-sm" asp-page="Service" asp-route-accountId="@account.Id">+ Servicio</a> }@if (account.HasPassword) { <button type="button" class="btn btn-primary btn-sm" data-copy-password="@account.Id" data-copy-url="@Url.Page("Index", "CopyPassword")">Copiar contraseña</button> }</footer>
+            </article>
+        }
+    } else {
+        foreach (var item in Model.Items) {
+            var nearExpiry = item.IsActive && item.ContractEndsOn.HasValue && item.ContractEndsOn >= Model.Today && item.ContractEndsOn <= Model.Today.AddDays(30);
+            <article class="inv-card">
+                <div class="inv-card-top"><div class="inv-logo inv-logo-@item.CarrierKey">@if (!string.IsNullOrEmpty(ServiceInventoryDisplay.Logo(item.CarrierKey))) { <img src="@ServiceInventoryDisplay.Logo(item.CarrierKey)" alt="@ServiceInventoryDisplay.CarrierName(item.CarrierKey, item.OtherCarrierName)" /> } else { <span>@ServiceInventoryDisplay.CarrierName(item.CarrierKey, item.OtherCarrierName)</span> }</div><span class="inv-status @(item.IsActive ? "is-active" : "is-inactive")">@(item.IsActive ? "Activo" : "Inactivo")</span></div>
+                <h2>@item.Name</h2><div class="inv-tags">@if (!string.IsNullOrEmpty(item.DeliveryType)) { <span>@item.DeliveryType</span> }@if (!string.IsNullOrEmpty(item.PlanType)) { <span>@item.PlanType</span> }@if (item.SpeedMbps.HasValue) { <span>@item.SpeedMbps.Value.ToString("0.##", mx) Mbps</span> }</div>
+                <div class="inv-assignment"><span>@(item.ClientId.HasValue ? "CLIENTE ASIGNADO" : "ASIGNACIÓN")</span><strong>@(item.Client == null ? "Sin cliente asignado" : item.Client.ClientCode + " · " + item.Client.Name)</strong></div>
+                <dl class="inv-card-data"><div><dt>Ubicación</dt><dd>@(string.IsNullOrEmpty(item.PhysicalLocation) ? "Sin registrar" : item.PhysicalLocation)</dd></div><div><dt>Equipo</dt><dd>@(string.IsNullOrEmpty(item.DeviceModel) ? "Sin registrar" : item.DeviceModel)</dd></div><div><dt>Serie / Kit</dt><dd>@(string.IsNullOrEmpty(item.SerialNumber) ? "—" : item.SerialNumber) / @(string.IsNullOrEmpty(item.KitNumber) ? "—" : item.KitNumber)</dd></div></dl>
+                <div class="inv-cost"><span>Costo mensual</span><strong>@(item.MonthlyCost.HasValue ? item.MonthlyCost.Value.ToString("C2", mx) + " MXN" : "Sin registrar")</strong></div>
+                @if (item.ContractEndsOn.HasValue) { <div class="inv-contract @(nearExpiry ? "is-warning" : "")">@(nearExpiry ? "Próximo vencimiento:" : item.ContractEndsOn < Model.Today ? "Plazo vencido:" : "Fin de contrato:") @item.ContractEndsOn.Value.ToString("dd/MM/yyyy")</div> }
+                <details class="inv-card-details"><summary>Datos técnicos y cuenta</summary><dl class="inv-card-data"><div><dt>Cuenta</dt><dd>@(string.IsNullOrEmpty(item.AccountNumber) ? "Sin número propio" : item.AccountNumber) @if (item.AccountId.HasValue) { <a asp-page="Account" asp-route-id="@item.AccountId">Ver cuenta vinculada</a> }</dd></div><div><dt>Plan</dt><dd>@(string.IsNullOrEmpty(item.PlanName) ? "—" : item.PlanName)</dd></div><div><dt>IP fija</dt><dd>@(string.IsNullOrEmpty(item.FixedIp) ? "—" : item.FixedIp)</dd></div><div><dt>Máscara / Gateway</dt><dd>@item.SubnetMask / @item.Gateway</dd></div><div><dt>DNS</dt><dd>@(string.IsNullOrEmpty(item.Dns) ? "—" : item.Dns)</dd></div><div><dt>LAN / DDNS</dt><dd>@item.Lan / @item.Ddns</dd></div><div><dt>Soporte</dt><dd>@(string.IsNullOrEmpty(item.SupportPhone) ? "Sin registrar" : item.SupportPhone)</dd></div>@if (!string.IsNullOrEmpty(item.Notes)) { <div><dt>Notas</dt><dd class="inv-preline">@item.Notes</dd></div> }</dl></details>
+                <footer class="inv-card-actions"><a class="btn btn-outline-primary btn-sm" asp-page="Service" asp-route-id="@item.Id">Administrar servicio</a>@if (item.ClientId.HasValue) { <a class="btn btn-light btn-sm" asp-page="/Clients/Details" asp-route-id="@item.ClientId">Ver cliente</a> }</footer>
+            </article>
+        }
+    }
+    </div>
+    <footer class="inv-pagination"><span>@Model.Total registro(s) · Página @Model.P de @Model.Pages</span><div>@if (Model.P > 1) { <a class="btn btn-light btn-sm" asp-page="Index" asp-route-Tab="@Model.Tab" asp-route-Q="@Model.Q" asp-route-Carrier="@Model.Carrier" asp-route-ClientId="@Model.ClientId" asp-route-Status="@Model.Status" asp-route-Assignment="@Model.Assignment" asp-route-P="@(Model.P - 1)">← Anterior</a> }@if (Model.P < Model.Pages) { <a class="btn btn-light btn-sm" asp-page="Index" asp-route-Tab="@Model.Tab" asp-route-Q="@Model.Q" asp-route-Carrier="@Model.Carrier" asp-route-ClientId="@Model.ClientId" asp-route-Status="@Model.Status" asp-route-Assignment="@Model.Assignment" asp-route-P="@(Model.P + 1)">Siguiente →</a> }</div></footer>
+</div>
+@section Scripts { <script src="~/js/service-inventory.js" asp-append-version="true"></script> }

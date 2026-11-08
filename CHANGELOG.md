@@ -1,5 +1,16 @@
 # HN Control — notas de versión
 
+## 2.5.12 · 8 de noviembre de 2026
+
+- Nuevo módulo administrativo **Inventario Servicios**, independiente del módulo Carriers y de sus registros actuales. Cuentas compartidas entre servicios, asignación a clientes, equipos, ubicaciones, costos y datos de red.
+- Contraseñas de cuentas cifradas, capturadas una vez y accesibles mediante un botón de copia autorizado. Catálogo de carriers con logotipos y modelos de antenas Starlink.
+- Contrato eventual y acta de entrega alineados al contrato de servicios aprobado: secciones delimitadas, texto justificado y bloques finales para ambas firmas con sus datos y huellas digitales reales.
+- El acta incluye WhatsApp y llamada al 55 2601 4566, correo soporte@hubnet-solutions.com.mx y portal https://support.hubnet-solutions.net. WhatsApp se identifica como canal preferente del NOC.
+- Los documentos ya preparados para firma conservan la revisión de su plantilla. El diseño actualizado se aplica a nuevos documentos y a la regeneración de documentos aún sin firmas.
+- En **Clientes → Contrato / NDA** se pueden eliminar documentos sin firmas y desactivar sus enlaces públicos. Se protege cualquier documento firmado y se conserva el servicio contratado. La eliminación existente de servicios ahora desvincula sus registros dentro de una transacción.
+
+Requiere la migración `20261108000100_AddServiceInventory`. Se incluye `HNControl.Web/Sql/20261108_service_inventory.sql` para aplicación manual desde pgAdmin.
+
 ## 2.5.11 · 6 de noviembre de 2026
 
 - Contrato de servicios con texto justificado, carátula por secciones y documentación requerida en casillas individuales.

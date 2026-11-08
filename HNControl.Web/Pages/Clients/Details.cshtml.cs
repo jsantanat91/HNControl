@@ -402,6 +402,7 @@ public class DetailsModel : PageModel
 
         try
         {
+            await using var transaction = await _db.Database.BeginTransactionAsync();
             await _db.ClientLegalDocuments
                 .Where(x => x.ClientServiceContractId == contractId)
                 .ExecuteUpdateAsync(set => set.SetProperty(x => x.ClientServiceContractId, (Guid?)null));
@@ -432,6 +433,7 @@ public class DetailsModel : PageModel
 
             _db.ClientServiceContracts.Remove(contract);
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             TempData["ClientDetailsInfo"] = "Contrato eliminado. Los registros relacionados se conservaron sin liga al contrato.";
             TempData["ClientDetailsInfoType"] = "success";

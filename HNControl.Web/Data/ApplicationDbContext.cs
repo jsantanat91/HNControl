@@ -70,6 +70,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ClientCarrierService> ClientCarrierServices => Set<ClientCarrierService>();
     public DbSet<ClientCarrierNote> ClientCarrierNotes => Set<ClientCarrierNote>();
 
+    public DbSet<ServiceInventoryAccount> ServiceInventoryAccounts => Set<ServiceInventoryAccount>();
+    public DbSet<ServiceInventoryItem> ServiceInventoryItems => Set<ServiceInventoryItem>();
+
     // --------------------
     // Inventarios
     // --------------------
@@ -1012,6 +1015,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         // --------------------
         // Carrier (Internet)
         // --------------------
+        b.Entity<ServiceInventoryAccount>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.CarrierKey, x.IsActive });
+            e.Property(x => x.Version).IsConcurrencyToken();
+        });
+        b.Entity<ServiceInventoryItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.CarrierKey, x.IsActive });
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.Property(x => x.MonthlyCost).HasPrecision(14, 2);
+            e.Property(x => x.SpeedMbps).HasPrecision(12, 2);
+            e.HasOne(x => x.Account).WithMany(x => x.Services).HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.SetNull);
+        });
+
         b.Entity<InternetCarrier>(e =>
         {
             e.HasKey(x => x.Id);

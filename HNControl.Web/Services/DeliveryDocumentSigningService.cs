@@ -11,7 +11,9 @@ public class DeliveryDocumentSigningService(ApplicationDbContext db, IFileStorag
     public async Task SavePdfAsync(ProjectDeliveryFormat item)
     {
         if (item.Client == null) throw new InvalidOperationException("No se encontró al cliente del acta.");
-        item.SigningSnapshotJson ??= DeliverySigningSnapshot.Capture(item.Client, item.Project);
+        // Legacy PDFs must keep their original template when collecting a remaining signature.
+        item.SigningSnapshotJson ??= DeliverySigningSnapshot.Capture(item.Client, item.Project,
+            useCurrentTemplate: string.IsNullOrEmpty(item.PdfStoragePath) && !item.SignedAt.HasValue && !item.ProviderSignedAt.HasValue);
         var docx = templates.BuildDeliveryDocx(item, item.Client, item.Project);
         var pdf = await converter.TryConvertDocxToPdfAsync(docx, $"acta_{item.Id:N}");
         if (pdf is not { Length: > 0 })
