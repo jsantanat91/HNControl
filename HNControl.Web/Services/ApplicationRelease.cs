@@ -3,9 +3,17 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.12";
+    public const string Version = "2.5.13";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.13", new DateOnly(2026, 11, 8), "Inventario organizado por proveedor", new[]
+        {
+            new ReleaseChange("Inventario Servicios", "Selección visual con logotipos y tipos de plan específicos para Starlink y los demás proveedores."),
+            new ReleaseChange("Conexión", "Tecnología separada del plan: fibra óptica, satelital para Starlink, microonda u otra conexión. Datos de red desplegables mediante una casilla."),
+            new ReleaseChange("Captura", "Soporte de Starlink fijo en Online y vencimiento calculado automáticamente desde el inicio y los meses contratados."),
+            new ReleaseChange("Navegación", "El acceso al módulo Carriers anterior se retira del menú; sus registros se conservan."),
+            new ReleaseChange("Publicación", "No requiere una migración adicional a la de Inventario Servicios de la versión 2.5.12.")
+        }),
         new ReleaseNote("2.5.12", new DateOnly(2026, 11, 8), "Inventario de servicios y formatos corporativos", new[]
         {
             new ReleaseChange("Inventario Servicios", "Módulo independiente para cuentas de carriers, antenas, servicios, costos, datos de red y asignación a clientes."),

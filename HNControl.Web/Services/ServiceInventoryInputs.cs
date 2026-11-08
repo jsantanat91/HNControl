@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using HNControl.Web.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace HNControl.Web.Services;
 
@@ -7,7 +9,7 @@ public class ServiceInventoryAccountInput
 {
     public Guid RecordId { get; set; } = Guid.NewGuid();
     public Guid Version { get; set; }
-    [Required(ErrorMessage = "Selecciona un carrier."), MaxLength(32)] public string CarrierKey { get; set; } = "starlink";
+    [Required(ErrorMessage = "Selecciona un proveedor."), MaxLength(32)] public string CarrierKey { get; set; } = "starlink";
     [MaxLength(120)] public string? OtherCarrierName { get; set; }
     [Required(ErrorMessage = "Escribe un nombre para identificar la cuenta."), MaxLength(140)] public string Label { get; set; } = "";
     [Required(ErrorMessage = "Escribe el correo de la cuenta."), EmailAddress(ErrorMessage = "Escribe un correo válido."), MaxLength(256)] public string Email { get; set; } = "";
@@ -20,7 +22,7 @@ public class ServiceInventoryItemInput : IValidatableObject
 {
     public Guid RecordId { get; set; } = Guid.NewGuid();
     public Guid Version { get; set; }
-    [Required(ErrorMessage = "Selecciona un carrier."), MaxLength(32)] public string CarrierKey { get; set; } = "starlink";
+    [Required(ErrorMessage = "Selecciona un proveedor."), MaxLength(32)] public string CarrierKey { get; set; } = "starlink";
     [MaxLength(120)] public string? OtherCarrierName { get; set; }
     [Required(ErrorMessage = "Escribe el nombre del servicio."), MaxLength(180)] public string Name { get; set; } = "";
     public Guid? AccountId { get; set; }
@@ -35,28 +37,33 @@ public class ServiceInventoryItemInput : IValidatableObject
     [Range(typeof(decimal), "0.01", "1000000", ErrorMessage = "La velocidad debe ser mayor que cero.")] public decimal? SpeedMbps { get; set; }
     [Range(typeof(decimal), "0", "999999999.99", ErrorMessage = "El costo no puede ser negativo.")] public decimal? MonthlyCost { get; set; }
     [MaxLength(500)] public string? PhysicalLocation { get; set; }
-    [MaxLength(80)] public string? Lan { get; set; }
-    [MaxLength(253)] public string? Ddns { get; set; }
+    public bool HasNetworkDetails { get; set; }
+    public string? Lan { get; set; }
+    public string? Ddns { get; set; }
     [MaxLength(60)] public string? SupportPhone { get; set; }
-    [MaxLength(64)] public string? FixedIp { get; set; }
-    [MaxLength(64)] public string? SubnetMask { get; set; }
-    [MaxLength(64)] public string? Gateway { get; set; }
-    [MaxLength(200)] public string? Dns { get; set; }
+    public string? FixedIp { get; set; }
+    public string? SubnetMask { get; set; }
+    public string? Gateway { get; set; }
+    public string? Dns { get; set; }
     [Range(1, 240, ErrorMessage = "El plazo debe estar entre 1 y 240 meses.")] public int? ContractMonths { get; set; }
     [DataType(DataType.Date)] public DateOnly? ContractStartsOn { get; set; }
-    [DataType(DataType.Date)] public DateOnly? ContractEndsOn { get; set; }
+    [BindNever, DataType(DataType.Date)] public DateOnly? ContractEndsOn { get; set; }
     [MaxLength(3000)] public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
-        if (ContractStartsOn.HasValue && ContractEndsOn.HasValue && ContractEndsOn < ContractStartsOn)
-            yield return new("La fecha de término no puede ser anterior al inicio.", new[] { nameof(ContractEndsOn) });
-        foreach (var (name, value) in new[] { (nameof(FixedIp), FixedIp), (nameof(Gateway), Gateway), (nameof(SubnetMask), SubnetMask) })
-            if (!string.IsNullOrWhiteSpace(value) && !IPAddress.TryParse(value.Trim(), out _))
-                yield return new("Escribe una dirección IP válida.", new[] { name });
-        if (!string.IsNullOrWhiteSpace(Dns) && Dns.Split(new[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Any(x => !IPAddress.TryParse(x, out _)))
-            yield return new("Escribe direcciones DNS válidas, separadas por coma.", new[] { nameof(Dns) });
+        if (HasNetworkDetails)
+        {
+            foreach (var (name, value, limit) in new[] { (nameof(Lan), Lan, 80), (nameof(Ddns), Ddns, 253),
+                (nameof(FixedIp), FixedIp, 64), (nameof(SubnetMask), SubnetMask, 64), (nameof(Gateway), Gateway, 64), (nameof(Dns), Dns, 200) })
+                if (value?.Length > limit) yield return new($"Usa un máximo de {limit} caracteres.", new[] { name });
+            foreach (var (name, value) in new[] { (nameof(FixedIp), FixedIp), (nameof(Gateway), Gateway), (nameof(SubnetMask), SubnetMask) })
+                if (!string.IsNullOrWhiteSpace(value) && !IPAddress.TryParse(value.Trim(), out _))
+                    yield return new("Escribe una dirección IP válida.", new[] { name });
+            if (!string.IsNullOrWhiteSpace(Dns) && Dns.Split(new[] { ',', ';', ' ', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Any(x => !IPAddress.TryParse(x, out _)))
+                yield return new("Escribe direcciones DNS válidas, separadas por coma.", new[] { nameof(Dns) });
+        }
         if (MonthlyCost.HasValue && decimal.Round(MonthlyCost.Value, 2) != MonthlyCost.Value)
             yield return new("Usa un máximo de dos decimales para el costo.", new[] { nameof(MonthlyCost) });
     }
@@ -74,6 +81,16 @@ public static class ServiceInventoryDisplay
     public static string CarrierName(string key, string? other = null) => key == "otro" && !string.IsNullOrWhiteSpace(other)
         ? other : ServiceInventoryCatalog.Carriers.FirstOrDefault(x => x.Id == key)?.Name ?? key;
     public static string? Logo(string key) => ServiceInventoryCatalog.Carriers.FirstOrDefault(x => x.Id == key)?.LogoPath;
-    public static readonly string[] PlanTypes = { "Residencial", "Itinerante", "Empresarial", "Otro" };
-    public static readonly string[] DeliveryTypes = { "Best effort", "Dedicado", "Satelital", "Otro" };
+    public static IReadOnlyList<string> GetPlanTypes(string carrier) => carrier == "starlink"
+        ? new[] { "Residencial", "Itinerante", "Empresarial" } : new[] { "Dedicado", "Best effort" };
+    public static IReadOnlyList<string> GetDeliveryTypes(string carrier) => carrier == "starlink"
+        ? new[] { "Satelital" } : new[] { "Fibra óptica", "Microonda", "Otro" };
+    public static bool HasNetworkDetails(ServiceInventoryItem item) => new[] { item.FixedIp, item.SubnetMask,
+        item.Gateway, item.Dns, item.Lan, item.Ddns }.Any(x => !string.IsNullOrWhiteSpace(x));
+    public static DateOnly? CalculateContractEnd(DateOnly? start, int? months)
+    {
+        if (!start.HasValue || months is not (>= 1 and <= 240)) return null;
+        try { return start.Value.AddMonths(months.Value); }
+        catch (ArgumentOutOfRangeException) { return null; }
+    }
 }

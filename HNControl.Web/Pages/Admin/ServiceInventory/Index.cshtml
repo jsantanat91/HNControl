@@ -20,12 +20,12 @@
     </div>
     <nav class="inv-tabs" aria-label="Secciones del inventario">
         <a asp-page="Index" asp-route-Tab="servicios" class="@(Model.Tab == "servicios" ? "active" : "")" aria-current="@(Model.Tab == "servicios" ? "page" : null)">Servicios y equipos</a>
-        <a asp-page="Index" asp-route-Tab="cuentas" class="@(Model.Tab == "cuentas" ? "active" : "")" aria-current="@(Model.Tab == "cuentas" ? "page" : null)">Cuentas de carriers</a>
+        <a asp-page="Index" asp-route-Tab="cuentas" class="@(Model.Tab == "cuentas" ? "active" : "")" aria-current="@(Model.Tab == "cuentas" ? "page" : null)">Cuentas de proveedores</a>
     </nav>
     <form method="get" class="inv-filters">
         <input type="hidden" name="Tab" value="@Model.Tab" />
         <div class="inv-search"><label for="Q">Buscar</label><input asp-for="Q" class="form-control" placeholder="@(Model.Tab == "cuentas" ? "Cuenta, correo o número…" : "Servicio, serie, kit, cliente o ubicación…")" /></div>
-        <div><label for="Carrier">Carrier</label><select asp-for="Carrier" class="form-select"><option value="">Todos</option>@foreach (var carrier in ServiceInventoryCatalog.Carriers) { <option value="@carrier.Id">@carrier.Name</option> }</select></div>
+        <div><label for="Carrier">Proveedor</label><select asp-for="Carrier" class="form-select"><option value="">Todos</option>@foreach (var carrier in ServiceInventoryCatalog.Carriers) { <option value="@carrier.Id">@(carrier.Id == "otro" ? "Otro proveedor" : carrier.Name)</option> }</select></div>
         @if (Model.Tab == "servicios") {
             <div><label for="ClientId">Cliente</label><select asp-for="ClientId" asp-items="Model.Clients" class="form-select"><option value="">Todos</option></select></div>
             <div><label for="Assignment">Asignación</label><select asp-for="Assignment" class="form-select"><option value="">Todas</option><option value="asignados">Con cliente</option><option value="disponibles">Sin cliente</option><option value="porvencer">Vencen en 30 días</option></select></div>
@@ -44,7 +44,7 @@
             <article class="inv-card">
                 <div class="inv-card-top"><div class="inv-logo inv-logo-@account.CarrierKey">@if (!string.IsNullOrEmpty(ServiceInventoryDisplay.Logo(account.CarrierKey))) { <img src="@ServiceInventoryDisplay.Logo(account.CarrierKey)" alt="@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)" /> } else { <span>@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)</span> }</div><span class="inv-status @(account.IsActive ? "is-active" : "is-inactive")">@(account.IsActive ? "Activa" : "Inactiva")</span></div>
                 <h2>@account.Label</h2><p class="inv-email">@account.Email</p>
-                <dl class="inv-card-data"><div><dt>Carrier</dt><dd>@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)</dd></div><div><dt>Número de cuenta</dt><dd>@(string.IsNullOrEmpty(account.AccountNumber) ? "Sin registrar" : account.AccountNumber)</dd></div><div><dt>Servicios vinculados</dt><dd>@account.Services <small>· @account.ActiveServices activos</small></dd></div></dl>
+                <dl class="inv-card-data"><div><dt>Proveedor</dt><dd>@ServiceInventoryDisplay.CarrierName(account.CarrierKey, account.OtherCarrierName)</dd></div><div><dt>Número de cuenta</dt><dd>@(string.IsNullOrEmpty(account.AccountNumber) ? "Sin registrar" : account.AccountNumber)</dd></div><div><dt>Servicios vinculados</dt><dd>@account.Services <small>· @account.ActiveServices activos</small></dd></div></dl>
                 <div class="inv-password-line"><span>Contraseña protegida</span><span aria-hidden="true">••••••••</span></div>
                 <footer class="inv-card-actions"><a class="btn btn-outline-primary btn-sm" asp-page="Account" asp-route-id="@account.Id">Administrar</a>@if (account.IsActive) { <a class="btn btn-light btn-sm" asp-page="Service" asp-route-accountId="@account.Id">+ Servicio</a> }@if (account.HasPassword) { <button type="button" class="btn btn-primary btn-sm" data-copy-password="@account.Id" data-copy-url="@Url.Page("Index", "CopyPassword")">Copiar contraseña</button> }</footer>
             </article>

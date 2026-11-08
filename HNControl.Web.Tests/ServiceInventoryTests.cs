@@ -73,7 +73,7 @@ internal static class ServiceInventoryTests
         var second = new ServiceInventoryItemInput { Name = "Segunda antena", CarrierKey = "starlink", AccountId = account.Id };
         check((await inventory.SaveItemAsync(second, null, admin)).Success && await db.ServiceInventoryItems.CountAsync(x => x.AccountId == account.Id) == 2,
             "Una cuenta admite varias antenas independientes");
-        var noAccount = new ServiceInventoryItemInput { Name = "Fibra oficina", CarrierKey = "telmex", ClientId = client.Id, MonthlyCost = 850,
+        var noAccount = new ServiceInventoryItemInput { Name = "Fibra oficina", CarrierKey = "telmex", ClientId = client.Id, MonthlyCost = 850, HasNetworkDetails = true,
             FixedIp = "203.0.113.10", SubnetMask = "255.255.255.248", Gateway = "203.0.113.9", Dns = "1.1.1.1, 8.8.8.8" };
         check((await inventory.SaveItemAsync(noAccount, null, admin)).Success, "Servicio de fibra se guarda sin cuenta ni credenciales");
         check(!(await inventory.SaveItemAsync(noAccount, null, admin)).Success && await db.ServiceInventoryItems.CountAsync() == 3,
@@ -89,8 +89,8 @@ internal static class ServiceInventoryTests
         mismatch.MonthlyCost = 15.555m;
         check(!(await inventory.SaveItemAsync(mismatch, null, admin)).Success, "Inventario evita redondear silenciosamente costos con más de dos decimales");
         mismatch.MonthlyCost = null; mismatch.ContractStartsOn = new DateOnly(2026, 11, 10); mismatch.ContractEndsOn = new DateOnly(2026, 11, 1);
-        check(!(await inventory.SaveItemAsync(mismatch, null, admin)).Success, "Inventario rechaza plazos con término anterior al inicio");
-        mismatch.ContractStartsOn = null; mismatch.ContractEndsOn = null; mismatch.FixedIp = "IP inválida";
+        check(!(await inventory.SaveItemAsync(mismatch, null, admin)).Success, "Inventario requiere inicio y plazo para calcular el vencimiento");
+        mismatch.ContractStartsOn = null; mismatch.ContractEndsOn = null; mismatch.FixedIp = "IP inválida"; mismatch.HasNetworkDetails = true;
         check(!(await inventory.SaveItemAsync(mismatch, null, admin)).Success, "Inventario valida direcciones IP en servidor");
 
         var other = new ServiceInventoryAccountInput { CarrierKey = "otro", OtherCarrierName = "Proveedor Uno", Label = "Otra cuenta", Email = "otro@example.test" };
@@ -150,6 +150,139 @@ internal static class ServiceInventoryTests
         var pending = postgresModel.GetService<IMigrationsModelDiffer>().GetDifferences(initialized.GetRelationalModel(), currentModel.GetRelationalModel());
         check(!pending.Any(op => ((op.GetType().GetProperty("Table")?.GetValue(op) ?? op.GetType().GetProperty("Name")?.GetValue(op)) as string)?.StartsWith("ServiceInventory", StringComparison.Ordinal) == true),
             "Snapshot PostgreSQL refleja todas las columnas, índices y relaciones de Inventario Servicios");
+        await RunProviderRulesAsync(check);
+    }
+
+    private static async Task RunProviderRulesAsync(Action<bool, string> check)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var inventory = new ServiceInventoryService(db, new EphemeralDataProtectionProvider());
+        var admin = Principal(AppRoles.Admin);
+        ServiceInventoryItemInput New(string carrier = "telmex") => new() { Name = "Reglas proveedor", CarrierKey = carrier, OtherCarrierName = carrier == "otro" ? "Proveedor personalizado" : null };
+
+        foreach (var plan in new[] { "Residencial", "Itinerante", "Empresarial" })
+        {
+            var starlink = New("starlink"); starlink.PlanType = plan; starlink.DeliveryType = "Fibra óptica"; starlink.SupportPhone = new string('9', 500);
+            var result = await inventory.SaveItemAsync(starlink, null, admin);
+            var row = await db.ServiceInventoryItems.FindAsync(starlink.RecordId);
+            check(result.Success && row?.PlanType == plan && row.DeliveryType == "Satelital" && row.SupportPhone == "Online",
+                $"Starlink acepta {plan} y fija Satelital/Online aunque el POST intente cambiarlos");
+        }
+        var invalidStarlink = New("starlink"); invalidStarlink.PlanType = "Dedicado";
+        check(!(await inventory.SaveItemAsync(invalidStarlink, null, admin)).Success, "Starlink rechaza tipos de plan ajenos a su catálogo");
+        foreach (var carrier in new[] { "telmex", "totalplay", "izzi", "megacable", "otro" })
+        {
+            foreach (var plan in new[] { "Dedicado", "Best effort" })
+            {
+                var input = New(carrier); input.PlanType = plan; input.DeliveryType = "Microonda";
+                check((await inventory.SaveItemAsync(input, null, admin)).Success, $"{carrier} admite plan {plan} con tecnología independiente");
+            }
+            var inputInvalid = New(carrier); inputInvalid.PlanType = "Residencial";
+            check(!(await inventory.SaveItemAsync(inputInvalid, null, admin)).Success, $"{carrier} no admite planes nuevos de Starlink");
+            inputInvalid.PlanType = "Dedicado"; inputInvalid.DeliveryType = "Satelital";
+            check(!(await inventory.SaveItemAsync(inputInvalid, null, admin)).Success, $"{carrier} rechaza Satelital reservado para Starlink");
+        }
+        foreach (var technology in new[] { "Fibra óptica", "Microonda", "Otro" })
+        {
+            var input = New(); input.DeliveryType = technology;
+            check((await inventory.SaveItemAsync(input, null, admin)).Success, $"Conexión permite tecnología {technology}");
+        }
+        var noLegacyCreate = New(); noLegacyCreate.DeliveryType = "Dedicado";
+        check(!(await inventory.SaveItemAsync(noLegacyCreate, null, admin)).Success, "Altas nuevas no usan clasificación comercial como tecnología");
+
+        foreach (var (start, months, expected) in new[] {
+            (new DateOnly(2024, 1, 31), 1, new DateOnly(2024, 2, 29)),
+            (new DateOnly(2025, 1, 31), 1, new DateOnly(2025, 2, 28)),
+            (new DateOnly(2024, 2, 29), 12, new DateOnly(2025, 2, 28)),
+            (new DateOnly(2026, 8, 31), 1, new DateOnly(2026, 9, 30)),
+            (new DateOnly(2026, 11, 8), 240, new DateOnly(2046, 11, 8)) })
+        {
+            var input = New(); input.ContractStartsOn = start; input.ContractMonths = months; input.ContractEndsOn = new DateOnly(2000, 1, 1);
+            var result = await inventory.SaveItemAsync(input, null, admin);
+            check(result.Success && (await db.ServiceInventoryItems.FindAsync(input.RecordId))?.ContractEndsOn == expected,
+                $"Servidor calcula {start:yyyy-MM-dd} + {months} meses como {expected:yyyy-MM-dd}, ignorando fecha fin enviada");
+        }
+        foreach (var months in new[] { 0, -1, 241 })
+        {
+            var input = New(); input.ContractStartsOn = new DateOnly(2026, 11, 1); input.ContractMonths = months;
+            check(!(await inventory.SaveItemAsync(input, null, admin)).Success, $"Plazo {months} se rechaza sin guardar");
+        }
+        var overflow = New(); overflow.ContractStartsOn = new DateOnly(9999, 12, 31); overflow.ContractMonths = 1;
+        check(!(await inventory.SaveItemAsync(overflow, null, admin)).Success, "Fecha fuera de rango retorna validación y no una excepción de calendario");
+        var incomplete = New(); incomplete.ContractMonths = 12;
+        check(!(await inventory.SaveItemAsync(incomplete, null, admin)).Success, "Un plazo nuevo requiere fecha de inicio");
+        incomplete.ContractMonths = null; incomplete.ContractStartsOn = new DateOnly(2026, 11, 1);
+        check(!(await inventory.SaveItemAsync(incomplete, null, admin)).Success, "Una fecha de inicio nueva requiere meses");
+        var manualEnd = New(); manualEnd.ContractEndsOn = new DateOnly(2027, 1, 1);
+        check((await inventory.SaveItemAsync(manualEnd, null, admin)).Success && (await db.ServiceInventoryItems.FindAsync(manualEnd.RecordId))?.ContractEndsOn == null,
+            "Una fecha fin posteada sin inicio/plazo no crea un vencimiento manual");
+
+        var hiddenNetwork = New(); hiddenNetwork.FixedIp = "invalid"; hiddenNetwork.Dns = new string('x', 2000); hiddenNetwork.Lan = new string('x', 2000);
+        check((await inventory.SaveItemAsync(hiddenNetwork, null, admin)).Success && (await db.ServiceInventoryItems.FindAsync(hiddenNetwork.RecordId))?.FixedIp == "",
+            "Alta con red desactivada ignora valores ocultos incluso inválidos o demasiado largos");
+        var visibleNetwork = New(); visibleNetwork.HasNetworkDetails = true; visibleNetwork.FixedIp = "invalid";
+        check(!(await inventory.SaveItemAsync(visibleNetwork, null, admin)).Success, "Red activada exige IP válida en servidor");
+        visibleNetwork.FixedIp = "203.0.113.10"; visibleNetwork.Dns = new string('x', 201);
+        check(!(await inventory.SaveItemAsync(visibleNetwork, null, admin)).Success, "Red activada conserva límites de longitud y validación DNS");
+        visibleNetwork.Dns = "1.1.1.1, 8.8.8.8"; visibleNetwork.SubnetMask = "255.255.255.248"; visibleNetwork.Gateway = "203.0.113.9";
+        visibleNetwork.Lan = "192.168.10.0/24"; visibleNetwork.Ddns = "equipo.example.test";
+        check((await inventory.SaveItemAsync(visibleNetwork, null, admin)).Success, "Datos de red opcionales completos se guardan al habilitarlos");
+        var networkRow = (await db.ServiceInventoryItems.FindAsync(visibleNetwork.RecordId))!;
+        var networkPage = Page(new ServicePage(db, inventory) { Id = networkRow.Id }); await networkPage.OnGetAsync(null);
+        check(networkPage.Input.HasNetworkDetails && networkPage.HasStoredNetworkDetails, "Editar detecta y abre los datos de red existentes");
+        visibleNetwork.Version = networkRow.Version; visibleNetwork.HasNetworkDetails = false;
+        visibleNetwork.FixedIp = "overposted"; visibleNetwork.Dns = new string('x', 2000); visibleNetwork.Lan = "overposted";
+        check((await inventory.SaveItemAsync(visibleNetwork, networkRow.Id, admin)).Success && networkRow.FixedIp == "203.0.113.10"
+            && networkRow.Dns == "1.1.1.1, 8.8.8.8" && networkRow.Lan == "192.168.10.0/24" && networkRow.Ddns == "equipo.example.test",
+            "Cerrar sección red conserva datos persistidos e ignora intentos de cambiarlos mediante campos ocultos");
+        var failedNetworkPage = Page(new ServicePage(db, inventory) { Id = networkRow.Id }); await failedNetworkPage.OnGetAsync(null);
+        failedNetworkPage.Input.HasNetworkDetails = false; failedNetworkPage.Input.FixedIp = null; failedNetworkPage.Input.Dns = null;
+        failedNetworkPage.ModelState.AddModelError("Input.Name", "Corrige el nombre");
+        failedNetworkPage.ModelState.SetModelValue("Input.FixedIp", "valor oculto manipulado", "valor oculto manipulado");
+        check(await failedNetworkPage.OnPostAsync() is PageResult && failedNetworkPage.Input.FixedIp == "203.0.113.10"
+            && failedNetworkPage.Input.Dns == "1.1.1.1, 8.8.8.8" && !failedNetworkPage.ModelState.ContainsKey("Input.FixedIp"),
+            "Un error de otro campo repuebla la red cerrada desde BD y limpia valores ocultos del ModelState");
+        failedNetworkPage.ModelState.Clear(); failedNetworkPage.Input.HasNetworkDetails = true;
+        check(await failedNetworkPage.OnPostAsync() is RedirectToPageResult && networkRow.FixedIp == "203.0.113.10" && networkRow.Dns == "1.1.1.1, 8.8.8.8",
+            "Reabrir red después de corregir un error conserva los datos guardados");
+
+        var legacy = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Registro 2.5.12", PlanType = "Empresarial", DeliveryType = "Dedicado",
+            ContractEndsOn = new DateOnly(2028, 2, 10), FixedIp = "203.0.113.20" };
+        var starlinkLegacy = new ServiceInventoryItem { CarrierKey = "starlink", Name = "Starlink previo", PlanType = "Residencial", DeliveryType = "Best effort", SupportPhone = "5555555555" };
+        var startOnlyLegacy = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Plazo histórico incompleto", ContractStartsOn = new DateOnly(2026, 1, 1), ContractEndsOn = new DateOnly(2027, 1, 15) };
+        db.AddRange(legacy, starlinkLegacy, startOnlyLegacy); await db.SaveChangesAsync();
+        var legacyPage = Page(new ServicePage(db, inventory) { Id = legacy.Id }); await legacyPage.OnGetAsync(null);
+        check(legacyPage.LegacyPlanType == "Empresarial" && legacyPage.LegacyDeliveryType == "Dedicado" && legacyPage.SuggestedPlanType == "Dedicado"
+            && legacyPage.HasLegacyContractEnd && legacyPage.StoredContractEnd == legacy.ContractEndsOn && legacyPage.Input.HasNetworkDetails,
+            "Formulario identifica clasificaciones y vencimiento históricos sin inferir una tecnología");
+        legacyPage.Input.Name = "Nombre editado"; legacyPage.Input.ContractEndsOn = new DateOnly(2035, 1, 1); legacyPage.Input.HasNetworkDetails = false;
+        check((await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success && legacy.PlanType == "Empresarial" && legacy.DeliveryType == "Dedicado"
+            && legacy.ContractEndsOn == new DateOnly(2028, 2, 10) && legacy.FixedIp == "203.0.113.20",
+            "Editar otros datos conserva plan/conexión/fin histórico y red guardada");
+        legacyPage.Input.Version = legacy.Version; legacyPage.Input.PlanType = "Residencial";
+        check(!(await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success, "Excepción histórica no permite inyectar otra clasificación inválida");
+        legacyPage.Input.PlanType = legacy.PlanType; legacyPage.Input.CarrierKey = "izzi";
+        check(!(await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success, "Cambiar de proveedor no arrastra valores históricos ajenos al catálogo");
+        legacyPage.Input.CarrierKey = "telmex"; legacyPage.Input.PlanType = "Dedicado"; legacyPage.Input.DeliveryType = "Microonda";
+        check((await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success && legacy.PlanType == "Dedicado" && legacy.DeliveryType == "Microonda",
+            "Una selección explícita reclasifica el plan antiguo y guarda la tecnología elegida");
+        var startOnlyPage = Page(new ServicePage(db, inventory) { Id = startOnlyLegacy.Id }); await startOnlyPage.OnGetAsync(null);
+        check((await inventory.SaveItemAsync(startOnlyPage.Input, startOnlyLegacy.Id, admin)).Success && startOnlyLegacy.ContractEndsOn == new DateOnly(2027, 1, 15),
+            "Legado con inicio y fin pero sin plazo conserva su información al editar");
+        startOnlyPage.Input.Version = startOnlyLegacy.Version; startOnlyPage.Input.ContractMonths = 12;
+        check((await inventory.SaveItemAsync(startOnlyPage.Input, startOnlyLegacy.Id, admin)).Success && startOnlyLegacy.ContractEndsOn == new DateOnly(2027, 1, 1),
+            "Completar el plazo de un legado calcula vencimiento desde la pareja explícita");
+        var starlinkPage = Page(new ServicePage(db, inventory) { Id = starlinkLegacy.Id }); await starlinkPage.OnGetAsync(null);
+        check(starlinkPage.Input.SupportPhone == "Online" && starlinkPage.Input.DeliveryType == "Satelital" && starlinkPage.LegacyDeliveryType == "Best effort",
+            "Starlink previo muestra soporte Online y tecnología Satelital con referencia histórica");
+        starlinkPage.Input.SupportPhone = new string('9', 500); starlinkPage.Input.DeliveryType = "valor manipulado";
+        starlinkPage.ModelState.AddModelError("Input.SupportPhone", "Error sobre valor que el servidor reemplaza");
+        starlinkPage.ModelState.AddModelError("Input.DeliveryType", "Error sobre valor que el servidor reemplaza");
+        check(await starlinkPage.OnPostAsync() is RedirectToPageResult && starlinkLegacy.SupportPhone == "Online" && starlinkLegacy.DeliveryType == "Satelital",
+            "Handler web también impone campos Starlink e ignora sobreescrituras de solo lectura");
     }
 
     private static ClaimsPrincipal Principal(string? role) => new(new ClaimsIdentity(role == null ? Array.Empty<Claim>() : new[] { new Claim(ClaimTypes.Role, role) }, role == null ? null : "test"));

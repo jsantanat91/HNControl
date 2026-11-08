@@ -1,5 +1,15 @@
 # HN Control — notas de versión
 
+## 2.5.13 · 8 de noviembre de 2026
+
+- Inventario Servicios con logotipos en la selección del proveedor y tipo de plan junto a esa selección: Residencial, Itinerante o Empresarial para Starlink; Dedicado o Best Effort para los demás.
+- La tecnología de conexión se registra por separado: fibra óptica, satelital para Starlink, microonda u otra conexión. Starlink muestra soporte Online, completado y protegido también en el servidor.
+- La fecha final del contrato se calcula automáticamente a partir del inicio y el plazo en meses. Se conservan los vencimientos anteriores que aún no tienen esos datos completos.
+- Los parámetros IP, máscara, gateway, DNS, LAN y DDNS se despliegan con una casilla; cerrar el bloque conserva los datos guardados.
+- Acceso al módulo Carriers anterior retirado del menú, con sus datos conservados.
+
+No requiere migración SQL adicional a la versión 2.5.12.
+
 ## 2.5.12 · 8 de noviembre de 2026
 
 - Nuevo módulo administrativo **Inventario Servicios**, independiente del módulo Carriers y de sus registros actuales. Cuentas compartidas entre servicios, asignación a clientes, equipos, ubicaciones, costos y datos de red.

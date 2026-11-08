@@ -18,7 +18,7 @@ public static class ServiceInventoryCatalog
         new("totalplay", "Totalplay", "/img/carriers/totalplay.svg"),
         new("izzi", "izzi", "/img/carriers/izzi.svg"),
         new("megacable", "Megacable / MEGA", "/img/carriers/megacable.png"),
-        new("otro", "Otro carrier", "")
+        new("otro", "Otro proveedor", "")
     ];
 
     // Starlink now distinguishes the antenna kit name from the router generation.

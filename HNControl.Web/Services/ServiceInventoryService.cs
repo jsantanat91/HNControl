@@ -18,8 +18,8 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         var validation = new List<ValidationResult>();
         Validator.TryValidateObject(input, new ValidationContext(input), validation, true);
         var errors = validation.SelectMany(x => (x.MemberNames.Any() ? x.MemberNames : new[] { "" }).Select(f => new ServiceInventoryIssue(f, x.ErrorMessage ?? "Dato no válido."))).ToList();
-        if (!ServiceInventoryCatalog.Carriers.Any(x => x.Id == carrier)) errors.Add(new("CarrierKey", "Selecciona un carrier válido."));
-        if (carrier == "otro" && string.IsNullOrWhiteSpace(other)) errors.Add(new("OtherCarrierName", "Escribe el nombre del carrier."));
+        if (!ServiceInventoryCatalog.Carriers.Any(x => x.Id == carrier)) errors.Add(new("CarrierKey", "Selecciona un proveedor válido."));
+        if (carrier == "otro" && string.IsNullOrWhiteSpace(other)) errors.Add(new("OtherCarrierName", "Escribe el nombre del proveedor."));
         return errors;
     }
 
@@ -36,7 +36,7 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         if (id.HasValue && account == null) return ServiceInventorySaveResult.Error("", "La cuenta ya no está disponible.");
         if (account != null && account.Version != input.Version) return ServiceInventorySaveResult.Error("", "Otra persona modificó la cuenta. Recarga la página antes de guardar.");
         if (account != null && (account.CarrierKey != input.CarrierKey || (input.CarrierKey == "otro" && !string.Equals(account.OtherCarrierName, Clean(input.OtherCarrierName), StringComparison.OrdinalIgnoreCase))) && await db.ServiceInventoryItems.AnyAsync(x => x.AccountId == id))
-            return ServiceInventorySaveResult.Error("CarrierKey", "La cuenta tiene servicios asociados. Desvincúlalos antes de cambiar su carrier.");
+            return ServiceInventorySaveResult.Error("CarrierKey", "La cuenta tiene servicios asociados. Desvincúlalos antes de cambiar su proveedor.");
         if (account == null)
         {
             if (await db.ServiceInventoryAccounts.AnyAsync(x => x.Id == input.RecordId)) return ServiceInventorySaveResult.Error("", "Esta cuenta ya fue guardada. Regresa al inventario para consultarla.");
@@ -60,18 +60,44 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
     {
         if (!AppRoles.IsGlobalAdmin(user)) throw new UnauthorizedAccessException();
         input.Name = Clean(input.Name);
+        input.PlanType = Clean(input.PlanType);
+        input.DeliveryType = input.CarrierKey == "starlink" ? "Satelital" : Clean(input.DeliveryType);
+        input.SupportPhone = input.CarrierKey == "starlink" ? "Online" : Clean(input.SupportPhone);
         var errors = Validate(input, input.CarrierKey, input.OtherCarrierName);
         if (input.RecordId == Guid.Empty || (id.HasValue && input.RecordId != id)) errors.Add(new("", "La identificación del registro no es válida. Abre nuevamente el formulario."));
-        if (!string.IsNullOrEmpty(input.PlanType) && !ServiceInventoryDisplay.PlanTypes.Contains(input.PlanType)) errors.Add(new("PlanType", "Selecciona un tipo de plan válido."));
-        if (!string.IsNullOrEmpty(input.DeliveryType) && !ServiceInventoryDisplay.DeliveryTypes.Contains(input.DeliveryType)) errors.Add(new("DeliveryType", "Selecciona un tipo de conexión válido."));
         var item = id.HasValue ? await db.ServiceInventoryItems.FindAsync(id.Value) : null;
         if (id.HasValue && item == null) return ServiceInventorySaveResult.Error("", "El servicio ya no está disponible.");
         if (item != null && item.Version != input.Version) return ServiceInventorySaveResult.Error("", "Otra persona modificó el servicio. Recarga la página antes de guardar.");
+        // Se permite conservar una clasificación histórica sin modificaciones en el mismo proveedor.
+        // Los valores nuevos y los cambios de proveedor siempre usan los catálogos actuales.
+        var sameProvider = item != null && item.CarrierKey == input.CarrierKey
+            && (input.CarrierKey != "otro" || string.Equals(item.OtherCarrierName, Clean(input.OtherCarrierName), StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(input.PlanType) && !ServiceInventoryDisplay.GetPlanTypes(input.CarrierKey).Contains(input.PlanType)
+            && !(sameProvider && item!.PlanType == input.PlanType))
+            errors.Add(new("PlanType", "Selecciona un tipo de plan válido para este proveedor."));
+        if (!string.IsNullOrEmpty(input.DeliveryType) && !ServiceInventoryDisplay.GetDeliveryTypes(input.CarrierKey).Contains(input.DeliveryType)
+            && !(sameProvider && item!.DeliveryType == input.DeliveryType))
+            errors.Add(new("DeliveryType", "Selecciona una tecnología de conexión válida para este proveedor."));
+
+        var unchangedLegacyTerm = item != null && (!item.ContractStartsOn.HasValue || !item.ContractMonths.HasValue)
+            && item.ContractStartsOn == input.ContractStartsOn && item.ContractMonths == input.ContractMonths;
+        input.ContractEndsOn = null; // El fin enviado por un cliente HTTP nunca determina el vencimiento.
+        if (input.ContractStartsOn.HasValue && input.ContractMonths.HasValue)
+        {
+            input.ContractEndsOn = ServiceInventoryDisplay.CalculateContractEnd(input.ContractStartsOn, input.ContractMonths);
+            if (!input.ContractEndsOn.HasValue && input.ContractMonths is >= 1 and <= 240)
+                errors.Add(new("ContractMonths", "El plazo excede el rango de fechas permitido. Revisa el inicio y los meses."));
+        }
+        else if (unchangedLegacyTerm)
+            input.ContractEndsOn = item!.ContractEndsOn;
+        else if (input.ContractStartsOn.HasValue || input.ContractMonths.HasValue)
+            errors.Add(new(input.ContractStartsOn.HasValue ? "ContractMonths" : "ContractStartsOn", "Completa la fecha de inicio y el plazo en meses para calcular el vencimiento."));
+
         if (input.AccountId.HasValue)
         {
             var account = await db.ServiceInventoryAccounts.AsNoTracking().Where(x => x.Id == input.AccountId).Select(x => new { x.CarrierKey, x.OtherCarrierName, x.IsActive }).SingleOrDefaultAsync();
             if (account == null || account.CarrierKey != input.CarrierKey || (input.CarrierKey == "otro" && !string.Equals(account.OtherCarrierName, Clean(input.OtherCarrierName), StringComparison.OrdinalIgnoreCase)) || (!account.IsActive && item?.AccountId != input.AccountId))
-                errors.Add(new("AccountId", "Selecciona una cuenta activa del mismo carrier."));
+                errors.Add(new("AccountId", "Selecciona una cuenta activa del mismo proveedor."));
         }
         var existingClientId = item?.ClientId;
         if (input.ClientId.HasValue && !await db.Clients.AnyAsync(x => x.Id == input.ClientId && !x.IsTemporaryLead && (x.IsActive || x.Id == existingClientId)))
@@ -98,13 +124,16 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         item.SpeedMbps = input.SpeedMbps;
         item.MonthlyCost = input.MonthlyCost;
         item.PhysicalLocation = Clean(input.PhysicalLocation);
-        item.Lan = Clean(input.Lan);
-        item.Ddns = Clean(input.Ddns);
         item.SupportPhone = Clean(input.SupportPhone);
-        item.FixedIp = Clean(input.FixedIp);
-        item.SubnetMask = Clean(input.SubnetMask);
-        item.Gateway = Clean(input.Gateway);
-        item.Dns = Clean(input.Dns);
+        if (input.HasNetworkDetails)
+        {
+            item.Lan = Clean(input.Lan);
+            item.Ddns = Clean(input.Ddns);
+            item.FixedIp = Clean(input.FixedIp);
+            item.SubnetMask = Clean(input.SubnetMask);
+            item.Gateway = Clean(input.Gateway);
+            item.Dns = Clean(input.Dns);
+        }
         item.ContractMonths = input.ContractMonths;
         item.ContractStartsOn = input.ContractStartsOn;
         item.ContractEndsOn = input.ContractEndsOn;
