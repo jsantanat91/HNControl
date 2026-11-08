@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.13";
+    public const string Version = "2.5.14";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.14", new DateOnly(2026, 11, 8), "Planes y cuentas del inventario", new[]
+        {
+            new ReleaseChange("Planes", "Nombre del plan seleccionable según el proveedor, con las opciones de Starlink e Internet 50 a 1000. Tipo Empresarial disponible también para los demás proveedores."),
+            new ReleaseChange("Equipos", "Número de kit reservado a Starlink; los demás proveedores muestran el número de serie."),
+            new ReleaseChange("Cuentas", "Acceso directo para registrar una cuenta y actualizar el selector sin perder los datos del servicio."),
+            new ReleaseChange("Publicación", "No requiere migración SQL adicional.")
+        }),
         new ReleaseNote("2.5.13", new DateOnly(2026, 11, 8), "Inventario organizado por proveedor", new[]
         {
             new ReleaseChange("Inventario Servicios", "Selección visual con logotipos y tipos de plan específicos para Starlink y los demás proveedores."),

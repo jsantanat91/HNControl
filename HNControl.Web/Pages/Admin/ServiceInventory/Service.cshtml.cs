@@ -17,6 +17,7 @@ public class ServiceModel(ApplicationDbContext db, ServiceInventoryService inven
     [BindProperty] public ServiceInventoryItemInput Input { get; set; } = new();
     public List<SelectListItem> Clients { get; private set; } = new();
     public List<AccountOption> Accounts { get; private set; } = new();
+    public string? LegacyPlanName { get; private set; }
     public string? LegacyPlanType { get; private set; }
     public string? LegacyDeliveryType { get; private set; }
     public string? LegacyCarrierKey { get; private set; }
@@ -35,7 +36,7 @@ public class ServiceModel(ApplicationDbContext db, ServiceInventoryService inven
             Input = new ServiceInventoryItemInput {
                 RecordId = x.Id, Version = x.Version, CarrierKey = x.CarrierKey, OtherCarrierName = x.OtherCarrierName, Name = x.Name,
                 AccountId = x.AccountId, ClientId = x.ClientId, AccountNumber = x.AccountNumber, PlanName = x.PlanName, PlanType = x.PlanType,
-                DeliveryType = x.DeliveryType, DeviceModel = x.DeviceModel, SerialNumber = x.SerialNumber, KitNumber = x.KitNumber,
+                DeliveryType = x.DeliveryType, DeviceModel = x.DeviceModel, SerialNumber = x.SerialNumber, KitNumber = x.CarrierKey == "starlink" ? x.KitNumber : null,
                 SpeedMbps = x.SpeedMbps, MonthlyCost = x.MonthlyCost, PhysicalLocation = x.PhysicalLocation, Lan = x.Lan, Ddns = x.Ddns,
                 SupportPhone = x.SupportPhone, FixedIp = x.FixedIp, SubnetMask = x.SubnetMask, Gateway = x.Gateway, Dns = x.Dns,
                 ContractMonths = x.ContractMonths, ContractStartsOn = x.ContractStartsOn, ContractEndsOn = x.ContractEndsOn, Notes = x.Notes, IsActive = x.IsActive,
@@ -49,6 +50,20 @@ public class ServiceModel(ApplicationDbContext db, ServiceInventoryService inven
         }
         await LoadOptionsAsync();
         return Page();
+    }
+
+    public async Task<IActionResult> OnGetAccountsAsync()
+    {
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        var currentAccountId = Id.HasValue
+            ? await db.ServiceInventoryItems.AsNoTracking().Where(x => x.Id == Id).Select(x => x.AccountId).SingleOrDefaultAsync()
+            : null;
+        var accounts = await db.ServiceInventoryAccounts.AsNoTracking()
+            .Where(x => x.IsActive || x.Id == currentAccountId).OrderBy(x => x.Label)
+            .Select(x => new { id = x.Id, carrierKey = x.CarrierKey, label = x.Label, email = x.Email,
+                accountNumber = x.AccountNumber, isActive = x.IsActive, otherCarrierName = x.OtherCarrierName })
+            .ToListAsync();
+        return new JsonResult(accounts);
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -86,6 +101,7 @@ public class ServiceModel(ApplicationDbContext db, ServiceInventoryService inven
             if (previous != null)
             {
                 LegacyCarrierKey = previous.CarrierKey;
+                LegacyPlanName = !string.IsNullOrEmpty(previous.PlanName) && !ServiceInventoryDisplay.GetPlanNames(previous.CarrierKey).Contains(previous.PlanName) ? previous.PlanName : null;
                 LegacyPlanType = !string.IsNullOrEmpty(previous.PlanType) && !ServiceInventoryDisplay.GetPlanTypes(previous.CarrierKey).Contains(previous.PlanType) ? previous.PlanType : null;
                 LegacyDeliveryType = !string.IsNullOrEmpty(previous.DeliveryType) && !ServiceInventoryDisplay.GetDeliveryTypes(previous.CarrierKey).Contains(previous.DeliveryType) ? previous.DeliveryType : null;
                 StoredContractEnd = previous.ContractEndsOn;
@@ -114,6 +130,11 @@ public class ServiceModel(ApplicationDbContext db, ServiceInventoryService inven
         {
             Input.DeliveryType = "Satelital";
             Input.SupportPhone = "Online";
+        }
+        else
+        {
+            Input.KitNumber = null;
+            ModelState.Remove("Input.KitNumber");
         }
         Clients = await db.Clients.AsNoTracking().Where(x => !x.IsTemporaryLead && (x.IsActive || x.Id == Input.ClientId)).OrderBy(x => x.Name)
             .Select(x => new SelectListItem(x.ClientCode + " · " + x.Name + (x.IsActive ? "" : " (inactivo)"), x.Id.ToString())).ToListAsync();

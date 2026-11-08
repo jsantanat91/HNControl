@@ -150,6 +150,19 @@ internal static class ServiceInventoryTests
         var pending = postgresModel.GetService<IMigrationsModelDiffer>().GetDifferences(initialized.GetRelationalModel(), currentModel.GetRelationalModel());
         check(!pending.Any(op => ((op.GetType().GetProperty("Table")?.GetValue(op) ?? op.GetType().GetProperty("Name")?.GetValue(op)) as string)?.StartsWith("ServiceInventory", StringComparison.Ordinal) == true),
             "Snapshot PostgreSQL refleja todas las columnas, índices y relaciones de Inventario Servicios");
+        check(await Page(new ServicePage(db, inventory), AppRoles.Employee).OnGetAccountsAsync() is ForbidResult,
+            "Actualizar cuentas del formulario requiere administrador");
+        var unrelatedInactive = new ServiceInventoryAccount { CarrierKey = "starlink", Label = "No ofrecer", Email = "inactiva@example.test", IsActive = false, PasswordProtected = "No exponer" };
+        db.ServiceInventoryAccounts.Add(unrelatedInactive); await db.SaveChangesAsync();
+        var refreshed = await Page(new ServicePage(db, inventory) { Id = item.Id }).OnGetAccountsAsync() as JsonResult;
+        var refreshJson = JsonSerializer.Serialize(refreshed?.Value);
+        using (var refreshDoc = JsonDocument.Parse(refreshJson))
+        {
+            var ids = refreshDoc.RootElement.EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).ToHashSet();
+            check(ids.Contains(account.Id) && ids.Contains(other.RecordId) && !ids.Contains(unrelatedInactive.Id)
+                && !refreshJson.Contains("PasswordProtected") && !refreshJson.Contains(originalCipher) && !refreshJson.Contains(secret),
+                "Refresco autorizado devuelve cuentas activas y cuenta actual sin incluir secretos ni otras inactivas");
+        }
         await RunProviderRulesAsync(check);
     }
 
@@ -249,20 +262,20 @@ internal static class ServiceInventoryTests
         check(await failedNetworkPage.OnPostAsync() is RedirectToPageResult && networkRow.FixedIp == "203.0.113.10" && networkRow.Dns == "1.1.1.1, 8.8.8.8",
             "Reabrir red después de corregir un error conserva los datos guardados");
 
-        var legacy = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Registro 2.5.12", PlanType = "Empresarial", DeliveryType = "Dedicado",
+        var legacy = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Registro 2.5.12", PlanType = "Residencial", DeliveryType = "Dedicado",
             ContractEndsOn = new DateOnly(2028, 2, 10), FixedIp = "203.0.113.20" };
         var starlinkLegacy = new ServiceInventoryItem { CarrierKey = "starlink", Name = "Starlink previo", PlanType = "Residencial", DeliveryType = "Best effort", SupportPhone = "5555555555" };
         var startOnlyLegacy = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Plazo histórico incompleto", ContractStartsOn = new DateOnly(2026, 1, 1), ContractEndsOn = new DateOnly(2027, 1, 15) };
         db.AddRange(legacy, starlinkLegacy, startOnlyLegacy); await db.SaveChangesAsync();
         var legacyPage = Page(new ServicePage(db, inventory) { Id = legacy.Id }); await legacyPage.OnGetAsync(null);
-        check(legacyPage.LegacyPlanType == "Empresarial" && legacyPage.LegacyDeliveryType == "Dedicado" && legacyPage.SuggestedPlanType == "Dedicado"
+        check(legacyPage.LegacyPlanType == "Residencial" && legacyPage.LegacyDeliveryType == "Dedicado" && legacyPage.SuggestedPlanType == "Dedicado"
             && legacyPage.HasLegacyContractEnd && legacyPage.StoredContractEnd == legacy.ContractEndsOn && legacyPage.Input.HasNetworkDetails,
             "Formulario identifica clasificaciones y vencimiento históricos sin inferir una tecnología");
         legacyPage.Input.Name = "Nombre editado"; legacyPage.Input.ContractEndsOn = new DateOnly(2035, 1, 1); legacyPage.Input.HasNetworkDetails = false;
-        check((await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success && legacy.PlanType == "Empresarial" && legacy.DeliveryType == "Dedicado"
+        check((await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success && legacy.PlanType == "Residencial" && legacy.DeliveryType == "Dedicado"
             && legacy.ContractEndsOn == new DateOnly(2028, 2, 10) && legacy.FixedIp == "203.0.113.20",
             "Editar otros datos conserva plan/conexión/fin histórico y red guardada");
-        legacyPage.Input.Version = legacy.Version; legacyPage.Input.PlanType = "Residencial";
+        legacyPage.Input.Version = legacy.Version; legacyPage.Input.PlanType = "Itinerante";
         check(!(await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success, "Excepción histórica no permite inyectar otra clasificación inválida");
         legacyPage.Input.PlanType = legacy.PlanType; legacyPage.Input.CarrierKey = "izzi";
         check(!(await inventory.SaveItemAsync(legacyPage.Input, legacy.Id, admin)).Success, "Cambiar de proveedor no arrastra valores históricos ajenos al catálogo");
@@ -283,6 +296,45 @@ internal static class ServiceInventoryTests
         starlinkPage.ModelState.AddModelError("Input.DeliveryType", "Error sobre valor que el servidor reemplaza");
         check(await starlinkPage.OnPostAsync() is RedirectToPageResult && starlinkLegacy.SupportPhone == "Online" && starlinkLegacy.DeliveryType == "Satelital",
             "Handler web también impone campos Starlink e ignora sobreescrituras de solo lectura");
+
+        var catalogsValid = true;
+        foreach (var carrier in new[] { "starlink", "telmex" })
+        foreach (var planName in ServiceInventoryDisplay.GetPlanNames(carrier))
+        {
+            var input = New(carrier); input.PlanName = planName; input.KitNumber = carrier == "starlink" ? "KIT-CATALOGO" : null;
+            var saved = await inventory.SaveItemAsync(input, null, admin);
+            var row = await db.ServiceInventoryItems.FindAsync(input.RecordId);
+            catalogsValid &= saved.Success && row != null && row.PlanName == planName && (carrier != "starlink" || row.KitNumber == "KIT-CATALOGO");
+        }
+        check(catalogsValid, "Catálogos de nombres Starlink e Internet se guardan y Starlink conserva su kit");
+        var rejectedPlanNames = true;
+        foreach (var (carrier, planName) in new[] { ("starlink", "Internet 100"), ("telmex", "Itinerante Ilimitado"), ("starlink", "Plan libre nuevo"), ("telmex", "Plan libre nuevo") })
+        {
+            var input = New(carrier); input.PlanName = planName;
+            rejectedPlanNames &= !(await inventory.SaveItemAsync(input, null, admin)).Success;
+        }
+        check(rejectedPlanNames, "Nombres de plan nuevos rechazan valores libres y catálogos de otro proveedor");
+        var business = New(); business.PlanType = "Empresarial"; business.PlanName = "Internet 1000";
+        check((await inventory.SaveItemAsync(business, null, admin)).Success, "Empresarial también es tipo de plan válido para proveedores terrestres");
+        var emptyPlan = New(); emptyPlan.KitNumber = new string('X', 1000);
+        check((await inventory.SaveItemAsync(emptyPlan, null, admin)).Success && (await db.ServiceInventoryItems.FindAsync(emptyPlan.RecordId))?.KitNumber == "",
+            "Plan vacío es opcional y un kit posteado para otro proveedor se ignora incluso si excede el límite");
+        var priorPlan = new ServiceInventoryItem { CarrierKey = "telmex", Name = "Plan histórico", PlanName = "Paquete empresarial anterior", PlanType = "Empresarial", DeliveryType = "Fibra óptica", KitNumber = "KIT-HISTORICO" };
+        db.ServiceInventoryItems.Add(priorPlan); await db.SaveChangesAsync();
+        var priorPlanPage = Page(new ServicePage(db, inventory) { Id = priorPlan.Id }); await priorPlanPage.OnGetAsync(null);
+        check(priorPlanPage.LegacyPlanName == priorPlan.PlanName && priorPlanPage.LegacyPlanType == null && priorPlanPage.Input.KitNumber == null,
+            "Editar ofrece el nombre de plan histórico y no expone kits de otros proveedores");
+        priorPlanPage.Input.KitNumber = "KIT-MANIPULADO";
+        priorPlanPage.ModelState.AddModelError("Input.KitNumber", "Campo oculto que no aplica");
+        check(await priorPlanPage.OnPostAsync() is RedirectToPageResult && priorPlan.PlanName == "Paquete empresarial anterior" && priorPlan.KitNumber == "KIT-HISTORICO",
+            "Guardar mantiene plan y kit históricos y no acepta cambios ocultos del kit");
+        priorPlanPage.Input.Version = priorPlan.Version; priorPlanPage.Input.PlanName = "Otro nombre libre";
+        check(!(await inventory.SaveItemAsync(priorPlanPage.Input, priorPlan.Id, admin)).Success, "Excepción de plan histórico solo acepta exactamente el nombre previamente guardado");
+        priorPlanPage.Input.PlanName = priorPlan.PlanName; priorPlanPage.Input.CarrierKey = "totalplay";
+        check(!(await inventory.SaveItemAsync(priorPlanPage.Input, priorPlan.Id, admin)).Success, "Cambiar proveedor requiere escoger su catálogo y no traslada planes históricos libres");
+        priorPlanPage.Input.CarrierKey = "telmex"; priorPlanPage.Input.PlanName = "Internet 500";
+        check((await inventory.SaveItemAsync(priorPlanPage.Input, priorPlan.Id, admin)).Success && priorPlan.PlanName == "Internet 500" && priorPlan.KitNumber == "KIT-HISTORICO",
+            "Elegir un nombre del catálogo actualiza el plan sin borrar información histórica del kit");
     }
 
     private static ClaimsPrincipal Principal(string? role) => new(new ClaimsIdentity(role == null ? Array.Empty<Claim>() : new[] { new Claim(ClaimTypes.Role, role) }, role == null ? null : "test"));

@@ -60,9 +60,11 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
     {
         if (!AppRoles.IsGlobalAdmin(user)) throw new UnauthorizedAccessException();
         input.Name = Clean(input.Name);
+        input.PlanName = Clean(input.PlanName);
         input.PlanType = Clean(input.PlanType);
         input.DeliveryType = input.CarrierKey == "starlink" ? "Satelital" : Clean(input.DeliveryType);
         input.SupportPhone = input.CarrierKey == "starlink" ? "Online" : Clean(input.SupportPhone);
+        if (input.CarrierKey != "starlink") input.KitNumber = null;
         var errors = Validate(input, input.CarrierKey, input.OtherCarrierName);
         if (input.RecordId == Guid.Empty || (id.HasValue && input.RecordId != id)) errors.Add(new("", "La identificación del registro no es válida. Abre nuevamente el formulario."));
         var item = id.HasValue ? await db.ServiceInventoryItems.FindAsync(id.Value) : null;
@@ -72,6 +74,9 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         // Los valores nuevos y los cambios de proveedor siempre usan los catálogos actuales.
         var sameProvider = item != null && item.CarrierKey == input.CarrierKey
             && (input.CarrierKey != "otro" || string.Equals(item.OtherCarrierName, Clean(input.OtherCarrierName), StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(input.PlanName) && !ServiceInventoryDisplay.GetPlanNames(input.CarrierKey).Contains(input.PlanName)
+            && !(sameProvider && item!.PlanName == input.PlanName))
+            errors.Add(new("PlanName", "Selecciona un nombre de plan válido para este proveedor."));
         if (!string.IsNullOrEmpty(input.PlanType) && !ServiceInventoryDisplay.GetPlanTypes(input.CarrierKey).Contains(input.PlanType)
             && !(sameProvider && item!.PlanType == input.PlanType))
             errors.Add(new("PlanType", "Selecciona un tipo de plan válido para este proveedor."));
@@ -103,6 +108,7 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         if (input.ClientId.HasValue && !await db.Clients.AnyAsync(x => x.Id == input.ClientId && !x.IsTemporaryLead && (x.IsActive || x.Id == existingClientId)))
             errors.Add(new("ClientId", "Selecciona un cliente válido."));
         if (errors.Count > 0) return new(null, errors);
+        var previousCarrier = item?.CarrierKey;
         if (item == null)
         {
             if (await db.ServiceInventoryItems.AnyAsync(x => x.Id == input.RecordId)) return ServiceInventorySaveResult.Error("", "Este servicio ya fue guardado. Regresa al inventario para consultarlo.");
@@ -120,7 +126,8 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         item.DeliveryType = Clean(input.DeliveryType);
         item.DeviceModel = Clean(input.DeviceModel);
         item.SerialNumber = Clean(input.SerialNumber);
-        item.KitNumber = Clean(input.KitNumber);
+        if (input.CarrierKey == "starlink" && (previousCarrier is null or "starlink" || !string.IsNullOrWhiteSpace(input.KitNumber)))
+            item.KitNumber = Clean(input.KitNumber);
         item.SpeedMbps = input.SpeedMbps;
         item.MonthlyCost = input.MonthlyCost;
         item.PhysicalLocation = Clean(input.PhysicalLocation);

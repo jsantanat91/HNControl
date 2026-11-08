@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## 2.5.14 · 8 de noviembre de 2026
+
+- Nombre del plan en lista desplegable: Itinerante 100 GB, Itinerante Ilimitado, Residencial, Residencial Lite y Empresarial Global para Starlink; Internet 50, 100, 200, 300, 400, 500 y 1000 para los demás proveedores. Se conserva la opción de planes anteriores al editar.
+- Tipo de plan Empresarial agregado junto a Dedicado y Best Effort para proveedores distintos de Starlink.
+- Número de kit visible y editable solo para Starlink; los demás equipos muestran serie.
+- Nueva cuenta abre el registro del proveedor en otra pestaña. Actualizar cuentas vuelve a cargar el selector conservando el formulario del servicio.
+
+No requiere migración SQL adicional.
+
 ## 2.5.13 · 8 de noviembre de 2026
 
 - Inventario Servicios con logotipos en la selección del proveedor y tipo de plan junto a esa selección: Residencial, Itinerante o Empresarial para Starlink; Dedicado o Best Effort para los demás.

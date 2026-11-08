@@ -6,6 +6,7 @@
   const accounts = root.querySelector('[data-inventory-account]');
   const otherName = root.querySelector('[name="Input.OtherCarrierName"]');
   const plan = root.querySelector('[data-plan-selector]');
+  const planName = root.querySelector('[data-plan-name-selector]');
   const connection = root.querySelector('[data-connection-selector]');
   const support = root.querySelector('[data-support-input]');
   const supportByProvider = new Map();
@@ -15,7 +16,23 @@
   function updateAccountHint() {
     const option = accounts?.selectedOptions[0];
     const hint = root.querySelector('#inventory-account-hint');
-    if (hint) hint.textContent = option?.dataset.accountNumber ? `Número de cuenta: ${option.dataset.accountNumber}` : 'Opcional. Puedes vincular una cuenta después.';
+    if (!hint || !accounts) return;
+    const hasAccounts = Array.from(accounts.options).some(account => account.value && !account.disabled);
+    hint.textContent = !hasAccounts
+      ? 'No hay cuentas de este proveedor. Registra una nueva y después pulsa Actualizar cuentas.'
+      : option?.dataset.accountNumber ? `Número de cuenta: ${option.dataset.accountNumber}`
+        : option?.value ? 'Cuenta vinculada a este servicio.' : 'Selecciona una cuenta existente o registra una nueva.';
+  }
+
+  function filterAccounts() {
+    if (!accounts || !carrier) return;
+    Array.from(accounts.options).forEach(option => {
+      const mismatch = !!option.value && option.dataset.carrier !== carrier.value;
+      option.hidden = mismatch;
+      option.disabled = mismatch;
+    });
+    if (accounts.selectedOptions[0]?.disabled) accounts.value = '';
+    updateAccountHint();
   }
 
   function filterProviderOptions(select, isStarlink) {
@@ -24,7 +41,7 @@
     const options = Array.from(select.options);
     options.forEach(option => {
       const kind = option.dataset.providerKind;
-      const allowed = !option.value || (kind === 'legacy'
+      const allowed = !option.value || kind === 'shared' || (kind === 'legacy'
         ? option.dataset.originalProvider === carrier.value
         : kind === (isStarlink ? 'starlink' : 'other'));
       option.hidden = !allowed;
@@ -56,8 +73,13 @@
     });
     root.querySelectorAll('[data-other-carrier]').forEach(el => { el.hidden = carrier.value !== 'otro'; });
     root.querySelectorAll('[data-starlink-help]').forEach(el => { el.hidden = !isStarlink; });
+    root.querySelectorAll('[data-starlink-kit]').forEach(el => {
+      el.hidden = !isStarlink;
+      el.querySelectorAll('input').forEach(input => { input.disabled = !isStarlink; });
+    });
     root.querySelectorAll('[data-suggest-plan]').forEach(button => { button.hidden = isStarlink; });
     filterProviderOptions(plan, isStarlink);
+    filterProviderOptions(planName, isStarlink);
     filterProviderOptions(connection, isStarlink);
     if (connection) {
       if (isStarlink) {
@@ -69,14 +91,12 @@
     }
     const model = root.querySelector('[name="Input.DeviceModel"]');
     if (model) isStarlink ? model.setAttribute('list', 'starlink-models') : model.removeAttribute('list');
-    if (accounts) {
-      Array.from(accounts.options).forEach(option => {
-        const mismatch = !!option.value && option.dataset.carrier !== carrier.value;
-        option.hidden = mismatch;
-        option.disabled = mismatch;
-      });
-      if (accounts.selectedOptions[0]?.disabled) accounts.value = '';
-      updateAccountHint();
+    filterAccounts();
+    const newAccountLink = root.querySelector('[data-new-account-link]');
+    if (newAccountLink) {
+      const url = new URL(newAccountLink.href, window.location.href);
+      url.searchParams.set('carrier', carrier.value);
+      newAccountLink.href = url.href;
     }
   }
   carrier?.addEventListener('change', updateCarrier);
@@ -104,6 +124,45 @@
     updateAccountHint();
   });
   updateCarrier();
+
+  root.querySelector('[data-refresh-accounts]')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    const feedback = root.querySelector('#inventory-account-feedback');
+    if (!accounts || !feedback) return;
+    button.disabled = true;
+    feedback.classList.remove('is-error');
+    feedback.textContent = 'Actualizando cuentas…';
+    try {
+      const response = await fetch(new URL(accounts.dataset.accountsUrl, window.location.href), {
+        credentials: 'same-origin', cache: 'no-store', redirect: 'error', headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error('request');
+      const rows = await response.json();
+      if (!Array.isArray(rows) || rows.some(row => !row || typeof row.id !== 'string' || typeof row.carrierKey !== 'string')) throw new Error('response');
+      // Keep the latest selection, including a selection made while loading.
+      const selectedId = accounts.value;
+      const options = document.createDocumentFragment();
+      options.append(new Option('Sin cuenta vinculada', ''));
+      rows.forEach(row => {
+        const option = new Option(`${row.label || ''} · ${row.email || ''}${row.isActive ? '' : ' (inactiva)'}`, row.id);
+        option.dataset.carrier = row.carrierKey;
+        option.dataset.accountNumber = row.accountNumber || '';
+        option.dataset.otherName = row.otherCarrierName || '';
+        options.append(option);
+      });
+      accounts.replaceChildren(options);
+      accounts.value = rows.some(row => row.id === selectedId) ? selectedId : '';
+      filterAccounts();
+      feedback.textContent = selectedId && !accounts.value
+        ? 'Cuentas actualizadas. La cuenta anterior ya no está disponible; selecciona otra.'
+        : 'Cuentas actualizadas. Tu formulario se conserva.';
+    } catch {
+      feedback.classList.add('is-error');
+      feedback.textContent = 'No se pudieron actualizar las cuentas. Verifica tu sesión y vuelve a intentarlo.';
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   const networkToggle = root.querySelector('[data-network-toggle]');
   const networkFields = root.querySelector('[data-network-fields]');

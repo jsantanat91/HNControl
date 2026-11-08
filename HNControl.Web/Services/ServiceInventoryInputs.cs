@@ -82,7 +82,10 @@ public static class ServiceInventoryDisplay
         ? other : ServiceInventoryCatalog.Carriers.FirstOrDefault(x => x.Id == key)?.Name ?? key;
     public static string? Logo(string key) => ServiceInventoryCatalog.Carriers.FirstOrDefault(x => x.Id == key)?.LogoPath;
     public static IReadOnlyList<string> GetPlanTypes(string carrier) => carrier == "starlink"
-        ? new[] { "Residencial", "Itinerante", "Empresarial" } : new[] { "Dedicado", "Best effort" };
+        ? new[] { "Residencial", "Itinerante", "Empresarial" } : new[] { "Dedicado", "Best effort", "Empresarial" };
+    public static IReadOnlyList<string> GetPlanNames(string carrier) => carrier == "starlink"
+        ? new[] { "Itinerante 100 GB", "Itinerante Ilimitado", "Residencial", "Residencial Lite", "Empresarial Global" }
+        : new[] { "Internet 50", "Internet 100", "Internet 200", "Internet 300", "Internet 400", "Internet 500", "Internet 1000" };
     public static IReadOnlyList<string> GetDeliveryTypes(string carrier) => carrier == "starlink"
         ? new[] { "Satelital" } : new[] { "Fibra óptica", "Microonda", "Otro" };
     public static bool HasNetworkDetails(ServiceInventoryItem item) => new[] { item.FixedIp, item.SubnetMask,

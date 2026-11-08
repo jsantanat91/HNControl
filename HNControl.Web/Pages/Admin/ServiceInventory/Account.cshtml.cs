@@ -17,7 +17,7 @@ public class AccountModel(ApplicationDbContext db, ServiceInventoryService inven
     [BindProperty] public string? Password { get; set; }
     public int ServicesCount { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnGetAsync(string? carrier = null)
     {
         if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
         if (Id.HasValue)
@@ -29,6 +29,8 @@ public class AccountModel(ApplicationDbContext db, ServiceInventoryService inven
             Input = input;
             ServicesCount = await db.ServiceInventoryItems.CountAsync(x => x.AccountId == Id);
         }
+        else if (ServiceInventoryCatalog.Carriers.Any(x => x.Id == carrier))
+            Input.CarrierKey = carrier!;
         return Page();
     }
 
