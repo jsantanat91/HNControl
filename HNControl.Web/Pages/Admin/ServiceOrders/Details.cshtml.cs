@@ -31,6 +31,9 @@ public class DetailsModel : PageModel
     public ServiceOrder? Order { get; set; }
     public string PublicUrl { get; set; } = "";
     public string? Info { get; set; }
+    public string PdfEmailRecipient { get; private set; } = "";
+    public IReadOnlyCollection<string> PdfEmailCopies { get; private set; } = Array.Empty<string>();
+    public string? PdfEmailConfigurationError { get; private set; }
     public ServiceOrderNotificationState CreationNotifications { get; set; } = new(false, false, false, false);
 
     public async Task<IActionResult> OnPostRetryCreationNotificationsAsync(Guid id)
@@ -97,29 +100,50 @@ public class DetailsModel : PageModel
             return Page();
         }
 
-        var to = Order.Client?.Email;
-        if (string.IsNullOrWhiteSpace(to))
+        if (PdfEmailConfigurationError != null)
         {
-            Info = "El cliente no tiene email.";
-            await LoadAsync(id);
+            Info = PdfEmailConfigurationError;
+            return Page();
+        }
+        if (!ClientCommunicationTemplates.IsEmail(PdfEmailRecipient))
+        {
+            Info = "Registra un correo válido en la ficha del cliente antes de enviar la orden.";
             return Page();
         }
 
-        var (stream, contentType, fileName) = await _storage.OpenAsync(Order.PdfStoragePath, $"orden_{Order.Id:N}.pdf");
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
+        // Render the current data and signatures, rather than sending an outdated cached PDF.
+        var bytes = await _pdf.RenderAsync(Order);
+        var maxMb = _cfg.GetValue<int?>("Storage:MaxPdfMb") ?? 15;
+        if (bytes.Length > maxMb * 1024 * 1024)
+        {
+            Info = $"El PDF excede el tamaño máximo permitido ({maxMb} MB).";
+            return Page();
+        }
+        var fileName = $"orden_{Order.Id:N}.pdf";
+        var (path, _, _) = await _storage.SaveBytesAsync(bytes, $"serviceorders/{Order.Id}/pdf", fileName, "application/pdf");
+        Order.PdfStoragePath = path;
+        Order.PdfGeneratedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
 
-        await _email.SendAsync(
-            toEmail: to,
-            subject: $"Orden de Servicio - {Order.Title}",
-            htmlBody: $"Adjunto PDF de la orden: <b>{Order.Title}</b>",
-            attachmentBytes: ms.ToArray(),
-            attachmentName: fileName,
-            attachmentContentType: contentType
-        );
-
-        Info = "Correo enviado.";
-        await LoadAsync(id);
+        try
+        {
+            await _email.SendAsync(
+                toEmail: PdfEmailRecipient,
+                subject: $"HN Solutions · Orden de servicio {ServiceOrderNotificationTemplates.Reference(Order)} · {Order.Title}".Replace('\r', ' ').Replace('\n', ' '),
+                htmlBody: ServiceOrderNotificationTemplates.Report(Order),
+                attachmentBytes: bytes,
+                attachmentName: fileName,
+                attachmentContentType: "application/pdf",
+                ccEmails: PdfEmailCopies
+            );
+            Info = $"Correo enviado a {PdfEmailRecipient}. " + (PdfEmailCopies.Count > 0
+                ? $"Copia (CC): {string.Join(", ", PdfEmailCopies)}."
+                : "Sin copias: no hay otros destinatarios de Ingeniería configurados.");
+        }
+        catch (InvalidOperationException)
+        {
+            Info = "No se pudo confirmar el envío del correo. Revisa SMTP y los destinatarios antes de reintentar.";
+        }
         return Page();
     }
 
@@ -279,7 +303,19 @@ public class DetailsModel : PageModel
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
 
-        if (Order != null) CreationNotifications = await _notifications.GetStateAsync(id);
+        PdfEmailRecipient = Order?.Client == null ? "" : ClientCommunicationTemplates.Recipient(Order.Client);
+        try
+        {
+            if (Order != null) CreationNotifications = await _notifications.GetStateAsync(id);
+            PdfEmailCopies = (await _notifications.EngineeringRecipientsAsync())
+                .Where(x => !x.Equals(PdfEmailRecipient, StringComparison.OrdinalIgnoreCase)).ToArray();
+            PdfEmailConfigurationError = null;
+        }
+        catch (ArgumentException)
+        {
+            PdfEmailCopies = Array.Empty<string>();
+            PdfEmailConfigurationError = "Revisa los correos de Ingeniería en Configuración: hay una dirección inválida.";
+        }
 
         var baseUrl = (_cfg["PublicLinks:BaseUrl"] ?? "").Trim().TrimEnd('/');
         if (Order != null && !string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(Order.PublicToken))

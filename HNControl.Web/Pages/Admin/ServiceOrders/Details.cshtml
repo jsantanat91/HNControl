@@ -96,6 +96,17 @@
                     <button class="btn btn-outline-success" type="submit">Enviar PDF por correo</button>
                 </form>
 
+                <div class="w-100 rounded border p-3 bg-light small">
+                    <div class="fw-semibold mb-1">Destinatarios del PDF</div>
+                    <div>Cliente: <strong>@(string.IsNullOrWhiteSpace(Model.PdfEmailRecipient) ? "Sin correo registrado" : Model.PdfEmailRecipient)</strong></div>
+                    <div>Copia (CC): @(Model.PdfEmailCopies.Count > 0 ? string.Join(", ", Model.PdfEmailCopies) : "Sin copias configuradas")</div>
+                    <div class="text-muted mt-1">Las copias se administran en Configuración → Ingeniería. Se adjunta el PDF actualizado con las firmas registradas.</div>
+                    @if (Model.PdfEmailConfigurationError != null)
+                    {
+                        <div class="text-danger">@Model.PdfEmailConfigurationError</div>
+                    }
+                </div>
+
                 @if (!string.IsNullOrWhiteSpace(Model.Order.ClaimedByUserId))
                 {
                     <form method="post" asp-page-handler="UnassignTechnician" asp-route-id="@Model.Order.Id"

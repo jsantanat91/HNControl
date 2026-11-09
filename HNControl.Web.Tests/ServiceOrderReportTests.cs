@@ -93,6 +93,15 @@ internal static class ServiceOrderReportTests
         check(Inspect(await pdf.RenderAsync(order)).Hash != changedSpeed,
             "La huella detecta cambios de contenido sin cambiar la cantidad de verificaciones");
 
+        contract.Notes = "[META] Recurrencia=Mensual\n[META] InternetCapacidad=20";
+        contract.Label = "Internet Dedicado";
+        order.Title = "Entrega de enlace de Internet Dedicado 20 MB";
+        order.Description = "Instalación del enlace dedicado y validación de la conexión en la sucursal.";
+        order.Type = ServiceOrderType.NuevaInstalacion;
+        await db.SaveChangesAsync();
+        check(Inspect(await Save("orden-mensual-noc")).Pages == 1,
+            "Orden mensual con firmas y NOC conserva una página para una entrega breve");
+
         order.Type = ServiceOrderType.Global;
         db.ServiceOrderWorkItems.Add(new() { Order = order, SortOrder = 0, Type = ServiceOrderType.Correctivo, Title = "Actividad sin checklist", WorkPerformed = "Cableado revisado." });
         for (var i = 4; i <= 55; i++) db.ServiceOrderChecklistItems.Add(new() { Order = order, SortOrder = i, Title = $"Punto de control {i}", Notes = "Observación de muestra." });

@@ -134,7 +134,7 @@ public sealed class ServiceOrderCreationNotifications(
         return DeliveryOutcome.Sent;
     }
 
-    private async Task<IReadOnlyCollection<string>> EngineeringRecipientsAsync()
+    public async Task<IReadOnlyCollection<string>> EngineeringRecipientsAsync()
     {
         var value = await db.SystemConfigurations.AsNoTracking().OrderByDescending(x => x.UpdatedAt)
             .Select(x => x.EngineeringNotificationEmails).FirstOrDefaultAsync();

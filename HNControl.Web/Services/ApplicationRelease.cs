@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.16";
+    public const string Version = "2.5.17";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.17", new DateOnly(2026, 11, 9), "NOC y envío de órdenes de servicio", new[]
+        {
+            new ReleaseChange("Órdenes", "PDF con canales del NOC: WhatsApp preferente y llamadas al 55 2601 4566, correo de soporte y portal de tickets; conserva firmas y huellas digitales."),
+            new ReleaseChange("Correo", "El botón Enviar PDF por correo envía al cliente y copia a los destinatarios configurados de Ingeniería. Muestra los destinatarios y adjunta el PDF actualizado."),
+            new ReleaseChange("Publicación", "Solo requiere desplegar la web. Sin migración SQL ni actualización de APK.")
+        }),
         new ReleaseNote("2.5.16", new DateOnly(2026, 11, 9), "Ficha completa de servicios en la APK", new[]
         {
             new ReleaseChange("Servicios", "Cuenta vinculada, correo, número de cuenta y línea, costo, plazo y notas disponibles en la consulta móvil."),

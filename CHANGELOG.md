@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## Web 2.5.17 · 9 de noviembre de 2026
+
+- Orden PDF con bloque NOC, WhatsApp preferente y llamadas al 55 2601 4566, soporte@hubnet-solutions.com.mx y support.hubnet-solutions.net; mantiene firmas y huellas SHA-256.
+- Enviar PDF por correo: cliente como destinatario y correos de Ingeniería configurados como CC, sin duplicados. Destinatarios visibles antes y después del envío.
+- PDF regenerado al enviar para incluir los datos y firmas actuales; correo con formato corporativo y canales de soporte.
+- Sin migración SQL ni APK nueva. El formato de entrega de hardware se conserva.
+
 ## Web 2.5.16 / APK 2.2.0 · 9 de noviembre de 2026
 
 - Ficha móvil completa con cuenta vinculada, correo de acceso, referencias diferenciadas de cuenta y línea, costo, fechas y notas.

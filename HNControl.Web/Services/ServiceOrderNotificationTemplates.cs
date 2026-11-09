@@ -6,6 +6,25 @@ namespace HNControl.Web.Services;
 
 public static class ServiceOrderNotificationTemplates
 {
+    public static string Report(ServiceOrder order) => Layout("Su orden de servicio", $"""
+        <p>Estimado(a) <strong>{E(order.Client?.Name)}</strong>:</p>
+        <p>Adjuntamos el PDF de su orden de servicio con el detalle de los trabajos y las firmas registradas.</p>
+        <table role="presentation" style="width:100%;background:#f8fafc;border-collapse:collapse;margin:18px 0">
+        {Row("Referencia de orden", Reference(order))}
+        {Row("Número de cliente", order.Client?.ClientCode)}
+        {Row("Orden de servicio", order.Title)}
+        {Row("Estado", order.Status == ServiceOrderStatus.Finalized ? "Finalizada" : order.Status.GetDisplayName())}
+        </table>
+        <h2 style="font-size:19px;color:#086db4">NOC · Atención y soporte técnico</h2>
+        <p>Para solicitar asistencia, indique su número de cliente y la referencia de esta orden.</p>
+        <p style="background:#edf6fc;padding:16px;border-left:3px solid #086db4">
+        <strong>WhatsApp, canal preferente del NOC:</strong> <a href="https://wa.me/525526014566">55 2601 4566</a><br>
+        Llamadas: <a href="tel:+525526014566">55 2601 4566</a><br>
+        Correo: <a href="mailto:soporte@hubnet-solutions.com.mx">soporte@hubnet-solutions.com.mx</a><br>
+        Portal de tickets: <a href="https://support.hubnet-solutions.net">support.hubnet-solutions.net</a></p>
+        <p>Gracias por su confianza en HN Solutions.</p>
+        """, "Ingeniería y Operaciones");
+
     public static string Reference(ServiceOrder order) => "OS-" + order.Id.ToString("N")[..8].ToUpperInvariant();
     private static string Date(DateTime? date) => date?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "Por confirmar";
     private static string Row(string name, string? value) => $"<tr><td style=\"padding:10px 14px;color:#64748b\">{E(name)}</td><td style=\"padding:10px 14px\"><strong>{E(value)}</strong></td></tr>";

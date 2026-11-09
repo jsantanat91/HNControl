@@ -139,6 +139,14 @@ internal sealed class ServiceOrderReport(
                 if (attachments.Count > 0) Evidence(c, withImages);
                 if (!string.IsNullOrWhiteSpace(order.AdminReviewNotes))
                     c.Item().EnsureSpace(50).Column(x => { Heading(x, "Notas de revisión"); x.Item().Text(order.AdminReviewNotes); });
+                c.Item().ShowEntire().Background(Pale).BorderLeft(3).BorderColor(Blue).Padding(9).Column(x =>
+                {
+                    Heading(x, "NOC · Atención y soporte técnico");
+                    x.Item().Text("WhatsApp y llamadas: 55 2601 4566 · WhatsApp es el canal preferente del NOC.").FontSize(9).SemiBold();
+                    x.Item().Text("Correo: soporte@hubnet-solutions.com.mx").FontSize(9);
+                    x.Item().Text("Portal de tickets: https://support.hubnet-solutions.net").FontSize(9);
+                    x.Item().PaddingTop(3).Text($"Al reportar, indique su cliente {order.Client?.ClientCode ?? ""}, la orden {Reference}, la ubicación y una descripción de la incidencia.").FontSize(8).FontColor(Muted);
+                });
                 c.Item().ShowEntire().Column(x =>
                 {
                     Heading(x, "Firmas de la orden");

@@ -81,6 +81,7 @@ EventContractTests.Run(service, Check);
 await RelatedFormDataTests.RunAsync(Check);
 await ServiceOrderEditBindingTests.RunAsync(Check);
 await ServiceOrderReportTests.RunAsync(root, Check);
+await ServiceOrderReportEmailTests.RunAsync(Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
 EventDeliveryDesignTests.Run(service, Check);
