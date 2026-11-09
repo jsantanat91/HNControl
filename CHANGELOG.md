@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## Web 2.5.21 · 9 de noviembre de 2026
+
+- Tarjetas de empleados homologadas al panel, con identidad y estado en cabecera, bloques de sueldo mensual y comisión, y acciones alineadas.
+- Indicadores superiores con el estilo del dashboard. Diseño adaptable a móvil y nombres largos, conservando formularios, permisos y acciones.
+- Solo presentación: no requiere SQL adicional ni reinstalar la APK.
+
 ## Web 2.5.20 · 9 de noviembre de 2026
 
 - Inventario físico: navegación unificada, menos acciones repetidas, artículo preseleccionado al solicitar entradas y salidas. Servicios del inventario anterior retirado de menús y suspendido, sin borrar catálogo ni históricos.

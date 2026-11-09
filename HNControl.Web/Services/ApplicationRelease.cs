@@ -3,9 +3,14 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.20";
+    public const string Version = "2.5.21";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.21", new DateOnly(2026, 11, 9), "Tarjetas de empleados", new[]
+        {
+            new ReleaseChange("Diseño", "Tarjetas alineadas al panel: identidad y estado, sueldo mensual y comisión separados, acceso a ficha y acciones ordenadas. Adaptación a móvil y nombres largos."),
+            new ReleaseChange("Compatibilidad", "Cambio visual; conserva permisos y acciones. Sin SQL adicional ni actualización de APK.")
+        }),
         new ReleaseNote("2.5.20", new DateOnly(2026, 11, 9), "Almacén, cotizador público y comisiones", new[]
         {
             new ReleaseChange("Inventario físico", "Almacén, Admin stock y Aprobaciones con navegación unificada. Retirado el módulo antiguo de servicios; se conservan sus datos. Entrada/salida con artículo preseleccionado."),

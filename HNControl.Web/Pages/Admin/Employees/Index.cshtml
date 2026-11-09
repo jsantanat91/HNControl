@@ -8,8 +8,6 @@
     var view = (Request.Query["view"].ToString() ?? "").Trim().ToLowerInvariant();
     var isTable = view == "table";
     var includeInactive = string.Equals(Request.Query["includeInactive"], "true", StringComparison.OrdinalIgnoreCase);
-    var empAccentPalette = new[] { "card-accent-blue", "card-accent-cyan", "card-accent-purple", "card-accent-amber", "card-accent-green" };
-    var empAccentIndex = 0;
 }
 
 <link rel="stylesheet" href="~/css/hn-people.css" asp-append-version="true" />
@@ -42,10 +40,10 @@
 
 <div class="row g-3 mb-3">
     <div class="col-md-6 col-xl-3">
-        <div class="card hn-employee-stat hn-employee-stat-blue"><div class="card-body"><div class="text-muted small">Total empleados</div><div class="fs-4 fw-bold">@total</div></div></div>
+        <div class="card hn-kpi-card"><div class="card-body"><div class="text-muted small"><i class="bi bi-people" aria-hidden="true"></i>Total empleados</div><div class="fs-3 fw-bold">@total</div></div></div>
     </div>
     <div class="col-md-6 col-xl-3">
-        <div class="card hn-employee-stat hn-employee-stat-teal"><div class="card-body"><div class="text-muted small">Sueldo promedio</div><div class="fs-4 fw-bold">@avgSalary.ToString("C")</div></div></div>
+        <div class="card hn-kpi-card"><div class="card-body"><div class="text-muted small"><i class="bi bi-wallet2" aria-hidden="true"></i>Sueldo mensual promedio</div><div class="fs-3 fw-bold">@avgSalary.ToString("C")</div></div></div>
     </div>
 </div>
 
@@ -58,54 +56,49 @@ else if (!isTable)
     <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3 hn-people-grid">
         @foreach (var r in Model.Rows)
         {
-            var accentClass = empAccentPalette[empAccentIndex % empAccentPalette.Length];
-            empAccentIndex++;
             var initials = string.Join("", (r.FullName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x.Substring(0, 1))).ToUpperInvariant();
             var photoUrl = Url.Page("/Admin/Employees/Details", "Photo", new { userId = r.UserId });
             <div class="col d-flex">
-                <div class="card shadow-soft hn-hover w-100 hn-emp-card @accentClass">
+                <div class="card w-100 hn-person-card">
                     <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-start gap-3">
+                        <div class="hn-person-card-top">
+                            <span class="hn-person-number">@(string.IsNullOrWhiteSpace(r.EmployeeNumber) ? "Empleado" : r.EmployeeNumber)</span>
+                            <span class="hn-person-status @(r.IsActive ? "is-active" : "is-inactive")"><span aria-hidden="true"></span>@(r.IsActive ? "Activo" : "Baja")</span>
+                        </div>
+                        <div class="hn-person-identity">
                             @if (r.HasPhoto)
                             {
-                                <img class="hn-emp-avatar-img" src="@photoUrl" alt="Foto @r.FullName" />
+                                <img class="hn-person-avatar" src="@photoUrl" alt="Foto @r.FullName" />
                             }
                             else
                             {
-                                <div class="hn-emp-avatar">@(string.IsNullOrWhiteSpace(initials) ? "EM" : initials)</div>
+                                <div class="hn-person-avatar" aria-hidden="true">@(string.IsNullOrWhiteSpace(initials) ? "EM" : initials)</div>
                             }
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="fw-bold fs-5 lh-sm">@r.FullName</div>
-                                <div class="text-muted small text-truncate">@r.Email</div>
-                                @if (!string.IsNullOrWhiteSpace(r.EmployeeNumber))
-                                {
-                                    <div class="mt-1"><span class="hn-badge hn-badge-blue">@r.EmployeeNumber</span></div>
-                                }
+                            <div class="hn-person-name">
+                                <h2>@r.FullName</h2>
+                                <p>@(string.IsNullOrWhiteSpace(r.Position) ? "Sin puesto registrado" : r.Position)</p>
                             </div>
                         </div>
-
-                        <div class="mt-3 mb-3 small">
-                            <div><span class="text-muted">Puesto:</span> <span class="fw-semibold">@r.Position</span></div>
-                            <div class="mt-1"><span class="text-muted">Sueldo:</span> <span class="fw-bold">@r.SalaryBase.ToString("C")</span></div>
-                            <div class="mt-2"><span class="hn-badge @(r.CommissionEnabled ? "hn-badge-green" : "hn-badge-slate")">@(r.CommissionEnabled ? $"Comisión OS: {r.CommissionAmount:C2}" : "Sin comisión por orden")</span></div>
-                            @if (r.IsInventoryManager)
-                            {
-                                <div class="mt-2"><span class="hn-badge hn-badge-blue">Encargado de inventario</span></div>
-                            }
-                            <div class="mt-2">
-                                @if (r.IsActive)
-                                {
-                                    <span class="hn-badge hn-badge-green">Activo</span>
-                                }
-                                else
-                                {
-                                    <span class="hn-badge hn-badge-red">Baja</span>
-                                }
+                        <div class="hn-person-email"><i class="bi bi-envelope" aria-hidden="true"></i><span>@r.Email</span></div>
+                        <dl class="hn-person-metrics">
+                            <div>
+                                <dt><i class="bi bi-wallet2" aria-hidden="true"></i>Sueldo mensual</dt>
+                                <dd>@r.SalaryBase.ToString("C2")</dd>
+                                <small>Base registrada</small>
                             </div>
-                        </div>
+                            <div class="@(r.CommissionEnabled ? "has-commission" : "")">
+                                <dt><i class="bi bi-clipboard-check" aria-hidden="true"></i>Comisión por orden</dt>
+                                <dd class="@(!r.CommissionEnabled ? "is-disabled" : "")">@(r.CommissionEnabled ? r.CommissionAmount.ToString("C2") : "Desactivada")</dd>
+                                <small>@(r.CommissionEnabled ? "Por cada orden finalizada" : "Sin bono por orden")</small>
+                            </div>
+                        </dl>
+                        @if (r.IsInventoryManager)
+                        {
+                            <div class="hn-person-responsibility"><i class="bi bi-box-seam" aria-hidden="true"></i>Encargado de inventario</div>
+                        }
 
-                        <div class="hn-employee-card-actions mt-auto pt-3 d-flex flex-wrap gap-2">
-                            <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
+                        <div class="hn-person-card-actions mt-auto d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm hn-person-open" asp-page="./Details" asp-route-userId="@r.UserId">Ver ficha<i class="bi bi-arrow-up-right ms-2" aria-hidden="true"></i></a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
                             @if (Model.CanResetPasswords)
                             {
@@ -116,7 +109,7 @@ else if (!isTable)
                                         data-user-name="@r.FullName"
                                         data-user-email="@r.Email"
                                         data-bs-toggle="modal"
-                                        data-bs-target="#resetPasswordModal">Password</button>
+                                        data-bs-target="#resetPasswordModal" title="Cambiar contraseña" aria-label="Cambiar contraseña de @r.FullName"><i class="bi bi-key" aria-hidden="true"></i></button>
                             }
                             @if (r.IsActive)
                             {
