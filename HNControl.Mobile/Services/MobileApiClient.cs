@@ -207,12 +207,15 @@ public sealed class MobileApiClient
 
         return statusCode switch
         {
+            502 or 503 or 504 => $"El servidor de HN Control no está disponible (HTTP {statusCode}). Intenta más tarde o informa a Administración. No es un rechazo de tu usuario o contraseña.",
+            500 => "El servidor de HN Control tuvo un error interno (HTTP 500). Informa a Administración para revisar el servicio.",
+            429 => "Hay demasiados intentos en este momento (HTTP 429). Espera unos minutos antes de volver a intentar.",
             401 => "No autorizado. Verifica tu usuario y password.",
             403 => "Tu cuenta no tiene permiso para esta operación. Solicita acceso a tu administrador.",
             404 => "No se encontro el recurso solicitado.",
             413 => "El archivo excede el tamaño permitido por el servidor.",
             409 => "Conflicto de datos en la operacion.",
-            _ => "Error de comunicacion con la API."
+            _ => $"No se pudo completar la solicitud a HN Control (HTTP {statusCode}). Informa este código a Administración."
         };
     }
 }

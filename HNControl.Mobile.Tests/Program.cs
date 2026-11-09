@@ -62,7 +62,7 @@ Check(OrderPresentation.Filter(data, "all", " norte ").SequenceEqual([mine]), "S
 Check(OrderPresentation.Filter(data, "all", "missing").Count == 0, "Search empty state");
 Check(mine.AssignmentLabel == "Asignada a ti", "Assigned order has explicit ownership");
 
-foreach (var (status, expected) in new[] { (403, "permiso"), (413, "tamaño"), (409, "Conflicto") })
+foreach (var (status, expected) in new[] { (403, "permiso"), (413, "tamaño"), (409, "Conflicto"), (502, "servidor"), (503, "HTTP 503"), (504, "HTTP 504"), (500, "error interno"), (429, "Espera") })
 {
     handler.Status = (HttpStatusCode)status;
     handler.Body = "";

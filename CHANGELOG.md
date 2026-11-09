@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## APK 2.1.1 · 9 de noviembre de 2026
+
+- Mensajes específicos para indisponibilidad del servidor (502/503/504), errores internos (500) y exceso de solicitudes (429). Incluyen el estado HTTP para diagnóstico.
+- No modifica autenticación ni permisos; un servidor fuera de servicio debe recuperarse independientemente de esta actualización móvil.
+
+
 ## 2.5.15 · 9 de noviembre de 2026
 
 - APK 2.1.0: Inventario Servicios, filtros por cliente/proveedor, detalle técnico de solo lectura y login azul renovado.
