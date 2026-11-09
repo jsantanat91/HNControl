@@ -83,6 +83,13 @@ session.Set(new() { Token = "expired", ExpiresAtUtc = DateTime.UtcNow.AddSeconds
 Check(!session.IsLoggedIn, "Expired token cannot restore session");
 session.Clear();
 Check(!session.IsLoggedIn && session.Token == "", "Logout clears session");
+var inventoryRow = new ServiceInventoryRow { SupportPhone = "+52 (55) 2601-4566", ProviderAccountNumber = "ACC-456", AccountNumber = "LINEA-123" };
+Check(inventoryRow.SupportNumber == "+525526014566", "Support phone is normalized for the dialer");
+Check(inventoryRow.AccountSummary == "Cuenta: ACC-456", "Provider account is distinct from service line");
+inventoryRow.SupportPhone = "Online";
+Check(inventoryRow.SupportNumber == null, "Online support does not offer a phone call");
+inventoryRow.SupportPhone = "5526014566 / 5512345678";
+Check(inventoryRow.SupportNumber == null, "Multiple numbers are not silently merged into a wrong phone");
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class FakeHandler : HttpMessageHandler

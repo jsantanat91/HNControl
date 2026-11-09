@@ -1,4 +1,4 @@
-# HN Control móvil 2.1.1
+# HN Control móvil 2.2.0
 
 Aplicación .NET MAUI para Android, con el diseño visual de Somos Uno adaptado a HN Control. El servidor sigue siendo https://control.hubnet-solutions.net.
 
@@ -8,7 +8,7 @@ Aplicación .NET MAUI para Android, con el diseño visual de Somos Uno adaptado 
 - Mi dashboard: nómina quincenal, neto, bonos, deducciones, historial de importes y variable, calificaciones KPI, comentarios de RH, resultados 360 publicados, vacaciones y capacitación.
 - Viáticos: semanas, registro y edición de gastos, comprobantes, solicitud de anticipo mediante formulario de viaje y envío a revisión.
 
-- Inventario de Servicios: consulta de equipos y datos técnicos con filtros combinables por cliente y proveedor, paginación y actualización. Acceso de solo lectura para Employee, Admin y SuperAdmin; sin credenciales de proveedores ni costos internos.
+- Inventario de Servicios: consulta de equipos y datos técnicos con filtros combinables por cliente y proveedor, paginación y actualización. Acceso de solo lectura para Employee, Admin y SuperAdmin; cuenta vinculada, referencias, costo y notas; la contraseña se copia solo con permisos de administrador.
 
 La navegación ofrece estos cuatro módulos. Los permisos y las reglas de negocio permanecen en el servidor.
 
@@ -31,7 +31,7 @@ Ejecutar en PowerShell:
 
     .\HNControl.Mobile\Build-Apk.ps1
 
-El script utiliza .NET 10, Android SDK 36 y JDK 17 instalados en esta PC. Compila fuera de OneDrive en %LOCALAPPDATA%\HNControlBuild para evitar bloqueos de archivos temporales. Genera artifacts\entrega\HN-Control-2.1.1.apk y SHA256.txt.
+El script utiliza .NET 10, Android SDK 36 y JDK 17 instalados en esta PC. Compila fuera de OneDrive en %LOCALAPPDATA%\HNControlBuild para evitar bloqueos de archivos temporales. Genera artifacts\entrega\HN-Control-2.2.0.apk y SHA256.txt.
 
 La firma privada y su contraseña están en %LOCALAPPDATA%\HNControlSigning, con acceso restringido al usuario actual. Respaldar esa carpeta de forma segura: se necesita para firmar futuras actualizaciones. Nunca incorporarla al repositorio ni distribuirla con la APK.
 
@@ -55,10 +55,14 @@ La app requiere conexión para consultar y guardar. No hay sincronización fuera
 
 ## Entrega 2.1.0 (9 de noviembre de 2026)
 
-Instalar artifacts/entrega/HN-Control-2.1.1.apk. Antes de consultar Servicios, desplegar web 2.5.15. Esta versión del servidor agrega firmas autógrafas de contratos y la migración AddContractProviderAutograph; si el usuario de la app no puede modificar tablas, aplicar HNControl.Web/Sql/20261109_contract_provider_autograph.sql con el propietario antes del deploy.
+Instalar artifacts/entrega/HN-Control-2.2.0.apk. Antes de consultar Servicios, desplegar web 2.5.15. Esta versión del servidor agrega firmas autógrafas de contratos y la migración AddContractProviderAutograph; si el usuario de la app no puede modificar tablas, aplicar HNControl.Web/Sql/20261109_contract_provider_autograph.sql con el propietario antes del deploy.
 
 APK Release firmada con la clave existente, versionCode 3. Datos de QA ficticios y servidor local solo en una copia separada; la entrega conserva https://control.hubnet-solutions.net.
 
 ## Corrección 2.1.1
 
 Los errores 500, 502, 503, 504 y 429 ahora muestran un mensaje específico y su código HTTP. Un 502 del servidor afecta al acceso web y a la APK; actualizar la APK no restaura un servidor detenido. Se requiere revisar el arranque del servicio y las migraciones del deploy. versionCode 4, misma firma de actualización.
+
+## Ficha de servicios 2.2.0
+
+Requiere API web 2.5.16 para consultar número de cuenta, línea, correo, costo, fechas y notas. No necesita migración SQL adicional. Ficha organizada en tarjetas con badges, copia de datos y botón para abrir el marcador; Starlink abre soporte web. Contraseña disponible solo mediante acción POST autorizada para administradores, nunca en el listado ni mostrada en pantalla. versionCode 5.

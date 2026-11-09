@@ -168,9 +168,22 @@ internal static class ServiceInventoryTests
         mobile.ControllerContext = new ControllerContext { HttpContext = mobileHttp };
         var mobileResult = (OkObjectResult)await mobile.List();
         var mobileJson = JsonSerializer.Serialize(mobileResult.Value);
-        check(!mobileJson.Contains(secret) && !mobileJson.Contains("Password") && !mobileJson.Contains("MonthlyCost"), "Consulta móvil no expone credenciales ni costos");
+        check(!mobileJson.Contains(secret) && !mobileJson.Contains("PasswordProtected") && !mobileJson.Contains(originalCipher), "Consulta móvil no expone contraseñas ni secretos cifrados");
+        using (var accountRows = JsonDocument.Parse(mobileJson))
+        {
+            var itemJson = accountRows.RootElement.GetProperty("Items").EnumerateArray().Single(x => x.GetProperty("Id").GetGuid() == item.Id);
+            check(itemJson.GetProperty("ProviderAccountNumber").GetString() == account.AccountNumber
+                && itemJson.GetProperty("AccountEmail").GetString() == account.Email
+                && !itemJson.GetProperty("CanCopyPassword").GetBoolean(), "Ficha móvil incluye cuenta y correo sin habilitar contraseñas a empleados");
+        }
         using (var filtered = JsonDocument.Parse(JsonSerializer.Serialize(((OkObjectResult)await mobile.List(carrier: "no-existe")).Value)))
             check(filtered.RootElement.GetProperty("Total").GetInt32() == 0, "Filtro móvil por proveedor se aplica en servidor");
+        check(await mobile.CopyPassword(item.Id, inventory) is ForbidResult, "Empleado no puede copiar contraseña de la cuenta desde la API");
+        mobileHttp.User = Principal(AppRoles.Admin);
+        var secretResult = (OkObjectResult)await mobile.CopyPassword(item.Id, inventory);
+        using (var secretJson = JsonDocument.Parse(JsonSerializer.Serialize(secretResult.Value)))
+            check(secretJson.RootElement.GetProperty("password").GetString() == secret, "Administrador puede copiar contraseña de la cuenta vinculada");
+        check(await mobile.CopyPassword(Guid.NewGuid(), inventory) is NotFoundObjectResult, "Copia móvil valida el servicio y su cuenta vinculada");
         mobileHttp.User = Principal(AppRoles.Seller);
         check(await mobile.List() is ForbidResult, "Consulta móvil rechaza roles sin autorización operativa");
         await RunProviderRulesAsync(check);

@@ -23,10 +23,18 @@ public class ServiceInventoryController(ApplicationDbContext db) : ControllerBas
         if (clientId.HasValue) query = query.Where(x => x.ClientId == clientId);
         if (!string.IsNullOrWhiteSpace(carrier)) query = query.Where(x => x.CarrierKey == carrier);
         var total = await query.CountAsync();
-        // Explicit projection: never return provider credentials, costs or internal notes.
+        var admin = AppRoles.IsGlobalAdmin(User);
+        // Account secrets are available only through the separate administrator-only action.
         var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * 50).Take(50)
             .Select(x => new { x.Id, x.Name, x.CarrierKey, x.OtherCarrierName,
                 Client = x.Client == null ? "Sin cliente asignado" : x.Client.ClientCode + " · " + x.Client.Name,
+                x.AccountId, x.AccountNumber, x.MonthlyCost, x.Notes, x.ContractMonths, x.ContractStartsOn,
+                AccountLabel = x.Account == null ? "" : x.Account.Label,
+                AccountEmail = x.Account == null ? "" : x.Account.Email,
+                ProviderAccountNumber = x.Account == null ? "" : x.Account.AccountNumber,
+                AccountNotes = x.Account == null ? "" : x.Account.Notes,
+                AccountIsActive = x.Account != null && x.Account.IsActive,
+                CanCopyPassword = admin && x.Account != null && x.Account.PasswordProtected != "",
                 x.PlanName, x.PlanType, x.DeliveryType, x.SpeedMbps, x.DeviceModel, x.SerialNumber,
                 KitNumber = x.CarrierKey == "starlink" ? x.KitNumber : "", x.PhysicalLocation,
                 x.IsActive, SupportPhone = x.CarrierKey == "starlink" ? "Online" : x.SupportPhone,
@@ -35,5 +43,17 @@ public class ServiceInventoryController(ApplicationDbContext db) : ControllerBas
             .OrderBy(c => c.Name).Select(c => new { Id = c.Id.ToString(), Label = c.ClientCode + " · " + c.Name }).ToListAsync();
         var carriers = ServiceInventoryCatalog.Carriers.Select(c => new { Id = c.Id, Label = c.Name });
         return Ok(new { Items = items, Clients = clients, Carriers = carriers, Total = total, Page = page });
+    }
+
+    [HttpPost("{id:guid}/account-password")]
+    public async Task<IActionResult> CopyPassword(Guid id, [FromServices] ServiceInventoryService inventory)
+    {
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        var accountId = await db.ServiceInventoryItems.AsNoTracking().Where(x => x.Id == id).Select(x => x.AccountId).SingleOrDefaultAsync();
+        if (!accountId.HasValue) return NotFound(new { message = "El servicio no tiene una cuenta vinculada." });
+        var password = await inventory.CopyPasswordAsync(accountId.Value, User);
+        return string.IsNullOrEmpty(password)
+            ? BadRequest(new { message = "La contraseña no está disponible. Revisa la cuenta y la clave de protección del servidor." })
+            : Ok(new { password });
     }
 }

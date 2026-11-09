@@ -50,21 +50,6 @@ public partial class ServiceInventoryPage : ContentPage
     {
         if (e.CurrentSelection.FirstOrDefault() is not ServiceInventoryRow row) return;
         ItemsView.SelectedItem = null;
-        var fields = new VerticalStackLayout { Spacing = 16, Padding = 22 };
-        fields.Add(new Label { Text = row.Name, FontSize = 26, FontAttributes = FontAttributes.Bold });
-        void Field(string label, string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return;
-            fields.Add(new VerticalStackLayout { Spacing = 4, Children = {
-                new Label { Text = label.ToUpperInvariant(), FontSize = 10, CharacterSpacing = 1, TextColor = Color.FromArgb("#69809E") },
-                new Label { Text = value, FontSize = 16, TextColor = Color.FromArgb("#10284A") } } });
-        }
-        Field("Proveedor / estado", row.Carrier + " · " + row.Status); Field("Cliente", row.Client);
-        Field("Plan", row.Summary); Field("Ubicación", row.PhysicalLocation); Field("Equipo", row.DeviceModel);
-        Field("Serie", row.SerialNumber); Field("Kit Starlink", row.KitNumber); Field("Soporte", row.SupportPhone);
-        Field("IP fija", row.FixedIp); Field("Máscara", row.SubnetMask); Field("Gateway", row.Gateway);
-        Field("DNS", row.Dns); Field("LAN", row.Lan); Field("DDNS", row.Ddns);
-        Field("Fin de contrato", row.ContractEndsOn?.ToString("dd/MM/yyyy"));
-        await Navigation.PushAsync(new ContentPage { Title = "Detalle del servicio", BackgroundColor = Color.FromArgb("#F3F7FC"), Content = new ScrollView { Content = fields } });
+        await Navigation.PushAsync(new ServiceInventoryDetailPage(row, _api));
     }
 }

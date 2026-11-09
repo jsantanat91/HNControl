@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.15";
+    public const string Version = "2.5.16";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.16", new DateOnly(2026, 11, 9), "Ficha completa de servicios en la APK", new[]
+        {
+            new ReleaseChange("Servicios", "Cuenta vinculada, correo, número de cuenta y línea, costo, plazo y notas disponibles en la consulta móvil."),
+            new ReleaseChange("Móvil 2.2.0", "Detalle con tarjetas y badges, copia de referencias y acceso al marcador o soporte online."),
+            new ReleaseChange("Acceso", "La contraseña de la cuenta se copia únicamente con permisos de administrador, mediante una acción independiente."),
+            new ReleaseChange("Publicación", "No requiere migraciones nuevas. Actualizar la API y la APK para ver los campos adicionales.")
+        }),
         new ReleaseNote("2.5.15", new DateOnly(2026, 11, 9), "Servicios móviles y firmas autógrafas", new[]
         {
             new ReleaseChange("Móvil", "API de consulta de Inventario Servicios para empleados y administradores, con filtros por cliente y proveedor. APK 2.1.0 con nuevo acceso visual."),

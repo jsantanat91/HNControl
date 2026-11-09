@@ -21,6 +21,18 @@ public sealed class ServiceInventoryRow
     public string CarrierKey { get; set; } = "";
     public string OtherCarrierName { get; set; } = "";
     public string Client { get; set; } = "";
+    public Guid? AccountId { get; set; }
+    public string AccountNumber { get; set; } = "";
+    public string AccountLabel { get; set; } = "";
+    public string AccountEmail { get; set; } = "";
+    public string ProviderAccountNumber { get; set; } = "";
+    public string AccountNotes { get; set; } = "";
+    public bool AccountIsActive { get; set; }
+    public bool CanCopyPassword { get; set; }
+    public decimal? MonthlyCost { get; set; }
+    public string Notes { get; set; } = "";
+    public int? ContractMonths { get; set; }
+    public DateOnly? ContractStartsOn { get; set; }
     public string PlanName { get; set; } = "";
     public string PlanType { get; set; } = "";
     public string DeliveryType { get; set; } = "";
@@ -39,6 +51,17 @@ public sealed class ServiceInventoryRow
     public string Ddns { get; set; } = "";
     public DateOnly? ContractEndsOn { get; set; }
     public string Status => IsActive ? "Activo" : "Inactivo";
+    public string AccountSummary => !string.IsNullOrWhiteSpace(ProviderAccountNumber) ? "Cuenta: " + ProviderAccountNumber
+        : !string.IsNullOrWhiteSpace(AccountNumber) ? "Servicio / línea: " + AccountNumber : "Cuenta: " + (AccountId.HasValue ? AccountLabel : "Sin vincular");
+    public string? SupportNumber
+    {
+        get
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(SupportPhone ?? "", @"^\+?[\d\s().-]+$")) return null;
+            var digits = new string((SupportPhone ?? "").Where(char.IsAsciiDigit).ToArray());
+            return digits.Length is >= 7 and <= 15 ? ((SupportPhone ?? "").TrimStart().StartsWith('+') ? "+" : "") + digits : null;
+        }
+    }
     public string Carrier => CarrierKey == "otro" ? OtherCarrierName : CarrierKey.ToUpperInvariant();
     public string Summary => string.Join(" · ", new[] { PlanName, PlanType, DeliveryType, SpeedMbps.HasValue ? $"{SpeedMbps:0.##} Mbps" : "" }.Where(x => !string.IsNullOrWhiteSpace(x)));
 }

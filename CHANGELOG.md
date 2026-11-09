@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## Web 2.5.16 / APK 2.2.0 · 9 de noviembre de 2026
+
+- Ficha móvil completa con cuenta vinculada, correo de acceso, referencias diferenciadas de cuenta y línea, costo, fechas y notas.
+- Tarjetas por sección y badges de proveedor, estado, plan y conexión; copiar datos y abrir marcador de soporte. Starlink conserva soporte online.
+- Copia de contraseña separada y restringida a administradores. Sin migración SQL nueva.
+
+
 ## APK 2.1.1 · 9 de noviembre de 2026
 
 - Mensajes específicos para indisponibilidad del servidor (502/503/504), errores internos (500) y exceso de solicitudes (429). Incluyen el estado HTTP para diagnóstico.
