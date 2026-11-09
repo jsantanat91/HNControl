@@ -1,7 +1,7 @@
 ﻿@page
 @model HNControl.Web.Pages.Public.QuoteSuccessModel
 @{
-    Layout = "_AuthLayout";
+    Layout = "_QuoteLayout";
     ViewData["Title"] = "Solicitud enviada";
 }
 
@@ -14,11 +14,11 @@
 
                 @if (Model.SentOk)
                 {
-                    <div class="alert alert-success">El PDF fue enviado a tu correo y tambien a nuestro equipo.</div>
+                    <div class="alert alert-success">Enviamos la cotización al correo que registraste. Nuestro equipo puede dar seguimiento a tu solicitud.</div>
                 }
                 else
                 {
-                    <div class="alert alert-warning">Se genero la solicitud, pero el envio de correo fallo. Nuestro equipo dara seguimiento con tu folio.</div>
+                    <div class="alert alert-warning">Tu solicitud quedó registrada, pero no pudimos confirmar el envío de correo. Conserva tu folio y descarga el PDF.</div>
                 }
 
                 <div class="d-flex gap-2 flex-wrap">
@@ -26,7 +26,7 @@
                     {
                         <a class="btn btn-outline-primary" asp-page="./QuoteSuccess" asp-page-handler="Download" asp-route-id="@Model.Id">Descargar PDF</a>
                     }
-                    <a class="btn btn-primary" asp-page="/Public/Quote">Nueva cotizacion</a>
+                    <a class="btn btn-primary" asp-page="/Public/Quote">Nueva cotización</a>
                 </div>
             </div>
         </div>

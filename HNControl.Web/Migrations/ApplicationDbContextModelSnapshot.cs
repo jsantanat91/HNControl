@@ -1125,6 +1125,9 @@ namespace HNControl.Web.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<Guid?>("SourceServiceOrderId").HasColumnType("uuid");
+                    b.HasIndex("SourceServiceOrderId").IsUnique();
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "IsActive", "StartDate", "EndDate");
@@ -1262,6 +1265,9 @@ namespace HNControl.Web.Migrations
                     b.Property<string>("Rfc")
                         .HasMaxLength(13)
                         .HasColumnType("character varying(13)");
+
+                    b.Property<bool>("ServiceOrderCommissionEnabled").HasColumnType("boolean");
+                    b.Property<decimal>("ServiceOrderCommissionAmount").HasPrecision(18, 2).HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("SalaryBase")
                         .HasColumnType("numeric(12,2)");

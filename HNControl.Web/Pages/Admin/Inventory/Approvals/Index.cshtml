@@ -1,54 +1,34 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Inventory.Approvals.IndexModel
 @using System
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Aprobaciones pendientes";
+    ViewData["Title"] = "Aprobaciones";
 
     string tabCls(string key) => string.Equals((Model.Filter ?? "pending"), key, StringComparison.OrdinalIgnoreCase)
-        ? "btn btn-primary"
-        : "btn btn-outline-secondary";
+        ? "hn-tab-link active"
+        : "hn-tab-link";
 }
+
+<partial name="_InventoryNav" />
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Aprobaciones pendientes</h1>
+        <h1 class="h4 mb-0">Aprobaciones</h1>
         <div class="text-muted small">Flujo por orden con vista completa: pendientes, aprobadas, rechazadas y en proceso.</div>
     </div>
 
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Admin Stock</a>
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Movements/Index">Movimientos</a>
-        <a class="btn btn-outline-secondary" asp-page="/Inventory/Index">Vista (empleados)</a>
-    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Movements/Index">Historial de movimientos</a>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-12 col-md-3">
-        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Pendientes</div><div class="h3 mb-0">@Model.PendingCount</div></div></div>
-    </div>
-    <div class="col-12 col-md-3">
-        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">En proceso</div><div class="h3 mb-0 text-primary">@Model.InProcessCount</div></div></div>
-    </div>
-    <div class="col-12 col-md-3">
-        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Aprobadas</div><div class="h3 mb-0 text-success">@Model.ApprovedCount</div></div></div>
-    </div>
-    <div class="col-12 col-md-3">
-        <div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Rechazadas</div><div class="h3 mb-0 text-danger">@Model.RejectedCount</div></div></div>
-    </div>
-</div>
-
-<div class="card shadow-soft hn-hover mb-3">
-    <div class="card-body d-flex flex-wrap gap-2">
-        <a class="@tabCls("pending")" asp-page="./Index" asp-route-filter="pending">Pendientes</a>
-        <a class="@tabCls("inprocess")" asp-page="./Index" asp-route-filter="inprocess">En proceso</a>
-        <a class="@tabCls("approved")" asp-page="./Index" asp-route-filter="approved">Aprobadas</a>
-        <a class="@tabCls("rejected")" asp-page="./Index" asp-route-filter="rejected">Rechazadas</a>
-        <a class="@tabCls("all")" asp-page="./Index" asp-route-filter="all">Todas</a>
-    </div>
-</div>
-
+<nav class="hn-context-tabs mb-4" aria-label="Estado de solicitudes">
+    <a class="@tabCls("pending")" asp-route-filter="pending">Pendientes <span class="badge text-bg-warning">@Model.PendingCount</span></a>
+    <a class="@tabCls("inprocess")" asp-route-filter="inprocess">En proceso <span class="badge text-bg-light">@Model.InProcessCount</span></a>
+    <a class="@tabCls("approved")" asp-route-filter="approved">Aprobadas <span class="badge text-bg-success">@Model.ApprovedCount</span></a>
+    <a class="@tabCls("rejected")" asp-route-filter="rejected">Rechazadas <span class="badge text-bg-light">@Model.RejectedCount</span></a>
+    <a class="@tabCls("all")" asp-route-filter="all">Todas</a>
+</nav>
 @if (!Model.Orders.Any())
 {
     <div class="alert alert-light border">No hay ordenes en este filtro.</div>

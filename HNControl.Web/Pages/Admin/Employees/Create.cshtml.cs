@@ -63,6 +63,9 @@ public class CreateModel : PageModel
 
         [Range(0, 9999999)] public decimal SalaryBase { get; set; }
 
+        public bool ServiceOrderCommissionEnabled { get; set; }
+        [Range(0, 9999999)] public decimal ServiceOrderCommissionAmount { get; set; }
+
         [Range(0, 60)] public int VacationAllowanceDays { get; set; } = 12;
 
         [Required]
@@ -109,6 +112,8 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (Input.ServiceOrderCommissionEnabled && Input.ServiceOrderCommissionAmount <= 0)
+            ModelState.AddModelError("Input.ServiceOrderCommissionAmount", "Indica un importe mayor a cero para activar la comisión.");
         if (!ModelState.IsValid)
         {
             NextEmployeeNumberPreview = await NextEmployeeNumberAsync();
@@ -174,6 +179,8 @@ public class CreateModel : PageModel
             BirthDate = Input.BirthDate,
             HireDate = Input.HireDate,
             SalaryBase = Input.SalaryBase,
+            ServiceOrderCommissionEnabled = Input.ServiceOrderCommissionEnabled,
+            ServiceOrderCommissionAmount = Math.Round(Input.ServiceOrderCommissionAmount, 2),
             VacationAllowanceDays = vacDays,
             CreatedAt = DateTime.UtcNow
         });

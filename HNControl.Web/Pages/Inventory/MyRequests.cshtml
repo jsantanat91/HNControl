@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Inventory.MyRequestsModel
 @using System
 @using HNControl.Web.Models
@@ -13,6 +13,8 @@
         ? "btn btn-primary"
         : "btn btn-outline-secondary";
 }
+
+<partial name="_InventoryNav" />
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>

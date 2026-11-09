@@ -29,6 +29,7 @@ public sealed class ModuleAvailability(IConfiguration configuration)
     {
         var path = new PathString((value ?? "").Split('?', '#')[0].TrimEnd('/'));
         bool Under(string prefix) => path.StartsWithSegments(prefix, StringComparison.OrdinalIgnoreCase);
+        if (Under("/Admin/Inventory/Services")) return false; // Retired duplicate; preserve catalog records.
         if (Under("/Knowledge") || Under("/Admin/Knowledge") || Under("/api/mobile/modules/knowledge")) return DocumentsEnabled;
         if (Under("/Monitoring") || Under("/Admin/Monitoring") || Under("/api/mobile/modules/monitoring")) return MonitoringEnabled;
         if (Under("/Exams") || Under("/Admin/Exams") || Under("/api/mobile/modules/exams")) return ExamsEnabled;

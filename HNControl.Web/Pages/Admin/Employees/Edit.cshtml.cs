@@ -62,6 +62,9 @@ public class EditModel : PageModel
 
         [Required, EmailAddress] public string Email { get; set; } = "";
         [Range(0, 99999999)] public decimal SalaryBase { get; set; }
+        public bool ServiceOrderCommissionEnabled { get; set; }
+        [Range(0, 9999999)] public decimal ServiceOrderCommissionAmount { get; set; }
+
         [Range(0, 60)] public int VacationAllowanceDays { get; set; } = 12;
 
         [Required]
@@ -108,6 +111,8 @@ public class EditModel : PageModel
             BirthDate = Employee.BirthDate,
             HireDate = Employee.HireDate,
             SalaryBase = Employee.SalaryBase,
+            ServiceOrderCommissionEnabled = Employee.ServiceOrderCommissionEnabled,
+            ServiceOrderCommissionAmount = Employee.ServiceOrderCommissionAmount,
             VacationAllowanceDays = Employee.VacationAllowanceDays,
             Email = email,
             AppRole = appRole,
@@ -155,6 +160,10 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (Input.ServiceOrderCommissionEnabled && Input.ServiceOrderCommissionAmount <= 0)
+            ModelState.AddModelError("Input.ServiceOrderCommissionAmount", "Indica un importe mayor a cero para activar la comisión.");
+        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == Input.UserId);
+        if (Employee == null) return NotFound();
         if (!ModelState.IsValid)
         {
             // ✅ Vacaciones automático por LFT (según fecha de ingreso)
@@ -191,6 +200,8 @@ public class EditModel : PageModel
         Employee.BirthDate = Input.BirthDate;
         Employee.HireDate = Input.HireDate;
         Employee.SalaryBase = Input.SalaryBase;
+        Employee.ServiceOrderCommissionEnabled = Input.ServiceOrderCommissionEnabled;
+        Employee.ServiceOrderCommissionAmount = Math.Round(Input.ServiceOrderCommissionAmount, 2);
         // ✅ Vacaciones automático por LFT (según fecha de ingreso)
         var vacDays2 = (Input.HireDate != null)
             ? VacationPolicyMxLft.GetAnnualVacationDays(Input.HireDate, DateTime.Now.Date)

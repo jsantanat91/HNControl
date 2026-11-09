@@ -44,11 +44,13 @@ public class RequestInModel : PageModel
         public List<LineInput> Lines { get; set; } = new() { new LineInput() };
     }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(Guid? itemId)
     {
         await LoadItemsAsync();
         if (Input.Lines == null || Input.Lines.Count == 0)
             Input.Lines = new List<LineInput> { new LineInput() };
+        if (itemId.HasValue && ItemOptions.Any(x => x.Value == itemId.Value.ToString()))
+            Input.Lines[0].ItemId = itemId.Value;
     }
 
     public async Task<IActionResult> OnPostAsync()

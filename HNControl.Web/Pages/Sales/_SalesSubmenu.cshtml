@@ -1,4 +1,4 @@
-﻿@inject HNControl.Web.Services.IActionAccessService ActionAccess
+@inject HNControl.Web.Services.IActionAccessService ActionAccess
 @{
     var path = (Context?.Request?.Path.Value ?? "").ToLowerInvariant();
     var isQuotesActive = path.StartsWith("/admin/quotes/requests") || path.StartsWith("/ventas/cotizaciones");
@@ -17,7 +17,7 @@
 
     string Tab(string href)
     {
-        var active = path.StartsWith(href.ToLowerInvariant()) ? "active" : "";
+        var active = (href.Equals("/ventas", StringComparison.OrdinalIgnoreCase) ? path.TrimEnd('/') == "/ventas" || path == "/sales/dashboard" : path.StartsWith(href.ToLowerInvariant())) ? "active" : "";
         return $"hn-tab-link {active}";
     }
 }
@@ -25,13 +25,13 @@
 <nav class="hn-context-tabs" aria-label="Subm&oacute;dulos de ventas">
         @if (canDashboard)
         {
-            <a href="/Ventas" class="@Tab("/ventas")"><i class="bi bi-speedometer2 hn-tab-icon"></i> Dashboard</a>
+            <a href="/Ventas" class="@Tab("/ventas")"><i class="bi bi-speedometer2 hn-tab-icon"></i> Resumen</a>
         }
         @if (canProspects)
         {
-            <a href="/Ventas/Prospectos" class="@Tab("/ventas/prospectos")"><i class="bi bi-person-plus hn-tab-icon"></i> Prospecto</a>
+            <a href="/Ventas/Prospectos" class="@Tab("/ventas/prospectos")"><i class="bi bi-person-plus hn-tab-icon"></i> Prospectos</a>
         }
-        @if (HNControl.Web.Models.AppRoles.IsGlobalAdmin(User) && canQuotes)
+        @if (canQuotes && !canMyQuotes)
         {
             <a href="/Ventas/Cotizaciones" class="hn-tab-link @(isQuotesActive ? "active" : "")"><i class="bi bi-file-earmark-text hn-tab-icon"></i> Cotizaci&oacute;n</a>
         }
@@ -41,7 +41,7 @@
         }
         @if (canWorkflow)
         {
-            <a href="/Ventas/Workflow" class="@Tab("/ventas/workflow")"><i class="bi bi-kanban hn-tab-icon"></i> Workflow</a>
+            <a href="/Ventas/Workflow" class="@Tab("/ventas/workflow")"><i class="bi bi-kanban hn-tab-icon"></i> Seguimiento</a>
         }
         @if (canGestion)
         {
@@ -60,3 +60,15 @@
             <a href="/Admin/Quotes/Catalog" class="hn-tab-link @(isCatalogActive ? "active" : "")"><i class="bi bi-grid hn-tab-icon"></i> Cat&aacute;logo</a>
         }
 </nav>
+
+<div class="hn-sales-actions mb-4">
+    <div><strong>De la consulta a la venta.</strong><div class="text-muted small">Cotiza, comparte y da seguimiento desde un solo lugar.</div></div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (await ActionAccess.HasActionAsync(User, HNControl.Web.Models.AppActions.SalesQuotesManage))
+        { <a href="/cotizar" class="btn btn-primary">+ Nueva cotización</a> }
+        <a class="btn btn-outline-primary" href="/cotizar?public=true" target="_blank" rel="noopener">Ver cotizador público</a>
+        <button class="btn btn-outline-secondary" type="button" data-copy-quote-link>Copiar enlace público</button>
+    </div>
+</div>
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<script src="~/js/quote-share.js" asp-append-version="true" defer></script>

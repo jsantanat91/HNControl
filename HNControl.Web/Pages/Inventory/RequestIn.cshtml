@@ -5,6 +5,8 @@
     ViewData["Title"] = "Solicitar entrada";
 }
 
+<partial name="_InventoryNav" />
+
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">Solicitar entrada</h1>
@@ -15,6 +17,7 @@
 
 <form method="post" class="card">
     <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger mb-3" role="alert"></div>
         <div class="row g-3">
             <div class="col-12">
                 <label class="form-label">Notas generales (opcional)</label>
@@ -63,7 +66,7 @@
                                 <input class="form-control" name="Input.Lines[@i].Notes" value="@Model.Input.Lines[i].Notes" />
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button">X</button>
+                                <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button" aria-label="Quitar artículo">×</button>
                             </td>
                         </tr>
                     }
@@ -102,7 +105,7 @@
             <input class="form-control" name="Input.Lines[__i__].Notes" />
         </td>
         <td class="text-end">
-            <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button">X</button>
+            <button class="btn btn-sm btn-outline-danger removeRowBtn" type="button" aria-label="Quitar artículo">×</button>
         </td>
     </tr>
 </template>

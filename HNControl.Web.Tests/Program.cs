@@ -5,6 +5,14 @@ using HNControl.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
+if (args.FirstOrDefault() == "--operations")
+{
+    var checks = 0;
+    await OperationsFlowTests.RunAsync((ok, label) => { if (!ok) throw new Exception("FAIL: " + label); checks++; Console.WriteLine("PASS: " + label); });
+    Console.WriteLine($"All {checks} operations checks passed.");
+    return;
+}
+
 var root = Path.GetFullPath(args.FirstOrDefault() ?? "HNControl.Web");
 var service = new TemplateDocxService(new TestEnvironment(root));
 var client = new Client { Name = "Cliente de prueba", LegalRepresentative = "Representante de prueba" };
@@ -83,6 +91,7 @@ await ServiceOrderEditBindingTests.RunAsync(Check);
 await ServiceOrderReportTests.RunAsync(root, Check);
 await ServiceOrderReportEmailTests.RunAsync(Check);
 await OrderDeliveryTests.RunAsync(Check);
+await OperationsFlowTests.RunAsync(Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
 EventDeliveryDesignTests.Run(service, Check);

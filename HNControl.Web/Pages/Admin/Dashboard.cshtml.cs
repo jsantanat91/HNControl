@@ -44,8 +44,6 @@ public class DashboardModel : PageModel
         int ExamsToGrade,
         int PendingInventoryOrders,
         int LowStockItems,
-        int OpenTickets,
-        int TicketSlaBreached,
         int QuotesAcceptedMonth,
         decimal QuotesRevenueMonth
     );
@@ -63,7 +61,7 @@ public class DashboardModel : PageModel
         bool IsPaid,
         DateTime? PaidAt);
 
-    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0m);
+    public KpiVm Kpi { get; set; } = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0m);
     public List<TopVm> Top { get; set; } = new();
     public List<PayrollSummaryVm> PayrollRows { get; set; } = new();
 
@@ -76,8 +74,6 @@ public class DashboardModel : PageModel
     public string InvOutValuesJson { get; set; } = "[]";
     public string QuoteSalesLabelsJson { get; set; } = "[]";
     public string QuoteSalesValuesJson { get; set; } = "[]";
-    public string TicketsClosedLabelsJson { get; set; } = "[]";
-    public string TicketsClosedValuesJson { get; set; } = "[]";
     public string TopVarLabelsJson { get; set; } = "[]";
     public string TopVarValuesJson { get; set; } = "[]";
 
@@ -142,17 +138,6 @@ public class DashboardModel : PageModel
             .CountAsync();
 
         var now = DateTime.UtcNow;
-        var openTickets = await _db.Tickets
-            .Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled)
-            .CountAsync();
-
-        var ticketSlaBreached = await _db.Tickets
-            .Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.Cancelled)
-            .Where(t => t.SlaBreachedResponse || t.SlaBreachedResolution
-                        || (t.FirstResponseAt == null && t.SlaResponseDueAt < now)
-                        || (t.ResolvedAt == null && t.SlaResolutionDueAt < now))
-            .CountAsync();
-
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var monthEnd = monthStart.AddMonths(1);
 
@@ -179,8 +164,6 @@ public class DashboardModel : PageModel
             examsToGrade,
             pendingInvOrders,
             lowStockItems,
-            openTickets,
-            ticketSlaBreached,
             quotesAcceptedMonth,
             quotesRevenueMonth);
 
@@ -264,16 +247,6 @@ public class DashboardModel : PageModel
         QuoteSalesLabelsJson = JsonSerializer.Serialize(salesLabels);
         QuoteSalesValuesJson = JsonSerializer.Serialize(salesValues);
 
-        var ticketsClosed = await _db.Tickets
-            .AsNoTracking()
-            .Where(t => t.ClosedAt.HasValue && t.ClosedAt.Value.Date >= chartStart)
-            .GroupBy(t => t.ClosedAt!.Value.Date)
-            .Select(g => new { Day = g.Key, Cnt = g.Count() })
-            .ToListAsync();
-
-        var closedValues = days.Select(d => ticketsClosed.FirstOrDefault(x => x.Day == d)?.Cnt ?? 0).ToList();
-        TicketsClosedLabelsJson = JsonSerializer.Serialize(labels);
-        TicketsClosedValuesJson = JsonSerializer.Serialize(closedValues);
     }
 
         public async Task<IActionResult> OnGetPayrollPhotoAsync(string userId)
@@ -542,13 +515,7 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
     {
         try
         {
-            var active = await _db.EmployeeDeductions
-                .AsNoTracking()
-                .Where(d => d.UserId == userId && d.IsActive)
-                .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
-                .ToListAsync();
-
-            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
+            var result = await PayrollAdjustmentResolver.CalculateAsync(_db, userId, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
             return (result.deductions, result.bonuses);
         }
         catch

@@ -1,0 +1,1 @@
+(() => { const toggle = document.getElementById('commissionToggle'); const wrap = document.getElementById('commissionAmountWrap'); if(!toggle || !wrap)return; const sync = () => { wrap.hidden = !toggle.checked; }; toggle.addEventListener('change',sync); sync(); })();

@@ -12,6 +12,7 @@
     var empAccentIndex = 0;
 }
 
+<link rel="stylesheet" href="~/css/hn-people.css" asp-append-version="true" />
 <div class="hn-employee-heading">
     <div>
         <h1 class="h4 m-0">Empleados</h1>
@@ -54,7 +55,7 @@
 }
 else if (!isTable)
 {
-    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3 hn-people-grid">
         @foreach (var r in Model.Rows)
         {
             var accentClass = empAccentPalette[empAccentIndex % empAccentPalette.Length];
@@ -86,6 +87,7 @@ else if (!isTable)
                         <div class="mt-3 mb-3 small">
                             <div><span class="text-muted">Puesto:</span> <span class="fw-semibold">@r.Position</span></div>
                             <div class="mt-1"><span class="text-muted">Sueldo:</span> <span class="fw-bold">@r.SalaryBase.ToString("C")</span></div>
+                            <div class="mt-2"><span class="hn-badge @(r.CommissionEnabled ? "hn-badge-green" : "hn-badge-slate")">@(r.CommissionEnabled ? $"Comisión OS: {r.CommissionAmount:C2}" : "Sin comisión por orden")</span></div>
                             @if (r.IsInventoryManager)
                             {
                                 <div class="mt-2"><span class="hn-badge hn-badge-blue">Encargado de inventario</span></div>

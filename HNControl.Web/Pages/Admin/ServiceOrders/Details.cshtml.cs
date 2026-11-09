@@ -165,8 +165,8 @@ public class DetailsModel : PageModel
         Order.Status = ServiceOrderStatus.Finalized;
         Order.FinalizedAt = DateTime.UtcNow;
 
-        // ✅ Guardamos primero para que el PDF refleje status/notes actuales.
-        await _db.SaveChangesAsync();
+        // Status and commission are persisted atomically before generating the PDF.
+        await ServiceOrderCommissionService.FinalizeAsync(_db, Order, DateTime.UtcNow);
 
         // ✅ Siempre regenerar PDF al aprobar (evita PDF viejo sin notas de checklist).
         var bytes = await _pdf.RenderAsync(Order);

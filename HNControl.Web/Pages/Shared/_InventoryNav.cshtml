@@ -1,0 +1,16 @@
+@using HNControl.Web.Models
+@{
+    var path = Context.Request.Path.Value ?? "";
+    var admin = AppRoles.IsGlobalAdmin(User) || User.IsInRole(AppRoles.InventoryManager);
+    string Active(string prefix) => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<nav class="hn-context-tabs hn-inventory-nav" aria-label="Inventario físico">
+    <a class="hn-tab-link @Active("/Inventory/Index")" asp-page="/Inventory/Index"><i class="bi bi-box-seam"></i> Almacén</a>
+    <a class="hn-tab-link @Active("/Inventory/MyRequests")" asp-page="/Inventory/MyRequests"><i class="bi bi-arrow-left-right"></i> Mis solicitudes</a>
+    @if (admin)
+    {
+        <a class="hn-tab-link @Active("/Admin/Inventory/Items")" asp-page="/Admin/Inventory/Items/Index"><i class="bi bi-boxes"></i> Admin stock</a>
+        <a class="hn-tab-link @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-check2-square"></i> Aprobaciones</a>
+    }
+</nav>

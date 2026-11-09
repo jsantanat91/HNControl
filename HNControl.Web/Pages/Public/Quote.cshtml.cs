@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
+using System.Net;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -10,6 +12,8 @@ using System.Security.Claims;
 
 namespace HNControl.Web.Pages.Public;
 
+[AllowAnonymous]
+[Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("public-quotes")]
 public class QuoteModel : PageModel
 {
     private readonly ApplicationDbContext _db;
@@ -42,6 +46,8 @@ public class QuoteModel : PageModel
     public string ClientName { get; set; } = string.Empty;
     public List<ProspectOptionVm> ProspectOptions { get; set; } = [];
     public Dictionary<Guid, List<ContactOptionVm>> ClientContactsPayload { get; set; } = new();
+    public bool IsInternal { get; private set; }
+    [BindProperty(SupportsGet = true, Name = "public")] public bool PublicMode { get; set; }
     public bool IsEditMode { get; set; }
     public string EditFolio { get; set; } = string.Empty;
     public string InitialManualLinesJson { get; set; } = "[]";
@@ -61,8 +67,8 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string? token, Guid? editId)
     {
-        if (!await CanUseInternalQuoteAsync(requireCreate: false))
-            return RedirectToPage("/Account/Login");
+        IsInternal = !PublicMode && await CanUseInternalQuoteAsync(requireCreate: false);
+        if (!IsInternal && editId.HasValue) return Forbid();
 
         EditId = editId;
         Input.ClientToken = token;
@@ -75,8 +81,8 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnPostPreviewAsync()
     {
-        if (!await CanUseInternalQuoteAsync(requireCreate: true))
-            return RedirectToPage("/Account/Login");
+        IsInternal = !PublicMode && await CanUseInternalQuoteAsync(requireCreate: true);
+        if (!IsInternal) return Forbid();
 
         var build = await BuildRequestFromInputAsync(isPreview: true);
         if (build.error != null || build.request == null)
@@ -92,8 +98,17 @@ public class QuoteModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await CanUseInternalQuoteAsync(requireCreate: true))
-            return RedirectToPage("/Account/Login");
+        IsInternal = !PublicMode && await CanUseInternalQuoteAsync(requireCreate: true);
+        if (!IsInternal && Input.EditQuoteId.HasValue) return Forbid();
+        if (!IsInternal)
+        {
+            Input.SelectedClientId = null;
+            Input.ManualLinesJson = "[]";
+            Input.GlobalDiscountType = "none";
+            Input.GlobalDiscountValue = null;
+            Input.GeneralTerms = null;
+            Input.ContractTermMonths = null;
+        }
 
         var build = await BuildRequestFromInputAsync(isPreview: false);
         if (build.error != null || build.request == null)
@@ -104,7 +119,7 @@ public class QuoteModel : PageModel
 
         var request = build.request;
 
-        if (!request.ClientId.HasValue)
+        if (IsInternal && !request.ClientId.HasValue)
         {
             var lead = await GetOrCreateTemporaryLeadAsync(request.CustomerName, request.CustomerEmail, request.CustomerPhone, request.CustomerLocation, request.CompanyName);
             request.ClientId = lead.Id;
@@ -192,7 +207,9 @@ public class QuoteModel : PageModel
 
     private async Task<(QuoteRequest? request, string? error)> BuildRequestFromInputAsync(bool isPreview)
     {
-        var boundClient = await TryLoadClientContextAsync(Input.ClientToken);
+        if (Input.EditQuoteId.HasValue && await ResolveEditableQuoteAsync(Input.EditQuoteId.Value) == null)
+            return (null, "No puedes editar esta cotización.");
+        var boundClient = await TryLoadClientContextAsync(Input.ClientToken, populate: false);
         if (boundClient != null)
         {
             // Si el cliente del link tiene datos incompletos, se permite que el usuario los capture.
@@ -206,6 +223,12 @@ public class QuoteModel : PageModel
         }
 
         await LoadCatalogPayloadAsync();
+        InitialManualLinesJson = Input.ManualLinesJson ?? "[]";
+        if (!Enum.IsDefined(Input.Segment)) return (null, "Selecciona un tipo de servicio válido.");
+        if (Input.CustomerName?.Length > 180 || Input.CustomerEmail?.Length > 254 || Input.CustomerPhone?.Length > 40 || Input.CustomerLocation?.Length > 500 || Input.Notes?.Length > 3000)
+            return (null, "Revisa la longitud de los datos de contacto y comentarios.");
+        if (!new EmailAddressAttribute().IsValid(Input.CustomerEmail)) return (null, "Escribe un correo electrónico válido.");
+        if ((Input.LinesJson?.Length ?? 0) > 30000 || (Input.ManualLinesJson?.Length ?? 0) > 30000) return (null, "La solicitud contiene demasiados conceptos.");
 
         if (string.IsNullOrWhiteSpace(Input.CustomerName)
             || string.IsNullOrWhiteSpace(Input.CustomerEmail)
@@ -230,6 +253,9 @@ public class QuoteModel : PageModel
 
         if (picks == null || picks.Count == 0)
             picks = [];
+
+        if (picks.Count > 100 || picks.Any(x => x == null || x.Quantity < 1 || x.Quantity > 10000))
+            return (null, "Revisa las cantidades: utiliza de 1 a 10,000 por concepto.");
 
         var activeItems = await _db.QuoteCatalogItems
             .AsNoTracking()
@@ -281,12 +307,16 @@ public class QuoteModel : PageModel
                 : request.CompanyName;
         }
 
+        var chosen = picks.SelectMany(x => new Guid?[] { x.CategoryId, x.ServiceId, x.SubproductId }).Where(x => x.HasValue).Select(x => x!.Value).ToHashSet();
+        var rules = await _db.QuoteCatalogRules.AsNoTracking().Where(x => x.IsActive && x.Segment == Input.Segment).ToListAsync();
+        foreach (var group in rules.Where(x => chosen.Contains(x.TargetItemId)).GroupBy(x => x.TargetItemId))
+            if (!group.Any(x => chosen.Contains(x.RequiredItemId))) return (null, "Un servicio requiere otro concepto del catálogo. Revisa tu selección.");
         foreach (var p in picks)
         {
             if (!byId.TryGetValue(p.CategoryId, out var cat) || cat.NodeType != QuoteNodeType.Category)
-                continue;
+                return (null, "Una categoría ya no está disponible. Actualiza tu selección.");
             if (!byId.TryGetValue(p.ServiceId, out var srv) || srv.NodeType != QuoteNodeType.Service || srv.ParentId != cat.Id)
-                continue;
+                return (null, "Un servicio ya no está disponible. Actualiza tu selección.");
 
             QuoteCatalogItem selected = srv;
             string? subName = null;
@@ -296,7 +326,9 @@ public class QuoteModel : PageModel
                 subName = sub.Name;
             }
 
-            var qty = p.Quantity <= 0 ? 1 : p.Quantity;
+            if (p.SubproductId.HasValue && selected == srv)
+                return (null, "La opción elegida ya no está disponible.");
+            var qty = p.Quantity;
             var manual = selected.IsManualPrice || !selected.UnitPrice.HasValue;
             decimal? baseAmount = null;
             decimal? vatAmount = null;
@@ -486,6 +518,7 @@ public class QuoteModel : PageModel
             [QuoteSegment.Events.ToString()] = Pack(QuoteSegment.Events)
         };
 
+        if (!IsInternal) { ProspectOptions = []; ClientContactsPayload = new(); return; }
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isGlobalAdmin = AppRoles.IsGlobalAdmin(User);
 
@@ -584,6 +617,7 @@ public class QuoteModel : PageModel
 
     private async Task<string> NextFolioAsync()
     {
+        if (!IsInternal) return $"COT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
         var year = DateTime.UtcNow.Year;
         var from = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var to = from.AddYears(1);
@@ -601,8 +635,8 @@ public class QuoteModel : PageModel
 <div style='font-family:Inter,Arial,sans-serif'>
   <h2 style='margin:0 0 8px'>Cotizacion a la medida</h2>
   <p style='margin:0 0 14px'>{intro}</p>
-  <p style='margin:0'><strong>Folio:</strong> {r.Folio}</p>
-  <p style='margin:0'><strong>Cliente:</strong> {r.CustomerName}</p>
+  <p style='margin:0'><strong>Folio:</strong> {WebUtility.HtmlEncode(r.Folio)}</p>
+  <p style='margin:0'><strong>Cliente:</strong> {WebUtility.HtmlEncode(r.CustomerName)}</p>
   <p style='margin:0'><strong>Segmento:</strong> {LabelSegment(r.Segment)}</p>
   <p style='margin:0'><strong>Total estimado:</strong> {r.EstimatedTotal?.ToString("C2")}</p>
   <p style='margin:12px 0 0;color:#64748b'>HN Control</p>
@@ -669,6 +703,7 @@ public class QuoteModel : PageModel
             .ToList();
 
         InitialManualLinesJson = JsonSerializer.Serialize(manual);
+        Input.ManualLinesJson = InitialManualLinesJson;
     }
 
     private static decimal ResolveEditableUnitPrice(QuoteRequestLine line)
@@ -762,7 +797,7 @@ public class QuoteModel : PageModel
         _ => "Residencial"
     };
 
-    private async Task<Client?> TryLoadClientContextAsync(string? token)
+    private async Task<Client?> TryLoadClientContextAsync(string? token, bool populate = true)
     {
         HasClientContext = false;
         SkipClientDataStep = false;
@@ -776,6 +811,7 @@ public class QuoteModel : PageModel
 
         HasClientContext = true;
         ClientName = client.Name;
+        if (!populate) return client;
         Input.CustomerName = string.IsNullOrWhiteSpace(client.ContactName) ? client.Name : client.ContactName!;
         Input.CustomerEmail = client.Email ?? string.Empty;
         Input.CustomerPhone = client.Phone ?? string.Empty;

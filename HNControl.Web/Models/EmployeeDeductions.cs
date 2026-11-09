@@ -19,6 +19,9 @@ public enum EmployeeDeductionType
     [Display(Name = "Comision de venta")]
     ComisionVenta = 5,
 
+    [Display(Name = "Comisión por orden de servicio")]
+    ComisionOrdenServicio = 6,
+
     [Display(Name = "Otro")]
     Otro = 99
 }
@@ -77,6 +80,8 @@ public enum EmployeeDeductionApplyOnHalf
 public class EmployeeDeduction
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid? SourceServiceOrderId { get; set; }
 
     [MaxLength(64)]
     public string UserId { get; set; } = "";

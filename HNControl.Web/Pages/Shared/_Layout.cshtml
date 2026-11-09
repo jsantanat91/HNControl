@@ -265,11 +265,10 @@
                     <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                         <summary class="hn-side-link @Active("/Inventory")">
                             <span class="hn-side-icon"><i class="bi bi-box-seam"></i></span>
-                            <span class="hn-side-text">Inventario</span>
+                            <span class="hn-side-text">Inventario físico</span>
                         </summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Inventario</a>
-                            <a class="hn-side-sublink @Active("/Admin/Inventory/Services")" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
+                            <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Almacén</a>
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Items")" asp-page="/Admin/Inventory/Items/Index">Admin stock</a>
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
@@ -470,13 +469,12 @@
                         <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
                             <summary class="hn-side-link @Active("/Inventory")">
                                 <span class="hn-side-icon"><i class="bi bi-box-seam"></i></span>
-                                <span class="hn-side-text">Inventario</span>
+                                <span class="hn-side-text">Inventario físico</span>
                             </summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Inventario</a>
+                                <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Almacén</a>
                                 @if (User.IsInRole(HNControl.Web.Models.AppRoles.InventoryManager))
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Inventory/Services")" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
                                 }
                             </div>
                         </details>
@@ -564,6 +562,7 @@
 
             <main class="hn-main">
                 <div class="container-xl">
+                    @if (isSalesPath) { <partial name="~/Pages/Sales/_SalesSubmenu.cshtml" /> }
                     @RenderBody()
                 </div>
             </main>
@@ -616,10 +615,9 @@
                     <a class="hn-side-link @Active("/Knowledge")" asp-page="/Knowledge/Index"><span class="hn-side-icon"><i class="bi bi-journal-text"></i></span><span class="hn-side-text">Documentos</span></a>
                     <a class="hn-side-link @Active("/Admin/ServiceInventory")" asp-page="/Admin/ServiceInventory/Index"><span class="hn-side-icon"><i class="bi bi-router"></i></span><span class="hn-side-text">Inventario Servicios</span></a>
                     <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
-                        <summary class="hn-side-link @Active("/Inventory")"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></summary>
+                        <summary class="hn-side-link @Active("/Inventory")"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario físico</span></summary>
                         <div class="hn-side-sub">
-                            <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Inventario</a>
-                            <a class="hn-side-sublink @Active("/Admin/Inventory/Services")" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
+                            <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Almacén</a>
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Items")" asp-page="/Admin/Inventory/Items/Index">Admin stock</a>
                             <a class="hn-side-sublink @Active("/Admin/Inventory/Approvals")" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones</a>
                         </div>
@@ -738,12 +736,11 @@
                     @if (Has(AppModules.Inventory))
                     {
                         <details class="hn-side-group" @(path.StartsWith("/Inventory", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/Admin/Inventory", StringComparison.OrdinalIgnoreCase) ? "open" : "")>
-                            <summary class="hn-side-link @Active("/Inventory")"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario</span></summary>
+                            <summary class="hn-side-link @Active("/Inventory")"><span class="hn-side-icon"><i class="bi bi-box-seam"></i></span><span class="hn-side-text">Inventario físico</span></summary>
                             <div class="hn-side-sub">
-                                <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Inventario</a>
+                                <a class="hn-side-sublink @Active("/Inventory")" asp-page="/Inventory/Index">Almacén</a>
                                 @if (User.IsInRole(HNControl.Web.Models.AppRoles.InventoryManager))
                                 {
-                                    <a class="hn-side-sublink @Active("/Admin/Inventory/Services")" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
                                 }
                             </div>
                         </details>

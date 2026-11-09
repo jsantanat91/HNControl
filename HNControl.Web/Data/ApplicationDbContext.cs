@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Models;
+using HNControl.Web.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -138,6 +138,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        b.Entity<EmployeeDeduction>().HasIndex(x => x.SourceServiceOrderId).IsUnique();
 
 
         b.Entity<EmployeeProfile>(e =>

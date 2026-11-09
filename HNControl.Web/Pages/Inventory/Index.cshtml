@@ -4,30 +4,21 @@
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Inventarios";
+    ViewData["Title"] = "Almacén";
 }
+
+<partial name="_InventoryNav" />
 
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-1">Inventarios</h1>
-        <div class="text-muted small">Consulta existencias + solicita entradas/salidas (aprobaci&oacute;n admin).</div>
+        <h1 class="h4 mb-1">Almacén</h1>
+        <div class="text-muted small">Equipos y materiales disponibles. Solicita un movimiento y sigue su aprobación.</div>
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-success" asp-page="./RequestIn">+ Solicitar entrada</a>
-        <a class="btn btn-warning" asp-page="./RequestOut">- Solicitar salida</a>
-        <a class="btn btn-outline-primary" asp-page="./MyRequests">Solicitudes</a>
-        <a class="btn btn-outline-secondary" asp-page="./ExportItems">Exportar items (Excel)</a>
-        @if (User.IsInRole(AppRoles.Admin))
-        {
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Index" asp-route-view="table">Encargado inventario</a>
-        }
-        @if (User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.InventoryManager))
-        {
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Items/Index">Admin Stock</a>
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Services/Index">Servicios</a>
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index">Aprobaciones pendientes</a>
-        }
+        <a class="btn btn-primary" asp-page="./RequestOut"><i class="bi bi-box-arrow-up-right me-1"></i> Solicitar salida</a>
+        <a class="btn btn-outline-success" asp-page="./RequestIn"><i class="bi bi-box-arrow-in-down me-1"></i> Registrar entrada</a>
+        <a class="btn btn-outline-secondary" asp-page="./ExportItems" title="Descargar existencias"><i class="bi bi-download me-1"></i> Excel</a>
     </div>
 </div>
 
@@ -121,7 +112,7 @@
     <div class="col-12 col-md-4">
         <div class="card shadow-soft hn-hover h-100">
             <div class="card-body">
-                <div class="text-muted small">Items filtrados</div>
+                <div class="text-muted small">Artículos encontrados</div>
                 <div class="h3 mb-0">@Model.TotalCount</div>
                 <div class="mt-2">
                     <a class="btn btn-sm btn-outline-secondary"
@@ -188,13 +179,12 @@
                     <tr>
                         <th>Categor&iacute;a</th>
                         <th>Item</th>
-                        <th>ID modelo</th>
-                        <th>SKU</th>
+                        <th>Identificación</th>
                         <th>Marca / Modelo</th>
                         <th>Ubicaci&oacute;n</th>
                         <th class="text-end">Existencia</th>
                         <th class="text-end">Stock m&iacute;nimo</th>
-                        <th class="text-end">Estado</th>
+                        <th class="text-end">Estado</th><th class="text-end">Movimiento</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -210,8 +200,7 @@
                             <span class="hn-badge @badge">@catLabel</span>
                         </td>
                         <td class="fw-semibold">@i.Name</td>
-                        <td>@(string.IsNullOrWhiteSpace(i.ModelCode) ? "-" : i.ModelCode)</td>
-                        <td>@(string.IsNullOrWhiteSpace(i.Sku) ? "-" : i.Sku)</td>
+                        <td><div>@(string.IsNullOrWhiteSpace(i.Sku) ? "Sin SKU" : i.Sku)</div><small class="text-muted">@i.ModelCode</small></td>
                         <td>
                             <div class="fw-semibold">@(i.Brand?.Name ?? "-")</div>
                             <div class="text-muted small">@(string.IsNullOrWhiteSpace(i.Model) ? "-" : i.Model)</div>
@@ -220,7 +209,11 @@
                         <td class="text-end fw-semibold">@i.QuantityOnHand @i.Unit</td>
                         <td class="text-end">@i.ReorderLevel</td>
                         <td class="text-end">
-                            @if (low)
+                            @if (i.QuantityOnHand <= 0)
+                            {
+                                <span class="hn-badge hn-badge-red">Sin existencias</span>
+                            }
+                            else if (low)
                             {
                                 <span class="hn-badge hn-badge-amber hn-badge-compact">Bajo stock</span>
                             }
@@ -229,6 +222,7 @@
                                 <span class="hn-badge hn-badge-green hn-badge-compact">OK</span>
                             }
                         </td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-page="./RequestOut" asp-route-itemId="@i.Id">Salida</a> <a class="btn btn-sm btn-outline-success" asp-page="./RequestIn" asp-route-itemId="@i.Id">Entrada</a></td>
                     </tr>
                 }
                 </tbody>
@@ -237,7 +231,7 @@
 
         @if (Model.Items.Count == 0)
         {
-            <div class="text-muted">No hay items.</div>
+            <div class="text-muted">No hay artículos con estos filtros. Prueba otra búsqueda.</div>
         }
 
         @if (Model.TotalPages > 1)
@@ -321,7 +315,7 @@
                     <input type="hidden" name="dir" value="@Model.Dir" />
 
                     <div class="modal-header">
-                        <h5 class="modal-title">Solicitar reposici�n (sin stock)</h5>
+                        <h5 class="modal-title">Solicitar reposición (sin stock)</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body">

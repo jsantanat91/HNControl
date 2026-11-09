@@ -1,10 +1,12 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @model HNControl.Web.Pages.Admin.Inventory.Approvals.DetailsModel
 @using HNControl.Web.Models
 @{
     Layout = "_Layout";
     ViewData["Title"] = "Aprobar orden";
 }
+
+<partial name="_InventoryNav" />
 
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
     <div>

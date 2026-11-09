@@ -106,24 +106,8 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card card-accent-green">
-            <div class="card-body">
-                <div class="text-muted small"><i class="bi bi-chat-square-text" aria-hidden="true"></i>Tickets abiertos</div>
-                <div class="fs-3 fw-bold">@Model.Kpi.OpenTickets</div>
-                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index">Ver</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card shadow-soft hn-hover hn-kpi-card card-accent-amber">
-            <div class="card-body">
-                <div class="text-muted small"><i class="bi bi-alarm" aria-hidden="true"></i>Tickets SLA vencido</div>
-                <div class="fs-3 fw-bold text-danger">@Model.Kpi.TicketSlaBreached</div>
-                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Tickets/Index" asp-route-status="open">Ver</a>
-            </div>
-        </div>
-    </div>
+
+
     <div class="col-md-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
@@ -263,16 +247,7 @@
     </div>
 </div>
 
-<div class="row g-3 mt-1">
-    <div class="col-lg-12">
-        <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Tickets atendidos/cerrados (ultimos 30 dias)</div>
-            <div class="card-body">
-                <canvas id="ticketsClosedChart" height="95"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <div class="row g-3 mt-3">
     <div class="col-lg-4">
@@ -311,7 +286,7 @@
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index" data-module-panel="Vacaciones e incidencias"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
-                    <a class="btn btn-outline-secondary" asp-page="/Tickets/Index"><i class="bi bi-life-preserver me-1"></i> Tickets</a>
+                    <a class="btn btn-outline-secondary" href="https://support.hubnet-solutions.net" target="_blank" rel="noopener"><i class="bi bi-life-preserver me-1"></i> Portal de soporte</a>
                 </div>
             </div>
         </div>
@@ -450,16 +425,6 @@
     };
     window.hnCharts?.decorate(qSalesCfg);
     new Chart(document.getElementById('quoteSalesChart'), qSalesCfg);
-
-    const tkLabels = @Html.Raw(Model.TicketsClosedLabelsJson);
-    const tkValues = @Html.Raw(Model.TicketsClosedValuesJson);
-    const tkCfg = {
-      type: 'line',
-      data: { labels: tkLabels, datasets: [{ label: 'Tickets cerrados', data: tkValues, tension: 0.25 }] },
-      options: { scales: { y: { beginAtZero: true } } }
-    };
-    window.hnCharts?.decorate(tkCfg);
-    new Chart(document.getElementById('ticketsClosedChart'), tkCfg);
 
     const topLabels = @Html.Raw(Model.TopVarLabelsJson);
     const topValues = @Html.Raw(Model.TopVarValuesJson);

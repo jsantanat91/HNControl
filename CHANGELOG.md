@@ -1,5 +1,15 @@
 # HN Control — notas de versión
 
+## Web 2.5.20 · 9 de noviembre de 2026
+
+- Inventario físico: navegación unificada, menos acciones repetidas, artículo preseleccionado al solicitar entradas y salidas. Servicios del inventario anterior retirado de menús y suspendido, sin borrar catálogo ni históricos.
+- Cotizador público sin sesión en `/cotizar?public=true`, con tres pasos, búsqueda, contacto y resumen. Servidor calcula precios y rechaza acceso anónimo a edición/preview; ignora descuentos y conceptos manuales públicos. No publica listas de clientes ni contactos.
+- Cotizador interno reutiliza datos de cliente/contacto; errores conservan la selección. Ventas incorpora acceso y copia del enlace público.
+- Empleados: fichas por secciones, tarjetas renovadas y comisión configurable por orden. Se registra un bono en la quincena del cierre (México), preferentemente al técnico que tomó la orden; el asignado es respaldo. Registro único por orden, importe congelado al generarlo, sin retroactividad ni duplicados al reaprobar.
+- Si la quincena ya está pagada, la comisión se registra en la siguiente pendiente. Recibos, ficha, resumen y exportación de nómina usan el mismo cálculo y conservan los bonos ya aplicados.
+- Dashboard sin métricas ni gráfica de tickets locales; enlace al portal externo de soporte.
+- Aplicar `HNControl.Web/Sql/20261109_order_commissions.sql` antes del despliegue. APK 2.3.0 compatible, sin reinstalación.
+
 ## Web 2.5.19 · 9 de noviembre de 2026
 
 - Corrige la publicación Docker: el modelo compartido de entrega reside dentro de HNControl.Web, incluido en su contexto de compilación; la APK y sus pruebas enlazan ese mismo archivo.

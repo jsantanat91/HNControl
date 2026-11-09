@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HNControl.Web.Models;
@@ -93,6 +93,10 @@ public class EmployeeProfile
     public string? Address { get; set; }
 
     // Sueldo base (lo usamos para cálculo 80/20)
+    public bool ServiceOrderCommissionEnabled { get; set; }
+    [Microsoft.EntityFrameworkCore.Precision(18, 2)]
+    public decimal ServiceOrderCommissionAmount { get; set; }
+
     public decimal SalaryBase { get; set; } = 0m;
 
     // Vacaciones (días por año). Se calcula "usado" desde LeaveRequests aprobadas.

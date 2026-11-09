@@ -252,13 +252,7 @@ public class PayrollReceiptService : IPayrollReceiptService
     private async Task<(decimal deductions, decimal bonuses, List<PayrollAdjustmentLine> lines)> CalcPayrollAdjustmentsAsync(
         string userId, decimal baseQuincenal, decimal estimatedQuincenal, DateTime periodStart, DateTime periodEnd)
     {
-        var active = await _db.EmployeeDeductions
-            .AsNoTracking()
-            .Where(d => d.UserId == userId && d.IsActive)
-            .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
-            .ToListAsync();
-
-        return PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
+        return await PayrollAdjustmentResolver.CalculateAsync(_db, userId, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
     }
 
     private static List<PayrollImssLine> BuildImssLines(decimal baseQuincenal)

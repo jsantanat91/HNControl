@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -136,6 +138,14 @@ if (builder.Configuration.GetValue<bool>("Features:MonitoringEnabled"))
 // --------------------
 // Razor Pages routing / auth conventions
 // --------------------
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public-quotes", context => context.Request.Method != "POST"
+        ? RateLimitPartition.GetNoLimiter("read")
+        : RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 }));
+});
 builder.Services.AddRazorPages(options =>
 {
     // Todo requiere login por default
@@ -425,6 +435,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRequestLocalization();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseMiddleware<ModuleSuspensionMiddleware>();
 
 app.UseAuthentication();

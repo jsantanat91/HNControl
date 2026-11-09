@@ -3,9 +3,17 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.19";
+    public const string Version = "2.5.20";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.20", new DateOnly(2026, 11, 9), "Almacén, cotizador público y comisiones", new[]
+        {
+            new ReleaseChange("Inventario físico", "Almacén, Admin stock y Aprobaciones con navegación unificada. Retirado el módulo antiguo de servicios; se conservan sus datos. Entrada/salida con artículo preseleccionado."),
+            new ReleaseChange("Ventas", "Cotizador público sin sesión en tres pasos, búsqueda y resumen. Precios del catálogo calculados en servidor; descuentos y conceptos libres reservados al personal autorizado."),
+            new ReleaseChange("Empleados", "Ficha organizada por secciones y tarjetas con comisión por orden. Activación e importe individual; bono único en la quincena de México al finalizar la orden, para el técnico que la tomó o el asignado."),
+            new ReleaseChange("Dashboard", "Retirados contadores y gráfica del antiguo sistema de tickets. Acceso al portal externo de soporte."),
+            new ReleaseChange("Publicación", "Aplicar 20261109_order_commissions.sql antes del despliegue. Sin cambio de APK; las comisiones se calculan en el servidor. No se generan comisiones retroactivas.")
+        }),
         new ReleaseNote("2.5.19", new DateOnly(2026, 11, 9), "Corrección de despliegue Docker", new[]
         {
             new ReleaseChange("Publicación", "El modelo compartido de entregas queda incluido dentro del contexto de compilación de la web. Corrige el error de publicación en Docker."),

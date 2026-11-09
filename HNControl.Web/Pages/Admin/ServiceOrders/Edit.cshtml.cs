@@ -159,7 +159,10 @@ public class EditModel : PageModel
         order.EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate);
         order.Description = (Input.Description ?? "").Trim();
 
-        await _db.SaveChangesAsync();
+        if (Input.Status == ServiceOrderStatus.Finalized)
+            await ServiceOrderCommissionService.FinalizeAsync(_db, order, DateTime.UtcNow);
+        else
+            await _db.SaveChangesAsync();
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 

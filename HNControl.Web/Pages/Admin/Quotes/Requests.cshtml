@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Quotes.RequestsModel
 @{
     Layout = "_Layout";
@@ -9,13 +9,10 @@
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0">@(canManage ? "Cotizaciones" : "Mis cotizaciones")</h1>
-        <div class="text-muted small">Cotizaciones internas de ventas y PDF generado.</div>
+        <div class="text-muted small">Propuestas del equipo y solicitudes del cotizador público. Revisa, ajusta y da seguimiento.</div>
     </div>
     <div class="d-flex gap-2">
-        @if (Model.CanCreate)
-        {
-            <button class="btn btn-primary" type="button" data-quote-modal-open="true" data-quote-modal-size="xl" onclick="return false;">+ Nueva cotización</button>
-        }
+
         @if (User.IsInRole(HNControl.Web.Models.AppRoles.SuperAdmin) || canManage)
         {
             <a class="btn btn-outline-primary" asp-page="./Catalog">Catálogo</a>

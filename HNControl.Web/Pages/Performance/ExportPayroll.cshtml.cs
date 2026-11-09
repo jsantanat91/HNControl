@@ -177,13 +177,7 @@ public class ExportPayrollModel : PageModel
     {
         try
         {
-            var active = await _db.EmployeeDeductions
-                .AsNoTracking()
-                .Where(d => d.UserId == userId && d.IsActive)
-                .Where(d => d.StartDate <= periodEnd && (d.EndDate == null || d.EndDate >= periodStart))
-                .ToListAsync();
-
-            var result = PayrollDeductionMath.CalculateTotals(active, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
+            var result = await PayrollAdjustmentResolver.CalculateAsync(_db, userId, baseQuincenal, estimatedQuincenal, periodStart, periodEnd);
             return (result.deductions, result.bonuses);
         }
         catch

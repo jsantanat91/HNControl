@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>@ViewData["Title"] · HN Solutions</title>
+<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" /><link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /><link rel="stylesheet" href="~/css/hn-ui.css" asp-append-version="true" />
+<style>body{background:#f3f6fb;color:#182b43}.quote-brand{background:#102b48;color:white;padding:1.1rem 0}.quote-brand a{color:#c8e2ff;text-decoration:none}.quote-brand strong{letter-spacing:-.035em;font-size:1.4rem}</style></head>
+<body><header class="quote-brand"><div class="container-fluid px-4 d-flex justify-content-between align-items-center"><strong>HN <span style="font-weight:400">Solutions</span></strong><a href="https://wa.me/525526014566" target="_blank" rel="noopener">¿Necesitas ayuda?</a></div></header>
+<main class="container-fluid py-4" style="max-width:1600px">@RenderBody()</main><footer class="text-center text-muted small py-4">HN Solutions · Conectividad, infraestructura y seguridad</footer>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>@await RenderSectionAsync("Scripts", required: false)</body></html>

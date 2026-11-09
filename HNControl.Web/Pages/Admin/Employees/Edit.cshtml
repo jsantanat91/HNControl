@@ -11,146 +11,115 @@
     return;
 }
 
-<h1 class="h4 mb-3">Editar empleado</h1>
+<link rel="stylesheet" href="~/css/hn-people.css" asp-append-version="true" />
+<div class="hn-person-hero mb-4"><div><div class="small text-uppercase mb-2">Personas · HN Control</div><h1 class="h3 mb-2">Editar empleado</h1><p class="mb-0">Una ficha clara para sus datos, compensación y permisos.</p></div><a asp-page="./Index" class="btn btn-light">Volver a empleados</a></div>
 
-<form method="post" enctype="multipart/form-data" class="card shadow-soft hn-hover">
+<form method="post" enctype="multipart/form-data" class="card hn-person-form">
     <div class="card-body">
+        <div asp-validation-summary="All" class="text-danger mb-3" role="alert"></div>
         <input type="hidden" asp-for="Input.UserId" />
-        <div class="row g-3">
-            <div class="col-md-6">
+        <section class="hn-person-section"><div class="hn-person-heading"><span>01</span><h2>Perfil y contacto</h2></div><div class="row g-3"><div class="col-md-6">
                 <label class="form-label">Nombre</label>
                 <input class="form-control" asp-for="Input.FullName" />
-            </div>
-            <div class="col-md-6">
+            </div><div class="col-md-6">
                 <label class="form-label">Puesto</label>
                 <input class="form-control" asp-for="Input.Position" />
-            </div>
-
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Sexo</label>
                 <select class="form-select" asp-for="Input.Sex">
                     <option value="">-</option>
                     <option value="Hombre">Hombre</option>
                     <option value="Mujer">Mujer</option>
                 </select>
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Telefono</label>
                 <input class="form-control" asp-for="Input.Phone" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">NSS</label>
-                <input class="form-control" asp-for="Input.Nss" />
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">CURP</label>
-                <input class="form-control text-uppercase" asp-for="Input.Curp" maxlength="18" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">RFC</label>
-                <input class="form-control text-uppercase" asp-for="Input.Rfc" maxlength="13" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Nivel de estudios</label>
                 <input class="form-control" asp-for="Input.EducationLevel" />
-            </div>
-
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Fecha de nacimiento</label>
                 <input class="form-control" asp-for="Input.BirthDate" type="date" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Fecha de ingreso</label>
-                <input class="form-control" asp-for="Input.HireDate" type="date" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Número de empleado</label>
-                <input class="form-control" value="@Model.Employee.EmployeeNumber" readonly />
-                <div class="form-text">Campo protegido (solo lectura).</div>
-            </div>
-
-            <div class="col-12">
+            </div><div class="col-12">
                 <label class="form-label">Direccion</label>
                 <input class="form-control" asp-for="Input.Address" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Codigo postal</label>
                 <input class="form-control" asp-for="Input.PostalCode" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Correo (login)</label>
                 <input class="form-control" asp-for="Input.Email" type="email" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Sueldo base mensual</label>
-                <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
-            </div>
-
-            <div class="col-md-4">
-                <label class="form-label">Vacaciones (dias por anio)</label>
-                <input class="form-control" asp-for="Input.VacationAllowanceDays" type="number" min="0" max="60" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Foto (opcional)</label>
                 <input class="form-control" asp-for="Input.PhotoFile" type="file" accept=".jpg,.jpeg,.png,.webp" />
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
+            </div><div class="col-md-4 d-flex align-items-end">
                 <div class="form-check">
                     <input class="form-check-input" asp-for="Input.RemovePhoto" type="checkbox" />
                     <label class="form-check-label" asp-for="Input.RemovePhoto">Quitar foto actual</label>
                 </div>
-            </div>
-
-            <div class="col-12"><hr /></div>
-            <div class="col-12"><div class="fw-semibold">Datos para nomina timbrada (futuro)</div></div>
-            <div class="col-md-4">
+            </div></div></section><section class="hn-person-section"><div class="hn-person-heading"><span>02</span><h2>Relación laboral y compensación</h2></div><div class="row g-3"><div class="col-md-4">
+                <label class="form-label">Fecha de ingreso</label>
+                <input class="form-control" asp-for="Input.HireDate" type="date" />
+            </div><div class="col-md-4">
+                <label class="form-label">Número de empleado</label>
+                <input class="form-control" value="@Model.Employee.EmployeeNumber" readonly />
+                <div class="form-text">Campo protegido (solo lectura).</div>
+            </div><div class="col-md-4">
+                <label class="form-label">Sueldo base mensual</label>
+                <input class="form-control" asp-for="Input.SalaryBase" type="number" step="0.01" />
+            </div><div class="col-md-4">
+                <label class="form-label">Vacaciones (dias por anio)</label>
+                <input class="form-control" asp-for="Input.VacationAllowanceDays" type="number" min="0" max="60" />
+            </div><div class="col-12"><div class="hn-commission-panel">
+<div class="form-check form-switch"><input asp-for="Input.ServiceOrderCommissionEnabled" class="form-check-input" type="checkbox" role="switch" id="commissionToggle" /><label class="form-check-label fw-bold" for="commissionToggle">Comisión por orden de servicio</label></div>
+<p class="small text-muted mt-2">Bono por cada orden nueva finalizada, en la quincena del cierre. Se asigna al técnico que tomó la orden; si no hay uno, al empleado asignado. Si la quincena ya está pagada, se aplica a la siguiente pendiente. No modifica comisiones ya generadas.</p>
+<div id="commissionAmountWrap" class="mt-3"><label class="form-label" asp-for="Input.ServiceOrderCommissionAmount">Importe por orden (MXN)</label><div class="input-group" style="max-width:320px"><span class="input-group-text">$</span><input asp-for="Input.ServiceOrderCommissionAmount" class="form-control" type="number" min="0" max="9999999" step="0.01" /></div><span asp-validation-for="Input.ServiceOrderCommissionAmount" class="text-danger small"></span></div>
+</div></div></div></section><section class="hn-person-section"><div class="hn-person-heading"><span>03</span><h2>Identificación y pago</h2></div><div class="row g-3"><div class="col-md-4">
+                <label class="form-label">NSS</label>
+                <input class="form-control" asp-for="Input.Nss" />
+            </div><div class="col-md-4">
+                <label class="form-label">CURP</label>
+                <input class="form-control text-uppercase" asp-for="Input.Curp" maxlength="18" />
+            </div><div class="col-md-4">
+                <label class="form-label">RFC</label>
+                <input class="form-control text-uppercase" asp-for="Input.Rfc" maxlength="13" />
+            </div><div class="col-md-4">
                 <label class="form-label">SAT tipo contrato</label>
                 <input class="form-control" asp-for="Input.SatContractTypeCode" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">SAT tipo jornada</label>
                 <input class="form-control" asp-for="Input.SatWorkdayTypeCode" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">SAT riesgo puesto</label>
                 <input class="form-control" asp-for="Input.SatJobRiskCode" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Banco</label>
                 <input class="form-control" asp-for="Input.BankName" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">Cuenta</label>
                 <input class="form-control" asp-for="Input.BankAccount" />
-            </div>
-            <div class="col-md-4">
+            </div><div class="col-md-4">
                 <label class="form-label">CLABE</label>
                 <input class="form-control" asp-for="Input.BankClabe" maxlength="18" />
-            </div>
-
-            <div class="col-md-3">
+            </div></div></section><section class="hn-person-section"><div class="hn-person-heading"><span>04</span><h2>Acceso al sistema</h2></div><div class="row g-3"><div class="col-md-3">
                 <label class="form-label">Rol (acceso global)</label>
                 <select class="form-select" asp-for="Input.AppRole" id="appRoleSelect">
                     <option value="Employee">Employee</option>
                     <option value="Admin">SuperAdmin (Master)</option>
                 </select>
-            </div>
-            <div class="col-md-3" id="permissionRoleWrap">
+            </div><div class="col-md-3" id="permissionRoleWrap">
                 <label class="form-label">Rol permisos modulo</label>
                 <select class="form-select" asp-for="Input.PermissionRoleId" asp-items="Model.PermissionRoleOptions" id="permissionRoleSelect">
                     <option value="">(sin asignar)</option>
                 </select>
-            </div>
-            <div class="col-md-6">
+            </div><div class="col-md-6">
                 <div class="form-check mt-2">
                     <input class="form-check-input" asp-for="Input.IsInventoryManager" type="checkbox" />
                     <label class="form-check-label" asp-for="Input.IsInventoryManager">
                         Encargado de inventario
                     </label>
                 </div>
-            </div>
-        </div>
+            </div></div></section>
     </div>
 
     <div class="card-footer d-flex gap-2">
@@ -160,6 +129,7 @@
 </form>
 
 @section Scripts {
+<script src="~/js/employee-compensation.js" asp-append-version="true"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
         (function () {

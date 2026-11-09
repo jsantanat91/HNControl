@@ -1,9 +1,9 @@
-﻿@page "/cotizar/{token?}"
+@page "/cotizar/{token?}"
 @model HNControl.Web.Pages.Public.QuoteModel
 @using System.Text.Json
 @{
-    Layout = "_AuthLayout";
-    ViewData["Title"] = "Cotizacion a la medida";
+    Layout = "_QuoteLayout";
+    ViewData["Title"] = "Cotiza con HN Solutions";
 
     var catalogJson = JsonSerializer.Serialize(Model.CatalogPayload);
     var prospectsJson = JsonSerializer.Serialize(Model.ProspectOptions);
@@ -11,14 +11,14 @@
     var initialManualLinesJson = Model.InitialManualLinesJson;
 }
 
-<div class="row justify-content-center">
+<div class="row justify-content-center quote-workspace">
     <div class="col-xl-11">
         <div class="card shadow-soft mb-3">
             <div class="card-body p-4">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                     <div>
-                        <h1 class="h3 mb-1">Cotizacion a la medida</h1>
-                        <div class="text-muted">Flujo interno: arma cotizacion, genera PDF y envia por correo.</div>
+                        <h1 class="h3 mb-1">@(Model.IsInternal ? "Prepara tu cotización" : "Conectamos tu siguiente proyecto")</h1>
+                        <div class="text-muted">@(Model.IsInternal ? "Selecciona servicios, confirma el contacto y envía tu propuesta." : "Elige lo que necesitas. Te ayudaremos a definir la solución adecuada.")</div>
                     </div>
                     <span class="badge text-bg-light border">@(Model.IsEditMode ? $"Editando {Model.EditFolio}" : "Nueva cotizacion")</span>
                 </div>
@@ -27,7 +27,7 @@
                 {
                     <div class="alert alert-info py-2">
                         Cliente detectado: <strong>@Model.ClientName</strong>.
-                        <span>Puedes ajustar los datos de contacto en el paso 3.</span>
+                        <span>Puedes ajustar los datos de contacto en Contacto.</span>
                     </div>
                 }
 
@@ -37,13 +37,14 @@
                 }
 
                 <div class="quote-steps mb-3">
-                    <div class="quote-step-pill active" data-step-pill="1">1. Segmento</div>
-                    <div class="quote-step-pill" data-step-pill="2">2. Tienda / carrito</div>
-                    <div class="quote-step-pill" data-step-pill="3">3. Datos cliente</div>
-                    <div class="quote-step-pill" data-step-pill="4">4. Confirmacion</div>
+                    <button type="button" class="quote-step-pill active" data-step-pill="2">1. Servicios</button>
+                    <button type="button" class="quote-step-pill" data-step-pill="3">2. Contacto</button>
+                    <button type="button" class="quote-step-pill" data-step-pill="4">3. Revisar y enviar</button>
                 </div>
 
-                <form method="post" id="quoteForm" class="row g-3">
+                <form method="post" id="quoteForm" class="row g-3" novalidate>
+                    <input type="hidden" asp-for="PublicMode" />
+                    <div id="quoteFeedback" class="alert alert-warning d-none" role="alert" tabindex="-1"></div>
                     <input type="hidden" asp-for="Input.ClientToken" />
                     <input type="hidden" asp-for="Input.EditQuoteId" />
                     <input type="hidden" asp-for="Input.SelectedClientId" id="selectedClientId" />
@@ -53,28 +54,14 @@
                     <input type="hidden" asp-for="Input.GlobalDiscountValue" id="globalDiscountValueHidden" />
                     <input type="hidden" id="skipClientDataStep" value="@(Model.SkipClientDataStep ? "1" : "0")" />
 
-                    <section class="quote-step-panel" data-step="1">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Selecciona el tipo de cliente</label>
-                                <select class="form-select" asp-for="Input.Segment" id="segmentSelect">
-                                    <option value="Residential">Residencial</option>
-                                    <option value="Business">Empresarial</option>
-                                    <option value="Events">Eventos</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="border rounded p-3 h-100 bg-light-subtle">
-                                    <div class="fw-semibold">Paso 1 de 4</div>
-                                    <div class="text-muted small">Define segmento para mostrar el catalogo correcto (residencial/empresarial).</div>
-                                </div>
-                            </div>
+                    <section class="quote-step-panel" data-step="2">
+                        <div class="quote-segment-bar mb-4">
+                            <div><label class="form-label" for="segmentSelect">¿Para qué necesitas el servicio?</label>
+                            <select class="form-select" asp-for="Input.Segment" id="segmentSelect"><option value="Residential">Mi hogar</option><option value="Business">Mi empresa</option><option value="Events">Un evento</option></select></div>
+                            <div class="flex-grow-1"><label class="form-label" for="serviceSearch">Encuentra un servicio</label><input type="search" id="serviceSearch" class="form-control" placeholder="Internet, WiFi, cámaras…" /></div>
                         </div>
-                    </section>
-
-                    <section class="quote-step-panel d-none" data-step="2">
                         <div class="row g-3">
-                            <div class="col-12 col-xxl-8">
+                            <div class="col-12 col-lg-8">
                                 <div class="card border-0 bg-light-subtle">
                                     <div class="card-body">
                                         <div class="fw-semibold mb-2">Categorias</div>
@@ -92,8 +79,8 @@
                                 <div class="card border-0 bg-light-subtle mt-3">
                                     <div class="card-body">
                                         <div class="d-flex align-items-center justify-content-between mb-2">
-                                            <div class="fw-semibold">Opciones del producto</div>
-                                            <span class="small text-muted">Ejemplo: color, tecnologia, capacidad, modalidad</span>
+                                            <div class="fw-semibold">Configura tu selección</div>
+                                            <span class="small text-muted">Cantidad y características</span>
                                         </div>
                                         <div id="subproductCards" class="hn-grid-cards"></div>
                                         <div class="row g-2 mt-2">
@@ -102,15 +89,15 @@
                                                 <input class="form-control" type="number" id="qtyInput" min="1" value="1" />
                                             </div>
                                             <div class="col-sm-8 col-md-5 d-flex align-items-end">
-                                                <button class="btn btn-primary w-100" type="button" id="addLineBtn">Agregar al carrito</button>
+                                                <button class="btn btn-primary w-100" type="button" id="addLineBtn">Agregar a mi selección</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card border-0 bg-light-subtle mt-3">
+                                <details class="card border-0 bg-light-subtle mt-3 @(Model.IsInternal ? "" : "d-none")">
+                                    <summary class="p-3 fw-semibold">Agregar un concepto personalizado</summary>
                                     <div class="card-body">
-                                        <div class="fw-semibold mb-2">Concepto libre (manual)</div>
                                         <div class="row g-2">
                                             <div class="col-md-2">
                                                 <input id="manualService" class="form-control" placeholder="Servicio" />
@@ -141,19 +128,19 @@
                                             </div>
                                         </div>
                                         <hr />
-                                        <div class="small text-muted mt-2">Flujo simplificado: usa categorías del catálogo y concepto libre.</div>
+                                        <div class="small text-muted mt-2">Solo para personal autorizado. Importes sin IVA.</div>
                                     </div>
-                                </div>
+                                </details>
                             </div>
 
-                            <div class="col-12 col-xxl-4">
-                                <div class="card border-primary-subtle h-100">
-                                    <div class="card-header bg-white fw-semibold">Carrito</div>
+                            <div class="col-12 col-lg-4">
+                                <div class="card border-primary-subtle quote-summary">
+                                    <div class="card-header bg-white fw-semibold">Tu selección</div>
                                     <div class="card-body">
                                         <div id="cartLines" class="vstack gap-2"></div>
-                                        <div id="emptyCart" class="text-muted">Aun no agregas conceptos.</div>
+                                        <div id="emptyCart" class="text-muted">Selecciona un servicio y agrégalo aquí.</div>
                                         <hr />
-                                        <div class="row g-2 mb-2">
+                                        <div class="row g-2 mb-2 @(Model.IsInternal ? "" : "d-none")">
                                             <div class="col-6">
                                                 <label class="form-label mb-1 small">Descuento global</label>
                                                 <select class="form-select form-select-sm" id="discountType">
@@ -169,9 +156,9 @@
                                         </div>
                                         <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><strong id="sumBase">$0.00</strong></div>
                                         <div class="d-flex justify-content-between small"><span class="text-muted">IVA 16%</span><strong id="sumVat">$0.00</strong></div>
-                                        <div class="d-flex justify-content-between small"><span class="text-muted">Descuento global</span><strong id="sumDiscount">-$0.00</strong></div>
+                                        <div class="d-flex justify-content-between small @(Model.IsInternal ? "" : "d-none")"><span class="text-muted">Descuento global</span><strong id="sumDiscount">-$0.00</strong></div>
                                         <div class="d-flex justify-content-between mt-1 pt-1 border-top"><span class="fw-semibold">Total</span><strong class="text-primary" id="sumTotal">$0.00</strong></div>
-                                        <div class="mt-2"><span class="badge text-bg-warning" id="manualBadge">Manuales: 0</span></div>
+                                        <div class="mt-2"><span class="badge text-bg-warning" id="manualBadge">Por confirmar: 0</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -180,8 +167,8 @@
 
                     <section class="quote-step-panel d-none" data-step="3">
                         <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label">Prospecto / Cliente</label>
+                                <div class="col-12 @(Model.IsInternal ? "" : "d-none")">
+                                    <label class="form-label">Usar datos de un cliente o prospecto</label>
                                     <select class="form-select" id="prospectSelect">
                                         <option value="">Nuevo cliente</option>
                                         @foreach (var p in Model.ProspectOptions)
@@ -203,19 +190,19 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre</label>
-                                    <input class="form-control" asp-for="Input.CustomerName" />
+                                    <input class="form-control" asp-for="Input.CustomerName" autocomplete="name" maxlength="180" required />
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Correo</label>
-                                    <input class="form-control" asp-for="Input.CustomerEmail" />
+                                    <input class="form-control" asp-for="Input.CustomerEmail" type="email" autocomplete="email" maxlength="254" required />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Telefono</label>
-                                    <input class="form-control" asp-for="Input.CustomerPhone" />
+                                    <input class="form-control" asp-for="Input.CustomerPhone" type="tel" autocomplete="tel" maxlength="40" required />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Ubicacion</label>
-                                    <input class="form-control" asp-for="Input.CustomerLocation" />
+                                    <input class="form-control" asp-for="Input.CustomerLocation" autocomplete="street-address" maxlength="500" required />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Empresa (opcional)</label>
@@ -225,11 +212,11 @@
                                     <label class="form-label">Comentarios (opcional)</label>
                                     <textarea class="form-control" asp-for="Input.Notes" rows="3"></textarea>
                                 </div>
-                                <div class="col-md-8">
+                                <div class="col-md-8 @(Model.IsInternal ? "" : "d-none")">
                                     <label class="form-label">Condiciones generales</label>
                                     <textarea class="form-control" asp-for="Input.GeneralTerms" rows="3" placeholder="Alcances, terminos de soporte, garantias y condiciones comerciales."></textarea>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4 @(Model.IsInternal ? "" : "d-none")">
                                     <label class="form-label">Tiempo de contrato</label>
                                     <select class="form-select" asp-for="Input.ContractTermMonths">
                                         <option value="">Sin plazo fijo</option>
@@ -245,7 +232,7 @@
                     <section class="quote-step-panel d-none" data-step="4">
                         <div class="alert alert-light border">
                             <div class="fw-semibold">Confirmacion final</div>
-                            <div class="text-muted">Revisa resumen, abre PDF previo y luego envia la cotizacion.</div>
+                            <div class="text-muted">@(Model.IsInternal ? "Confirma los conceptos y el destinatario antes de enviar." : "Revisa tu selección y el correo donde recibirás la cotización. Los servicios sin precio requieren confirmación comercial.")</div>
                         </div>
 
                         <div class="row g-2 mb-2">
@@ -255,7 +242,9 @@
                             <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Total c/IVA</div><div class="fw-semibold" id="confirmTotal">$0.00</div></div></div>
                         </div>
 
-                        <div class="d-flex justify-content-end">
+                        <div id="confirmSelection" class="vstack gap-2 mb-3"></div>
+                        <div id="confirmContact" class="border rounded-3 p-3 mb-3"></div>
+                        <div class="d-flex justify-content-end @(Model.IsInternal ? "" : "d-none")">
                             <button type="submit" class="btn btn-outline-primary" formaction="?handler=Preview" formtarget="_blank" id="previewBtn">Ver PDF previo</button>
                         </div>
                     </section>
@@ -264,7 +253,7 @@
                         <button type="button" class="btn btn-outline-secondary" id="prevStepBtn">Anterior</button>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-primary" id="nextStepBtn">Siguiente</button>
-                            <button type="submit" class="btn btn-success d-none" id="submitBtn">Generar y enviar cotizacion</button>
+                            <button type="submit" class="btn btn-success d-none" id="submitBtn">@(Model.IsInternal ? "Generar y enviar cotización" : "Enviar solicitud de cotización")</button>
                         </div>
                     </div>
                 </form>
@@ -279,7 +268,10 @@
     const payload = @Html.Raw(catalogJson);
     const prospects = @Html.Raw(prospectsJson);
     const contactsByClient = @Html.Raw(contactsJson);
-    const initialManual = @Html.Raw(initialManualLinesJson);
+    const safeParse = value => { try { return JSON.parse(value); } catch { return []; } };
+    const initialManual = safeParse(@Html.Raw(JsonSerializer.Serialize(Model.InitialManualLinesJson)));
+    const initialPicks = safeParse(@Html.Raw(JsonSerializer.Serialize(Model.Input.LinesJson)));
+    const internalMode = @Html.Raw(Model.IsInternal ? "true" : "false");
     // Nunca saltar el paso de datos del cliente, aunque llegue token precargado.
     const skipClientDataStep = false;
     const IVA = 0.16;
@@ -295,8 +287,8 @@
         }))
         : [];
 
-    const allSteps = [1,2,3,4];
-    const navSteps = skipClientDataStep ? [1,2,4] : allSteps;
+    const allSteps = [2,3,4];
+    const navSteps = allSteps;
     let currentStep = navSteps[0];
 
     const seg = document.getElementById('segmentSelect');
@@ -380,9 +372,9 @@
             return;
         }
         if(selectedClientId) selectedClientId.value = selectedId;
-        if(inputCustomerName) inputCustomerName.value = '';
-        if(inputCustomerEmail) inputCustomerEmail.value = '';
-        if(inputCustomerPhone) inputCustomerPhone.value = '';
+        if(inputCustomerName) inputCustomerName.value = p.mainContactName || p.MainContactName || p.name || p.Name || '';
+        if(inputCustomerEmail) inputCustomerEmail.value = p.email || p.Email || '';
+        if(inputCustomerPhone) inputCustomerPhone.value = p.phone || p.Phone || '';
         if(inputCustomerLocation) inputCustomerLocation.value = p.location || p.Location || '';
         if(inputCompanyName) inputCompanyName.value = p.companyName || p.CompanyName || '';
         const clientContacts = contactsByClient?.[selectedId] || contactsByClient?.[String(selectedId)] || [];
@@ -429,13 +421,13 @@
         }
         const opt = clientContactSelect.options[clientContactSelect.selectedIndex];
         if(!opt){
-            lockCustomerFields(true);
+            lockCustomerFields(false);
             return;
         }
         if(inputCustomerName) inputCustomerName.value = opt.dataset.name || inputCustomerName.value;
         if(inputCustomerEmail) inputCustomerEmail.value = opt.dataset.email || inputCustomerEmail.value;
         if(inputCustomerPhone) inputCustomerPhone.value = opt.dataset.phone || inputCustomerPhone.value;
-        lockCustomerFields(true);
+        lockCustomerFields(false);
     }
 
     if(prospectSelect && !skipClientDataStep){
@@ -483,14 +475,17 @@
         return rules.some(r => selected.has(String(r.requiredItemId)));
     }
 
+    function escapeHtml(value){ const el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML.replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+    function safeImage(value){ try { const u = new URL(value, location.origin); return ['http:','https:'].includes(u.protocol) ? escapeHtml(u.href) : ''; } catch { return ''; } }
+    function feedback(message){ const box = document.getElementById('quoteFeedback'); box.textContent = message; box.classList.remove('d-none'); box.focus(); }
     function cardHtml(item, active, extra){
-        const img = item.imageUrl ? `<img src="${item.imageUrl}" alt="img" />` : `<div class="hn-thumb-fallback">${item.name.substring(0,2).toUpperCase()}</div>`;
+        const img = item.imageUrl ? `<img src="${safeImage(item.imageUrl)}" alt="img" />` : `<div class="hn-thumb-fallback">${escapeHtml(item.name.substring(0,2).toUpperCase())}</div>`;
         return `
         <button type="button" class="hn-card-select ${active ? 'is-active' : ''}" data-id="${item.id}">
             <div class="hn-thumb">${img}</div>
             <div class="hn-body">
-                <div class="hn-name">${item.name}</div>
-                ${item.description ? `<div class="hn-desc">${item.description}</div>` : ''}
+                <div class="hn-name">${escapeHtml(item.name)}</div>
+                ${item.description ? `<div class="hn-desc">${escapeHtml(item.description)}</div>` : ''}
                 ${extra || ''}
             </div>
         </button>`;
@@ -500,10 +495,12 @@
         const s = getSegmentData();
         const rows = s.categories.filter(x => isAllowedByRules(x.id));
         if(!rows.length){ categoryCards.innerHTML = '<div class="text-muted">Sin categorias para este segmento.</div>'; return; }
+        if(!selectedCategoryId && rows[0]) selectedCategoryId = rows[0].id;
         categoryCards.innerHTML = rows.map(x => cardHtml(x, String(selectedCategoryId) === String(x.id), '')).join('');
         categoryCards.querySelectorAll('button[data-id]').forEach(btn => {
             btn.addEventListener('click', () => {
                 selectedCategoryId = btn.dataset.id;
+                document.getElementById('serviceSearch').value = '';
                 selectedServiceId = null;
                 selectedSubproductId = null;
                 renderCategories();
@@ -516,15 +513,20 @@
 
     function renderServices(){
         const s = getSegmentData();
-        const rows = s.services.filter(x => x.parentId === selectedCategoryId && isAllowedByRules(x.id));
-        if(!rows.length){ serviceCards.innerHTML = '<div class="text-muted">Selecciona categoria para ver servicios.</div>'; return; }
+        const term = document.getElementById('serviceSearch').value.trim().toLocaleLowerCase('es');
+        const rows = s.services.filter(x => (term || x.parentId === selectedCategoryId) && isAllowedByRules(x.id) && (!term || (x.name + ' ' + (x.description || '')).toLocaleLowerCase('es').includes(term)));
+        if(!rows.length){ serviceCards.innerHTML = '<div class="text-muted">No encontramos servicios. Prueba otra búsqueda o categoría.</div>'; selectedServiceId = null; return; }
+        if(!selectedServiceId && rows[0]) { selectedServiceId = rows[0].id; if(term) { selectedCategoryId = rows[0].parentId; renderCategories(); } }
         serviceCards.innerHTML = rows.map(x => {
-            const extra = `<div class="d-flex gap-1 flex-wrap mt-1"><span class="badge text-bg-light border">${labelOffer(x.offerType)}</span>${x.referenceUrl ? `<span class="badge text-bg-info">Link</span>` : ''}</div>`;
+            const price = x.isManualPrice || x.unitPrice == null ? 'Por confirmar' : toMoney(Number(x.unitPrice) * (x.unitPriceIncludesVat ? 1 : 1 + IVA)) + ' IVA incluido';
+            const extra = `<div class="mt-2 fw-semibold text-primary">${price}</div><div class="mt-1"><span class="badge text-bg-light border">${labelOffer(x.offerType)}</span></div>`;
             return cardHtml(x, String(selectedServiceId) === String(x.id), extra);
         }).join('');
         serviceCards.querySelectorAll('button[data-id]').forEach(btn => {
             btn.addEventListener('click', () => {
                 selectedServiceId = btn.dataset.id;
+                selectedCategoryId = find(s.services, selectedServiceId)?.parentId;
+                renderCategories();
                 selectedSubproductId = null;
                 renderServices();
                 renderSubproducts();
@@ -537,10 +539,11 @@
         const s = getSegmentData();
         const rows = s.subproducts.filter(x => x.parentId === selectedServiceId && isAllowedByRules(x.id));
         if(!selectedServiceId){ subproductCards.innerHTML = '<div class="text-muted">Selecciona un servicio.</div>'; return; }
-        if(!rows.length){ subproductCards.innerHTML = '<div class="text-muted">Este servicio no tiene variantes; se agregara directo al carrito.</div>'; return; }
+        if(!rows.length){ subproductCards.innerHTML = '<div class="text-muted">Indica cuántos necesitas y agrega el servicio a tu selección.</div>'; return; }
+        if(!selectedSubproductId && rows[0]) selectedSubproductId = rows[0].id;
         subproductCards.innerHTML = rows.map(x => {
-            const priceTxt = x.isManualPrice || x.unitPrice == null ? 'Precio manual' : `${toMoney(x.unitPrice)} ${x.unitPriceIncludesVat ? '(IVA incl.)' : '+ IVA'}`;
-            const variantTxt = (x.variantGroup || x.variantValue) ? `<span class="badge text-bg-light border">${(x.variantGroup || 'Variante')}: ${x.variantValue || '-'}</span>` : '';
+            const priceTxt = x.isManualPrice || x.unitPrice == null ? 'Precio por confirmar' : `${toMoney(x.unitPrice)} ${x.unitPriceIncludesVat ? '(IVA incl.)' : '+ IVA'}`;
+            const variantTxt = (x.variantGroup || x.variantValue) ? `<span class="badge text-bg-light border">${escapeHtml((x.variantGroup || 'Variante'))}: ${escapeHtml(x.variantValue || '-')}</span>` : '';
             const extra = `<div class="d-flex gap-1 flex-wrap mt-1"><span class="badge text-bg-light border">${labelOffer(x.offerType)}</span>${variantTxt}<span class="badge text-bg-secondary">${priceTxt}</span></div>`;
             return cardHtml(x, String(selectedSubproductId) === String(x.id), extra);
         }).join('');
@@ -603,8 +606,9 @@
         if(sumBase) sumBase.textContent = toMoney(t.base);
         if(sumVat) sumVat.textContent = toMoney(t.vat);
         if(sumDiscount) sumDiscount.textContent = '-' + toMoney(t.discount || 0);
-        if(sumTotal) sumTotal.textContent = toMoney(t.total);
-        manualBadge.textContent = 'Manuales: ' + t.manual;
+        if(sumTotal) sumTotal.textContent = lines.length && lines.every(x=>x.isManual) && !manualLines.length ? 'Por confirmar' : toMoney(t.total);
+        manualBadge.textContent = 'Precio por confirmar: ' + lines.filter(x => x.isManual).length;
+        manualBadge.classList.toggle('d-none', !lines.some(x => x.isManual));
         if(globalDiscountTypeHidden) globalDiscountTypeHidden.value = t.discountMode || 'none';
         if(globalDiscountValueHidden) globalDiscountValueHidden.value = String(t.discountValue || 0);
         linesJson.value = JSON.stringify(lines.map(x => ({
@@ -629,7 +633,7 @@
         if(cLines) cLines.textContent = String(lines.length + manualLines.length);
         if(cBase) cBase.textContent = toMoney(t.base);
         if(cVat) cVat.textContent = toMoney(t.vat);
-        if(cTotal) cTotal.textContent = toMoney(t.total);
+        if(cTotal) cTotal.textContent = sumTotal.textContent;
     }
 
     function renderCart(){
@@ -642,16 +646,16 @@
             div.innerHTML = `
                 <div class="d-flex justify-content-between gap-2">
                     <div>
-                        <div class="fw-semibold">${l.serviceName}</div>
-                        <div class="small text-muted">${l.categoryName}${l.subproductName ? ' · ' + l.subproductName : ''}</div>
+                        <div class="fw-semibold">${escapeHtml(l.serviceName)}</div>
+                        <div class="small text-muted">${escapeHtml(l.categoryName)}${escapeHtml(l.subproductName ? ' · ' + l.subproductName : '')}</div>
                         <div class="small d-flex gap-1 flex-wrap">
                             <span class="badge text-bg-light border">${labelOffer(l.offerType)}</span>
-                            <span class="badge text-bg-info">${l.recurrence || 'Unica'}</span>
+                            <span class="badge text-bg-info">${escapeHtml(l.recurrence || 'Unica')}</span>
                         </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del="${idx}">Quitar</button>
                 </div>
-                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity}</span><span>${l.isManual ? 'Manual' : toMoney(l.total)}</span></div>
+                <div class="small mt-1 d-flex justify-content-between text-muted"><span>Cant: ${l.quantity}</span><span>${l.isManual ? 'Por confirmar' : toMoney(l.total)}</span></div>
             `;
             cartLines.appendChild(div);
         });
@@ -671,11 +675,11 @@
             div.innerHTML = `
                 <div class="d-flex justify-content-between gap-2">
                     <div>
-                        <div class="fw-semibold">${l.serviceName || 'Concepto libre'}</div>
-                        <div class="small text-muted">${l.categoryName || 'Libre'} · ${l.description || ''}</div>
+                        <div class="fw-semibold">${escapeHtml(l.serviceName || 'Concepto libre')}</div>
+                        <div class="small text-muted">${escapeHtml(l.categoryName || 'Libre')} · ${escapeHtml(l.description || '')}</div>
                         <div class="small d-flex gap-1 flex-wrap">
                             <span class="badge text-bg-warning">Manual</span>
-                            <span class="badge text-bg-info">${l.recurrence || 'Unica'}</span>
+                            <span class="badge text-bg-info">${escapeHtml(l.recurrence || 'Unica')}</span>
                         </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger" data-del-manual="${idx}">Quitar</button>
@@ -696,6 +700,12 @@
 
     function showStep(step){
         currentStep = step;
+        document.getElementById('quoteFeedback').classList.add('d-none');
+        if(step === 4){
+            const review = document.getElementById('confirmSelection'); review.replaceChildren();
+            [...lines, ...manualLines].forEach(x => { const row = document.createElement('div'); row.className = 'border rounded-3 p-3'; row.textContent = `${x.quantity} × ${x.serviceName}${x.subproductName ? ' · '+x.subproductName : ''}`; review.append(row); });
+            document.getElementById('confirmContact').textContent = `${inputCustomerName.value} · ${inputCustomerEmail.value} · ${inputCustomerPhone.value} · ${inputCustomerLocation.value}`;
+        }
         document.querySelectorAll('.quote-step-panel').forEach(p => {
             p.classList.toggle('d-none', Number(p.getAttribute('data-step')) !== currentStep);
         });
@@ -712,15 +722,15 @@
 
     function validateStep(step){
         if(step === 2 && lines.length === 0 && manualLines.length === 0){
-            alert('Agrega al menos un concepto al carrito antes de continuar.');
+            feedback('Agrega al menos un servicio antes de continuar.');
             return false;
         }
         if(step === 3 && !skipClientDataStep){
             const required = ['Input_CustomerName','Input_CustomerEmail','Input_CustomerPhone','Input_CustomerLocation'];
             for(const id of required){
                 const el = document.getElementById(id);
-                if(!el || !String(el.value || '').trim()){
-                    alert('Completa los datos de contacto obligatorios.');
+                if(!el || !String(el.value || '').trim() || !el.checkValidity()){
+                    feedback('Completa los campos obligatorios de contacto.'); el?.focus();
                     return false;
                 }
             }
@@ -746,7 +756,7 @@
         const category = find(s.categories, selectedCategoryId);
         const service = find(s.services, selectedServiceId);
         if(!category || !service){
-            alert('Selecciona categoria y servicio.');
+            feedback('Selecciona una categoría y un servicio.');
             return;
         }
 
@@ -754,7 +764,8 @@
         const selected = subItem || service;
         const isManual = !!selected.isManualPrice || selected.unitPrice == null;
         const unit = Number(selected.unitPrice || 0);
-        const q = Math.max(1, Number(qty.value || 1));
+        const q = Number(qty.value || 1);
+        if(!Number.isInteger(q) || q < 1 || q > 10000){feedback('Usa una cantidad entera entre 1 y 10,000.'); return;}
         const includesVat = !!selected.unitPriceIncludesVat;
 
         let base = 0, vat = 0, total = 0;
@@ -819,10 +830,21 @@
         renderCart();
     });
 
+    document.getElementById('serviceSearch').addEventListener('input', () => { selectedServiceId = null; selectedSubproductId = null; renderServices(); renderSubproducts(); });
+    document.querySelectorAll('[data-step-pill]').forEach(button => button.addEventListener('click', () => { const target = Number(button.dataset.stepPill); if(target > currentStep && (!validateStep(2) || (target === 4 && !validateStep(3)))) return; showStep(target); }));
+    document.getElementById('quoteForm').addEventListener('submit', e => {
+        if(!validateStep(2)){e.preventDefault(); showStep(2); feedback('Agrega al menos un servicio.'); return;}
+        if(!validateStep(3)){e.preventDefault(); showStep(3); feedback('Revisa los datos de contacto y el formato del correo.'); return;}
+        if(e.submitter?.id !== 'previewBtn') { if(currentStep !== 4){e.preventDefault();showStep(4);return;} submitBtn.disabled = true; submitBtn.textContent = 'Enviando…'; }
+    });
     prevStepBtn.addEventListener('click', goPrev);
     nextStepBtn.addEventListener('click', goNext);
 
+    let previousSegment = seg.value;
     seg.addEventListener('change', () => {
+        if(lines.length && !confirm('Cambiar de tipo vaciará los servicios seleccionados. ¿Continuar?')){seg.value = previousSegment;return;}
+        previousSegment = seg.value;
+        document.getElementById('serviceSearch').value = '';
         lines.length = 0;
         selectedCategoryId = null;
         selectedServiceId = null;
@@ -833,19 +855,24 @@
         renderCart();
     });
 
-    renderCategories();
-    renderServices();
-    renderSubproducts();
-    renderCart();
-    onProspectChange();
+    renderCategories(); renderServices(); renderSubproducts();
+    if(Array.isArray(initialPicks)) initialPicks.forEach(p => {
+        selectedCategoryId = p.categoryId ?? p.CategoryId; selectedServiceId = p.serviceId ?? p.ServiceId; selectedSubproductId = p.subproductId ?? p.SubproductId;
+        qty.value = p.quantity ?? p.Quantity ?? 1; addBtn.click();
+    });
+    qty.value = 1; renderCategories(); renderServices(); renderSubproducts(); renderCart();
+    if(prospectSelect && selectedClientId.value) prospectSelect.value = selectedClientId.value;
     showStep(navSteps[0]);
 })();
 </script>
 
 <style>
+.quote-workspace .quote-summary{position:sticky;top:20px}.quote-segment-bar{display:flex;gap:1rem;padding:1.2rem;background:#edf4ff;border-radius:14px}.quote-segment-bar>div:first-child{min-width:230px}.quote-workspace h1{letter-spacing:-.04em;font-weight:800}.quote-workspace .card{border-radius:16px}.quote-workspace .hn-card-select{text-align:left;transition:border-color .15s,box-shadow .15s}.quote-workspace .hn-card-select.is-active{box-shadow:0 0 0 2px #2463eb}.quote-workspace .quote-step-pill{cursor:pointer}.quote-workspace .form-label{font-weight:600}.quote-workspace .hn-desc{overflow-wrap:anywhere}
+@@media(max-width:767px){.quote-segment-bar{flex-direction:column}.quote-steps{gap:.25rem}.quote-step-pill{font-size:.75rem!important;padding:.6rem .25rem!important}.quote-workspace .card-body.p-4{padding:1rem!important}.quote-workspace .quote-summary{position:static}}
+
 .quote-steps{
     display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-columns:repeat(3,minmax(0,1fr));
     gap:.5rem;
 }
 .quote-step-pill{
