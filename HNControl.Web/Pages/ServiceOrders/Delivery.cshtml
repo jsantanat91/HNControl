@@ -1,0 +1,51 @@
+@page "{id:guid}"
+@model HNControl.Web.Pages.ServiceOrders.DeliveryModel
+@using HNControl.Shared
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@{ ViewData["Title"] = "Entrega y equipos"; }
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
+    <div><div class="text-primary small fw-semibold mb-1">ORDEN DE SERVICIO · @HNControl.Web.Services.ServiceOrderNotificationTemplates.Reference(Model.Order)</div><h1 class="h3 mb-1">Entrega y equipos</h1><p class="text-muted mb-0">Un solo registro, un PDF y las mismas firmas para toda la entrega.</p></div>
+    <a class="btn btn-outline-secondary" asp-page="@Model.BackPage" asp-route-id="@Model.Order.Id">Volver a la orden</a>
+</div>
+<div class="rounded-4 p-4 mb-4" style="background:#173b5d;color:white">
+    <span class="badge bg-light text-primary mb-2">@Model.Input.KindLabel</span><h2 class="h5">@Model.Order.Title</h2>
+    <div>@Model.Order.Client?.ClientCode · @Model.Order.Client?.Name</div>
+    @if(Model.Order.ClientServiceContract != null){<div class="small mt-2">@HNControl.Web.Services.ClientServiceContractMetadata.ServiceName(Model.Order.ClientServiceContract) · @Model.Order.ClientServiceContract.BranchAddress</div>}
+</div>
+@if(TempData["Info"] is string notice){<div class="alert alert-success">@notice</div>}
+@if(!Model.CanEdit){<div class="alert alert-info">Consulta de entrega. Solo el técnico que tomó la orden o un administrador puede editar antes de firmar y enviar a revisión.</div>}
+<form method="post" class="card border-0 shadow-sm rounded-4">
+    <input asp-for="Expected" type="hidden" />
+    <div asp-validation-summary="All" class="text-danger p-3"></div>
+    <fieldset disabled="@(!Model.CanEdit)">
+    <section class="p-4 border-bottom">
+        <h2 class="h5 mb-1">01 · Alcance de la entrega</h2><p class="text-muted small">El cliente y contrato ya están vinculados a la orden. Aquí solo registra lo que se entrega.</p>
+        <label class="form-label" asp-for="Input.Kind">¿Qué entregamos?</label><select asp-for="Input.Kind" class="form-select"><option value="service">Servicio</option><option value="hardware">Entrega de hardware</option><option value="both">Servicio + hardware</option></select>
+    </section>
+    <section class="p-4 border-bottom">
+        <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center"><div><h2 class="h5 mb-1">02 · Router</h2><p class="text-muted small mb-0">Identifica el router instalado o entregado.</p></div><div class="form-check form-switch"><input asp-for="Input.HasRouter" class="form-check-input" /><label asp-for="Input.HasRouter" class="form-check-label">Registrar router</label></div></div>
+        <div id="router-fields" class="row g-3 mt-2" hidden="@(!Model.Input.HasRouter)">
+            <div class="col-md-4"><label class="form-label" asp-for="Input.RouterBrand">Marca del router *</label><input class="form-control" asp-for="Input.RouterBrand" maxlength="120" placeholder="Escribe la marca" /></div>
+            <div class="col-md-4"><label class="form-label" asp-for="Input.RouterModel">Modelo</label><input class="form-control" asp-for="Input.RouterModel" maxlength="120" /></div>
+            <div class="col-md-4"><label class="form-label" asp-for="Input.RouterSerial">Serie del router *</label><input class="form-control" asp-for="Input.RouterSerial" maxlength="120" placeholder="Escribe la serie de la etiqueta" /></div>
+            <div class="col-md-6"><label class="form-label" asp-for="Input.RouterMode">Modalidad</label><select class="form-select" asp-for="Input.RouterMode">@foreach(var x in OrderDeliveryData.Modes){<option>@x</option>}</select></div>
+            <div class="col-md-6"><label class="form-label" asp-for="Input.RouterCondition">Estado físico</label><select class="form-select" asp-for="Input.RouterCondition">@foreach(var x in OrderDeliveryData.Conditions){<option>@x</option>}</select></div>
+            <div class="col-12"><label class="form-label" asp-for="Input.RouterAccessories">Accesorios / observaciones</label><input class="form-control" asp-for="Input.RouterAccessories" maxlength="400" placeholder="Fuente de poder, cable, montaje…" /></div>
+        </div>
+    </section>
+    <section class="p-4 border-bottom" style="background:#f5f8fd">
+        <div class="d-flex justify-content-between gap-3 align-items-center mb-3"><div><h2 class="h5 mb-1">03 · Otros equipos</h2><div class="small text-muted">Agrega solo los equipos que forman parte de esta entrega.</div></div><button type="button" id="add-equipment" class="btn btn-outline-primary">+ Equipo</button></div>
+        <div id="equipment-list">
+            @for(var i=0; i<Model.Input.Items.Count; i++)
+            {
+                @await Html.PartialAsync("_DeliveryEquipmentEditor", Model.Input.Items[i], new ViewDataDictionary(ViewData) { TemplateInfo = { HtmlFieldPrefix = $"Input.Items[{i}]" } })
+            }
+        </div>
+        <div id="equipment-empty" class="text-muted text-center border rounded-3 p-3" hidden="@(Model.Input.Items.Count > 0)">Sin equipos adicionales. El router se registra arriba.</div>
+    </section>
+    <section class="p-4"><h2 class="h5">04 · Observaciones de entrega</h2><textarea asp-for="Input.Notes" rows="3" maxlength="2000" class="form-control" placeholder="Condiciones, accesorios pendientes o indicaciones para el cliente. No incluyas contraseñas."></textarea><p class="text-muted small mt-2">Los equipos y observaciones aparecerán en el PDF junto con las firmas del técnico y del cliente.</p></section>
+    @if(Model.CanEdit){<div class="p-4 border-top text-end"><button class="btn btn-primary px-4" type="submit">Guardar entrega y equipos</button></div>}
+    </fieldset>
+</form>
+<template id="equipment-template">@await Html.PartialAsync("_DeliveryEquipmentEditor", new DeliveryEquipment(), new ViewDataDictionary(ViewData) { TemplateInfo = { HtmlFieldPrefix = "Input.Items[0]" } })</template>
+@section Scripts { <script src="~/js/order-delivery.js" asp-append-version="true"></script> }

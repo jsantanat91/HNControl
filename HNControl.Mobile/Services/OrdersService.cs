@@ -4,6 +4,9 @@ namespace HNControl.Mobile.Services;
 
 public sealed class OrdersService
 {
+    public Task<OrderDeliveryResponse> DeliveryAsync(Guid id) => _api.GetJsonAsync<OrderDeliveryResponse>($"api/mobile/orders/{id}/delivery");
+    public Task<ApiMessageDto> SaveDeliveryAsync(Guid id, HNControl.Shared.OrderDeliveryData data, string expected) =>
+        _api.PutJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/delivery", new { Data = data, Expected = expected });
     private readonly MobileApiClient _api;
 
     public OrdersService(MobileApiClient api)
@@ -52,9 +55,9 @@ public sealed class OrdersService
         return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/area/previous", new { });
     }
 
-    public Task<ApiMessageDto> SubmitAsync(Guid id, string? techSigDataUrl = null, string? clientSigDataUrl = null)
+    public Task<ApiMessageDto> SubmitAsync(Guid id, string? techSigDataUrl = null, string? clientSigDataUrl = null, string? deliveryVersion = null)
     {
-        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { techSigDataUrl, clientSigDataUrl });
+        return _api.PostJsonAsync<object, ApiMessageDto>($"api/mobile/orders/{id}/submit", new { techSigDataUrl, clientSigDataUrl, deliveryVersion });
     }
 
     public async Task<ApiMessageDto> UploadEvidenceAsync(Guid id, Stream fileStream, string fileName, string? fileContentType)
@@ -67,4 +70,15 @@ public sealed class OrdersService
             "EvidenceFile",
             fileContentType);
     }
+}
+
+public sealed class OrderDeliveryResponse
+{
+    public HNControl.Shared.OrderDeliveryData Data { get; set; } = new();
+    public string Expected { get; set; } = "";
+    public string Version { get; set; } = "";
+    public bool CanEdit { get; set; }
+    public string Title { get; set; } = "";
+    public string Client { get; set; } = "";
+    public string Address { get; set; } = "";
 }

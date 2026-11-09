@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
@@ -310,14 +310,27 @@ public class WorkModel : PageModel
         return RedirectToPage(new { id });
     }
 
-    public async Task<IActionResult> OnPostSignAndSubmitAsync(Guid id, string? TechSigDataUrl)
+    public async Task<IActionResult> OnPostSignAndSubmitAsync(Guid id, string? TechSigDataUrl, string? ClientSigDataUrl = null, string? DeliveryVersion = null)
     {
         id = ResolveId(id);
         if (id == Guid.Empty) return NotFound();
 
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (_db.Database.IsNpgsql())
+            await _db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {id} FOR UPDATE").LoadAsync();
         var ok = await LoadAsync(id);
         if (!ok || Order == null) return Forbid();
         if (!CanEditOrder(Order)) return Forbid();
+
+        if (Order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.PendingClientSignature) return Forbid();
+        var deliveryError = HNControl.Shared.OrderDeliveryData.Read(Order.DeliveryJson).Validate(closing: true);
+        if (deliveryError != null) { Info = deliveryError; return Page(); }
+        if (!string.IsNullOrEmpty(Order.DeliveryJson) && DeliveryVersion != OrderDeliveryService.Version(Order))
+        { Info = "La entrega cambió. Recarga la orden y revisa los equipos antes de firmar."; return Page(); }
+        var hasClientSignature = Order.Signatures.Any(x => x.Role == SignatureRole.Client);
+        if ((!HasTechSignature && SignatureDataUrl.ParsePng(TechSigDataUrl) is not { Length: >= 1200 })
+            || (!hasClientSignature && SignatureDataUrl.ParsePng(ClientSigDataUrl) is not { Length: >= 1200 }))
+        { Info = "Captura ambas firmas: técnico HN y cliente, antes de enviar."; return Page(); }
 
         if (Order.CurrentArea != ServiceOrderWorkflowArea.CierreTecnico)
         {
@@ -327,6 +340,7 @@ public class WorkModel : PageModel
 
         var techName = await GetCurrentUserDisplayNameAsync();
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, techName, TechSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, Order.Client?.Name, ClientSigDataUrl);
 
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
@@ -351,6 +365,7 @@ WHERE ""Id"" = {id};
         _db.ChangeTracker.Clear();
         await LoadAsync(id);
 
+        await transaction.CommitAsync();
         Info = "Firmada y enviada a revision.";
         return Page();
     }

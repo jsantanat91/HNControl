@@ -31,6 +31,15 @@ await orders.UpdateChecklistAsync(id, new() { Items = [new() { Id = id, IsDone =
 Check(JsonDocument.Parse(handler.Payload).RootElement.GetProperty("Items")[0].GetProperty("IsDone").GetBoolean(), "Checklist completion serializes");
 await orders.SubmitAsync(id, "data:image/png;base64,dGVzdA==", "data:image/png;base64,Y2xpZW50");
 Check(handler.Payload.Contains("techSigDataUrl") && handler.Payload.Contains("clientSigDataUrl"), "Both signatures sent on submission");
+await orders.SaveDeliveryAsync(id, new HNControl.Shared.OrderDeliveryData { Kind = "both", HasRouter = true, RouterBrand = "MikroTik", RouterSerial = "RTR-01" }, "previous");
+using (var deliveryRequest = JsonDocument.Parse(handler.Payload))
+    Check(handler.Method == "PUT" && handler.Path.EndsWith("/delivery") && deliveryRequest.RootElement.GetProperty("Data").GetProperty("RouterSerial").GetString() == "RTR-01" && deliveryRequest.RootElement.GetProperty("Expected").GetString() == "previous", "Delivery persists router serial and concurrency token");
+await orders.SubmitAsync(id, "tech", "client", "delivery-version");
+Check(JsonDocument.Parse(handler.Payload).RootElement.GetProperty("deliveryVersion").GetString() == "delivery-version", "Signatures identify the delivery version reviewed");
+handler.Body = """{"data":{"kind":"both","hasRouter":true,"routerBrand":"MikroTik","routerSerial":"RTR-01"},"expected":"stored","version":"hash","canEdit":true}""";
+var delivery = await orders.DeliveryAsync(id);
+Check(delivery.Data.RouterSerial == "RTR-01" && delivery.CanEdit && delivery.Version == "hash", "Delivery API response preserves router and edit permission");
+handler.Body = "{}";
 await viaticos.EnsureWeekAsync(new DateTime(2026,9,28));
 Check(JsonDocument.Parse(handler.Payload).RootElement.ValueKind == JsonValueKind.String, "Week creation matches server DateTime body");
 await viaticos.CreateTravelWeekAsync(new() { TripDestination = "Monterrey", TripPurpose = "Servicio", RequestedAdvanceAmount = 1250.50m });

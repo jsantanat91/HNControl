@@ -1,4 +1,4 @@
-﻿@page "{id:guid}"
+@page "{id:guid}"
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.ServiceOrders.WorkModel
 @{
@@ -47,6 +47,10 @@
 </div>
 
 <partial name="_ServiceOrderNotificationNotice" />
+<div class="card mb-3 border-primary-subtle"><div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div><span class="badge bg-primary-subtle text-primary mb-2">@HNControl.Shared.OrderDeliveryData.Read(Model.Order.DeliveryJson).KindLabel</span><h2 class="h5 mb-1">Entrega y equipos</h2><div class="text-muted small">Captura marca y serie del router y otros equipos antes de firmar.</div></div>
+    <a class="btn btn-outline-primary" asp-page="/ServiceOrders/Delivery" asp-route-id="@Model.Order.Id">Ver / capturar entrega</a>
+</div></div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Info))
 {
@@ -297,6 +301,8 @@
             <form method="post" asp-page-handler="SignAndSubmit" asp-route-id="@Model.Order.Id" class="card shadow-sm border-0">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="TechSigDataUrl" id="hnTechSigDataUrl" />
+                <input type="hidden" name="ClientSigDataUrl" id="hnClientSigDataUrl" />
+                <input type="hidden" name="DeliveryVersion" value="@HNControl.Web.Services.OrderDeliveryService.Version(Model.Order)" />
 
                 <div class="card-header bg-white border-0">
                     <div class="fw-semibold">Cierre tecnico: firma y envio</div>
@@ -327,6 +333,13 @@
                         </div>
                     </div>
 
+                    <div class="mt-3">
+                        <label class="form-label">Cliente · @Model.Order.Client?.Name</label>
+                        <p class="text-muted small">La firma cubre el trabajo y los equipos registrados en esta orden.</p>
+                        <div class="border rounded-4 bg-light p-2 hn-sig-box"><canvas id="hnClientCanvas" class="w-100 hn-sig-canvas" style="height:280px; touch-action:none;"></canvas></div>
+                        @if(!Model.IsReadOnly){<button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="hnSigClear('hnClientCanvas')">Limpiar firma del cliente</button>}
+                        @if(Model.Order.Signatures.Any(x => x.Role == SignatureRole.Client)){<a class="small ms-2" href="?handler=SignatureImage&amp;id=@Model.Order.Id&amp;role=Client" target="_blank">Ver firma guardada</a>}
+                    </div>
                     <hr class="my-3" />
 
                     @{
@@ -440,6 +453,7 @@
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
+                if(hnPads[canvasId]) hnPads[canvasId].dirty = true;
 
                 lastX = p.x; lastY = p.y;
                 ev.preventDefault();
@@ -458,7 +472,7 @@
             canvas.addEventListener('touchmove', move, { passive: false });
             window.addEventListener('touchend', end, { passive: false });
 
-            hnPads[canvasId] = { canvas, ctx, resize };
+            hnPads[canvasId] = { canvas, ctx, resize, dirty: false };
         }
 
         function hnSigClear(canvasId) {
@@ -467,15 +481,19 @@
             const c = pad.canvas;
             const ctx = pad.ctx;
             ctx.clearRect(0, 0, c.width, c.height);
+            pad.dirty = false;
         }
 
         function hnCaptureSigs() {
             const tech = document.getElementById('hnTechCanvas');
             const hidden = document.getElementById('hnTechSigDataUrl');
-            if (tech && hidden) hidden.value = tech.toDataURL('image/png');
+            if (tech && hidden) hidden.value = hnPads.hnTechCanvas?.dirty ? tech.toDataURL('image/png') : '';
+            const client = document.getElementById('hnClientCanvas');
+            document.getElementById('hnClientSigDataUrl').value = hnPads.hnClientCanvas?.dirty ? client.toDataURL('image/png') : '';
         }
 
         hnInitPad('hnTechCanvas');
+        hnInitPad('hnClientCanvas');
     </script>
     <style>
         .hn-sig-box {

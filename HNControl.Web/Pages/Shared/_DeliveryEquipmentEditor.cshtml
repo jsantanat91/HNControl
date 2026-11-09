@@ -1,0 +1,14 @@
+@model HNControl.Shared.DeliveryEquipment
+<div class="delivery-equipment border rounded-4 p-3 mb-3 bg-white">
+    <div class="d-flex align-items-center justify-content-between mb-3"><span class="badge bg-primary-subtle text-primary">Equipo adicional</span><button type="button" class="btn btn-sm btn-outline-danger" data-remove-equipment>Quitar</button></div>
+    <div class="row g-3">
+        <div class="col-md-8"><label asp-for="Name" class="form-label">Equipo</label><input asp-for="Name" class="form-control" maxlength="120" placeholder="Punto de acceso, switch, antena…" /></div>
+        <div class="col-md-4"><label asp-for="Quantity" class="form-label">Cantidad</label><input asp-for="Quantity" class="form-control" min="1" max="10000" type="number" /></div>
+        <div class="col-md-4"><label asp-for="Brand" class="form-label">Marca</label><input asp-for="Brand" class="form-control" maxlength="120" /></div>
+        <div class="col-md-4"><label asp-for="Model" class="form-label">Modelo</label><input asp-for="Model" class="form-control" maxlength="120" /></div>
+        <div class="col-md-4"><label asp-for="Serial" class="form-label">Número de serie</label><input asp-for="Serial" class="form-control" maxlength="120" /><div class="form-text">Un equipo por fila si tiene serie.</div></div>
+        <div class="col-md-6"><label asp-for="Mode" class="form-label">Modalidad</label><select asp-for="Mode" class="form-select">@foreach(var x in HNControl.Shared.OrderDeliveryData.Modes){<option>@x</option>}</select></div>
+        <div class="col-md-6"><label asp-for="Condition" class="form-label">Estado físico</label><select asp-for="Condition" class="form-select">@foreach(var x in HNControl.Shared.OrderDeliveryData.Conditions){<option>@x</option>}</select></div>
+        <div class="col-12"><label asp-for="Accessories" class="form-label">Accesorios y observaciones del equipo</label><input asp-for="Accessories" class="form-control" maxlength="400" placeholder="Fuente de poder, cables, montaje, detalles del estado…" /></div>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Data;
+using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +39,7 @@ public class IndexModel : PageModel
         ServiceOrderType.NuevaInstalacion,
         ServiceOrderType.LevantamientoTecnico,
         ServiceOrderType.Eventos,
+        ServiceOrderType.EntregaHardware,
         ServiceOrderType.Global
     };
 

@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.5.18 / APK 2.3.0 · 9 de noviembre de 2026
+
+- Servicio, entrega de hardware o ambos en la misma orden; captura de marca y serie del router, otros equipos, cantidades, accesorios, modalidad y estado.
+- Una sola orden PDF con soporte NOC, equipos, firmas técnico/cliente y huella que incluye la entrega. Se bloquea modificar equipos firmados y se detectan cambios entre captura y firma.
+- Captura desde web y APK; formatos anteriores accesibles desde Órdenes → Entregas anteriores. Retirada la creación independiente y la sección de formatos en Clientes.
+- Cuentas de proveedores en la APK: búsqueda y copia de cuenta, correo y contraseña para empleados y administradores. Contraseñas fuera de listados y solo obtenidas al copiar.
+- Aplicar `HNControl.Web/Sql/20261109_order_delivery.sql` antes de desplegar la web; instalar APK 2.3.0 después.
+
+
 ## Web 2.5.17 · 9 de noviembre de 2026
 
 - Orden PDF con bloque NOC, WhatsApp preferente y llamadas al 55 2601 4566, soporte@hubnet-solutions.com.mx y support.hubnet-solutions.net; mantiene firmas y huellas SHA-256.

@@ -153,6 +153,14 @@ public class DetailsModel : PageModel
         await LoadAsync(id);
         if (Order == null) return NotFound();
 
+        if (!string.IsNullOrWhiteSpace(Order.DeliveryJson))
+        {
+            Info = HNControl.Shared.OrderDeliveryData.Read(Order.DeliveryJson).Validate(closing: true);
+            if (Info != null) return Page();
+            if (!Order.Signatures.Any(x => x.Role == SignatureRole.Technician) || !Order.Signatures.Any(x => x.Role == SignatureRole.Client))
+            { Info = "Se requieren las firmas del técnico HN y del cliente para finalizar esta entrega."; return Page(); }
+        }
+
         Order.AdminReviewNotes = (ReviewNotes ?? "").Trim();
         Order.Status = ServiceOrderStatus.Finalized;
         Order.FinalizedAt = DateTime.UtcNow;

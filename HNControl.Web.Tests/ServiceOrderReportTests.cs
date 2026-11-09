@@ -102,6 +102,18 @@ internal static class ServiceOrderReportTests
         check(Inspect(await Save("orden-mensual-noc")).Pages == 1,
             "Orden mensual con firmas y NOC conserva una página para una entrega breve");
 
+        var hardware = new HNControl.Shared.OrderDeliveryData { Kind = "both", HasRouter = true,
+            RouterBrand = "MikroTik", RouterModel = "hEX", RouterSerial = "HN-RTR-001", RouterAccessories = "Fuente de poder y cable de red" };
+        hardware.Items.Add(new() { Name = "Punto de acceso", Brand = "Ubiquiti", Model = "U6+", Serial = "HN-AP-001", Mode = "Venta", Accessories = "Montaje y PoE" });
+        order.DeliveryJson = hardware.Serialize();
+        await db.SaveChangesAsync();
+        var hardwareReport = Inspect(await Save("orden-entrega-unificada"));
+        hardware.RouterSerial = "HN-RTR-002"; order.DeliveryJson = hardware.Serialize(); await db.SaveChangesAsync();
+        check(Inspect(await pdf.RenderAsync(order)).Hash != hardwareReport.Hash, "Entrega: cambiar la serie del router cambia la huella del documento");
+        for (var i = 0; i < 18; i++) hardware.Items.Add(new() { Name = "Equipo adicional de prueba " + i, Serial = "QA-" + i, Accessories = "Cable y fuente de poder. Observaciones de estado físico." });
+        order.DeliveryJson = hardware.Serialize(); await db.SaveChangesAsync();
+        check(Inspect(await Save("orden-entrega-equipos-multipagina")).Pages > 1, "Entrega: múltiples equipos paginan sin eliminar firmas ni NOC");
+        order.DeliveryJson = "";
         order.Type = ServiceOrderType.Global;
         db.ServiceOrderWorkItems.Add(new() { Order = order, SortOrder = 0, Type = ServiceOrderType.Correctivo, Title = "Actividad sin checklist", WorkPerformed = "Cableado revisado." });
         for (var i = 4; i <= 55; i++) db.ServiceOrderChecklistItems.Add(new() { Order = order, SortOrder = i, Title = $"Punto de control {i}", Notes = "Observación de muestra." });

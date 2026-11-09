@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -42,6 +42,7 @@ public class IndexModel : PageModel
         ServiceOrderType.NuevaInstalacion,
         ServiceOrderType.LevantamientoTecnico,
         ServiceOrderType.Eventos,
+        ServiceOrderType.EntregaHardware,
         ServiceOrderType.Global
     };
 

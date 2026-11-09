@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using HNControl.Web.Models;
+using HNControl.Shared;
 using QuestPDF.Drawing.Exceptions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -38,13 +39,16 @@ internal sealed class ServiceOrderReport(
     private ClientServiceContract? Contract => order.ClientServiceContract?.ClientId == order.ClientId ? order.ClientServiceContract : null;
     private string Service => ClientServiceContractMetadata.ServiceName(Contract);
     private string Reference => ServiceOrderNotificationTemplates.Reference(order);
+    private OrderDeliveryData Delivery => OrderDeliveryData.Read(order.DeliveryJson);
     private string? TechnicianName => order.ClaimedByEmployee?.FullName ?? order.AssignedEmployee?.FullName;
     private IEnumerable<ServiceOrderWorkItem> Activities => order.WorkItems.OrderBy(w => w.SortOrder).ThenBy(w => w.Id);
     private IEnumerable<ServiceOrderChecklistItem> Checks => order.Checklist.OrderBy(i => i.SortOrder).ThenBy(i => i.Id);
     private static string Digest<T>(T data) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(data)));
 
     // Fingerprint of the order data (including captured signatures), independent of PDF pagination and generation time.
-    private string OrderHash() => Digest(new
+    private string OrderHash()
+    {
+        var snapshot = new
     {
         Version = 1, order.Id, order.Title, order.Type, order.Status, order.Description,
         Created = order.CreatedAt.Ticks, End = order.EstimatedEndDate?.Ticks, Closed = order.FinalizedAt?.Ticks,
@@ -58,7 +62,9 @@ internal sealed class ServiceOrderReport(
         Checks = Checks.Select(i => new { i.Id, i.WorkItemId, i.SortOrder, i.Title, i.IsDone, i.Notes }),
         Evidence = attachments.Select(a => new { a.Id, a.Name, Ticks = a.UploadedAt.Ticks, ImageHash = a.Image == null ? null : Convert.ToHexString(SHA256.HashData(a.Image)) }),
         Signatures = new[] { technician, client }.Select(s => new { s.Name, Ticks = s.At?.Ticks, s.Hash })
-    });
+    };
+        return string.IsNullOrWhiteSpace(order.DeliveryJson) ? Digest(snapshot) : Digest(new { Version = 2, Order = snapshot, Delivery });
+    }
 
     internal byte[] Render(bool withImages)
     {
@@ -112,6 +118,7 @@ internal sealed class ServiceOrderReport(
                     });
                 });
                 if (Contract != null) ContractSection(c);
+                DeliverySection(c);
                 if (!string.IsNullOrWhiteSpace(order.Description))
                     c.Item().EnsureSpace(50).Column(x => { Heading(x, "Descripción del trabajo"); x.Item().Text(order.Description); });
                 if (!string.IsNullOrWhiteSpace(order.LevantamientoNotes) || !string.IsNullOrWhiteSpace(order.MaterialesNotes))
@@ -195,6 +202,32 @@ internal sealed class ServiceOrderReport(
                 Field(x, "Periodo del evento", contract.ContractStartDate.Value.Date == contract.ContractEndDate.Value.Date
                     ? contract.ContractStartDate.Value.ToString("dd/MM/yyyy")
                     : $"{contract.ContractStartDate:dd/MM/yyyy} al {contract.ContractEndDate:dd/MM/yyyy}");
+        });
+    }
+
+    private void DeliverySection(ColumnDescriptor column)
+    {
+        var data = Delivery;
+        if (!data.Equipment.Any() && string.IsNullOrWhiteSpace(data.Notes) && data.Kind == "service") return;
+        column.Item().EnsureSpace(100).Column(c =>
+        {
+            Heading(c, "Entrega · " + data.KindLabel);
+            if (data.Equipment.Any()) c.Item().Table(t =>
+            {
+                t.ColumnsDefinition(cols => { cols.ConstantColumn(30); cols.RelativeColumn(1.6f); cols.RelativeColumn(); cols.RelativeColumn(1.25f); });
+                t.Header(h => { foreach (var label in new[] { "Cant.", "Equipo / identificación", "Modalidad / estado", "Accesorios y observaciones" }) h.Cell().Background(Navy).Padding(5).Text(label).FontSize(8).SemiBold().FontColor(Colors.White); });
+                foreach (var item in data.Equipment)
+                {
+                    IContainer Cell() => t.Cell().BorderBottom(.5f).BorderColor(Rule).Background(Pale).Padding(5);
+                    Cell().Text(item.Quantity.ToString()).FontSize(9);
+                    Cell().Column(x => { x.Item().Text(item.Name).FontSize(9).SemiBold(); Field(x, "Marca", item.Brand); Field(x, "Modelo", item.Model); Field(x, "Serie", item.Serial); });
+                    Cell().Text(item.Mode + "\n" + item.Condition).FontSize(9);
+                    Cell().Text(item.Accessories ?? "").FontSize(9);
+                }
+            });
+            if (data.Kind != "service" && !data.Equipment.Any()) c.Item().Text("Equipos pendientes de captura").FontColor(Muted);
+            if (!string.IsNullOrWhiteSpace(data.Notes)) c.Item().PaddingTop(5).Text(data.Notes).FontSize(9);
+            c.Item().PaddingTop(5).Text("Las firmas de esta orden corresponden al trabajo y a los equipos descritos en este documento.").FontSize(8).FontColor(Muted);
         });
     }
 

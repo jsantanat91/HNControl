@@ -1,5 +1,6 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
+using HNControl.Shared;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -86,8 +87,30 @@ public class ServiceOrdersController : ControllerBase
 
     public class SubmitOrderRequest
     {
+        public string? DeliveryVersion { get; set; }
         public string? TechSigDataUrl { get; set; }
         public string? ClientSigDataUrl { get; set; }
+    }
+
+    public record DeliveryUpdate(OrderDeliveryData Data, string Expected);
+    [HttpGet("{id:guid}/delivery")]
+    public async Task<IActionResult> Delivery(Guid id)
+    {
+        if (!OrderDeliveryService.CanAccess(User)) return Forbid();
+        var order = await _db.ServiceOrders.AsNoTracking().Include(x => x.Client).Include(x => x.ClientServiceContract)
+            .Include(x => x.Signatures).SingleOrDefaultAsync(x => x.Id == id);
+        if (order == null) return NotFound();
+        return Ok(new { Data = OrderDeliveryData.Read(order.DeliveryJson), Expected = order.DeliveryJson,
+            Version = OrderDeliveryService.Version(order),
+            CanEdit = OrderDeliveryService.CanEdit(order, User), order.Title,
+            Client = order.Client?.Name, Address = order.ClientServiceContract?.BranchAddress });
+    }
+    [HttpPut("{id:guid}/delivery")]
+    public async Task<IActionResult> UpdateDelivery(Guid id, [FromBody] DeliveryUpdate request)
+    {
+        if (!OrderDeliveryService.CanAccess(User)) return Forbid();
+        var error = await OrderDeliveryService.SaveAsync(_db, id, User, request.Data, request.Expected ?? "");
+        return error == null ? Ok(new { message = "Entrega y equipos guardados." }) : Conflict(new { message = error });
     }
 
     [HttpGet]
@@ -332,9 +355,16 @@ public class ServiceOrdersController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
         if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
 
-        var o = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var query = _db.Database.IsNpgsql() ? _db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {id} FOR UPDATE") : _db.ServiceOrders.Where(x => x.Id == id);
+        var o = await query.FirstOrDefaultAsync();
         if (o == null) return NotFound();
         if (!CanEdit(o, userId)) return Forbid();
+
+        var deliveryError = OrderDeliveryData.Read(o.DeliveryJson).Validate(closing: true);
+        if (deliveryError != null) return Conflict(new { message = deliveryError });
+        if (!string.IsNullOrWhiteSpace(o.DeliveryJson) && req?.DeliveryVersion != OrderDeliveryService.Version(o))
+            return Conflict(new { message = "Actualiza la APK y revisa la entrega antes de capturar nuevamente ambas firmas." });
 
         if (o.CurrentArea != ServiceOrderWorkflowArea.CierreTecnico)
             return Conflict(new { message = "Debes avanzar hasta Cierre tÃ©cnico para enviar a revisiÃ³n." });
@@ -342,6 +372,7 @@ public class ServiceOrdersController : ControllerBase
         if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
             return Conflict(new { message = "La orden ya no permite envÃ­o a revisiÃ³n." });
 
+        var clientName = await _db.Clients.Where(x => x.Id == o.ClientId).Select(x => x.Name).FirstOrDefaultAsync() ?? "Cliente";
         var techName = await _db.EmployeeProfiles
             .Where(e => e.UserId == userId)
             .Select(e => e.FullName)
@@ -423,14 +454,14 @@ public class ServiceOrdersController : ControllerBase
                 {
                     OrderId = o.Id,
                     Role = SignatureRole.Client,
-                    SignedByName = "Cliente",
+                    SignedByName = clientName,
                     StoragePath = sigPath,
                     SignedAt = DateTime.UtcNow
                 });
             }
             else
             {
-                existingClientSig.SignedByName = "Cliente";
+                existingClientSig.SignedByName = clientName;
                 existingClientSig.StoragePath = sigPath;
                 existingClientSig.SignedAt = DateTime.UtcNow;
             }
@@ -448,6 +479,7 @@ public class ServiceOrdersController : ControllerBase
         o.PdfStoragePath = null;
         o.PdfGeneratedAt = null;
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return Ok(new { message = "Orden enviada a revisiÃ³n." });
     }

@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\artifacts\entrega')
 )
 $ErrorActionPreference = 'Stop'
@@ -26,11 +26,11 @@ if (!(Test-Path -LiteralPath $passwordFile)) { throw 'Falta la contraseña de la
 & dotnet publish (Join-Path $PSScriptRoot 'HNControl.Mobile.csproj') -c Release -f net10.0-android "-p:BaseIntermediateOutputPath=$buildRoot\obj\" "-p:BaseOutputPath=$buildRoot\bin\" -p:AndroidPackageFormats=apk -v:minimal
 if ($LASTEXITCODE -ne 0) { throw 'Falló la compilación de Android.' }
 $unsigned = Join-Path $buildRoot 'bin\Release\net10.0-android\publish\net.hubnet.hncontrol.apk'
-$output = Join-Path $OutputDirectory 'HN-Control-2.2.0.apk'
+$output = Join-Path $OutputDirectory 'HN-Control-2.3.0.apk'
 & "$androidTools\apksigner.bat" sign --ks $keystore --ks-key-alias hncontrol --ks-pass "file:$passwordFile" --out $output $unsigned
 if ($LASTEXITCODE -ne 0) { throw 'Falló la firma de la APK.' }
 & "$androidTools\apksigner.bat" verify $output
 if ($LASTEXITCODE -ne 0) { throw 'La firma de la APK no es válida.' }
 $hash = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash
-"$hash  HN-Control-2.2.0.apk" | Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256.txt')
+"$hash  HN-Control-2.3.0.apk" | Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256.txt')
 Write-Output "APK lista: $output"

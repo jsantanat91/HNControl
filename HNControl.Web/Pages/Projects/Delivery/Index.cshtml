@@ -2,15 +2,15 @@
 @model HNControl.Web.Pages.Projects.Delivery.IndexModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Formato de entrega";
+    ViewData["Title"] = "Entregas anteriores";
 }
 
 <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
     <div>
-        <h1 class="h4 m-0">Formato de entrega</h1>
-        <div class="text-muted small">Acta de entrega de servicios y equipamiento con firma digital.</div>
+        <h1 class="h4 m-0">Entregas anteriores</h1>
+        <div class="text-muted small">Histórico de documentos. Las nuevas entregas se registran dentro de Órdenes de servicio.</div>
     </div>
-    <a class="btn btn-primary" asp-page="/Projects/Delivery/Create">+ Nuevo formato</a>
+    <a class="btn btn-primary" asp-page="/Admin/ServiceOrders/Create">+ Nueva orden</a>
 </div>
 <div class="card shadow-soft hn-hover">
     <div class="card-body">

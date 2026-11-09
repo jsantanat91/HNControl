@@ -1,4 +1,4 @@
-﻿using HNControl.Web.Models;
+using HNControl.Web.Models;
 
 namespace HNControl.Web.Helpers;
 
@@ -57,6 +57,7 @@ public static class UiBadges
         ServiceOrderType.NuevaInstalacion => ("Nueva instalacion", "bg-primary"),
         ServiceOrderType.LevantamientoTecnico => ("Levantamiento", "bg-info text-dark"),
         ServiceOrderType.Eventos => ("Eventos", "bg-info text-dark"),
+        ServiceOrderType.EntregaHardware => ("Entrega de hardware", "bg-info text-dark"),
         ServiceOrderType.Global => ("Global", "bg-dark"),
         _ => ("Otro", "bg-secondary")
     };

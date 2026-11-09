@@ -14,6 +14,7 @@ public partial class OrderDetailPage : ContentPage
     private int _lastArea = -1;
     private string? _techSigDataUrl;
     private string? _clientSigDataUrl;
+    private string? _deliveryVersion;
 
     public ObservableCollection<ChecklistEditItemVm> ChecklistItems { get; } = new();
 
@@ -29,7 +30,7 @@ public partial class OrderDetailPage : ContentPage
         _orderId = orderId;
         _current = null;
         _techSigDataUrl = null;
-        _clientSigDataUrl = null;
+        _clientSigDataUrl = _deliveryVersion = null;
         _lastArea = -1;
     }
 
@@ -52,6 +53,14 @@ public partial class OrderDetailPage : ContentPage
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
+    }
+
+    private async void OnDeliveryClicked(object sender, EventArgs e)
+    {
+        if (_busy || _current == null) return;
+        await Navigation.PushAsync(new OrderDeliveryPage(_orders, _orderId, () => {
+            _techSigDataUrl = _clientSigDataUrl = _deliveryVersion = null; _current = null;
+        }));
     }
 
     private void Bind(ServiceOrderDetailDto d)
@@ -375,6 +384,7 @@ public partial class OrderDetailPage : ContentPage
     private async void OnSignTechClicked(object sender, EventArgs e)
     {
         if (_current?.CanEdit != true || _current.CurrentArea != 4) return;
+        if (!await CheckDeliveryForSignature()) return;
         var sig = await SignatureCapturePage.CaptureAsync(Navigation, "Firma del técnico", TechSignatureLabel.Text);
         if (!string.IsNullOrWhiteSpace(sig))
         {
@@ -383,9 +393,30 @@ public partial class OrderDetailPage : ContentPage
         }
     }
 
+    private async Task<bool> CheckDeliveryForSignature()
+    {
+        try
+        {
+            var delivery = await _orders.DeliveryAsync(_orderId);
+            var error = delivery.Data.Validate(closing: true);
+            if (error != null) { await DisplayAlertAsync("Entrega pendiente", error, "Aceptar"); return false; }
+            if (_deliveryVersion != null && _deliveryVersion != delivery.Version)
+            {
+                _techSigDataUrl = _clientSigDataUrl = _deliveryVersion = null;
+                if (_current != null) Bind(_current);
+                await DisplayAlertAsync("Entrega actualizada", "Los equipos cambiaron. Revísalos y captura ambas firmas de nuevo.", "Aceptar");
+                return false;
+            }
+            _deliveryVersion = delivery.Version;
+            return true;
+        }
+        catch (Exception ex) { await DisplayAlertAsync("No se pudo revisar la entrega", ex.Message, "Aceptar"); return false; }
+    }
+
     private async void OnSignClientClicked(object sender, EventArgs e)
     {
         if (_current?.CanEdit != true || _current.CurrentArea != 4) return;
+        if (!await CheckDeliveryForSignature()) return;
         var sig = await SignatureCapturePage.CaptureAsync(Navigation, "Firma del cliente", "Cliente");
         if (!string.IsNullOrWhiteSpace(sig))
         {
@@ -425,7 +456,7 @@ public partial class OrderDetailPage : ContentPage
         _busy = true;
         try
         {
-            var res = await _orders.SubmitAsync(_orderId, _techSigDataUrl, _clientSigDataUrl);
+            var res = await _orders.SubmitAsync(_orderId, _techSigDataUrl, _clientSigDataUrl, _deliveryVersion);
             await DisplayAlertAsync("Orden", string.IsNullOrWhiteSpace(res.Message) ? "Enviada a revisión." : res.Message, "OK");
             _techSigDataUrl = null;
             _clientSigDataUrl = null;
@@ -488,6 +519,8 @@ public partial class OrderDetailPage : ContentPage
         2 => "Preventivo",
         3 => "Nueva instalación",
         4 => "Levantamiento técnico",
+        5 => "Evento",
+        6 => "Entrega de hardware",
         99 => "Global",
         _ => "Tipo " + val
     };

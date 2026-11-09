@@ -22,6 +22,11 @@
     @Html.AntiForgeryToken()
     <div class="card-body">
         <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+        <div class="rounded-3 bg-primary-subtle p-3 mb-3">
+            <label class="form-label fw-semibold" asp-for="Input.DeliveryKind">¿Qué entregamos en esta orden?</label>
+            <select class="form-select" asp-for="Input.DeliveryKind"><option value="service">Servicio</option><option value="hardware">Entrega de hardware</option><option value="both">Servicio + hardware</option></select>
+            <div class="form-text">Después de crearla, captura marca y serie del router y otros equipos en “Entrega y equipos”. Todo queda en un solo PDF.</div>
+        </div>
         <section class="hn-form-section">
             <header class="hn-form-section-heading">
                 <span class="hn-form-step" aria-hidden="true">01</span>

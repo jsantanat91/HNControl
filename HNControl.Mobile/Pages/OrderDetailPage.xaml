@@ -42,6 +42,9 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Border Style="{StaticResource SurfaceCard}">
+                <VerticalStackLayout Spacing="8"><Label Text="Entrega y equipos" FontSize="18" FontAttributes="Bold" /><Label Text="Marca y serie del router, otros equipos y condiciones. Se integran al PDF y las firmas de esta orden." FontSize="12" TextColor="{StaticResource AppMuted}" /><Button Text="Ver / capturar entrega" Clicked="OnDeliveryClicked" Style="{StaticResource GhostButton}" /></VerticalStackLayout>
+            </Border>
             <Border x:Name="EditorCard" Style="{StaticResource SurfaceCard}">
                 <VerticalStackLayout Spacing="10">
                     <Label FontAttributes="Bold" FontSize="18" Text="Captura técnica" />

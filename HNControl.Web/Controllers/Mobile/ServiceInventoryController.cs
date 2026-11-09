@@ -23,8 +23,8 @@ public class ServiceInventoryController(ApplicationDbContext db) : ControllerBas
         if (clientId.HasValue) query = query.Where(x => x.ClientId == clientId);
         if (!string.IsNullOrWhiteSpace(carrier)) query = query.Where(x => x.CarrierKey == carrier);
         var total = await query.CountAsync();
-        var admin = AppRoles.IsGlobalAdmin(User);
-        // Account secrets are available only through the separate administrator-only action.
+        var admin = AppRoles.IsGlobalAdmin(User) || User.IsInRole(AppRoles.Employee);
+        // Account secrets are available only through the separate internal-user action.
         var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * 50).Take(50)
             .Select(x => new { x.Id, x.Name, x.CarrierKey, x.OtherCarrierName,
                 Client = x.Client == null ? "Sin cliente asignado" : x.Client.ClientCode + " · " + x.Client.Name,
@@ -48,10 +48,10 @@ public class ServiceInventoryController(ApplicationDbContext db) : ControllerBas
     [HttpPost("{id:guid}/account-password")]
     public async Task<IActionResult> CopyPassword(Guid id, [FromServices] ServiceInventoryService inventory)
     {
-        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        if (!AppRoles.IsGlobalAdmin(User) && !User.IsInRole(AppRoles.Employee)) return Forbid();
         var accountId = await db.ServiceInventoryItems.AsNoTracking().Where(x => x.Id == id).Select(x => x.AccountId).SingleOrDefaultAsync();
         if (!accountId.HasValue) return NotFound(new { message = "El servicio no tiene una cuenta vinculada." });
-        var password = await inventory.CopyPasswordAsync(accountId.Value, User);
+        var password = await inventory.CopyPasswordAsync(accountId.Value, User, allowEmployee: true);
         return string.IsNullOrEmpty(password)
             ? BadRequest(new { message = "La contraseña no está disponible. Revisa la cuenta y la clave de protección del servidor." })
             : Ok(new { password });

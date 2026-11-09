@@ -3998,6 +3998,10 @@ namespace HNControl.Web.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("DeliveryJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("MaterialesNotes")
                         .IsRequired()
                         .HasMaxLength(4000)

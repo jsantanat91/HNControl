@@ -52,6 +52,8 @@ public sealed class ServiceOrderListItemDto
         2 => "Preventivo",
         3 => "Nueva instalación",
         4 => "Levantamiento técnico",
+        5 => "Evento",
+        6 => "Entrega de hardware",
         99 => "Global",
         _ => "Tipo " + Type
     };

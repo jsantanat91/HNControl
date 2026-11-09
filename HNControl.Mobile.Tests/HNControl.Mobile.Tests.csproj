@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/OrderDeliveryData.cs" Link="OrderDeliveryData.cs" />
     <Compile Include="../HNControl.Mobile/Models/ServiceInventoryDtos.cs" Link="ServiceInventoryDtos.cs" />
     <Compile Include="../HNControl.Mobile/Models/MobileDtos.cs" Link="MobileDtos.cs" />
     <Compile Include="../HNControl.Mobile/Services/OrderPresentation.cs" Link="OrderPresentation.cs" />

@@ -35,6 +35,7 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        public string DeliveryKind { get; set; } = "service";
         [Required, MaxLength(200)]
         public string Title { get; set; } = "";
 
@@ -83,6 +84,12 @@ public class CreateModel : PageModel
 
         if (!ModelState.IsValid) return Page();
 
+        if (!HNControl.Shared.OrderDeliveryData.Kinds.Contains(Input.DeliveryKind))
+        {
+            Error = "Selecciona servicio, entrega de hardware o ambos.";
+            return Page();
+        }
+
         var validClient = await _db.Clients
             .AnyAsync(c => c.Id == Input.ClientId && c.IsActive && !c.IsTemporaryLead);
         if (!validClient)
@@ -97,8 +104,9 @@ public class CreateModel : PageModel
 
         var order = new ServiceOrder
         {
+            DeliveryJson = new HNControl.Shared.OrderDeliveryData { Kind = Input.DeliveryKind }.Serialize(),
             Title = (Input.Title ?? "").Trim(),
-            Type = Input.Type,
+            Type = Input.DeliveryKind == "hardware" ? ServiceOrderType.EntregaHardware : Input.Type,
             Status = ServiceOrderStatus.Created,
 
             ClientId = Input.ClientId,

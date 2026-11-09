@@ -132,6 +132,14 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (order == null) return NotFound();
 
+        if (!string.IsNullOrWhiteSpace(order.DeliveryJson) && Input.Status == ServiceOrderStatus.Finalized)
+        {
+            Error = HNControl.Shared.OrderDeliveryData.Read(order.DeliveryJson).Validate(closing: true);
+            var roles = await _db.ServiceOrderSignatures.Where(x => x.OrderId == order.Id).Select(x => x.Role).ToListAsync();
+            if (Error != null || !roles.Contains(SignatureRole.Technician) || !roles.Contains(SignatureRole.Client))
+            { Error ??= "Se requieren ambas firmas antes de finalizar la entrega."; return Page(); }
+        }
+
         order.Title = (Input.Title ?? "").Trim();
 
         // Si ya es Global (tiene actividades), no permitimos â€œbajarâ€ el tipo.

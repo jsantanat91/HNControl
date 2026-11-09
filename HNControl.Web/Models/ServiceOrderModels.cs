@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HNControl.Web.Models;
@@ -19,6 +19,9 @@ public enum ServiceOrderType
 
     [Display(Name = "Eventos")]
     Eventos = 5,
+
+    [Display(Name = "Entrega de hardware")]
+    EntregaHardware = 6,
 
     [Display(Name = "Global (multiple)")]
     Global = 99
@@ -107,6 +110,8 @@ public class ServiceOrder
 
     [MaxLength(4000)]
     public string MaterialesNotes { get; set; } = "";
+
+    public string DeliveryJson { get; set; } = "";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? StartedAt { get; set; }

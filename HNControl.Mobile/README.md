@@ -1,3 +1,14 @@
+# APK 2.3.0 — Entrega unificada y cuentas
+
+1. Aplicar `HNControl.Web/Sql/20261109_order_delivery.sql` en PostgreSQL como propietario de las tablas.
+2. Desplegar web/API 2.5.18.
+3. Instalar `artifacts/entrega/HN-Control-2.3.0.apk` sobre la versión anterior.
+
+En Órdenes → Entrega y equipos se capturan marca y serie del router y otros equipos antes de firmar. La captura compartida funciona para servicio, hardware o ambos.
+En Servicios → Cuentas de proveedores se consultan y copian datos; empleados y administradores pueden copiar contraseñas de forma explícita. Los listados no contienen secretos.
+
+## Historial de instalación
+
 # HN Control móvil 2.2.0
 
 Aplicación .NET MAUI para Android, con el diseño visual de Somos Uno adaptado a HN Control. El servidor sigue siendo https://control.hubnet-solutions.net.

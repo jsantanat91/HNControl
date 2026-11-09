@@ -166,9 +166,9 @@ public sealed class ServiceInventoryService(ApplicationDbContext db, IDataProtec
         }
     }
 
-    public async Task<string?> CopyPasswordAsync(Guid id, ClaimsPrincipal user)
+    public async Task<string?> CopyPasswordAsync(Guid id, ClaimsPrincipal user, bool allowEmployee = false)
     {
-        if (!AppRoles.IsGlobalAdmin(user)) throw new UnauthorizedAccessException();
+        if (!AppRoles.IsGlobalAdmin(user) && !(allowEmployee && user.IsInRole(AppRoles.Employee))) throw new UnauthorizedAccessException();
         var encrypted = await db.ServiceInventoryAccounts.AsNoTracking().Where(x => x.Id == id).Select(x => x.PasswordProtected).SingleOrDefaultAsync();
         if (string.IsNullOrEmpty(encrypted)) return null;
         try { return PasswordProtector(id).Unprotect(encrypted); }

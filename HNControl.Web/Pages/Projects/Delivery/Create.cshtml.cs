@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using HNControl.Web.Data;
 using HNControl.Web.Models;
 using HNControl.Web.Services;
@@ -56,57 +56,18 @@ public class CreateModel : PageModel
         [DataType(DataType.Date)] public DateTime DeliveryDate { get; set; } = DateTime.Today;
     }
 
-    public async Task OnGetAsync(Guid? clientId)
+    public Task<IActionResult> OnGetAsync(Guid? clientId)
     {
-        await LoadCatalogsAsync();
-        BackClientId = clientId;
-        if (clientId.HasValue)
-            Input.ClientId = clientId.Value;
+        return Task.FromResult<IActionResult>(AppRoles.IsGlobalAdmin(User)
+            ? RedirectToPage("/Admin/ServiceOrders/Create", new { clientId = clientId })
+            : RedirectToPage("/ServiceOrders/Index"));
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public Task<IActionResult> OnPostAsync()
     {
-        await LoadCatalogsAsync();
-        NormalizeRows(Input);
-
-        if (!ModelState.IsValid) return Page();
-
-        if (Input.ProjectId.HasValue)
-        {
-            var projectBelongsToClient = await _db.Projects
-                .AsNoTracking()
-                .AnyAsync(x => x.Id == Input.ProjectId.Value && x.ClientId == Input.ClientId);
-            if (!projectBelongsToClient)
-            {
-                ModelState.AddModelError("Input.ProjectId", "El proyecto no pertenece al cliente seleccionado.");
-                return Page();
-            }
-        }
-
-        var entity = new ProjectDeliveryFormat
-        {
-            ClientId = Input.ClientId,
-            ProjectId = Input.ProjectId,
-            Title = Input.Title.Trim(),
-            ServiceSummary = "",
-            EquipmentSummary = BuildReadableEquipment(Input),
-            DeliveryLocation = Input.DeliveryLocation.Trim(),
-            ReceiverName = Input.ReceiverName.Trim(),
-            ReceiverEmail = Input.ReceiverEmail.Trim(),
-            ReceiverPhone = (Input.ReceiverPhone ?? "").Trim(),
-            DeliveryDate = Input.DeliveryDate.Date,
-            PublicToken = Guid.NewGuid().ToString("N"),
-            TokenExpiresAt = DateTime.UtcNow.AddMonths(2),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _db.ProjectDeliveryFormats.Add(entity);
-        var deliveryPayload = BuildDeliveryPayload(Input);
-        await AddEvidenceFilesAsync(entity, deliveryPayload);
-        entity.ServiceSummary = ProjectDeliveryPayload.Serialize(deliveryPayload);
-        await _db.SaveChangesAsync();
-        return RedirectToPage("/Projects/Delivery/Details", new { id = entity.Id, clientId = entity.ClientId });
+        return Task.FromResult<IActionResult>(AppRoles.IsGlobalAdmin(User)
+            ? RedirectToPage("/Admin/ServiceOrders/Create", new { clientId = Input.ClientId })
+            : RedirectToPage("/ServiceOrders/Index"));
     }
 
     private async Task LoadCatalogsAsync()

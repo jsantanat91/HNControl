@@ -52,4 +52,5 @@ public partial class ServiceInventoryPage : ContentPage
         ItemsView.SelectedItem = null;
         await Navigation.PushAsync(new ServiceInventoryDetailPage(row, _api));
     }
+    private async void OnAccounts(object? sender, EventArgs e) => await Navigation.PushAsync(new ServiceAccountsPage(_api));
 }

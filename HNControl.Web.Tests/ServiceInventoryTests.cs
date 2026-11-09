@@ -174,11 +174,11 @@ internal static class ServiceInventoryTests
             var itemJson = accountRows.RootElement.GetProperty("Items").EnumerateArray().Single(x => x.GetProperty("Id").GetGuid() == item.Id);
             check(itemJson.GetProperty("ProviderAccountNumber").GetString() == account.AccountNumber
                 && itemJson.GetProperty("AccountEmail").GetString() == account.Email
-                && !itemJson.GetProperty("CanCopyPassword").GetBoolean(), "Ficha móvil incluye cuenta y correo sin habilitar contraseñas a empleados");
+                && itemJson.GetProperty("CanCopyPassword").GetBoolean(), "Ficha móvil permite copia explícita de contraseña a empleados autorizados");
         }
         using (var filtered = JsonDocument.Parse(JsonSerializer.Serialize(((OkObjectResult)await mobile.List(carrier: "no-existe")).Value)))
             check(filtered.RootElement.GetProperty("Total").GetInt32() == 0, "Filtro móvil por proveedor se aplica en servidor");
-        check(await mobile.CopyPassword(item.Id, inventory) is ForbidResult, "Empleado no puede copiar contraseña de la cuenta desde la API");
+        check(await mobile.CopyPassword(item.Id, inventory) is OkObjectResult, "Empleado puede copiar contraseña de la cuenta desde la API autorizada");
         mobileHttp.User = Principal(AppRoles.Admin);
         var secretResult = (OkObjectResult)await mobile.CopyPassword(item.Id, inventory);
         using (var secretJson = JsonDocument.Parse(JsonSerializer.Serialize(secretResult.Value)))
@@ -186,6 +186,13 @@ internal static class ServiceInventoryTests
         check(await mobile.CopyPassword(Guid.NewGuid(), inventory) is NotFoundObjectResult, "Copia móvil valida el servicio y su cuenta vinculada");
         mobileHttp.User = Principal(AppRoles.Seller);
         check(await mobile.List() is ForbidResult, "Consulta móvil rechaza roles sin autorización operativa");
+        var accountsApi = new HNControl.Web.Controllers.Mobile.ServiceAccountsController(db, inventory) { ControllerContext = new ControllerContext { HttpContext = mobileHttp } };
+        check(await accountsApi.List() is ForbidResult && await accountsApi.Password(account.Id) is ForbidResult, "Cuentas móviles: roles ajenos no consultan ni copian contraseñas");
+        mobileHttp.User = employee;
+        var accountsJson = JsonSerializer.Serialize(((OkObjectResult)await accountsApi.List()).Value);
+        check(!accountsJson.Contains("PasswordProtected") && !accountsJson.Contains(secret) && !accountsJson.Contains(originalCipher), "Cuentas móviles: listado nunca devuelve secretos");
+        check(await accountsApi.Password(account.Id) is OkObjectResult, "Cuentas móviles: empleado copia secreto solo con acción explícita");
+        check(await accountsApi.Password(Guid.NewGuid()) is NotFoundResult, "Cuentas móviles: contraseña de cuenta inexistente no está disponible");
         await RunProviderRulesAsync(check);
     }
 

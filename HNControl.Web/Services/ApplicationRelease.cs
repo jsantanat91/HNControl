@@ -3,9 +3,17 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.17";
+    public const string Version = "2.5.18";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.18", new DateOnly(2026, 11, 9), "Entrega unificada en órdenes", new[]
+        {
+            new ReleaseChange("Órdenes", "Servicio, hardware o ambos en una sola orden. Marca y serie de router, equipos, cantidades, accesorios, estado y modalidad en el PDF con firmas y huellas."),
+            new ReleaseChange("Captura", "Entrega y equipos disponible en web y APK 2.3.0. Valida datos, series y versión de entrega antes de firmar; la captura queda bloqueada al firmar o enviar a revisión."),
+            new ReleaseChange("Histórico", "Nuevas entregas dentro de Órdenes. Los formatos anteriores se conservan para consulta desde Entregas anteriores."),
+            new ReleaseChange("Cuentas móviles", "Empleados y administradores consultan cuentas de proveedores y copian contraseña mediante una acción independiente; los listados no incluyen secretos."),
+            new ReleaseChange("Publicación", "Aplicar 20261109_order_delivery.sql antes de desplegar la web y después instalar APK 2.3.0.")
+        }),
         new ReleaseNote("2.5.17", new DateOnly(2026, 11, 9), "NOC y envío de órdenes de servicio", new[]
         {
             new ReleaseChange("Órdenes", "PDF con canales del NOC: WhatsApp preferente y llamadas al 55 2601 4566, correo de soporte y portal de tickets; conserva firmas y huellas digitales."),
