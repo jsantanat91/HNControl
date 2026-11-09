@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.21";
+    public const string Version = "2.5.22";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.22", new DateOnly(2026, 11, 9), "Ficha de empleado en modal", new[]
+        {
+            new ReleaseChange("Empleados", "Ver ficha abre un modal desde tarjetas y tabla. Cabecera de identidad, resumen de nómina, datos personales y laborales, desempeño y viáticos organizados en pestañas."),
+            new ReleaseChange("Navegación", "Acciones de editar, calificar y consultar ajustes dentro del modal. Cerrar conserva el listado; si se guardaron cambios, las tarjetas se actualizan. Gráficas con estados vacíos y variable expresada como porcentaje."),
+            new ReleaseChange("Compatibilidad", "Conserva cálculos y permisos. Sin migración SQL ni nueva APK.")
+        }),
         new ReleaseNote("2.5.21", new DateOnly(2026, 11, 9), "Tarjetas de empleados", new[]
         {
             new ReleaseChange("Diseño", "Tarjetas alineadas al panel: identidad y estado, sueldo mensual y comisión separados, acceso a ficha y acciones ordenadas. Adaptación a móvil y nombres largos."),

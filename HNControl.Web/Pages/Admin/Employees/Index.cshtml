@@ -98,7 +98,7 @@ else if (!isTable)
                         }
 
                         <div class="hn-person-card-actions mt-auto d-flex flex-wrap gap-2">
-                            <a class="btn btn-sm hn-person-open" asp-page="./Details" asp-route-userId="@r.UserId">Ver ficha<i class="bi bi-arrow-up-right ms-2" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm hn-person-open" asp-page="./Details" asp-route-userId="@r.UserId" data-module-panel="Ficha · @r.FullName">Ver ficha<i class="bi bi-window ms-2" aria-hidden="true"></i></a>
                             <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
                             @if (Model.CanResetPasswords)
                             {
@@ -197,7 +197,7 @@ else
                                 </td>
                                 <td class="text-end">@r.SalaryBase.ToString("C")</td>
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId">Ver</a>
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="./Details" asp-route-userId="@r.UserId" data-module-panel="Ficha · @r.FullName">Ver ficha</a>
                                     <a class="btn btn-sm btn-outline-primary" asp-page="./Edit" asp-route-userId="@r.UserId">Editar</a>
                                     @if (Model.CanResetPasswords)
                                     {

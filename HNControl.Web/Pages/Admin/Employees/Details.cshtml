@@ -1,347 +1,170 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Employees.DetailsModel
+@inject HNControl.Web.Services.ModuleAvailability Modules
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Detalle empleado";
+    ViewData["Title"] = "Ficha del empleado";
+    var employee = Model.Employee;
+    var now = DateTime.Today;
+    var initials = string.Join("", (employee.FullName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x.Substring(0, 1))).ToUpperInvariant();
+    var photoUrl = Url.Page("/Admin/Employees/Details", "Photo", new { userId = employee.UserId });
+    var selectedTab = Request.Query["tab"].ToString();
+    var activeTab = new[] { "datos", "desempeno", "viaticos" }.Contains(selectedTab) ? selectedTab : "resumen";
+    string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin registrar" : value;
+    string TabClass(string name) => activeTab == name ? "active" : "";
+    string PaneClass(string name) => activeTab == name ? "show active" : "";
 }
-@{
-    var __now = DateTime.Today; var __ym = __now.ToString("yyyy-MM"); var __half = __now.Day <= 15 ? 1 : 2;
-}
-
-<div class="card shadow-soft hn-hover mb-3">
-    <div class="card-body d-flex justify-content-between align-items-start flex-wrap gap-3">
-        <div class="d-flex align-items-start gap-3">
-            @{
-                var hasPhoto = !string.IsNullOrWhiteSpace(Model.Employee.ProfilePhotoStoragePath);
-                var photoUrl = Url.Page("/Admin/Employees/Details", "Photo", new { userId = Model.Employee.UserId });
-                var initials = string.Join("", (Model.Employee.FullName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x.Substring(0, 1))).ToUpperInvariant();
-            }
-            @if (hasPhoto)
+<link rel="stylesheet" href="~/css/hn-people.css" asp-append-version="true" />
+<div class="hn-profile">
+    <div class="hn-profile-toolbar">
+        <a class="hn-profile-back" asp-page="./Index" data-module-panel-close><i class="bi bi-arrow-left" aria-hidden="true"></i>Empleados</a>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@employee.UserId"><i class="bi bi-wallet2 me-2" aria-hidden="true"></i>Viáticos</a>
+            <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Deductions/Index" asp-route-userId="@employee.UserId">Ajustes de nómina</a>
+            <a class="btn btn-outline-primary" asp-page="/Admin/Performance/Rate" asp-route-employeeId="@employee.UserId" asp-route-ym="@now.ToString("yyyy-MM")" asp-route-half="@(now.Day <= 15 ? 1 : 2)">Calificar KPI</a>
+            <a class="btn btn-primary" asp-page="./Edit" asp-route-userId="@employee.UserId"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Editar ficha</a>
+        </div>
+    </div>
+    <header class="hn-profile-hero">
+        <div class="hn-profile-identity">
+            @if (!string.IsNullOrWhiteSpace(employee.ProfilePhotoStoragePath))
             {
-                <img class="hn-emp-detail-avatar" src="@photoUrl" alt="Foto @Model.Employee.FullName" />
+                <img class="hn-profile-avatar" src="@photoUrl" alt="Foto @employee.FullName" />
             }
             else
             {
-                <div class="hn-emp-detail-avatar-fallback">@((string.IsNullOrWhiteSpace(initials) ? "EM" : initials))</div>
+                <div class="hn-profile-avatar" aria-hidden="true">@(string.IsNullOrEmpty(initials) ? "EM" : initials)</div>
             }
             <div>
-                <h3 class="mb-0">@Model.Employee.FullName</h3>
-                <div class="text-muted small">
-                    @Model.Employee.Position &middot; @Model.Employee.Email &middot; @Model.Employee.Phone
-                </div>
-                @if (!string.IsNullOrWhiteSpace(Model.Employee.EmployeeNumber))
-                {
-                    <div class="mt-1"><span class="hn-badge hn-badge-blue">@Model.Employee.EmployeeNumber</span></div>
-                }
-                <div class="text-muted small">
-                    RFC: @(string.IsNullOrWhiteSpace(Model.Employee.Rfc) ? "-" : Model.Employee.Rfc)
-                    &middot; Estudios: @(string.IsNullOrWhiteSpace(Model.Employee.EducationLevel) ? "-" : Model.Employee.EducationLevel)
-                    &middot; Nacimiento: @(Model.Employee.BirthDate?.ToString("yyyy-MM-dd") ?? "-")
+                <div class="hn-profile-eyebrow">Ficha del empleado · @Display(employee.EmployeeNumber)</div>
+                <h1>@employee.FullName</h1>
+                <p>@Display(employee.Position)</p>
+                <div class="hn-profile-contact">
+                    <span><i class="bi bi-envelope" aria-hidden="true"></i>@Display(employee.Email)</span>
+                    <span><i class="bi bi-telephone" aria-hidden="true"></i>@Display(employee.Phone)</span>
                 </div>
             </div>
         </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-outline-secondary" asp-page="/Admin/Employees/Index">Volver</a>
-
-            <a class="btn btn-outline-primary"
-               asp-page="/Admin/Viaticos/Index"
-               asp-route-UserId="@Model.Employee.UserId">
-                Vi&aacute;ticos
-            </a>
-
-            <a class="btn btn-outline-warning"
-               asp-page="/Admin/Employees/Deductions/Index"
-               asp-route-userId="@Model.Employee.UserId">
-                Ajustes
-            </a>
-
-            <a class="btn btn-primary"
-               asp-page="/Admin/Performance/Rate"
-               asp-route-employeeId="@Model.Employee.UserId"
-               asp-route-ym="@__ym"
-               asp-route-half="@__half">
-                Calificar KPI
-            </a>
+        <div class="hn-profile-hero-meta">
+            <span class="hn-person-status @(employee.IsActive ? "is-active" : "is-inactive")"><span aria-hidden="true"></span>@(employee.IsActive ? "Activo" : "Baja")</span>
+            <span>Fecha de ingreso<strong>@(employee.HireDate?.ToString("dd/MM/yyyy") ?? "Sin registrar")</strong></span>
         </div>
+    </header>
+
+    <nav class="nav hn-profile-tabs" role="tablist" aria-label="Secciones de la ficha">
+        <button class="btn @TabClass("resumen")" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen" type="button" role="tab" aria-controls="resumen" aria-selected="@(activeTab == "resumen" ? "true" : "false")"><i class="bi bi-grid" aria-hidden="true"></i>Resumen</button>
+        <button class="btn @TabClass("datos")" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab" aria-controls="datos" aria-selected="@(activeTab == "datos" ? "true" : "false")"><i class="bi bi-person-vcard" aria-hidden="true"></i>Datos del empleado</button>
+        <button class="btn @TabClass("desempeno")" id="desempeno-tab" data-bs-toggle="tab" data-bs-target="#desempeno" type="button" role="tab" aria-controls="desempeno" aria-selected="@(activeTab == "desempeno" ? "true" : "false")"><i class="bi bi-bar-chart" aria-hidden="true"></i>Desempeño</button>
+        <button class="btn @TabClass("viaticos")" id="viaticos-tab" data-bs-toggle="tab" data-bs-target="#viaticos" type="button" role="tab" aria-controls="viaticos" aria-selected="@(activeTab == "viaticos" ? "true" : "false")"><i class="bi bi-wallet2" aria-hidden="true"></i>Viáticos</button>
+    </nav>
+    <div class="tab-content">
+        <section class="tab-pane fade @PaneClass("resumen")" id="resumen" role="tabpanel" aria-labelledby="resumen-tab" tabindex="0">
+            <div class="hn-profile-section-heading"><div><h2>Tu equipo, en detalle</h2><p>Resumen de la quincena actual.</p></div><span class="hn-profile-period"><i class="bi bi-calendar3" aria-hidden="true"></i>@Model.CurrentPayrollPeriod</span></div>
+            <div class="hn-profile-overview">
+                <article class="hn-profile-net">
+                    <span class="hn-profile-eyebrow">Nómina · Quincena actual</span>
+                    <h3>Neto quincenal estimado</h3><strong>@Model.CurrentNetQuincenal.ToString("C2")</strong>
+                    <p>Considera la variable, los bonos y las deducciones del periodo.</p>
+                    <a asp-page="/Admin/Employees/Deductions/Index" asp-route-userId="@employee.UserId">Consultar ajustes<i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                </article>
+                <div class="hn-profile-summary-grid">
+                    <article class="hn-profile-stat"><span><i class="bi bi-pie-chart" aria-hidden="true"></i>Variable 80/20 actual</span><strong>@((Model.CurrentVariablePercent * 100m).ToString("0.##"))<small>%</small></strong><p>Aplicada a la estimación</p></article>
+                    <article class="hn-profile-stat"><span><i class="bi bi-plus-circle" aria-hidden="true"></i>Bonos del periodo</span><strong>@Model.CurrentBonusesTotal.ToString("C2")</strong><p>Incluye las comisiones registradas</p></article>
+                    <article class="hn-profile-stat"><span><i class="bi bi-dash-circle" aria-hidden="true"></i>Deducciones</span><strong>@Model.CurrentDeductionsTotal.ToString("C2")</strong><p>Descuentos de la quincena</p></article>
+                    <article class="hn-profile-stat"><span><i class="bi bi-calendar2-check" aria-hidden="true"></i>Vacaciones disponibles</span><strong>@Model.VacationRemaining<small> días</small></strong><p>Saldo del año en curso</p></article>
+                </div>
+            </div>
+            <div class="hn-profile-bottom-grid">
+                <article class="hn-profile-panel"><h3><i class="bi bi-wallet2" aria-hidden="true"></i>Condiciones de compensación</h3>
+                    <dl class="hn-profile-facts">
+                        <div><dt>Sueldo base mensual</dt><dd>@employee.SalaryBase.ToString("C2")</dd></div>
+                        <div><dt>Comisión por orden finalizada</dt><dd>@(employee.ServiceOrderCommissionEnabled ? employee.ServiceOrderCommissionAmount.ToString("C2") : "Desactivada")</dd></div>
+                    </dl>
+                    <p class="hn-profile-note">La comisión es el importe configurado por orden; los bonos de la quincena muestran lo ya registrado.</p>
+                </article>
+                <article class="hn-profile-panel"><h3><i class="bi bi-activity" aria-hidden="true"></i>Seguimiento</h3>
+                    <dl class="hn-profile-facts">
+                        <div><dt>KPI promedio · últimos 90 días</dt><dd>@Model.KPIAvgScore.ToString("0.0") <small>/ 5</small></dd></div>
+                        <div><dt>Variable promedio · últimos 12 periodos</dt><dd>@((Model.VariableAvgPercent * 100m).ToString("0.##"))%</dd></div>
+                        @if (Modules.ExamsEnabled) { <div><dt>Exámenes pendientes</dt><dd>@Model.ExamsPendingCount</dd></div> }
+                    </dl>
+                </article>
+            </div>
+        </section>
+        <section class="tab-pane fade @PaneClass("datos")" id="datos" role="tabpanel" aria-labelledby="datos-tab" tabindex="0">
+            <div class="hn-profile-section-heading"><div><h2>Datos del empleado</h2><p>Información registrada en su ficha.</p></div></div>
+            <div class="hn-profile-bottom-grid">
+                <article class="hn-profile-panel"><h3><i class="bi bi-person" aria-hidden="true"></i>Información personal</h3><dl class="hn-profile-data">
+                    <div><dt>Nombre completo</dt><dd>@Display(employee.FullName)</dd></div><div><dt>Fecha de nacimiento</dt><dd>@(employee.BirthDate?.ToString("dd/MM/yyyy") ?? "Sin registrar")</dd></div>
+                    <div><dt>Sexo</dt><dd>@Display(employee.Sex)</dd></div><div><dt>Nivel de estudios</dt><dd>@Display(employee.EducationLevel)</dd></div>
+                    <div><dt>CURP</dt><dd>@Display(employee.Curp)</dd></div><div><dt>RFC</dt><dd>@Display(employee.Rfc)</dd></div><div><dt>NSS</dt><dd>@Display(employee.Nss)</dd></div>
+                </dl></article>
+                <article class="hn-profile-panel"><h3><i class="bi bi-geo-alt" aria-hidden="true"></i>Contacto y domicilio</h3><dl class="hn-profile-data">
+                    <div><dt>Correo electrónico</dt><dd>@Display(employee.Email)</dd></div><div><dt>Teléfono</dt><dd>@Display(employee.Phone)</dd></div>
+                    <div class="hn-profile-span"><dt>Domicilio</dt><dd>@Display(employee.Address)</dd></div><div><dt>Código postal</dt><dd>@Display(employee.PostalCode)</dd></div>
+                </dl></article>
+                <article class="hn-profile-panel"><h3><i class="bi bi-briefcase" aria-hidden="true"></i>Información laboral</h3><dl class="hn-profile-data">
+                    <div><dt>Número de empleado</dt><dd>@Display(employee.EmployeeNumber)</dd></div><div><dt>Puesto</dt><dd>@Display(employee.Position)</dd></div>
+                    <div><dt>Fecha de ingreso</dt><dd>@(employee.HireDate?.ToString("dd/MM/yyyy") ?? "Sin registrar")</dd></div><div><dt>Estado</dt><dd>@(employee.IsActive ? "Activo" : "Baja")</dd></div>
+                </dl></article>
+                <article class="hn-profile-panel"><h3><i class="bi bi-bank" aria-hidden="true"></i>Datos para nómina</h3><dl class="hn-profile-data">
+                    <div><dt>Banco</dt><dd>@Display(employee.BankName)</dd></div><div><dt>Cuenta</dt><dd>@Display(employee.BankAccount)</dd></div><div class="hn-profile-span"><dt>CLABE</dt><dd>@Display(employee.BankClabe)</dd></div>
+                    <div><dt>Tipo de contrato SAT</dt><dd>@Display(employee.SatContractTypeCode)</dd></div><div><dt>Tipo de jornada SAT</dt><dd>@Display(employee.SatWorkdayTypeCode)</dd></div><div><dt>Riesgo de puesto SAT</dt><dd>@Display(employee.SatJobRiskCode)</dd></div>
+                </dl></article>
+            </div>
+        </section>
+        <section class="tab-pane fade @PaneClass("desempeno")" id="desempeno" role="tabpanel" aria-labelledby="desempeno-tab" tabindex="0">
+            <div class="hn-profile-section-heading"><div><h2>Desempeño y evolución</h2><p>Calificaciones y variable de los periodos evaluados.</p></div>
+                <form method="get" class="hn-profile-month"><input type="hidden" name="userId" value="@employee.UserId" /><input type="hidden" name="tab" value="desempeno" /><label for="profileMonth">Mes de KPI</label><select class="form-select form-select-sm" name="ym" id="profileMonth" onchange="this.form.submit()">@foreach (var it in Model.MonthItems) { <option value="@it.Value" selected="@it.Selected">@it.Text</option> }</select></form>
+            </div>
+            <div class="hn-profile-bottom-grid">
+                <article class="hn-profile-panel"><h3>Evaluaciones del mes</h3><p class="hn-profile-note">Promedio de los indicadores por evaluación · @Model.SelectedYm</p><div class="hn-profile-chart"><canvas id="kpiMonthChart" role="img" aria-label="Promedio KPI por evaluación del mes"></canvas></div><p class="hn-profile-empty" id="kpiEmpty" hidden>No hay evaluaciones registradas en este mes.</p></article>
+                <article class="hn-profile-panel"><h3>Historial de variable</h3><p class="hn-profile-note">Últimos 12 periodos evaluados</p><div class="hn-profile-chart"><canvas id="varHistChart" role="img" aria-label="Historial del porcentaje variable"></canvas></div><p class="hn-profile-empty" id="variableEmpty" hidden>Aún no hay periodos evaluados.</p></article>
+            </div>
+        </section>
+        <section class="tab-pane fade @PaneClass("viaticos")" id="viaticos" role="tabpanel" aria-labelledby="viaticos-tab" tabindex="0">
+            <div class="hn-profile-section-heading"><div><h2>Viáticos por semana</h2><p>Semanas registradas para @Model.SelectedYm.</p></div><span class="hn-profile-period">Total del mes <strong>@Model.CurrentMonthViaticTotal.ToString("C2")</strong></span></div>
+            @if (Model.CurrentMonthWeeks.Count == 0)
+            {
+                <div class="hn-profile-panel hn-profile-empty"><i class="bi bi-wallet2" aria-hidden="true"></i><h3>Sin viáticos en este mes</h3><p>Las semanas registradas aparecerán aquí.</p><a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@employee.UserId">Consultar viáticos</a></div>
+            }
+            else
+            {
+                <div class="hn-profile-weeks">@foreach (var w in Model.CurrentMonthWeeks) { <article class="hn-profile-panel"><div class="hn-profile-week-title"><h3>@w.WeekLabel</h3><a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Viaticos/Week" asp-route-id="@w.WeekId">Abrir<i class="bi bi-arrow-up-right ms-2" aria-hidden="true"></i></a></div><p class="hn-profile-note">@w.WeekStart.ToString("dd/MM/yyyy") — @w.WeekEnd.ToString("dd/MM/yyyy")</p><strong class="hn-profile-week-total">@w.Total.ToString("C2")</strong><dl class="hn-profile-facts"><div><dt>Facturable</dt><dd>@w.Billable.ToString("C2")</dd></div><div><dt>No facturable</dt><dd>@w.NonBillable.ToString("C2")</dd></div></dl></article> }</div>
+            }
+        </section>
     </div>
 </div>
-
-<div class="row g-3">
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-1">
-            <div class="card-body">
-                <div class="text-muted small">Neto quincenal estimado</div>
-                <div class="fs-3 fw-bold">@Model.CurrentNetQuincenal.ToString("C")</div>
-                <div class="text-muted small">Periodo: @Model.CurrentPayrollPeriod</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-2">
-            <div class="card-body">
-                <div class="text-muted small">Variable 80/20 actual</div>
-                <div class="fs-3 fw-bold">@((Model.CurrentVariablePercent * 100m).ToString("0.##"))%</div>
-                <div class="text-muted small">Deducciones: @Model.CurrentDeductionsTotal.ToString("C")</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-3">
-            <div class="card-body">
-                <div class="text-muted small">Bonos del periodo</div>
-                <div class="fs-3 fw-bold">@Model.CurrentBonusesTotal.ToString("C")</div>
-                <div class="text-muted small">Vacaciones disponibles: @Model.VacationRemaining</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-8">
-            <div class="card-body">
-                <div class="text-muted small">Comisiones de venta</div>
-                <div class="fs-3 fw-bold">@Model.CurrentSalesCommissionsTotal.ToString("C")</div>
-                <div class="text-muted small">Se suma como bono en la nomina.</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-4">
-            <div class="card-body">
-                <div class="text-muted small">Ex&aacute;menes pendientes</div>
-                <div class="fs-3 fw-bold">@Model.ExamsPendingCount</div>
-                <div class="text-muted small">Vista informativa tipo empleado</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-5">
-            <div class="card-body">
-                <div class="text-muted small">KPI promedio (90 d&iacute;as)</div>
-                <div class="fs-3 fw-bold">@Model.KPIAvgScore.ToString("0.0")</div>
-                <div class="text-muted small">Escala 1-5</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-6">
-            <div class="card-body">
-                <div class="text-muted small">Variable promedio (6 meses)</div>
-                <div class="fs-3 fw-bold">@((Model.VariableAvgPercent * 100m).ToString("0.##"))%</div>
-                <div class="text-muted small">Promedio de periodos</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-soft emp-kpi-card kpi-tone-7">
-            <div class="card-body">
-                <div class="text-muted small">Vi&aacute;ticos mes actual</div>
-                <div class="fs-3 fw-bold">@Model.CurrentMonthViaticTotal.ToString("C")</div>
-                <div class="text-muted small">Suma de semanas del mes</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-soft emp-chart-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">KPIs del mes</div>
-                    <form method="get" class="d-flex gap-2 align-items-center">
-                        <input type="hidden" name="userId" value="@Model.Employee.UserId" />
-                        <select class="form-select form-select-sm" name="ym" onchange="this.form.submit()">
-                            @foreach (var it in Model.MonthItems)
-                            {
-                                <option value="@it.Value" selected="@it.Selected">@it.Text</option>
-                            }
-                        </select>
-                    </form>
-                </div>
-                <canvas id="kpiMonthChart" height="160"></canvas>
-                <div class="text-muted small mt-2">Promedio por categor&iacute;a del mes seleccionado (@Model.SelectedYm).</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-        <div class="card shadow-soft emp-chart-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">Variable (historial)</div>
-                    <div class="text-muted small">&Uacute;ltimos 12 periodos</div>
-                </div>
-                <canvas id="varHistChart" height="160"></canvas>
-                <div class="text-muted small mt-2">L&iacute;nea en porcentaje por periodo evaluado.</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12">
-        <div class="card shadow-soft emp-chart-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Vi&aacute;ticos del mes (semanas)</div>
-                    <div class="text-muted small">4-5 semanas (seg&uacute;n el mes)</div>
-                </div>
-
-                <div class="row g-3">
-                    @foreach (var w in Model.CurrentMonthWeeks)
-                    {
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <div class="border rounded-4 p-3 h-100 viatic-week-card">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-semibold">@w.WeekLabel</div>
-                                        <div class="text-muted small">
-                                            @w.WeekStart.ToString("yyyy-MM-dd") &rarr; @w.WeekEnd.ToString("yyyy-MM-dd")
-                                        </div>
-                                        <div class="text-muted small">
-                                            Facturable: @w.Billable.ToString("C") &middot; No facturable: @w.NonBillable.ToString("C")
-                                        </div>
-                                    </div>
-                                    <a class="btn btn-sm btn-outline-secondary"
-                                       asp-page="/Admin/Viaticos/Week"
-                                       asp-route-id="@w.WeekId">
-                                        Abrir
-                                    </a>
-                                </div>
-                                <div class="mt-2 fw-bold">Total: @w.Total.ToString("C")</div>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script>
+    (() => {
         const kpiLabels = @Html.Raw(Model.KpiMonthLabelsJson);
         const kpiValues = @Html.Raw(Model.KpiMonthValuesJson);
-        const chartColors = ['#2563eb', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'];
-
-        const kpiCfg = {
-            type: 'bar',
-            data: {
-                labels: kpiLabels,
-                datasets: [{
-                    label: 'KPI',
-                    data: kpiValues,
-                    backgroundColor: kpiValues.map((_, i) => chartColors[i % chartColors.length]),
-                    borderRadius: 10
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
-        };
-        window.hnCharts?.decorate(kpiCfg);
-        new Chart(document.getElementById('kpiMonthChart'), kpiCfg);
-
         const varLabels = @Html.Raw(Model.VarHistLabelsJson);
         const varValues = @Html.Raw(Model.VarHistValuesJson);
-
-        const varCfg = {
-            type: 'line',
-            data: {
-                labels: varLabels,
-                datasets: [{
-                    label: 'Variable (%)',
-                    data: varValues,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37,99,235,.18)',
-                    fill: true,
-                    tension: 0.35,
-                    pointBackgroundColor: varValues.map((_, i) => chartColors[i % chartColors.length]),
-                    pointBorderColor: '#fff',
-                    pointRadius: 4
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
-        };
-        window.hnCharts?.decorate(varCfg);
-        new Chart(document.getElementById('varHistChart'), varCfg);
+        const charts = [];
+        function renderChart(id, labels, values, type, emptyId) {
+            const canvas = document.getElementById(id);
+            if (!values.length) { canvas.parentElement.hidden = true; document.getElementById(emptyId).hidden = false; return; }
+            if (typeof Chart === 'undefined') { canvas.parentElement.hidden = true; const message = document.getElementById(emptyId); message.textContent = 'No fue posible cargar la gráfica. Actualiza la página para reintentar.'; message.hidden = false; return; }
+            const cfg = { type, data: { labels, datasets: [{ label: type === 'bar' ? 'KPI' : 'Variable (%)', data: values, backgroundColor: type === 'bar' ? '#75a3eb' : 'rgba(37,99,235,.08)', borderColor:'#2563eb', borderRadius:6, fill:type === 'line', tension:.3, pointRadius:4, pointBackgroundColor:'#2563eb' }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true, suggestedMax:type === 'bar' ? 5 : 100} } } };
+            window.hnCharts?.decorate(cfg);
+            charts.push(new Chart(canvas, cfg));
+        }
+        renderChart('kpiMonthChart', kpiLabels, kpiValues, 'bar', 'kpiEmpty');
+        renderChart('varHistChart', varLabels, varValues.map(v => Number(v) * 100), 'line', 'variableEmpty');
+        const tabs = [...document.querySelectorAll('.hn-profile-tabs [role="tab"]')];
+        tabs.forEach((tab, index) => {
+            tab.tabIndex = tab.classList.contains('active') ? 0 : -1;
+            tab.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+                tabs[next].focus(); bootstrap.Tab.getOrCreateInstance(tabs[next]).show();
+            });
+            tab.addEventListener('shown.bs.tab', () => tabs.forEach(item => item.tabIndex = item === tab ? 0 : -1));
+        });
+        document.querySelectorAll('.hn-profile-tabs [data-bs-toggle="tab"]').forEach(button => button.addEventListener('shown.bs.tab', () => { charts.forEach(chart => chart.resize()); const url = new URL(location.href); url.searchParams.set('tab', button.getAttribute('aria-controls')); history.replaceState(null, '', url); }));
+    })();
     </script>
-}
-
-@section Styles {
-    <style>
-        .emp-kpi-card .card-body { min-height: 128px; }
-        .emp-chart-card .card-body { min-height: 320px; }
-
-        .hn-emp-detail-avatar {
-            width: 74px;
-            height: 74px;
-            border-radius: 16px;
-            object-fit: cover;
-            border: 1px solid rgba(37,99,235,.25);
-            box-shadow: 0 8px 20px rgba(15,23,42,.12);
-            flex: 0 0 auto;
-        }
-
-        .hn-emp-detail-avatar-fallback {
-            width: 74px;
-            height: 74px;
-            border-radius: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: #1e40af;
-            background: rgba(37,99,235,.12);
-            border: 1px solid rgba(37,99,235,.25);
-            box-shadow: 0 8px 20px rgba(15,23,42,.08);
-            flex: 0 0 auto;
-            font-size: 1.2rem;
-        }
-
-        .emp-kpi-card {
-            border: 1px solid rgba(148, 163, 184, .30);
-            overflow: hidden;
-        }
-
-        .emp-kpi-card .card-body {
-            position: relative;
-            background: linear-gradient(160deg, rgba(255,255,255,.93), rgba(248,250,255,.84));
-        }
-
-        .emp-kpi-card .card-body::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            opacity: .92;
-        }
-
-        .emp-kpi-card .card-body > * {
-            position: relative;
-            z-index: 1;
-        }
-
-        .emp-kpi-card.kpi-tone-1 .card-body::after { background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(14,165,233,.02)); }
-        .emp-kpi-card.kpi-tone-2 .card-body::after { background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(56,189,248,.02)); }
-        .emp-kpi-card.kpi-tone-3 .card-body::after { background: linear-gradient(135deg, rgba(22,163,74,.12), rgba(74,222,128,.02)); }
-        .emp-kpi-card.kpi-tone-4 .card-body::after { background: linear-gradient(135deg, rgba(245,158,11,.12), rgba(251,191,36,.02)); }
-        .emp-kpi-card.kpi-tone-5 .card-body::after { background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(129,140,248,.02)); }
-        .emp-kpi-card.kpi-tone-6 .card-body::after { background: linear-gradient(135deg, rgba(168,85,247,.12), rgba(196,181,253,.02)); }
-        .emp-kpi-card.kpi-tone-7 .card-body::after { background: linear-gradient(135deg, rgba(20,184,166,.12), rgba(45,212,191,.02)); }
-        .emp-kpi-card.kpi-tone-8 .card-body::after { background: linear-gradient(135deg, rgba(14,116,144,.14), rgba(59,130,246,.05)); }
-
-        .emp-chart-card {
-            border: 1px solid rgba(148, 163, 184, .30);
-            background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(244,248,255,.88));
-        }
-
-        .viatic-week-card {
-            border-color: rgba(148,163,184,.34) !important;
-            background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(240,249,255,.80));
-            box-shadow: 0 8px 22px rgba(15,23,42,.05);
-        }
-    </style>
 }

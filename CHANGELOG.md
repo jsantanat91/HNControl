@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## Web 2.5.22 · 9 de noviembre de 2026
+
+- Ficha de empleado en modal JavaScript desde tarjetas y tabla; acciones internas conservan el listado y refrescan los datos al cerrar si hubo cambios.
+- Cabecera de identidad y estado; pestañas de resumen quincenal, datos del empleado, desempeño y viáticos. Sueldo y comisión configurada separados de los bonos registrados.
+- Gráficas adaptables al abrir pestañas, porcentaje variable en escala 0–100 y estados vacíos. Navegación por teclado y diseño móvil.
+- Conserva cálculos y permisos; no requiere SQL adicional ni nueva APK.
+
 ## Web 2.5.21 · 9 de noviembre de 2026
 
 - Tarjetas de empleados homologadas al panel, con identidad y estado en cabecera, bloques de sueldo mensual y comisión, y acciones alineadas.

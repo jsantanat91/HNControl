@@ -7,6 +7,7 @@
     const open = document.getElementById('hnModulePanelOpen');
     const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
     let changed = false;
+    let trigger = null;
     const panelUrl = value => {
         const url = new URL(value, window.location.href);
         if (url.origin !== window.location.origin || !/^https?:$/.test(url.protocol)) return null;
@@ -19,6 +20,7 @@
         const url = panelUrl(link.href);
         if (!url) return;
         event.preventDefault();
+        trigger = link;
         title.textContent = link.dataset.modulePanel || link.textContent.trim();
         frame.title = title.textContent;
         open.href = link.href;
@@ -38,6 +40,7 @@
             // Keep the existing links, POST forms, anti-forgery tokens and redirects working inside the panel.
             doc.addEventListener('click', event => {
                 const anchor = event.target instanceof frame.contentWindow.Element ? event.target.closest('a[href]') : null;
+                if (anchor?.hasAttribute('data-module-panel-close')) { event.preventDefault(); modal.hide(); return; }
                 if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download') || anchor.getAttribute('href').startsWith('#')) return;
                 const url = panelUrl(anchor.href);
                 if (url) anchor.href = url.href;
@@ -53,5 +56,6 @@
     modalElement.addEventListener('hidden.bs.modal', () => {
         frame.src = 'about:blank';
         if (changed) window.location.reload();
+        else trigger?.focus();
     });
 })();
