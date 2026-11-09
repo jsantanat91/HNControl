@@ -1,5 +1,10 @@
 # HN Control — notas de versión
 
+## Web 2.5.19 · 9 de noviembre de 2026
+
+- Corrige la publicación Docker: el modelo compartido de entrega reside dentro de HNControl.Web, incluido en su contexto de compilación; la APK y sus pruebas enlazan ese mismo archivo.
+- Mantiene APK 2.3.0. No requiere SQL adicional al de entrega unificada ya aplicado.
+
 ## Web 2.5.18 / APK 2.3.0 · 9 de noviembre de 2026
 
 - Servicio, entrega de hardware o ambos en la misma orden; captura de marca y serie del router, otros equipos, cantidades, accesorios, modalidad y estado.

@@ -3,9 +3,14 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.18";
+    public const string Version = "2.5.19";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.19", new DateOnly(2026, 11, 9), "Corrección de despliegue Docker", new[]
+        {
+            new ReleaseChange("Publicación", "El modelo compartido de entregas queda incluido dentro del contexto de compilación de la web. Corrige el error de publicación en Docker."),
+            new ReleaseChange("Compatibilidad", "Conserva la APK 2.3.0 y el SQL de entrega unificada ya aplicado; no requiere otra migración.")
+        }),
         new ReleaseNote("2.5.18", new DateOnly(2026, 11, 9), "Entrega unificada en órdenes", new[]
         {
             new ReleaseChange("Órdenes", "Servicio, hardware o ambos en una sola orden. Marca y serie de router, equipos, cantidades, accesorios, estado y modalidad en el PDF con firmas y huellas."),
