@@ -19,10 +19,7 @@ public partial class ViaticosModulePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (WeeksCollection.ItemsSource is null)
-        {
-            await LoadWeeksAsync();
-        }
+        await LoadWeeksAsync();
     }
 
     private async void OnRefreshing(object sender, EventArgs e)
@@ -58,53 +55,10 @@ public partial class ViaticosModulePage : ContentPage
 
     private async void OnNewTravelClicked(object sender, EventArgs e)
     {
-        if (_isBusy)
-        {
-            return;
-        }
-
-        var destino = (await DisplayPromptAsync("Solicitud de Gastos", "Destino del viaje", "Continuar", "Cancelar", "Ciudad / sucursal"))?.Trim();
-        if (string.IsNullOrWhiteSpace(destino))
-        {
-            return;
-        }
-
-        var motivo = (await DisplayPromptAsync("Solicitud de Gastos", "Motivo del viaje", "Continuar", "Cancelar", "Actividad, alcance, dias estimados"))?.Trim();
-        if (string.IsNullOrWhiteSpace(motivo))
-        {
-            return;
-        }
-
-        var montoTxt = (await DisplayPromptAsync("Solicitud de Gastos", "Monto solicitado", "Crear", "Cancelar", "0.00", keyboard: Keyboard.Numeric))?.Trim();
-        if (!decimal.TryParse(montoTxt, out var monto) || monto <= 0m)
-        {
-            await DisplayAlertAsync("Viaticos", "Monto invalido.", "OK");
-            return;
-        }
-
+        if (_isBusy) return;
         _isBusy = true;
-        try
-        {
-            var week = await _viaticos.CreateTravelWeekAsync(new ViaticCreateTravelWeekDto
-            {
-                AnyDayInWeek = DateTime.Today,
-                TripDestination = destino,
-                TripPurpose = motivo,
-                RequestedAdvanceAmount = monto
-            });
-
-            var page = _services.GetRequiredService<ViaticWeekPage>();
-            page.SetWeekId(week.Id);
-            await Navigation.PushAsync(page);
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Viaticos", ex.Message, "OK");
-        }
-        finally
-        {
-            _isBusy = false;
-        }
+        try { await Navigation.PushAsync(new TravelRequestPage(_viaticos, _services)); }
+        finally { _isBusy = false; }
     }
 
     private async void OnOpenWeekClicked(object sender, EventArgs e)
@@ -131,7 +85,7 @@ public partial class ViaticosModulePage : ContentPage
         {
             var data = await _viaticos.GetWeeksAsync(26);
             WeeksCollection.ItemsSource = data;
-            Title = $"Viaticos ({data.Count})";
+            Title = "Viáticos";
         }
         catch (Exception ex)
         {

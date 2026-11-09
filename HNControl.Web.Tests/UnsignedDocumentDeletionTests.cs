@@ -89,7 +89,7 @@ internal static class UnsignedDocumentDeletionTests
         });
         var signing = new ClientDocumentSigningService(db, files, templates, converter, email, new DocumentNotificationRecipients(db));
         var racePage = new ClientDocumentModel(db, files, signing, NullLogger<ClientDocumentModel>.Instance);
-        var png = new byte[200]; new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }.CopyTo(png, 0);
+        var png = File.ReadAllBytes("HNControl.Web.Tests/Fixtures/contract-signature.png");
         check(await racePage.OnPostSignAsync(racing.PublicToken, "Ana Pérez", "ana@example.test", "data:image/png;base64," + Convert.ToBase64String(png), true) is NotFoundResult
             && email.Messages.Count == 0, "Eliminación concurrente a firma responde no disponible, sin confirmar ni enviar correo");
     }

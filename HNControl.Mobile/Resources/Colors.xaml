@@ -1,10 +1,10 @@
-﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <?xaml-comp compile="true" ?>
 <ResourceDictionary 
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Color x:Key="Primary">#0D6EFD</Color>
+    <Color x:Key="Primary">#087EE8</Color>
     <Color x:Key="Light">#DCE7FF</Color>
     <Color x:Key="Dark">#0A3D91</Color>
     <Color x:Key="White">White</Color>
@@ -32,29 +32,29 @@
     <Color x:Key="Blue300Accent">#A7CBF6</Color>
 
     <!-- App modern palette -->
-    <Color x:Key="AppBgTop">#F1F5F9</Color>
-    <Color x:Key="AppBgBottom">#E2E8F0</Color>
+    <Color x:Key="AppBgTop">#F3F7FB</Color>
+    <Color x:Key="AppBgBottom">#EDF4FC</Color>
     <Color x:Key="AppSurface">#FFFFFF</Color>
-    <Color x:Key="AppText">#0F172A</Color>
-    <Color x:Key="AppMuted">#64748B</Color>
-    <Color x:Key="AppHeader">#020617</Color>
-    <Color x:Key="AppAccent">#111827</Color>
-    <Color x:Key="AppAccentSoft">#E2E8F0</Color>
+    <Color x:Key="AppText">#10284A</Color>
+    <Color x:Key="AppMuted">#69809E</Color>
+    <Color x:Key="AppHeader">#044A55</Color>
+    <Color x:Key="AppAccent">#087EE8</Color>
+    <Color x:Key="AppAccentSoft">#EDF4FC</Color>
     <Color x:Key="AppSuccess">#16A34A</Color>
     <Color x:Key="AppSuccessSoft">#DCFCE7</Color>
     <Color x:Key="AppDanger">#DC2626</Color>
     <Color x:Key="AppDangerSoft">#FEE2E2</Color>
     <Color x:Key="AppWarning">#C2410C</Color>
     <Color x:Key="AppWarningSoft">#FFEDD5</Color>
-    <Color x:Key="AppBorder">#253247</Color>
+    <Color x:Key="AppBorder">#DFE8F2</Color>
 
     <LinearGradientBrush x:Key="AppBackgroundBrush" EndPoint="0,1">
         <GradientStop Color="{StaticResource AppBgTop}" Offset="0.0" />
         <GradientStop Color="{StaticResource AppBgBottom}" Offset="1.0" />
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="HeaderGradientBrush" EndPoint="1,1">
-        <GradientStop Color="#030712" Offset="0.0" />
-        <GradientStop Color="#0B1220" Offset="1.0" />
+        <GradientStop Color="#0B715D" Offset="0.0" />
+        <GradientStop Color="#044A55" Offset="1.0" />
     </LinearGradientBrush>
 
 </ResourceDictionary>

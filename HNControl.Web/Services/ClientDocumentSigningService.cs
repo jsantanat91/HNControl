@@ -17,6 +17,14 @@ public class ClientDocumentSigningService(
         // A document already issued without a snapshot used the original template.
         doc.SigningSnapshotJson ??= ClientSigningSnapshot.Capture(doc.Client, doc.ClientServiceContract, corporateServiceTemplate: false);
         doc.Status = IsCompleted(doc) ? ClientLegalDocumentStatus.Signed : ClientLegalDocumentStatus.SentForSignature;
+        async Task<byte[]?> ReadSignature(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            var (stream, _, _) = await storage.OpenAsync(path, "signature.png");
+            await using (stream) { using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer); return buffer.ToArray(); }
+        }
+        doc.ClientSignatureImage = await ReadSignature(doc.SignatureStoragePath);
+        doc.ProviderSignatureImage = await ReadSignature(doc.ProviderSignatureStoragePath);
         var word = templates.BuildClientLegalDocx(doc, doc.Client, doc.ClientServiceContract);
         var pdf = await converter.TryConvertDocxToPdfAsync(word, $"legal_{doc.Id:N}");
         if (pdf is not { Length: > 0 })

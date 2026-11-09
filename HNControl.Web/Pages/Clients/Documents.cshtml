@@ -1,4 +1,4 @@
-﻿@page "{clientId:guid}"
+@page "{clientId:guid}"
 @using HNControl.Web.Models
 @model HNControl.Web.Pages.Clients.DocumentsModel
 @{
@@ -206,11 +206,17 @@
                                             <input type="hidden" name="docId" value="@d.Id" />
                                             <button class="btn btn-sm btn-primary" type="submit" @(d.HasPdf ? "" : "disabled")>Descargar PDF</button>
                                         </form>
-                                        @if (Model.CanSignForProvider && d.Type != "NDA" && d.IsSigned && !d.ProviderSigned)
+                                        @if (Model.CanSignForProvider && d.Type != "NDA" && d.IsSigned && !d.ProviderAutograph)
                                         {
-                                            <form method="post" asp-page-handler="SignProvider" class="border rounded p-3 w-100" onsubmit="this.querySelector('button').disabled=true;">
+                                            <form method="post" asp-page-handler="SignProvider" class="border rounded p-3 w-100" data-autograph-form>
                                                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                                                 <input type="hidden" name="docId" value="@d.Id" />
+                                                <label class="form-label fw-semibold">Firma autógrafa de HN Solutions</label>
+                                                <p class="small text-muted">Dibuje su firma. Aparecerá en el contrato junto al registro digital y su hash.</p>
+                                                <canvas data-autograph width="900" height="240" style="width:100%;height:180px;touch-action:none;border:1px solid #cedaeb;background:#fff;border-radius:8px" aria-label="Dibujar firma de HN Solutions"></canvas>
+                                                <input type="hidden" name="sigDataUrl" />
+                                                <button type="button" class="btn btn-outline-secondary btn-sm my-2" data-clear-autograph>Limpiar firma</button>
+                                                <div class="text-danger small" data-autograph-error hidden>Dibuje su firma antes de continuar.</div>
                                                 <div class="form-check mb-2">
                                                     <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="accept-@d.Id" required />
                                                     <label class="form-check-label small" for="accept-@d.Id">He revisado el PDF y acepto firmar este contrato en representación de HN Solutions con mi cuenta administradora.</label>
@@ -274,6 +280,8 @@
         </div>
     </div>
 </div>
+
+<script src="~/js/contract-autograph.js" asp-append-version="true" defer></script>
 
 @section Scripts {
     <script>

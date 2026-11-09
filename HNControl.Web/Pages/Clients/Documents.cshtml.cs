@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Globalization;
 using System.Security.Claims;
 using HNControl.Web.Data;
@@ -75,7 +75,7 @@ public class DocumentsModel : PageModel
         string? ContractLabel,
         bool ProviderSigned,
         string? ProviderSignedBy,
-        bool ConfirmationSent);
+        bool ConfirmationSent, bool ProviderAutograph);
 
     public record SignContactOption(
         Guid Id,
@@ -376,7 +376,7 @@ public class DocumentsModel : PageModel
                 x.ClientServiceContract != null ? x.ClientServiceContract.Label : null,
                 x.ProviderSignedAt.HasValue,
                 x.ProviderSignedByName,
-                x.CompletionEmailSentAt.HasValue
+                x.CompletionEmailSentAt.HasValue, !string.IsNullOrEmpty(x.ProviderSignatureStoragePath)
             ))
             .ToListAsync();
     }
@@ -421,7 +421,7 @@ public class DocumentsModel : PageModel
         await _db.SaveChangesAsync();
     }
 
-    public async Task<IActionResult> OnPostSignProviderAsync(Guid clientId, Guid docId, bool acceptTerms)
+    public async Task<IActionResult> OnPostSignProviderAsync(Guid clientId, Guid docId, bool acceptTerms, string? sigDataUrl = null)
     {
         if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
         if (!acceptTerms) return BadRequest("Confirme la aceptación del contrato en representación de HN Solutions.");
@@ -430,19 +430,32 @@ public class DocumentsModel : PageModel
         if (doc == null) return NotFound();
         if (doc.DocumentType != ClientLegalDocumentType.Contract || !doc.SignedAt.HasValue)
             return BadRequest("Primero debe firmar el cliente.");
-        if (!doc.ProviderSignedAt.HasValue)
+        if (string.IsNullOrEmpty(doc.ProviderSignatureStoragePath))
         {
+            if (string.IsNullOrEmpty(doc.SignatureStoragePath))
+                return BadRequest("El contrato no tiene la firma autógrafa del cliente. Solicite un nuevo documento para firma de ambas partes.");
+            var signature = SignatureDataUrl.ParsePng(sigDataUrl);
+            if (signature == null) return BadRequest("Dibuje una firma autógrafa válida de HN Solutions.");
+            if (doc.ProviderSignedAt.HasValue && doc.ProviderSignedByUserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return BadRequest("La firma autógrafa debe completarla la misma cuenta que firmó el contrato.");
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var account = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
             if (account == null || !ClientCommunicationTemplates.IsEmail(account.Email))
                 return BadRequest("La cuenta administradora debe tener un correo válido para firmar.");
             var name = await _db.EmployeeProfiles.Where(x => x.UserId == userId).Select(x => x.FullName).FirstOrDefaultAsync();
-            doc.ProviderSignedByName = FirstNonEmpty(name, account.UserName, account.Email);
-            doc.ProviderSignedByEmail = account.Email;
-            doc.ProviderSignedByUserId = account.Id;
-            doc.ProviderSignedAt = DateTime.UtcNow;
+            if (!doc.ProviderSignedAt.HasValue)
+            {
+                doc.ProviderSignedByName = FirstNonEmpty(name, account.UserName, account.Email);
+                doc.ProviderSignedByEmail = account.Email;
+                doc.ProviderSignedByUserId = account.Id;
+            }
+            doc.ProviderSignedAt ??= DateTime.UtcNow;
             try
             {
+                var (signaturePath, _, _) = await _storage.SaveBytesAsync(signature,
+                    $"clients/{doc.ClientId}/legal/{doc.Id}/signatures", $"hn_{Guid.NewGuid():N}.png", "image/png");
+                doc.ProviderSignatureStoragePath = signaturePath;
+                doc.CompletionEmailSentAt = null;
                 await _signing.SaveSignedPdfAsync(doc);
             }
             catch (Exception ex)

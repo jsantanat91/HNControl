@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.14";
+    public const string Version = "2.5.15";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.15", new DateOnly(2026, 11, 9), "Servicios móviles y firmas autógrafas", new[]
+        {
+            new ReleaseChange("Móvil", "API de consulta de Inventario Servicios para empleados y administradores, con filtros por cliente y proveedor. APK 2.1.0 con nuevo acceso visual."),
+            new ReleaseChange("Contratos", "Firma dibujada de cliente y HN dentro del contrato, además del registro digital y hash. HN puede completar su trazo usando la cuenta que firmó originalmente."),
+            new ReleaseChange("Publicación", "Requiere la migración AddContractProviderAutograph antes de usar la nueva versión.")
+        }),
         new ReleaseNote("2.5.14", new DateOnly(2026, 11, 8), "Planes y cuentas del inventario", new[]
         {
             new ReleaseChange("Planes", "Nombre del plan seleccionable según el proveedor, con las opciones de Starlink e Internet 50 a 1000. Tipo Empresarial disponible también para los demás proveedores."),

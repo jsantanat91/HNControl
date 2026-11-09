@@ -3,30 +3,19 @@
     x:Class="HNControl.Mobile.Pages.ViaticosModulePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Viaticos"
+    Title="Viáticos"
     Background="{StaticResource AppBackgroundBrush}">
-    <Grid RowDefinitions="Auto,*" Padding="14,12">
+    <Grid RowDefinitions="Auto,*" Padding="20,12">
         <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
-            <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
-                <Label FontAttributes="Bold" FontSize="23" Text="Mis viaticos" TextColor="White" />
-                <Button Grid.Column="1"
-                        Clicked="OnNewWeekClicked"
-                        Style="{StaticResource PrimaryButton}"
-                        Text="+ Semanal"
-                        />
-                <Button Grid.Column="2"
-                        Margin="8,0,0,0"
-                        Clicked="OnNewTravelClicked"
-                        Style="{StaticResource GhostButton}"
-                        Text="+ Viaje"
-                        />
-                <Label Grid.Row="1"
-                       Grid.ColumnSpan="3"
-                       FontSize="12"
-                       Opacity="0.85"
-                       Text="Apoyo Gastos/Transporte y Solicitud de Gastos."
-                       TextColor="#C5D5F0" />
-            </Grid>
+            <VerticalStackLayout Spacing="14">
+                <Label Text="GASTOS Y COMPROBACIONES" TextColor="#BCE7DE" FontSize="10" CharacterSpacing="1.4" FontAttributes="Bold" />
+                <Label Text="Mis viáticos" TextColor="White" FontSize="27" FontAttributes="Bold" />
+                <Label Text="Registra, comprueba y sigue tus gastos." TextColor="#D5EDE9" FontSize="13" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                    <Button Text="+ Semana" Clicked="OnNewWeekClicked" Style="{StaticResource PrimaryButton}" />
+                    <Button Grid.Column="1" Text="+ Viaje" Clicked="OnNewTravelClicked" Style="{StaticResource GhostButton}" />
+                </Grid>
+            </VerticalStackLayout>
         </Border>
 
         <RefreshView x:Name="WeeksRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
@@ -34,8 +23,8 @@
                 <CollectionView.EmptyView>
                     <Border Style="{StaticResource SurfaceCard}" Padding="16">
                         <VerticalStackLayout Spacing="6">
-                            <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Sin semanas" />
-                            <Label HorizontalOptions="Center" Opacity="0.7" Text="Pulsa + Semana para iniciar." />
+                            <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Tus gastos, en orden" />
+                            <Label HorizontalOptions="Center" Opacity="0.7" Text="Crea una semana o solicita un viaje." />
                         </VerticalStackLayout>
                     </Border>
                 </CollectionView.EmptyView>
@@ -45,14 +34,14 @@
                             <VerticalStackLayout Spacing="7">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <Label FontAttributes="Bold"
-                                           FontSize="18"
-                                           Text="{Binding WeekStartDate, StringFormat='Semana {0:yyyy-MM-dd}'}" />
+                                           FontSize="16"
+                                           Text="{Binding WeekStartDate, StringFormat='Semana del {0:dd MMM yyyy}'}" />
                                     <Label Grid.Column="1"
                                            FontAttributes="Bold"
                                            FontSize="12"
                                            Text="{Binding StatusLabel}" />
                                 </Grid>
-                                <Label FontSize="12" Text="{Binding FlowLabel}" TextColor="#8FA1C0" />
+                                <Label FontSize="12" Text="{Binding FlowLabel}" TextColor="{StaticResource AppMuted}" />
                                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                     <Border Grid.Column="0" BackgroundColor="#EEF3FF" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
                                         <VerticalStackLayout Spacing="0">
@@ -70,7 +59,7 @@
                                 <Button Clicked="OnOpenWeekClicked"
                                         CommandParameter="{Binding Id}"
                                         Style="{StaticResource PrimaryButton}"
-                                        Text="Abrir semana"
+                                        Text="Ver gastos  →"
                                         />
                             </VerticalStackLayout>
                         </Border>

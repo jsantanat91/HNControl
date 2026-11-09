@@ -1,12 +1,12 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage
     x:Class="HNControl.Mobile.Pages.ViaticWeekPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Semana"
+    Title="Detalle de viáticos"
     Background="{StaticResource AppBackgroundBrush}">
     <ScrollView>
-        <VerticalStackLayout Padding="14,12,14,20" Spacing="12">
+        <VerticalStackLayout Padding="20,12,20,28" Spacing="12">
             <Border Style="{StaticResource HeaderCard}">
                 <VerticalStackLayout Spacing="4">
                     <Label x:Name="WeekTitleLabel" FontAttributes="Bold" FontSize="22" Text="Semana" TextColor="White" />
@@ -45,15 +45,15 @@
                         <DatePicker x:Name="DayDatePicker" Grid.Column="0" />
                         <Picker x:Name="CategoryPicker" Grid.Column="1" ItemDisplayBinding="{Binding Label}" Title="Categoria" />
                     </Grid>
-                    <Entry x:Name="DescriptionEntry" Placeholder="Descripcion del gasto" />
-                    <Entry x:Name="AmountEntry" Keyboard="Numeric" Placeholder="Monto (ej. 250.00)" />
+                    <Label Text="Concepto del gasto" Style="{StaticResource FieldLabel}" /><Entry x:Name="DescriptionEntry" Placeholder="Descripcion del gasto" />
+                    <Label Text="Importe en MXN" Style="{StaticResource FieldLabel}" /><Entry x:Name="AmountEntry" Keyboard="Numeric" Placeholder="Monto (ej. 250.00)" />
                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                         <Switch x:Name="IsBillableSwitch" Grid.Column="0" />
                         <Label Grid.Column="1" VerticalTextAlignment="Center" Text="Facturable (requiere factura adjunta)" />
-                        <Button Grid.Column="2"
+                        <Button x:Name="AttachButton" Grid.Column="2"
                                 Clicked="OnPickAttachmentClicked"
                                 CornerRadius="10"
-                                HeightRequest="36"
+                                MinimumHeightRequest="48"
                                 Text="Adjuntar" />
                     </Grid>
                     <Label x:Name="SelectedPdfLabel" FontSize="12" Opacity="0.75" Text="Sin archivo adjunto" />
@@ -67,7 +67,7 @@
                                 Grid.Column="1"
                                 Clicked="OnCancelEditClicked"
                                 CornerRadius="10"
-                                HeightRequest="40"
+                                MinimumHeightRequest="48"
                                 IsVisible="False"
                                 Text="Cancelar" />
                     </Grid>
@@ -80,11 +80,11 @@
                         <Label FontAttributes="Bold" FontSize="18" Text="Gastos" />
                         <Label x:Name="EntriesCountLabel" Grid.Column="1" FontSize="12" Opacity="0.75" />
                     </Grid>
-                    <CollectionView x:Name="EntriesCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
+                    <VerticalStackLayout x:Name="EntriesCollection" Spacing="8">
+                        <BindableLayout.EmptyView>
                             <Label Opacity="0.7" Text="Aun no agregas gastos en esta semana." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
+                        </BindableLayout.EmptyView>
+                        <BindableLayout.ItemTemplate>
                             <DataTemplate>
                                 <Border Margin="0,0,0,8" Background="#F9FBFF" Padding="10" StrokeShape="RoundRectangle 12" Stroke="#E5ECFA">
                                     <VerticalStackLayout Spacing="5">
@@ -94,26 +94,27 @@
                                         </Grid>
                                         <Label FontSize="12" Opacity="0.75" Text="{Binding DayDate, StringFormat='{0:yyyy-MM-dd}'}" />
                                         <Label FontSize="12" Opacity="0.75" Text="{Binding CategoryLabel}" />
-                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                        <Label FontSize="11" Text="{Binding AttachmentLabel}" TextColor="{StaticResource AppMuted}" />
+                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" IsVisible="{Binding CanEdit}">
                                             <Button Clicked="OnEditEntryClicked"
                                                     CommandParameter="{Binding .}"
                                                     CornerRadius="10"
-                                                    HeightRequest="34"
+                                                    MinimumHeightRequest="44"
                                                     Text="Editar" />
                                             <Button Grid.Column="1"
                                                     BackgroundColor="#D13A3A"
                                                     Clicked="OnDeleteEntryClicked"
                                                     CommandParameter="{Binding Id}"
                                                     CornerRadius="10"
-                                                    HeightRequest="34"
+                                                    MinimumHeightRequest="44"
                                                     Text="Eliminar"
                                                     TextColor="White" />
                                         </Grid>
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 

@@ -50,7 +50,7 @@ public partial class ViaticWeekPage : ContentPage
 
     private async void OnSaveEntryClicked(object sender, EventArgs e)
     {
-        if (_isBusy || _current == null)
+        if (_isBusy || _current == null || !CanEditCurrent())
         {
             return;
         }
@@ -110,7 +110,7 @@ public partial class ViaticWeekPage : ContentPage
             }
 
             ResetForm();
-            await LoadWeekAsync();
+            await LoadWeekAsync(afterMutation: true);
         }
         catch (Exception ex)
         {
@@ -134,7 +134,10 @@ public partial class ViaticWeekPage : ContentPage
             return;
         }
 
+        if (_isBusy || !CanEditCurrent()) return;
         _editingEntryId = entry.Id;
+        IsBillableSwitch.IsEnabled = entry.HasAttachment;
+        AttachButton.IsVisible = false;
         FormTitleLabel.Text = "Editar gasto";
         SaveEntryButton.Text = "Actualizar";
         CancelEditButton.IsVisible = true;
@@ -149,6 +152,7 @@ public partial class ViaticWeekPage : ContentPage
 
     private async void OnPickAttachmentClicked(object sender, EventArgs e)
     {
+        if (_isBusy || !CanEditCurrent() || _editingEntryId.HasValue) return;
         try
         {
             var picked = await FilePicker.Default.PickAsync(new PickOptions
@@ -185,6 +189,7 @@ public partial class ViaticWeekPage : ContentPage
             return;
         }
 
+        if (!CanEditCurrent()) return;
         var ok = await DisplayAlertAsync("Eliminar", "Eliminar este gasto?", "Si", "No");
         if (!ok)
         {
@@ -195,7 +200,8 @@ public partial class ViaticWeekPage : ContentPage
         try
         {
             await _viaticos.DeleteEntryAsync(entryId);
-            await LoadWeekAsync();
+            if (_editingEntryId == entryId) ResetForm();
+            await LoadWeekAsync(afterMutation: true);
         }
         catch (Exception ex)
         {
@@ -209,7 +215,7 @@ public partial class ViaticWeekPage : ContentPage
 
     private async void OnSubmitWeekClicked(object sender, EventArgs e)
     {
-        if (_isBusy || _current == null)
+        if (_isBusy || _current == null || !CanEditCurrent())
         {
             return;
         }
@@ -234,7 +240,7 @@ public partial class ViaticWeekPage : ContentPage
         {
             var result = await _viaticos.SubmitWeekAsync(_weekId);
             await DisplayAlertAsync("Viaticos", string.IsNullOrWhiteSpace(result.Message) ? "Semana enviada." : result.Message, "OK");
-            await LoadWeekAsync();
+            await LoadWeekAsync(afterMutation: true);
         }
         catch (Exception ex)
         {
@@ -246,9 +252,9 @@ public partial class ViaticWeekPage : ContentPage
         }
     }
 
-    private async Task LoadWeekAsync()
+    private async Task LoadWeekAsync(bool afterMutation = false)
     {
-        if (_isBusy || _weekId == Guid.Empty)
+        if ((_isBusy && !afterMutation) || _weekId == Guid.Empty)
         {
             return;
         }
@@ -263,7 +269,8 @@ public partial class ViaticWeekPage : ContentPage
             TotalLabel.Text = _current.TotalAmount.ToString("$#,##0.00");
             BillableLabel.Text = _current.BillableAmount.ToString("$#,##0.00");
             EntriesCountLabel.Text = $"{_current.Entries.Count} registro(s)";
-            EntriesCollection.ItemsSource = _current.Entries.OrderByDescending(x => x.DayDate).ToList();
+            foreach (var entry in _current.Entries) entry.CanEdit = CanEditCurrent();
+            BindableLayout.SetItemsSource(EntriesCollection, _current.Entries.OrderByDescending(x => x.DayDate).ToList());
             TravelInfoCard.IsVisible = _current.FlowType == 2;
             if (_current.FlowType == 2)
             {
@@ -273,6 +280,7 @@ public partial class ViaticWeekPage : ContentPage
             }
 
             var weekStart = _current.WeekStartDate.Date;
+            DayDatePicker.MaximumDate = DateTime.MaxValue;
             DayDatePicker.MinimumDate = weekStart;
             DayDatePicker.MaximumDate = weekStart.AddDays(6);
             if (DayDatePicker.Date < DayDatePicker.MinimumDate || DayDatePicker.Date > DayDatePicker.MaximumDate)
@@ -302,6 +310,8 @@ public partial class ViaticWeekPage : ContentPage
     private void ResetForm()
     {
         _editingEntryId = null;
+        IsBillableSwitch.IsEnabled = true;
+        AttachButton.IsVisible = true;
         FormTitleLabel.Text = "Agregar gasto";
         SaveEntryButton.Text = "Guardar";
         CancelEditButton.IsVisible = false;

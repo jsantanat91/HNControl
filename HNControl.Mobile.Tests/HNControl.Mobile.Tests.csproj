@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../HNControl.Mobile/Models/MobileDtos.cs" Link="MobileDtos.cs" />
+    <Compile Include="../HNControl.Mobile/Services/OrderPresentation.cs" Link="OrderPresentation.cs" />
+    <Compile Include="../HNControl.Mobile/Services/MobileApiClient.cs" Link="MobileApiClient.cs" />
+    <Compile Include="../HNControl.Mobile/Services/MobileApiSettings.cs" Link="MobileApiSettings.cs" />
+    <Compile Include="../HNControl.Mobile/Services/AuthSession.cs" Link="AuthSession.cs" />
+    <Compile Include="../HNControl.Mobile/Services/OrdersService.cs" Link="OrdersService.cs" />
+    <Compile Include="../HNControl.Mobile/Services/ViaticosService.cs" Link="ViaticosService.cs" />
+    <Compile Include="../HNControl.Mobile/Services/EmployeeService.cs" Link="EmployeeService.cs" />
+  </ItemGroup>
+</Project>

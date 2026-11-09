@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Controls.Shapes;
 
 namespace HNControl.Mobile.Pages;
@@ -62,7 +62,7 @@ public sealed class SignatureCapturePage : ContentPage
                     {
                         CreateButton("Cancelar", OnCancel, "#E2E8F0", "#0F172A", 0),
                         CreateButton("Limpiar", OnClear, "#F8FAFE", "#0F172A", 1),
-                        CreateButton("Guardar firma", OnSave, "#2252D5", "#FFFFFF", 2)
+                        CreateButton("Guardar", OnSave, "#2252D5", "#FFFFFF", 2)
                     }
                 }
             }
@@ -73,7 +73,7 @@ public sealed class SignatureCapturePage : ContentPage
 
     public static async Task<string?> CaptureAsync(INavigation navigation, string title, string subtitle)
     {
-        var tcs = new TaskCompletionSource<string?>();
+        var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var page = new SignatureCapturePage(title, subtitle, tcs);
         await navigation.PushModalAsync(new NavigationPage(page));
         return await tcs.Task;
@@ -113,6 +113,12 @@ public sealed class SignatureCapturePage : ContentPage
     {
         _drawable.EndStroke();
         _pad.Invalidate();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _tcs.TrySetResult(null);
     }
 
     private async void OnCancel(object? sender, EventArgs e)

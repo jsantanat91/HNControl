@@ -874,6 +874,8 @@ namespace HNControl.Web.Migrations
                     b.Property<DateTime>("UpdatedAt").IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ProviderSignatureStoragePath").HasMaxLength(500).HasColumnType("character varying(500)");
+
                     b.Property<string>("ProviderSignedByName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");

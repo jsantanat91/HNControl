@@ -60,7 +60,7 @@ public class TemplateDocxService : ITemplateDocxService
             && replacements["ESTADOC"] == "MÃ©xico")
             replacements["ESTADOC"] = "México";
 
-        return ReplaceDocumentXml(bytes, replacements);
+        return ReplaceDocumentXml(DocxSignatureImages.Insert(bytes, document.ClientSignatureImage, document.ProviderSignatureImage), replacements);
     }
 
     public byte[] BuildDeliveryDocx(ProjectDeliveryFormat delivery, Client client, Project? project)

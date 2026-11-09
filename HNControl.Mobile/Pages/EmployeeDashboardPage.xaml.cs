@@ -1,4 +1,4 @@
-﻿using HNControl.Mobile.Models;
+using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
 
 namespace HNControl.Mobile.Pages;
@@ -23,6 +23,12 @@ public partial class EmployeeDashboardPage : ContentPage
         await LoadAsync();
     }
 
+    private async void OnRefreshing(object sender, EventArgs e)
+    {
+        try { await LoadAsync(); }
+        finally { DashboardRefresh.IsRefreshing = false; }
+    }
+
     private async Task LoadAsync()
     {
         if (_isBusy) return;
@@ -31,6 +37,8 @@ public partial class EmployeeDashboardPage : ContentPage
         {
             var data = await _employeeService.DashboardAsync();
             Bind(data);
+            DashboardContent.IsVisible = true;
+            LoadStatusLabel.Text = $"Actualizado a las {DateTime.Now:HH:mm} · Desliza para actualizar";
         }
         catch (Exception ex)
         {
@@ -42,6 +50,7 @@ public partial class EmployeeDashboardPage : ContentPage
                 return;
             }
 
+            LoadStatusLabel.Text = "No se pudo actualizar. Desliza para reintentar.";
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
         finally
@@ -59,9 +68,6 @@ public partial class EmployeeDashboardPage : ContentPage
         NetPayLabel.Text = data.Payroll.NetQuincenal.ToString("C2");
         VariableLabel.Text = $"{data.Payroll.VariablePercent:0.##}%";
         PayrollPeriodLabel.Text = $"Periodo: {data.Payroll.Period}";
-        PayrollDonut.NetValue = (double)data.Payroll.NetQuincenal;
-        PayrollDonut.DeductionValue = (double)data.Payroll.DeductionsQuincenal;
-        PayrollDonut.BonusValue = (double)data.Payroll.BonusesQuincenal;
 
         DeductionsTotalLabel.Text = "-" + data.Payroll.DeductionsQuincenal.ToString("C2");
         BonusesTotalLabel.Text = "+" + data.Payroll.BonusesQuincenal.ToString("C2");
@@ -69,27 +75,27 @@ public partial class EmployeeDashboardPage : ContentPage
         if (data.KpiFeedback is not null)
         {
             KpiRetroMetaLabel.Text = $"Periodo: {data.KpiFeedback.Period} | Calificado por: {data.KpiFeedback.RatedBy}";
-            KpiRetroTitleLabel.Text = "Retro KPI vigente";
+            KpiRetroTitleLabel.Text = "Resultado KPI";
             KpiRetroScoreLabel.Text = $"{data.KpiFeedback.VariablePercent:0.##}%";
             _rhFullNotes = string.IsNullOrWhiteSpace(data.KpiFeedback.Notes) ? "" : data.KpiFeedback.Notes;
             KpiRetroNotesLabel.Text = string.IsNullOrWhiteSpace(_rhFullNotes)
                 ? "Sin retroalimentacion escrita por RH."
                 : CompactPreview(_rhFullNotes, 130);
 
-            KpiMetricsCollection.ItemsSource = data.KpiFeedback.Metrics.Select(x => new KpiMetricVm
+            BindableLayout.SetItemsSource(KpiMetricsCollection, data.KpiFeedback.Metrics.Select(x => new KpiMetricVm
             {
                 Name = x.Name,
                 ScoreText = $"{x.Score:0.0}/5"
-            }).ToList();
+            }).ToList());
             RhCommentsButton.IsVisible = !string.IsNullOrWhiteSpace(_rhFullNotes);
         }
         else
         {
             KpiRetroMetaLabel.Text = "Sin evaluacion KPI registrada.";
             KpiRetroTitleLabel.Text = "KPI";
-            KpiRetroScoreLabel.Text = "0%";
+            KpiRetroScoreLabel.Text = "Sin evaluar";
             KpiRetroNotesLabel.Text = "Aun no hay retroalimentacion de RH.";
-            KpiMetricsCollection.ItemsSource = new List<KpiMetricVm>();
+            BindableLayout.SetItemsSource(KpiMetricsCollection, new List<KpiMetricVm>());
             RhCommentsButton.IsVisible = false;
             _rhFullNotes = "";
         }
@@ -103,24 +109,24 @@ public partial class EmployeeDashboardPage : ContentPage
             {
                 Eval360AutoScoreLabel.Text = "";
                 Eval360OthersScoreLabel.Text = "";
-                Eval360CommentsCollection.ItemsSource = new List<EvalCommentVm>
+                BindableLayout.SetItemsSource(Eval360CommentsCollection, new List<EvalCommentVm>
                 {
                     new()
                     {
                         Competency = "Resultados no publicados",
                         Comment = "Tu administrador aun no habilita visibilidad de resultados para esta campana."
                     }
-                };
+                });
             }
             else
             {
                 Eval360AutoScoreLabel.Text = $"Auto: {data.Eval360Feedback.AutoPercent:0}%";
                 Eval360OthersScoreLabel.Text = $"Equipo: {data.Eval360Feedback.OthersPercent:0}%";
-                Eval360CommentsCollection.ItemsSource = data.Eval360Feedback.Comments.Select(x => new EvalCommentVm
+                BindableLayout.SetItemsSource(Eval360CommentsCollection, data.Eval360Feedback.Comments.Select(x => new EvalCommentVm
                 {
                     Competency = x.Competency,
                     Comment = x.Comment
-                }).ToList();
+                }).ToList());
             }
         }
         else
@@ -129,7 +135,7 @@ public partial class EmployeeDashboardPage : ContentPage
             Eval360MetaLabel.Text = "Aun no hay resultados de evaluacion 360 para mostrar.";
             Eval360AutoScoreLabel.Text = "";
             Eval360OthersScoreLabel.Text = "";
-            Eval360CommentsCollection.ItemsSource = new List<EvalCommentVm>();
+            BindableLayout.SetItemsSource(Eval360CommentsCollection, new List<EvalCommentVm>());
         }
 
         VacationSummaryLabel.Text =
@@ -138,22 +144,15 @@ public partial class EmployeeDashboardPage : ContentPage
         ExamsSummaryLabel.Text =
             $"Asignados: {data.Exams.Assigned}\nEn progreso: {data.Exams.InProgress}\nCalificados: {data.Exams.Graded}";
 
-        HistoryCollection.ItemsSource = data.PayrollHistory.Select(x => new HistoryVm
+        BindableLayout.SetItemsSource(HistoryCollection, data.PayrollHistory.Select(x => new HistoryVm
         {
             Label = x.Label,
+            NetText = x.NetQuincenal.ToString("C2"),
             VariableRatio = (double)Math.Clamp(x.VariablePercent / 100m, 0m, 1m),
             VariableText = $"{x.VariablePercent:0.#}%"
-        }).ToList();
+        }).ToList());
 
-        var ticketMax = Math.Max(1, data.TicketHistory.Any() ? data.TicketHistory.Max(x => x.Resolved) : 1);
-        TicketHistoryCollection.ItemsSource = data.TicketHistory.Select(x => new TicketHistoryVm
-        {
-            Label = x.Label,
-            Ratio = (double)Math.Clamp((decimal)x.Resolved / ticketMax, 0m, 1m),
-            ValueText = x.Resolved.ToString()
-        }).ToList();
-
-        DeductionsCollection.ItemsSource = data.Deductions.Select(d =>
+        BindableLayout.SetItemsSource(DeductionsCollection, data.Deductions.Select(d =>
         {
             var hasProgress = d.ProgressPaidPeriods.HasValue && d.ProgressTotalPeriods.HasValue && d.ProgressTotalPeriods.Value > 0;
             var ratio = hasProgress ? (double)Math.Clamp((decimal)d.ProgressPaidPeriods!.Value / d.ProgressTotalPeriods!.Value, 0m, 1m) : 0d;
@@ -167,14 +166,9 @@ public partial class EmployeeDashboardPage : ContentPage
                 ProgressRatio = ratio,
                 ProgressText = hasProgress ? $"{d.ProgressPaidPeriods}/{d.ProgressTotalPeriods}" : "-"
             };
-        }).ToList();
+        }).ToList());
 
-        InventoryCollection.ItemsSource = data.InventoryOrders.Select(x => new InventoryVm
-        {
-            ItemsPreview = x.ItemsPreview,
-            StatusLabel = x.StatusLabel,
-            Meta = $"{x.RequestedAt:yyyy-MM-dd HH:mm} | {x.Type} | Lineas: {x.LinesCount} | Responsable: {x.ResponsibleName}"
-        }).ToList();
+
     }
 
     private async void OnRhCommentsClicked(object? sender, EventArgs e)
@@ -195,6 +189,7 @@ public partial class EmployeeDashboardPage : ContentPage
     private sealed class HistoryVm
     {
         public string Label { get; set; } = "";
+        public string NetText { get; set; } = "";
         public double VariableRatio { get; set; }
         public string VariableText { get; set; } = "";
     }

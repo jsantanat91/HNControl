@@ -5,6 +5,7 @@ namespace HNControl.Mobile.Pages;
 public partial class LoginPage : ContentPage
 {
     private readonly AuthService _auth;
+    private bool _busy;
 
     public LoginPage(AuthService auth)
     {
@@ -37,7 +38,14 @@ public partial class LoginPage : ContentPage
 
     private async void OnLoginClicked(object sender, EventArgs e)
     {
+        if (_busy) return;
         ErrorLabel.IsVisible = false;
+        if (string.IsNullOrWhiteSpace(EmailEntry.Text) || string.IsNullOrEmpty(PasswordEntry.Text))
+        {
+            ErrorLabel.Text = "Escribe tu usuario y contraseña para continuar.";
+            ErrorLabel.IsVisible = true;
+            return;
+        }
         SetBusy(true);
         try
         {
@@ -62,8 +70,15 @@ public partial class LoginPage : ContentPage
         }
     }
 
+    private void OnTogglePassword(object sender, EventArgs e)
+    {
+        PasswordEntry.IsPassword = !PasswordEntry.IsPassword;
+        if (sender is Button button) button.Text = PasswordEntry.IsPassword ? "Ver" : "Ocultar";
+    }
+
     private void SetBusy(bool isBusy)
     {
+        _busy = isBusy;
         BusyIndicator.IsVisible = isBusy;
         BusyIndicator.IsRunning = isBusy;
         LoginButton.IsEnabled = !isBusy;

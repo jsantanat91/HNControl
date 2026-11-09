@@ -86,6 +86,7 @@ ContractRenewalTests.CheckTemplate(root, service, Check);
 EventDeliveryDesignTests.Run(service, Check);
 await UnsignedDocumentDeletionTests.RunAsync(service, Check);
 await ServiceInventoryTests.RunAsync(Check);
+ContractAutographTests.Run(service, Check);
 Console.WriteLine($"All {count} checks passed.");
 
 sealed class TestEnvironment(string root) : IWebHostEnvironment

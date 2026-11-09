@@ -16,7 +16,7 @@ public sealed class AuthSession
     public string FullName { get; private set; } = "";
     public string Email { get; private set; } = "";
     public DateTime ExpiresAtUtc { get; private set; }
-    public bool IsLoggedIn => !string.IsNullOrWhiteSpace(Token) && ExpiresAtUtc > DateTime.UtcNow.AddMinutes(-1);
+    public bool IsLoggedIn => !string.IsNullOrWhiteSpace(Token) && ExpiresAtUtc > DateTime.UtcNow;
     public bool RememberMe => Preferences.Get(RememberMeKey, false);
 
     public AuthSession()

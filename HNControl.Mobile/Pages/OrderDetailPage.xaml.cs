@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using HNControl.Mobile.Models;
 using HNControl.Mobile.Services;
 
@@ -21,19 +21,23 @@ public partial class OrderDetailPage : ContentPage
     {
         InitializeComponent();
         _orders = orders;
-        ChecklistCollection.ItemsSource = ChecklistItems;
+        BindableLayout.SetItemsSource(ChecklistCollection, ChecklistItems);
     }
 
     public void SetOrderId(Guid orderId)
     {
         _orderId = orderId;
+        _current = null;
+        _techSigDataUrl = null;
+        _clientSigDataUrl = null;
+        _lastArea = -1;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         if (_orderId == Guid.Empty) return;
-        await ReloadAsync();
+        if (_current == null) await ReloadAsync();
     }
 
     private async Task ReloadAsync()
@@ -52,6 +56,8 @@ public partial class OrderDetailPage : ContentPage
 
     private void Bind(ServiceOrderDetailDto d)
     {
+        StageLabel.Text = $"ETAPA {Math.Clamp(d.CurrentArea, 1, 4)} DE 4 · {MapArea(d.CurrentArea).ToUpperInvariant()}";
+        StageProgress.Progress = Math.Clamp(d.CurrentArea, 1, 4) / 4d;
         TitleLabel.Text = d.Title;
         ClientLabel.Text = d.Client;
         TypeLabel.Text = MapType(d.Type);
@@ -89,7 +95,7 @@ public partial class OrderDetailPage : ContentPage
         DescriptionStepLabel.Text = string.IsNullOrWhiteSpace(d.Description) ? "-" : d.Description;
         LevantamientoEditor.Text = d.LevantamientoNotes ?? "";
         MaterialesEditor.Text = d.MaterialesNotes ?? "";
-        EvidenceCollection.ItemsSource = d.Evidences.Select(e => $"{e.UploadedAtLocal} · {e.OriginalFileName}").ToList();
+        BindableLayout.SetItemsSource(EvidenceCollection, d.Evidences.Select(e => $"{e.UploadedAtLocal} · {e.OriginalFileName}").ToList());
 
         ChecklistItems.Clear();
         foreach (var i in d.Checklist)
@@ -97,6 +103,7 @@ public partial class OrderDetailPage : ContentPage
             ChecklistItems.Add(new ChecklistEditItemVm
             {
                 Id = i.Id,
+                CanEdit = d.CanEdit,
                 Category = i.Category,
                 Title = i.Title,
                 IsDone = i.IsDone,
@@ -307,11 +314,13 @@ public partial class OrderDetailPage : ContentPage
 
         if (_current.CurrentArea == 1 && !_descriptionStepActive)
         {
+            if (!await SaveBeforeChangingAreaAsync()) return;
             _descriptionStepActive = true;
             Bind(_current);
             return;
         }
 
+        if (!await SaveBeforeChangingAreaAsync()) return;
         _busy = true;
         try
         {
@@ -326,6 +335,41 @@ public partial class OrderDetailPage : ContentPage
         {
             _busy = false;
         }
+    }
+
+    private async Task<bool> SaveBeforeChangingAreaAsync()
+    {
+        if (_current == null || !_current.CanEdit || _busy) return false;
+        _busy = true;
+        try
+        {
+            if (_current.CurrentArea is 1 or 2)
+            {
+                var notes = new ServiceOrderNotesUpdateDto
+                {
+                    LevantamientoNotes = LevantamientoEditor.Text ?? "",
+                    MaterialesNotes = MaterialesEditor.Text ?? ""
+                };
+                await _orders.UpdateNotesAsync(_orderId, notes);
+                _current.LevantamientoNotes = notes.LevantamientoNotes;
+                _current.MaterialesNotes = notes.MaterialesNotes;
+            }
+            else if (_current.CurrentArea == 3)
+            {
+                await _orders.UpdateChecklistAsync(_orderId, new ServiceOrderChecklistUpdateDto
+                {
+                    Items = ChecklistItems.Select(x => new ServiceOrderChecklistUpdateItemDto
+                    { Id = x.Id, IsDone = x.IsDone, Notes = x.Notes ?? "" }).ToList()
+                });
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se guardaron los cambios", ex.Message, "Entendido");
+            return false;
+        }
+        finally { _busy = false; }
     }
 
     private async void OnSignTechClicked(object sender, EventArgs e)
@@ -509,6 +553,7 @@ public partial class OrderDetailPage : ContentPage
 public class ChecklistEditItemVm
 {
     public Guid Id { get; set; }
+    public bool CanEdit { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public bool IsDone { get; set; }

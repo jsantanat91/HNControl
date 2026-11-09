@@ -38,12 +38,20 @@ public sealed class ServiceOrderListItemDto
     public DateTime? EstimatedEndDate { get; set; }
 
     [JsonIgnore]
+    public string AssignmentLabel => IsMine ? "Asignada a ti" : string.IsNullOrWhiteSpace(ClaimedBy) ? "Disponible para el equipo" : $"Responsable: {ClaimedBy}";
+    [JsonIgnore]
+    public bool IsOverdue => Status != 4 && EstimatedEndDate.HasValue && EstimatedEndDate.Value.Date < DateTime.Today;
+    [JsonIgnore]
+    public string DueLabel => EstimatedEndDate.HasValue ? $"{(IsOverdue ? "Entrega vencida" : "Entrega")}: {EstimatedEndDate.Value:dd MMM yyyy}" : $"Creada el {CreatedAt:dd MMM yyyy} · Sin fecha de entrega";
+    [JsonIgnore]
+    public string DueColor => IsOverdue ? "#B42318" : "#69809E";
+    [JsonIgnore]
     public string TypeLabel => Type switch
     {
         1 => "Correctivo",
         2 => "Preventivo",
-        3 => "Nueva instalacion",
-        4 => "Levantamiento tecnico",
+        3 => "Nueva instalación",
+        4 => "Levantamiento técnico",
         99 => "Global",
         _ => "Tipo " + Type
     };
@@ -53,7 +61,7 @@ public sealed class ServiceOrderListItemDto
     {
         1 => "Creada",
         2 => "En proceso",
-        3 => "En revision",
+        3 => "En revisión",
         4 => "Finalizada",
         5 => "Pendiente firma cliente",
         6 => "Rechazada",
@@ -65,8 +73,8 @@ public sealed class ServiceOrderListItemDto
     {
         1 => "Levantamiento",
         2 => "Materiales",
-        3 => "Ejecucion",
-        4 => "Cierre tecnico",
+        3 => "Ejecución",
+        4 => "Cierre técnico",
         _ => "Area " + CurrentArea
     };
 
@@ -685,6 +693,10 @@ public sealed class ViaticEntryDto
     public decimal Amount { get; set; }
     public bool IsBillable { get; set; }
     public bool HasAttachment { get; set; }
+    [JsonIgnore]
+    public bool CanEdit { get; set; }
+    [JsonIgnore]
+    public string AttachmentLabel => HasAttachment ? "Comprobante adjunto" : IsBillable ? "Comprobante pendiente" : "No facturable";
 
     [JsonIgnore]
     public string CategoryLabel => Category switch

@@ -31,7 +31,7 @@ public sealed class MobileApiClient
             Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
         };
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         var raw = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
         {
@@ -46,7 +46,7 @@ public sealed class MobileApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, BuildUrl(relativeUrl));
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         var raw = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
         {
@@ -61,7 +61,7 @@ public sealed class MobileApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, BuildUrl(relativeUrl));
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         if (!res.IsSuccessStatusCode)
         {
             var raw = await res.Content.ReadAsStringAsync();
@@ -76,7 +76,7 @@ public sealed class MobileApiClient
             Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
         };
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         var raw = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
         {
@@ -91,7 +91,7 @@ public sealed class MobileApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, BuildUrl(relativeUrl));
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         if (!res.IsSuccessStatusCode)
         {
             var raw = await res.Content.ReadAsStringAsync();
@@ -127,7 +127,7 @@ public sealed class MobileApiClient
         };
         AddAuth(req, withAuth);
 
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         var raw = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
         {
@@ -142,7 +142,7 @@ public sealed class MobileApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, BuildUrl(relativeUrl));
         AddAuth(req, withAuth);
-        using var res = await _http.SendAsync(req);
+        using var res = await SendAsync(req);
         if (!res.IsSuccessStatusCode)
         {
             var raw = await res.Content.ReadAsStringAsync();
@@ -150,6 +150,22 @@ public sealed class MobileApiClient
         }
 
         return await res.Content.ReadAsByteArrayAsync();
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
+    {
+        try
+        {
+            return await _http.SendAsync(request);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new InvalidOperationException("El servidor tardó demasiado. Actualiza para comprobar el resultado antes de volver a guardar.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException("No fue posible conectar con HN Control. Revisa tu conexión e intenta de nuevo.", ex);
+        }
     }
 
     private string BuildUrl(string relativeUrl)
@@ -192,7 +208,9 @@ public sealed class MobileApiClient
         return statusCode switch
         {
             401 => "No autorizado. Verifica tu usuario y password.",
+            403 => "Tu cuenta no tiene permiso para esta operación. Solicita acceso a tu administrador.",
             404 => "No se encontro el recurso solicitado.",
+            413 => "El archivo excede el tamaño permitido por el servidor.",
             409 => "Conflicto de datos en la operacion.",
             _ => "Error de comunicacion con la API."
         };

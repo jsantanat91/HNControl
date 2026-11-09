@@ -9,6 +9,29 @@ public partial class OrdersPage : ContentPage
     private readonly AuthService _auth;
     private readonly IServiceProvider _services;
     private bool _isBusy;
+    private List<ServiceOrderListItemDto> _items = new();
+    private string _filter = "all";
+
+    private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilters();
+    private void OnFilterClicked(object sender, EventArgs e)
+    {
+        if (sender is Button button) _filter = button.CommandParameter as string ?? "all";
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        if (ResultsLabel == null) return;
+        var result = OrderPresentation.Filter(_items, _filter, SearchEntry.Text);
+        OrdersCollection.ItemsSource = result;
+        ResultsLabel.Text = $"{result.Count} de {_items.Count} órdenes cargadas" + (_items.Count == 300 ? " · límite de consulta" : "");
+        foreach (var button in new[] { AllFilter, MineFilter, AvailableFilter, ClosedFilter })
+        {
+            var active = (string?)button.CommandParameter == _filter;
+            button.BackgroundColor = Color.FromArgb(active ? "#087EE8" : "#EAF4FF");
+            button.TextColor = active ? Colors.White : Color.FromArgb("#55708E");
+        }
+    }
 
     public OrdersPage(OrdersService orders, AuthService auth, IServiceProvider services)
     {
@@ -27,10 +50,7 @@ public partial class OrdersPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (OrdersCollection.ItemsSource is null)
-        {
-            await LoadOrdersAsync();
-        }
+        await LoadOrdersAsync();
     }
 
     private async void OnRefreshClicked(object sender, EventArgs e)
@@ -73,10 +93,11 @@ public partial class OrdersPage : ContentPage
         {
             await _orders.TakeAsync(id);
             await DisplayAlertAsync("Orden", "Orden tomada correctamente.", "OK");
-            await LoadOrdersAsync();
+            await FetchOrdersAsync();
         }
         catch (Exception ex)
         {
+            ResultsLabel.Text = "No se pudo actualizar. Intenta de nuevo.";
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
         finally
@@ -107,6 +128,15 @@ public partial class OrdersPage : ContentPage
         }
     }
 
+    private async Task FetchOrdersAsync()
+    {
+        _items = await _orders.ListAsync(300);
+        ActiveCount.Text = _items.Count(x => x.Status != 4).ToString();
+        MineCount.Text = _items.Count(x => x.IsMine && x.Status != 4).ToString();
+        AvailableCount.Text = _items.Count(x => x.CanTake).ToString();
+        ApplyFilters();
+    }
+
     private async Task LoadOrdersAsync()
     {
         if (_isBusy)
@@ -115,11 +145,10 @@ public partial class OrdersPage : ContentPage
         }
 
         _isBusy = true;
+        ResultsLabel.Text = "Actualizando órdenes…";
         try
         {
-            var data = await _orders.ListAsync(100);
-            OrdersCollection.ItemsSource = data;
-            Title = $"Ordenes ({data.Count})";
+            await FetchOrdersAsync();
         }
         catch (Exception ex)
         {
@@ -131,6 +160,7 @@ public partial class OrdersPage : ContentPage
                 return;
             }
 
+            ResultsLabel.Text = "No se pudo actualizar. Intenta de nuevo.";
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
         finally

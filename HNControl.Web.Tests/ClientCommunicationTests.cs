@@ -126,6 +126,8 @@ internal static class ClientCommunicationTests
         };
         db.Add(secondDoc);
         await db.SaveChangesAsync();
+        secondDoc.SignatureStoragePath = (await files.SaveBytesAsync(File.ReadAllBytes("HNControl.Web.Tests/Fixtures/contract-signature.png"), "tests", "client.png", "image/png")).storagePath;
+        await db.SaveChangesAsync();
         var documentsPage = new DocumentsModel(db, null!, files, email, configuration, templates, converter, signing,
             new DeniedActions(), NullLogger<DocumentsModel>.Instance, new DocumentNotificationRecipients(db));
         var adminContext = new DefaultHttpContext();
@@ -134,7 +136,9 @@ internal static class ClientCommunicationTests
         check(await documentsPage.OnPostSignProviderAsync(client.Id, secondDoc.Id, true) is ForbidResult, "Solo administradores pueden firmar por HN");
         adminContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, AppRoles.Admin), new Claim(ClaimTypes.NameIdentifier, adminUser.Id) }, "test"));
         check(await documentsPage.OnPostSignProviderAsync(client.Id, secondDoc.Id, false) is BadRequestObjectResult && secondDoc.ProviderSignedAt == null, "Firma HN exige aceptación explícita");
-        check(await documentsPage.OnPostSignProviderAsync(client.Id, secondDoc.Id, true) is RedirectToPageResult
+        check(await documentsPage.OnPostSignProviderAsync(client.Id, secondDoc.Id, true) is BadRequestObjectResult, "Firma HN exige trazo autógrafo además de aceptación");
+        var autograph = "data:image/png;base64," + Convert.ToBase64String(File.ReadAllBytes("HNControl.Web.Tests/Fixtures/contract-signature.png"));
+        check(await documentsPage.OnPostSignProviderAsync(client.Id, secondDoc.Id, true, autograph) is RedirectToPageResult
             && secondDoc.ProviderSignedByUserId == adminUser.Id && secondDoc.IsFullySigned
             && email.Messages.Count == 3, "Firma HN registra identidad autenticada y envía contrato final");
         check(email.Messages[^1].Cc.Contains("contratos@example.test")

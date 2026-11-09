@@ -61,6 +61,13 @@ public class ClientLegalDocument
     [MaxLength(256)] public string? ProviderSignedByEmail { get; set; }
     [MaxLength(64)] public string? ProviderSignedByUserId { get; set; }
     public DateTime? ProviderSignedAt { get; set; }
+    [MaxLength(500)] public string? ProviderSignatureStoragePath { get; set; }
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte[]? ClientSignatureImage { get; set; }
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte[]? ProviderSignatureImage { get; set; }
     public DateTime? CompletionEmailSentAt { get; set; }
     public string? SigningSnapshotJson { get; set; }
 

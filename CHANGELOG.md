@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## 2.5.15 · 9 de noviembre de 2026
+
+- APK 2.1.0: Inventario Servicios, filtros por cliente/proveedor, detalle técnico de solo lectura y login azul renovado.
+- Contratos: ambas firmas autógrafas visibles junto al registro digital. Captura HN obligatoria; completar firmas antiguas requiere la cuenta original.
+- Migración: AddContractProviderAutograph. SQL alternativo en Sql/20261109_contract_provider_autograph.sql; desplegar API antes de distribuir la nueva APK.
+
+
 ## 2.5.14 · 8 de noviembre de 2026
 
 - Nombre del plan en lista desplegable: Itinerante 100 GB, Itinerante Ilimitado, Residencial, Residencial Lite y Empresarial Global para Starlink; Internet 50, 100, 200, 300, 400, 500 y 1000 para los demás proveedores. Se conserva la opción de planes anteriores al editar.

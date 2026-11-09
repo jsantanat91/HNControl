@@ -163,6 +163,16 @@ internal static class ServiceInventoryTests
                 && !refreshJson.Contains("PasswordProtected") && !refreshJson.Contains(originalCipher) && !refreshJson.Contains(secret),
                 "Refresco autorizado devuelve cuentas activas y cuenta actual sin incluir secretos ni otras inactivas");
         }
+        var mobile = new HNControl.Web.Controllers.Mobile.ServiceInventoryController(db);
+        var mobileHttp = new DefaultHttpContext { User = Principal(AppRoles.Employee) };
+        mobile.ControllerContext = new ControllerContext { HttpContext = mobileHttp };
+        var mobileResult = (OkObjectResult)await mobile.List();
+        var mobileJson = JsonSerializer.Serialize(mobileResult.Value);
+        check(!mobileJson.Contains(secret) && !mobileJson.Contains("Password") && !mobileJson.Contains("MonthlyCost"), "Consulta móvil no expone credenciales ni costos");
+        using (var filtered = JsonDocument.Parse(JsonSerializer.Serialize(((OkObjectResult)await mobile.List(carrier: "no-existe")).Value)))
+            check(filtered.RootElement.GetProperty("Total").GetInt32() == 0, "Filtro móvil por proveedor se aplica en servidor");
+        mobileHttp.User = Principal(AppRoles.Seller);
+        check(await mobile.List() is ForbidResult, "Consulta móvil rechaza roles sin autorización operativa");
         await RunProviderRulesAsync(check);
     }
 

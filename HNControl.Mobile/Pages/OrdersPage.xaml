@@ -1,94 +1,59 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage
-    x:Class="HNControl.Mobile.Pages.OrdersPage"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Ordenes"
-    Background="{StaticResource AppBackgroundBrush}">
-    <Grid RowDefinitions="Auto,*" Padding="14,12">
-        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
-            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                <Label FontAttributes="Bold" FontSize="24" Text="Ordenes de servicio" TextColor="White" />
-                <Button Grid.Column="1"
-                        Style="{StaticResource PrimaryButton}"
-                        Clicked="OnRefreshClicked"
-                        HeightRequest="40"
-                        Text="Actualizar"
-                        TextColor="White" />
-                <Label Grid.Row="1"
-                       Grid.ColumnSpan="2"
-                       FontSize="12"
-                       Opacity="0.85"
-                       Text="Visibles para todo el equipo. Solo quien la toma puede editar."
-                       TextColor="#C5D5F0" />
-            </Grid>
-        </Border>
-
-        <RefreshView x:Name="OrdersRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
-            <CollectionView x:Name="OrdersCollection" Margin="0,12,0,0" SelectionMode="None">
-                <CollectionView.EmptyView>
-                    <Border Style="{StaticResource SurfaceCard}">
-                        <VerticalStackLayout Spacing="6">
-                            <Label FontAttributes="Bold" FontSize="19" HorizontalOptions="Center" Text="Sin ordenes" />
-                            <Label HorizontalOptions="Center" Opacity="0.7" Text="Desliza hacia abajo para recargar." />
-                        </VerticalStackLayout>
-                    </Border>
-                </CollectionView.EmptyView>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="0,0,0,12" Style="{StaticResource SurfaceCard}">
-                            <VerticalStackLayout Spacing="7">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <VerticalStackLayout Spacing="0">
-                                        <Label FontAttributes="Bold" FontSize="19" Text="{Binding Title}" />
-                                        <Label FontSize="13" Opacity="0.75" Text="{Binding Client}" />
-                                    </VerticalStackLayout>
-                                    <Label Grid.Column="1"
-                                           FontSize="12"
-                                           Opacity="0.75"
-                                           Text="{Binding CreatedAt, StringFormat='{0:yyyy-MM-dd}'}"
-                                           VerticalTextAlignment="Start" />
-                                </Grid>
-
-                                <HorizontalStackLayout Spacing="6">
-                                    <Border BackgroundColor="{Binding TypeBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
-                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding TypeLabel}" />
-                                    </Border>
-                                    <Border BackgroundColor="{Binding StatusBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
-                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding StatusLabel}" />
-                                    </Border>
-                                    <Border BackgroundColor="{Binding AreaBg}" Padding="8,4" StrokeShape="RoundRectangle 14" Stroke="{StaticResource AppBorder}">
-                                        <Label FontAttributes="Bold" FontSize="11" Text="{Binding AreaLabel}" />
-                                    </Border>
-                                </HorizontalStackLayout>
-
-                                <Label FontSize="13" Opacity="0.75" Text="{Binding ClaimedBy, StringFormat='Tomada por: {0}'}" />
-
-                                <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
-                                    <Button Clicked="OnDetailClicked"
-                                            CommandParameter="{Binding Id}"
-                                            Style="{StaticResource GhostButton}"
-                                            HeightRequest="38"
-                                            Text="Detalle" />
-                                    <Button Grid.Column="1"
-                                            Clicked="OnPdfClicked"
-                                            CommandParameter="{Binding Id}"
-                                            Style="{StaticResource GhostButton}"
-                                            HeightRequest="38"
-                                            Text="PDF" />
-                                    <Button Grid.Column="2"
-                                            Style="{StaticResource PrimaryButton}"
-                                            Clicked="OnTakeClicked"
-                                            CommandParameter="{Binding Id}"
-                                            HeightRequest="38"
-                                            IsVisible="{Binding CanTake}"
-                                            Text="Tomar orden" />
-                                </Grid>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </RefreshView>
-    </Grid>
+<ContentPage x:Class="HNControl.Mobile.Pages.OrdersPage"
+ xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+ Title="HN Control" BackgroundColor="{StaticResource AppBgTop}">
+ <Grid Padding="20,12,20,0">
+  <RefreshView x:Name="OrdersRefreshView" Refreshing="OnRefreshing">
+   <CollectionView x:Name="OrdersCollection" SelectionMode="None">
+<CollectionView.Header><VerticalStackLayout Spacing="12" Margin="0,0,0,12">
+  <Border Style="{StaticResource HeaderCard}">
+   <VerticalStackLayout Spacing="7">
+    <Label Text="OPERACIÓN EN CAMPO" FontSize="10" CharacterSpacing="1.5" FontAttributes="Bold" TextColor="#BCE7DE" />
+    <Label Text="Órdenes de servicio" FontSize="27" FontAttributes="Bold" TextColor="White" />
+    <Label Text="Cada servicio, bajo control." TextColor="#D5EDE9" FontSize="13" />
+   </VerticalStackLayout>
+  </Border>
+  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+   <Border Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="ActiveCount" Text="—" FontSize="24" FontAttributes="Bold" /><Label Text="Activas" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+   <Border Grid.Column="1" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="MineCount" Text="—" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource AppAccent}" /><Label Text="Mis órdenes" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+   <Border Grid.Column="2" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="AvailableCount" Text="—" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource AppSuccess}" /><Label Text="Disponibles" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+  </Grid>
+  <Border Style="{StaticResource InputCard}" Padding="4,0"><SearchBar x:Name="SearchEntry" Placeholder="Buscar cliente o servicio" TextChanged="OnSearchChanged" BackgroundColor="Transparent" /></Border>
+  <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+   <HorizontalStackLayout Spacing="8">
+    <Button x:Name="AllFilter" Text="Todas" CommandParameter="all" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+    <Button x:Name="MineFilter" Text="Mías" CommandParameter="mine" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+    <Button x:Name="AvailableFilter" Text="Disponibles" CommandParameter="available" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+    <Button x:Name="ClosedFilter" Text="Finalizadas" CommandParameter="closed" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+   </HorizontalStackLayout>
+  </ScrollView>
+  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+   <Label x:Name="ResultsLabel" Text="Cargando órdenes…" FontSize="11" TextColor="{StaticResource AppMuted}" VerticalOptions="Center" />
+   <Button Grid.Column="1" Text="Actualizar" Clicked="OnRefreshClicked" BackgroundColor="Transparent" TextColor="{StaticResource AppAccent}" FontSize="12" Padding="8,0" HeightRequest="44" />
+  </Grid>
+</VerticalStackLayout></CollectionView.Header>
+    <CollectionView.EmptyView><VerticalStackLayout Padding="20,30" Spacing="8"><Label Text="Sin órdenes para mostrar" FontAttributes="Bold" FontSize="18" HorizontalTextAlignment="Center" /><Label Text="Prueba otro filtro o desliza para actualizar." Style="{StaticResource MutedLabel}" HorizontalTextAlignment="Center" /></VerticalStackLayout></CollectionView.EmptyView>
+    <CollectionView.ItemTemplate><DataTemplate>
+     <Border Margin="0,0,0,14" Style="{StaticResource SurfaceCard}" Padding="18">
+      <VerticalStackLayout Spacing="12">
+       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <Label Text="{Binding Client}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource AppAccent}" VerticalOptions="Center" />
+        <Border Grid.Column="1" BackgroundColor="{Binding StatusBg}" Padding="9,5" StrokeThickness="0" StrokeShape="RoundRectangle 8"><Label Text="{Binding StatusLabel}" FontSize="10" FontAttributes="Bold" /></Border>
+       </Grid>
+       <Label Text="{Binding Title}" FontSize="19" FontAttributes="Bold" />
+       <FlexLayout Wrap="Wrap"><Label Text="{Binding TypeLabel}" FontSize="12" TextColor="{StaticResource AppMuted}" Margin="0,0,14,4" /><Label Text="{Binding AreaLabel}" FontSize="12" TextColor="{StaticResource AppMuted}" /></FlexLayout>
+       <BoxView HeightRequest="1" Color="{StaticResource AppBorder}" />
+       <Label Text="{Binding AssignmentLabel}" FontSize="12" />
+       <Label Text="{Binding DueLabel}" TextColor="{Binding DueColor}" FontSize="11" />
+       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <Button Text="Abrir orden  →" Clicked="OnDetailClicked" CommandParameter="{Binding Id}" Style="{StaticResource GhostButton}" />
+        <Button Grid.Column="1" Text="PDF" Clicked="OnPdfClicked" CommandParameter="{Binding Id}" Style="{StaticResource GhostButton}" />
+       </Grid>
+       <Button Text="Tomar esta orden" Clicked="OnTakeClicked" CommandParameter="{Binding Id}" IsVisible="{Binding CanTake}" Style="{StaticResource PrimaryButton}" />
+      </VerticalStackLayout>
+     </Border>
+    </DataTemplate></CollectionView.ItemTemplate>
+   </CollectionView>
+  </RefreshView>
+ </Grid>
 </ContentPage>

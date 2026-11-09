@@ -7,6 +7,9 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("es-MX");
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
@@ -19,18 +22,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<MobileApiSettings>();
         builder.Services.AddSingleton<AuthSession>();
 
-#if DEBUG
-        builder.Services.AddSingleton(_ =>
-        {
-            var handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-            };
-            return new HttpClient(handler);
-        });
-#else
         builder.Services.AddSingleton(_ => new HttpClient());
-#endif
 
         builder.Services.AddSingleton<MobileApiClient>();
         builder.Services.AddSingleton<AuthService>();
@@ -63,6 +55,7 @@ public static class MauiProgram
         builder.Services.AddTransient<Eval360TakePage>();
         builder.Services.AddTransient<TicketsModulePage>();
         builder.Services.AddTransient<TicketDetailPage>();
+        builder.Services.AddTransient<ServiceInventoryPage>();
         builder.Services.AddTransient<RootTabsPage>();
 
         return builder.Build();

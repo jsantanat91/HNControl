@@ -1,219 +1,43 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage
-    x:Class="HNControl.Mobile.Pages.EmployeeDashboardPage"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:controls="clr-namespace:HNControl.Mobile.Controls"
-    Title="Mi ficha"
-    Background="{StaticResource AppBackgroundBrush}">
-    <ScrollView>
-        <VerticalStackLayout Padding="14,14,14,30" Spacing="12">
-            <Border Style="{StaticResource HeaderCard}">
-                <VerticalStackLayout Spacing="6">
-                    <Label x:Name="FullNameLabel" FontAttributes="Bold" FontSize="24" TextColor="White" />
-                    <Label x:Name="PositionLabel" Opacity="0.85" TextColor="#C8D3E8" />
-                    <Label x:Name="EmailLabel" FontSize="13" Opacity="0.8" TextColor="#C8D3E8" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="19" Text="Pago quincenal actual" />
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                        <VerticalStackLayout>
-                            <Label FontSize="12" Opacity="0.7" Text="Pago actual" />
-                            <Label x:Name="NetPayLabel" FontAttributes="Bold" FontSize="22" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1">
-                            <Label FontSize="12" Opacity="0.7" Text="Variable" />
-                            <Label x:Name="VariableLabel" FontAttributes="Bold" FontSize="22" />
-                        </VerticalStackLayout>
-                        <Label x:Name="PayrollPeriodLabel" Grid.Row="1" Grid.ColumnSpan="2" FontSize="12" Opacity="0.65" />
-                    </Grid>
-
-                    <controls:DonutChartView x:Name="PayrollDonut" HorizontalOptions="Center" />
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                        <HorizontalStackLayout Spacing="4">
-                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#2563EB" VerticalOptions="Center" />
-                            <Label FontSize="12" Text="Neto" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                        <HorizontalStackLayout Grid.Column="1" Spacing="4">
-                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#F59E0B" VerticalOptions="Center" />
-                            <Label FontSize="12" Text="Deducciones" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                        <HorizontalStackLayout Grid.Column="2" Spacing="4">
-                            <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="#10B981" VerticalOptions="Center" />
-                            <Label FontSize="12" Text="Bonos" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                    </Grid>
-
-                    <Label FontAttributes="Bold" Text="Ultimas 6 quincenas (variable %)" />
-                    <CollectionView x:Name="HistoryCollection" SelectionMode="None">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="60,*,44" Margin="0,2">
-                                    <Label VerticalOptions="Center" Text="{Binding Label}" />
-                                    <ProgressBar Grid.Column="1" Progress="{Binding VariableRatio}" />
-                                    <Label Grid.Column="2" HorizontalTextAlignment="End" VerticalOptions="Center" Text="{Binding VariableText}" />
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="KPI y retro de RH" />
-                    <Label x:Name="KpiRetroMetaLabel" FontSize="12" Opacity="0.7" />
-                    <Grid ColumnDefinitions="*,Auto">
-                        <Label x:Name="KpiRetroTitleLabel" FontAttributes="Bold" />
-                        <Label x:Name="KpiRetroScoreLabel" Grid.Column="1" FontAttributes="Bold" TextColor="#175CD3" />
-                    </Grid>
-                    <CollectionView x:Name="KpiMetricsCollection" SelectionMode="None" ItemsLayout="VerticalList">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin rubros evaluados en este periodo." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,1">
-                                    <Label Text="{Binding Name}" />
-                                    <Label Grid.Column="1" FontAttributes="Bold" Text="{Binding ScoreText}" TextColor="#344054" />
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                    <Border Background="#F8FAFC" Padding="10" StrokeShape="RoundRectangle 10">
-                        <Label x:Name="KpiRetroNotesLabel" LineBreakMode="WordWrap" />
-                    </Border>
-                    <Button x:Name="RhCommentsButton" Text="Comentarios de RH" Clicked="OnRhCommentsClicked" Style="{StaticResource GhostButton}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Retro evaluacion 360" />
-                    <Label x:Name="Eval360MetaLabel" FontSize="12" Opacity="0.7" />
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                        <Label x:Name="Eval360TitleLabel" FontAttributes="Bold" />
-                        <Label x:Name="Eval360AutoScoreLabel" Grid.Column="1" HorizontalTextAlignment="End" TextColor="#175CD3" />
-                        <Label x:Name="Eval360OthersScoreLabel" Grid.Column="2" HorizontalTextAlignment="End" TextColor="#067647" Margin="10,0,0,0" />
-                    </Grid>
-                    <CollectionView x:Name="Eval360CommentsCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin comentarios de retroalimentacion por ahora." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="10" StrokeShape="RoundRectangle 12">
-                                    <VerticalStackLayout Spacing="4">
-                                        <Label FontAttributes="Bold" Text="{Binding Competency}" />
-                                        <Label Text="{Binding Comment}" LineBreakMode="WordWrap" />
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Tickets atendidos" />
-                    <Label FontSize="12" Opacity="0.7" Text="Ultimos 6 meses" />
-                    <CollectionView x:Name="TicketHistoryCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin tickets resueltos recientes." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="64,*,52" Margin="0,2">
-                                    <Label VerticalOptions="Center" Text="{Binding Label}" />
-                                    <ProgressBar Grid.Column="1" Progress="{Binding Ratio}" />
-                                    <Label Grid.Column="2" HorizontalTextAlignment="End" VerticalOptions="Center" Text="{Binding ValueText}" />
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Deducciones y bonos" />
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
-                        <VerticalStackLayout>
-                            <Label FontSize="12" Opacity="0.7" Text="Deducciones" />
-                            <Label x:Name="DeductionsTotalLabel" FontAttributes="Bold" FontSize="18" TextColor="#B42318" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1">
-                            <Label FontSize="12" Opacity="0.7" Text="Bonos" />
-                            <Label x:Name="BonusesTotalLabel" FontAttributes="Bold" FontSize="18" TextColor="#067647" />
-                        </VerticalStackLayout>
-                    </Grid>
-                    <CollectionView x:Name="DeductionsCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin deducciones activas." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="10" StrokeShape="RoundRectangle 12">
-                                    <VerticalStackLayout Spacing="5">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <Label FontAttributes="Bold" Text="{Binding Concept}" />
-                                            <Label Grid.Column="1" Text="{Binding AmountText}" TextColor="{Binding AmountColor}" />
-                                        </Grid>
-                                        <Label FontSize="12" Opacity="0.75" Text="{Binding Detail}" />
-                                        <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasProgress}">
-                                            <ProgressBar Progress="{Binding ProgressRatio}" />
-                                            <Label Grid.Column="1" FontSize="12" Opacity="0.8" Text="{Binding ProgressText}" />
-                                        </Grid>
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Border Background="White" Padding="12" StrokeShape="RoundRectangle 14">
-                    <VerticalStackLayout>
-                        <Label FontAttributes="Bold" Text="Vacaciones" />
-                        <Label x:Name="VacationSummaryLabel" FontSize="13" Opacity="0.8" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="1" Background="White" Padding="12" StrokeShape="RoundRectangle 14">
-                    <VerticalStackLayout>
-                        <Label FontAttributes="Bold" Text="Examenes" />
-                        <Label x:Name="ExamsSummaryLabel" FontSize="13" Opacity="0.8" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
-
-            <Border Style="{StaticResource SurfaceCard}">
-                <VerticalStackLayout Spacing="8">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Inventario - Solicitudes" />
-                    <CollectionView x:Name="InventoryCollection" SelectionMode="None">
-                        <CollectionView.EmptyView>
-                            <Label Opacity="0.7" Text="Sin solicitudes recientes." />
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="10" StrokeShape="RoundRectangle 12">
-                                    <VerticalStackLayout Spacing="4">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <Label FontAttributes="Bold" Text="{Binding ItemsPreview}" LineBreakMode="WordWrap" />
-                                            <Label Grid.Column="1" Opacity="0.8" Text="{Binding StatusLabel}" />
-                                        </Grid>
-                                        <Label FontSize="12" Opacity="0.75" Text="{Binding Meta}" LineBreakMode="WordWrap" />
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </Border>
-        </VerticalStackLayout>
-    </ScrollView>
+<ContentPage x:Class="HNControl.Mobile.Pages.EmployeeDashboardPage" xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" Title="Mi dashboard" Background="{StaticResource AppBackgroundBrush}">
+ <RefreshView x:Name="DashboardRefresh" Refreshing="OnRefreshing"><ScrollView><VerticalStackLayout Padding="20,12,20,28" Spacing="18">
+ <Border Style="{StaticResource HeaderCard}"><VerticalStackLayout Spacing="7">
+ <Label  Text="MI ESPACIO" TextColor="#BCE7DE" FontSize="10" CharacterSpacing="1.5" FontAttributes="Bold"/>
+ <Label x:Name="FullNameLabel" Text="Tu dashboard" TextColor="White" FontSize="27" FontAttributes="Bold"/>
+ <Label x:Name="PositionLabel" Text="" TextColor="#D5EDE9" FontSize="13"/>
+ <Label x:Name="EmailLabel" Text="" TextColor="#D5EDE9" FontSize="12"/>
+ </VerticalStackLayout></Border>
+ <Label x:Name="LoadStatusLabel" Text="Cargando tu información…" Style="{StaticResource MutedLabel}" FontSize="11"/>
+ <VerticalStackLayout x:Name="DashboardContent" IsVisible="False" Spacing="18">
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14">
+ <Grid ColumnDefinitions="*,Auto"><Label  Text="Mi nómina" FontSize="19" FontAttributes="Bold"/><Border Grid.Column="1" Style="{StaticResource PillBadgeBlue}"><Label  Text="QUINCENAL" FontSize="9" FontAttributes="Bold" TextColor="{StaticResource AppAccent}"/></Border></Grid>
+ <Label x:Name="PayrollPeriodLabel" Text="" Style="{StaticResource MutedLabel}" FontSize="12"/>
+ <Label  Text="NETO A RECIBIR" Style="{StaticResource Eyebrow}"/>
+ <Label x:Name="NetPayLabel" Text="—" FontSize="36" FontAttributes="Bold" TextColor="{StaticResource AppText}"/>
+ <BoxView HeightRequest="1" Color="{StaticResource AppBorder}" />
+ <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+ <VerticalStackLayout Spacing="4"><Label  Text="Deducciones" Style="{StaticResource MutedLabel}" FontSize="12"/><Label x:Name="DeductionsTotalLabel" Text="—" FontAttributes="Bold" TextColor="#B42318" FontSize="18"/></VerticalStackLayout>
+ <VerticalStackLayout Grid.Column="1" Spacing="4"><Label  Text="Bonos" Style="{StaticResource MutedLabel}" FontSize="12"/><Label x:Name="BonusesTotalLabel" Text="—" FontAttributes="Bold" TextColor="#067647" FontSize="18"/></VerticalStackLayout>
+ </Grid>
+ <Border BackgroundColor="#EAF4FF" StrokeThickness="0" Padding="12" StrokeShape="RoundRectangle 12"><Grid ColumnDefinitions="*,Auto"><Label  Text="Variable del periodo" FontSize="13"/><Label x:Name="VariableLabel" Text="—" Grid.Column="1" TextColor="{StaticResource AppAccent}" FontAttributes="Bold"/></Grid></Border>
+ </VerticalStackLayout></Border>
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14"><Label  Text="Mis calificaciones" FontSize="19" FontAttributes="Bold"/>
+ <Label x:Name="KpiRetroMetaLabel" Text="" Style="{StaticResource MutedLabel}" FontSize="12"/>
+ <Grid ColumnDefinitions="*,Auto"><Label x:Name="KpiRetroTitleLabel" Text="KPI" FontAttributes="Bold"/><Label x:Name="KpiRetroScoreLabel" Text="—" Grid.Column="1" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource AppAccent}"/></Grid>
+ <VerticalStackLayout x:Name="KpiMetricsCollection" Spacing="8"><BindableLayout.EmptyView><Label Text="Sin rubros evaluados en este periodo." Style="{StaticResource MutedLabel}" /></BindableLayout.EmptyView><BindableLayout.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Padding="0,6"><Label  Text="{Binding Name}" /><Label  Text="{Binding ScoreText}" Grid.Column="1" FontAttributes="Bold" TextColor="{StaticResource AppAccent}"/></Grid></DataTemplate></BindableLayout.ItemTemplate></VerticalStackLayout>
+ <Border Style="{StaticResource InputCard}" Padding="14"><Label x:Name="KpiRetroNotesLabel" Text="" /></Border>
+ <Button x:Name="RhCommentsButton" Text="Leer comentarios de RH" Clicked="OnRhCommentsClicked" Style="{StaticResource GhostButton}" /></VerticalStackLayout></Border>
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14"><Label  Text="Evaluación 360°" FontSize="19" FontAttributes="Bold"/>
+ <Label x:Name="Eval360TitleLabel" Text="" FontAttributes="Bold"/>
+ <Label x:Name="Eval360MetaLabel" Text="" Style="{StaticResource MutedLabel}" FontSize="12"/>
+ <FlexLayout Wrap="Wrap"><Label x:Name="Eval360AutoScoreLabel" Text="" Margin="0,0,16,6" TextColor="{StaticResource AppAccent}" FontAttributes="Bold"/><Label x:Name="Eval360OthersScoreLabel" Text="" TextColor="{StaticResource AppSuccess}" FontAttributes="Bold"/></FlexLayout>
+ <VerticalStackLayout x:Name="Eval360CommentsCollection" Spacing="8"><BindableLayout.EmptyView><Label Text="Sin comentarios publicados por ahora." Style="{StaticResource MutedLabel}" /></BindableLayout.EmptyView><BindableLayout.ItemTemplate><DataTemplate><Border Style="{StaticResource InputCard}" Padding="14"><VerticalStackLayout Spacing="6"><Label  Text="{Binding Competency}" FontAttributes="Bold"/><Label  Text="{Binding Comment}" /></VerticalStackLayout></Border></DataTemplate></BindableLayout.ItemTemplate></VerticalStackLayout></VerticalStackLayout></Border>
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14"><Label  Text="Historial de nómina" FontSize="19" FontAttributes="Bold"/>
+ <Label  Text="Últimas 6 quincenas · neto y variable" Style="{StaticResource MutedLabel}" FontSize="12"/>
+ <VerticalStackLayout x:Name="HistoryCollection" Spacing="8"><BindableLayout.EmptyView><Label Text="Sin historial disponible." Style="{StaticResource MutedLabel}" /></BindableLayout.EmptyView><BindableLayout.ItemTemplate><DataTemplate><Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="7" ColumnSpacing="10" Padding="0,5"><Label  Text="{Binding Label}" FontSize="12"/><Label  Text="{Binding NetText}" Grid.Column="1" FontAttributes="Bold" FontSize="13"/><ProgressBar Grid.Row="1" Progress="{Binding VariableRatio}" VerticalOptions="Center" /><Label  Text="{Binding VariableText}" Grid.Row="1" Grid.Column="1" FontSize="11" TextColor="{StaticResource AppMuted}"/></Grid></DataTemplate></BindableLayout.ItemTemplate></VerticalStackLayout></VerticalStackLayout></Border>
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14"><Label  Text="Deducciones y bonos" FontSize="19" FontAttributes="Bold"/>
+ <VerticalStackLayout x:Name="DeductionsCollection" Spacing="8"><BindableLayout.EmptyView><Label Text="Sin deducciones ni bonos registrados." Style="{StaticResource MutedLabel}" /></BindableLayout.EmptyView><BindableLayout.ItemTemplate><DataTemplate><Border Style="{StaticResource InputCard}" Padding="14"><VerticalStackLayout Spacing="7"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><Label  Text="{Binding Concept}" FontAttributes="Bold"/><Label  Text="{Binding AmountText}" Grid.Column="1" TextColor="{Binding AmountColor}" FontAttributes="Bold"/></Grid><Label  Text="{Binding Detail}" Style="{StaticResource MutedLabel}" FontSize="11"/><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding HasProgress}"><ProgressBar Progress="{Binding ProgressRatio}" VerticalOptions="Center" /><Label  Text="{Binding ProgressText}" Grid.Column="1" FontSize="11"/></Grid></VerticalStackLayout></Border></DataTemplate></BindableLayout.ItemTemplate></VerticalStackLayout></VerticalStackLayout></Border>
+ <Border Style="{StaticResource SurfaceCard}"><VerticalStackLayout Spacing="14"><Label  Text="Mi balance" FontSize="19" FontAttributes="Bold"/>
+ <Grid ColumnDefinitions="*,*" ColumnSpacing="16"><VerticalStackLayout Spacing="8"><Label  Text="Vacaciones" FontAttributes="Bold"/><Label x:Name="VacationSummaryLabel" Text="" FontSize="12" TextColor="{StaticResource AppMuted}"/></VerticalStackLayout><VerticalStackLayout Grid.Column="1" Spacing="8"><Label  Text="Capacitación" FontAttributes="Bold"/><Label x:Name="ExamsSummaryLabel" Text="" FontSize="12" TextColor="{StaticResource AppMuted}"/></VerticalStackLayout></Grid></VerticalStackLayout></Border>
+ </VerticalStackLayout></VerticalStackLayout></ScrollView></RefreshView>
 </ContentPage>
