@@ -45,7 +45,9 @@ public class IndexModel : PageModel
         DateTime CreatedAt,
         bool IsActive,
         bool IsTemporaryLead,
-        bool IsConvertedFromLead);
+        bool IsConvertedFromLead,
+        int ContractsCount,
+        int ExpiringCount);
     public List<Row> Rows { get; set; } = new();
     public List<ExpiringContract> Expiring { get; private set; } = new();
 
@@ -112,9 +114,13 @@ public class IndexModel : PageModel
 
         var name = (Name ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
-            q = q.Where(c => c.Name.ToLower().Contains(name.ToLower()));
+            q = q.Where(c => c.Name.ToLower().Contains(name.ToLower())
+                || (c.ClientCode ?? "").ToLower().Contains(name.ToLower())
+                || (c.Rfc ?? "").ToLower().Contains(name.ToLower())
+                || (c.Email ?? "").ToLower().Contains(name.ToLower()));
 
         TotalCount = await q.CountAsync();
+        Page = Math.Min(Page, TotalPages);
 
         var clients = await q
             .OrderByDescending(c => c.CreatedAt)
@@ -149,7 +155,9 @@ public class IndexModel : PageModel
                 c.CreatedAt,
                 c.IsActive,
                 c.IsTemporaryLead,
-                c.ConvertedToFormalAt.HasValue
+                c.ConvertedToFormalAt.HasValue,
+                total,
+                expSoon
             );
         }).ToList();
     }

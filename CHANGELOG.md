@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.5.23 · 9 de noviembre de 2026
+
+- Clientes: tarjetas con identidad, estado y contratos, acciones secundarias agrupadas y búsqueda por nombre, número, RFC y correo; conserva el alcance de permisos del usuario.
+- Ficha del cliente en modal, organizada en Contratos, Datos y facturación, Contactos, Actividad y Enlaces y acceso. Conserva la pestaña al guardar contactos, permite copiar enlaces y protege visualmente la contraseña del portal. Formularios con el mismo estilo de Empleados.
+- KPI 80/20: avance de evaluaciones, búsqueda y filtros por estado, indicadores del periodo y formulario con escala de 1 a 5 y estimación en vivo.
+- Cambiar empleado o quincena requiere cargar su evaluación; evita trasladar las notas anteriores. Confirma antes de descartar cambios y permite guardar notas vacías.
+- Corrige la vista previa para usar la fórmula existente (suma de siete criterios / 35), sin cambiar reglas de nómina. Corrige el enlace de exportación Excel y distingue la estimación 80/20 de bonos y deducciones.
+- Sin SQL adicional ni actualización de APK. Desplegar únicamente la web.
+
 ## Web 2.5.22 · 9 de noviembre de 2026
 
 - Ficha de empleado en modal JavaScript desde tarjetas y tabla; acciones internas conservan el listado y refrescan los datos al cerrar si hubo cambios.

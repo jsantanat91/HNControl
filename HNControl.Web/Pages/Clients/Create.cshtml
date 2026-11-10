@@ -5,7 +5,8 @@
     ViewData["Title"] = "Nuevo cliente";
 }
 
-<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
+<link rel="stylesheet" href="~/css/hn-clients.css" asp-append-version="true" />
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center hn-client-form-heading">
     <div>
         <h1 class="h4 m-0">Nuevo cliente</h1>
         <div class="text-muted small">Primero creas el cliente; luego agregas sus contratos/servicios.</div>
@@ -18,7 +19,7 @@
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" class="card shadow-soft hn-workflow-form">
+<form method="post" class="card shadow-soft hn-workflow-form hn-client-form">
     <div class="card-body">
 <div asp-validation-summary="All" class="text-danger small"></div>
         <section class="hn-form-section">

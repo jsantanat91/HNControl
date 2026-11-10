@@ -6,10 +6,12 @@
     ViewData["Title"] = isLeads ? "Prospectos" : "Clientes";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<link rel="stylesheet" href="~/css/hn-clients.css" asp-append-version="true" />
+<div class="hn-clients">
+<div class="hn-client-heading">
     <div>
         <h1 class="h4 m-0">@(isLeads ? "Prospectos" : "Clientes")</h1>
-        <div class="text-muted small">@(isLeads ? "Control comercial temporal (prospectos)" : "Alta y control interno")</div>
+        <div class="text-muted small">@(isLeads ? "Control comercial temporal (prospectos)" : "Contratos, contactos y operación de tus clientes, en un solo lugar.")</div>
     </div>
     @if (Model.CanEdit && !isLeads)
     {
@@ -73,8 +75,8 @@
 <form method="get" class="card shadow-soft hn-hover mb-3">
     <div class="card-body row g-2 align-items-end">
         <div class="col-md-6">
-            <label class="form-label">Nombre cliente</label>
-            <input class="form-control" type="text" name="Name" value="@Model.Name" placeholder="Buscar por nombre..." />
+            <label class="form-label">Buscar @(isLeads ? "prospecto" : "cliente")</label>
+            <input class="form-control" type="text" name="Name" value="@Model.Name" placeholder="Nombre, número de cliente, RFC o correo" />
             <input type="hidden" name="View" value="@Model.View" />
         </div>
         <div class="col-md-2">
@@ -99,43 +101,24 @@
 }
 else
 {
-    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3">
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3 hn-client-grid">
         @foreach (var c in Model.Rows)
         {
             <div class="col d-flex">
-                <div class="card shadow-soft hn-hover w-100">
+                <div class="card hn-client-card w-100">
                     <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary px-2 py-1 fw-semibold">@c.ClientCode</span>
-                                <div class="fw-bold fs-5 mt-2">@c.Name</div>
-                                <div class="text-muted small">@c.Kind</div>
-                                <div class="mt-1">
-                                    <span class="badge @(c.IsActive ? "text-bg-success" : "text-bg-secondary")">@(c.IsActive ? "Activo" : "Inactivo")</span>
-                                    @if (c.IsTemporaryLead)
-                                    {
-                                        <span class="badge text-bg-warning">Prospecto</span>
-                                    }
-                                    else if (c.IsConvertedFromLead)
-                                    {
-                                        <span class="badge text-bg-info">Convertido de prospecto</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge text-bg-primary">Alta manual</span>
-                                    }
-                                </div>
-                            </div>
-                            <div class="text-muted small">@c.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
-                        </div>
-                        <div class="small mt-2 text-muted">RFC: @(string.IsNullOrWhiteSpace(c.Rfc) ? "-" : c.Rfc)</div>
-                        <div class="small text-muted">Correo: @(string.IsNullOrWhiteSpace(c.Email) ? "-" : c.Email)</div>
-                        <div class="small mt-2">@c.ContractsSummary</div>
-                        <div class="mt-auto pt-3 d-flex flex-wrap gap-1 client-actions">
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Clients/Details" asp-route-id="@c.Id">Ver</a>
+                        <div class="hn-client-card-top"><span>@c.ClientCode</span><span class="hn-client-state @(c.IsActive ? "is-active" : "is-inactive")"><i aria-hidden="true"></i>@(c.IsActive ? "Activo" : "Inactivo")</span></div>
+                        <div class="hn-client-identity"><div class="hn-client-avatar" aria-hidden="true"><i class="bi @(c.Kind == "Moral" ? "bi-buildings" : "bi-person")"></i></div><div><h2>@c.Name</h2><p>@(c.Kind == "Moral" ? "Persona moral" : "Persona física") · @(c.IsTemporaryLead ? "Prospecto" : c.IsConvertedFromLead ? "Convertido de prospecto" : "Alta directa")</p></div></div>
+                        <div class="hn-client-contact"><span><i class="bi bi-envelope" aria-hidden="true"></i>@(string.IsNullOrWhiteSpace(c.Email) ? "Sin correo registrado" : c.Email)</span><span><i class="bi bi-person-vcard" aria-hidden="true"></i>RFC: @(string.IsNullOrWhiteSpace(c.Rfc) ? "Sin registrar" : c.Rfc)</span></div>
+                        <div class="hn-client-card-metrics"><div><span>Contratos registrados</span><strong>@c.ContractsCount</strong></div><div><span>Próximos a vencer</span><strong class="@(c.ExpiringCount > 0 ? "text-warning" : "")">@c.ExpiringCount</strong></div></div>
+                        <div class="hn-client-card-date">Alta: @c.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                        <div class="mt-auto hn-client-card-actions d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm hn-client-open" asp-page="/Clients/Details" asp-route-id="@c.Id" data-module-panel="Ficha · @c.Name">Ver ficha<i class="bi bi-window ms-2" aria-hidden="true"></i></a>
                             @if (Model.CanEdit)
                             {
                                 <a class="btn btn-sm btn-outline-secondary" asp-page="/Clients/Edit" asp-route-id="@c.Id">Editar</a>
+                                <div class="dropdown"><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Más acciones para @c.Name" title="Más acciones"><i class="bi bi-three-dots" aria-hidden="true"></i></button><div class="dropdown-menu dropdown-menu-end hn-client-menu">
+
                                 @if (c.IsTemporaryLead)
                                 {
                                     @if (Model.IsSuperAdmin)
@@ -179,9 +162,10 @@ else
                                         <input type="hidden" name="view" value="@Model.View" />
                                         <input type="hidden" name="page" value="@Model.Page" />
                                         <input type="hidden" name="pageSize" value="@Model.PageSize" />
-                            <button class="btn btn-sm btn-outline-info client-action-btn" type="submit">Prospecto</button>
+                            <button class="btn btn-sm btn-outline-info client-action-btn" type="submit">Regresar a prospecto</button>
                         </form>
                     }
+                                </div></div>
                             }
                         </div>
                     </div>
@@ -209,36 +193,4 @@ else
     </div>
 </div>
 
-@section Styles {
-    <style>
-        .client-actions .btn {
-            padding: .24rem .44rem;
-            font-size: .70rem;
-            line-height: 1rem;
-            border-radius: .6rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
-        .client-action-btn {
-            white-space: nowrap;
-            letter-spacing: -.01em;
-        }
-
-        .client-actions .btn-outline-primary:hover,
-        .client-actions .btn-outline-primary:focus-visible {
-            color: #fff;
-            background: #2563eb;
-            border-color: #2563eb;
-        }
-
-        .client-actions .btn-outline-secondary:hover,
-        .client-actions .btn-outline-secondary:focus-visible {
-            color: #fff;
-            background: #64748b;
-            border-color: #64748b;
-        }
-    </style>
-}
+</div>

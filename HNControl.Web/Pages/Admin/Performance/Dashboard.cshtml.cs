@@ -22,7 +22,10 @@ public class DashboardModel : PageModel
         decimal VariablePercent,
         decimal VariableAmount,
         decimal TotalPay,
-        double? AvgScore
+        double? AvgScore,
+        string Position,
+        string EmployeeNumber,
+        bool IsActive
     );
 
     public List<Row> Rows { get; set; } = new();
@@ -50,8 +53,8 @@ public class DashboardModel : PageModel
         Rows = new List<Row>();
 
         var now = DateTime.Now;
-        Year = year ?? now.Year;
-        Month = month ?? now.Month;
+        Year = year is >= 1900 and <= 9998 ? year.Value : now.Year;
+        Month = month is >= 1 and <= 12 ? month.Value : now.Month;
         Half = half ?? (now.Day <= 15 ? 1 : 2);
         if (Half is not (1 or 2)) Half = (now.Day <= 15 ? 1 : 2);
 
@@ -112,16 +115,19 @@ public class DashboardModel : PageModel
 
             Rows.Add(new Row(
                 e.UserId,
-                e.FullName,
+                e.FullName ?? "Sin nombre",
                 e.SalaryBase,
                 hasReview,
                 variablePercent,
                 variableMoney,
                 totalPay,
-                avgScore
+                avgScore,
+                e.Position ?? "",
+                e.EmployeeNumber ?? "",
+                e.IsActive
             ));
 
-            labels.Add(e.FullName);
+            labels.Add(e.FullName ?? "Sin nombre");
             totalPays.Add(decimal.Round(totalPay, 2));
             varPercents.Add(decimal.Round(variablePercent * 100m, 2));
 
@@ -131,7 +137,7 @@ public class DashboardModel : PageModel
         }
 
         EmployeesRated = Rows.Count(x => x.HasReview);
-        AvgScoreAll = Rows.Where(x => x.AvgScore.HasValue)
+        AvgScoreAll = EmployeesRated == 0 ? null : Rows.Where(x => x.AvgScore.HasValue)
             .Select(x => x.AvgScore!.Value)
             .DefaultIfEmpty()
             .Average();

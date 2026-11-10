@@ -1,201 +1,67 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Performance.DashboardModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "KPI / 80-20";
+    ViewData["Title"] = "KPI 80/20";
+    var pending = Model.EmployeesTotal - Model.EmployeesRated;
+    var progress = Model.EmployeesTotal == 0 ? 0 : (int)Math.Round(100m * Model.EmployeesRated / Model.EmployeesTotal);
+    var firstPending = Model.Rows.FirstOrDefault(r => !r.HasReview && r.IsActive) ?? Model.Rows.FirstOrDefault(r => !r.HasReview);
+    var ym = $"{Model.Year:D4}-{Model.Month:D2}";
 }
-
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <div>
-        <h3 class="mb-0">KPI / 80-20</h3>
-        <div class="text-muted small">Quincena: @Model.PeriodStart.ToString("yyyy-MM-dd") → @Model.PeriodEnd.ToString("yyyy-MM-dd")</div>
+<link rel="stylesheet" href="~/css/hn-kpi.css" asp-append-version="true" />
+<div class="hn-kpi">
+    <div class="hn-kpi-heading"><div><div class="hn-eyebrow">Personas · Desempeño</div><h1>KPI <span>80/20</span></h1><p>Evalúa a tu equipo y revisa el componente variable de cada quincena.</p></div><a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll" asp-route-start="@Model.PeriodStart.ToString("yyyy-MM-dd")" asp-route-end="@Model.PeriodEnd.ToString("yyyy-MM-dd")"><i class="bi bi-download me-2" aria-hidden="true"></i>Exportar nómina · Excel</a></div>
+    <form method="get" class="hn-kpi-filter">
+        <div><label for="kpiYear">Año</label><input id="kpiYear" type="number" min="1900" max="9998" class="form-control" name="year" value="@Model.Year" required /></div>
+        <div><label for="kpiMonth">Mes</label><select id="kpiMonth" class="form-select" name="month">@for(var m = 1; m <= 12; m++) { <option value="@m" selected="@(Model.Month == m)">@(global::System.Globalization.CultureInfo.GetCultureInfo("es-MX").DateTimeFormat.GetMonthName(m))</option> }</select></div>
+        <div><label for="kpiHalf">Quincena</label><select id="kpiHalf" class="form-select" name="half"><option value="1" selected="@(Model.Half == 1)">Primera · 1 al 15</option><option value="2" selected="@(Model.Half == 2)">Segunda · 16 al cierre</option></select></div>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Consultar periodo</button>
+    </form>
+    <section class="hn-kpi-banner">
+        <div><div class="hn-eyebrow">@Model.PeriodStart.ToString("dd/MM/yyyy") — @Model.PeriodEnd.ToString("dd/MM/yyyy")</div><h2>@(pending == 0 && Model.EmployeesTotal > 0 ? "Tu equipo está evaluado." : "Cada evaluación cuenta.")</h2><p>@Model.EmployeesRated de @Model.EmployeesTotal empleados evaluados en esta quincena.</p>
+            @if (firstPending != null) { <a class="btn btn-primary" asp-page="./Rate" asp-route-employeeId="@firstPending.UserId" asp-route-ym="@ym" asp-route-half="@Model.Half" data-module-panel="Calificar rendimiento">Continuar evaluaciones<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a> }
+        </div>
+        <div class="hn-kpi-progress"><strong>@progress<small>%</small></strong><span>Avance de evaluación</span><progress value="@Model.EmployeesRated" max="@Math.Max(1, Model.EmployeesTotal)" aria-label="Avance de evaluaciones"></progress></div>
+    </section>
+    <div class="hn-kpi-stats">
+        <article><span><i class="bi bi-check2-circle" aria-hidden="true"></i>Evaluados</span><strong>@Model.EmployeesRated<small> / @Model.EmployeesTotal</small></strong><p>Con calificación guardada</p></article>
+        <article><span><i class="bi bi-hourglass" aria-hidden="true"></i>Pendientes</span><strong>@pending</strong><p>Sin evaluación en el periodo</p></article>
+        <article><span><i class="bi bi-star" aria-hidden="true"></i>Promedio del equipo</span><strong>@(Model.AvgScoreAll?.ToString("0.0") ?? "—")<small> / 5</small></strong><p>Solo empleados evaluados</p></article>
+        <article><span><i class="bi bi-wallet2" aria-hidden="true"></i>Estimación 80/20</span><strong>@Model.TotalPayrollPay.ToString("C2")</strong><p>Antes de bonos y deducciones</p></article>
     </div>
-
-    <div class="d-flex gap-2 align-items-center">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Dashboard/Index">Dashboard</a>
-        <a class="btn btn-outline-primary" asp-page="/Admin/Performance/ExportPayroll"
-           asp-route-year="@Model.Year" asp-route-month="@Model.Month" asp-route-half="@Model.Half">
-            Exportar nómina (CSV)
-        </a>
-    </div>
+    <section class="hn-kpi-panel">
+        <div class="hn-kpi-panel-heading"><div><h2>Evaluaciones por empleado</h2><p>Consulta, califica o actualiza la evaluación del periodo seleccionado.</p></div><span id="kpiVisibleCount" class="hn-kpi-count">@Model.Rows.Count empleados</span></div>
+        <div class="hn-kpi-searchbar"><div><label for="kpiSearch">Buscar empleado</label><input id="kpiSearch" type="search" class="form-control" placeholder="Nombre, puesto o número de empleado" /></div><div><label for="kpiStatus">Evaluación</label><select id="kpiStatus" class="form-select"><option value="all">Todos</option><option value="pending">Pendientes</option><option value="rated">Evaluados</option></select></div><div><label for="kpiEmployeeStatus">Estado del empleado</label><select id="kpiEmployeeStatus" class="form-select"><option value="all">Todos, incluidas bajas</option><option value="active">Activos</option><option value="inactive">Bajas</option></select></div></div>
+        <div class="table-responsive"><table class="table hn-kpi-table align-middle"><thead><tr><th>Empleado</th><th>Estado</th><th class="text-end">Promedio</th><th class="text-end">Variable ganada</th><th class="text-end">Fijo 80%</th><th class="text-end">Variable $</th><th class="text-end">Estimación 80/20</th><th><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
+            @foreach (var r in Model.Rows) {
+                <tr data-kpi-row data-search="@($"{r.FullName} {r.Position} {r.EmployeeNumber}")" data-rated="@(r.HasReview ? "rated" : "pending")" data-employee-status="@(r.IsActive ? "active" : "inactive")">
+                    <td><a class="hn-kpi-person" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId" data-module-panel="Ficha · @r.FullName">@r.FullName</a><div class="hn-kpi-person-meta">@r.Position @(!string.IsNullOrWhiteSpace(r.EmployeeNumber) ? "· " + r.EmployeeNumber : "") @(!r.IsActive ? "· Baja" : "")</div></td>
+                    <td><span class="hn-kpi-badge @(r.HasReview ? "is-rated" : "is-pending")">@(r.HasReview ? "Evaluado" : "Pendiente")</span></td>
+                    <td class="text-end">@(r.AvgScore?.ToString("0.0") ?? "—")</td><td class="text-end">@(r.HasReview ? (r.VariablePercent * 100m).ToString("0.##") + "%" : "—")</td>
+                    <td class="text-end">@((r.SalaryBase / 2m * .8m).ToString("C2"))</td><td class="text-end">@r.VariableAmount.ToString("C2")</td><td class="text-end fw-semibold">@r.TotalPay.ToString("C2")</td>
+                    <td class="text-end"><a class="btn btn-sm @(r.HasReview ? "btn-outline-secondary" : "btn-outline-primary")" asp-page="./Rate" asp-route-employeeId="@r.UserId" asp-route-ym="@ym" asp-route-half="@Model.Half" data-module-panel="Evaluación · @r.FullName">@(r.HasReview ? "Revisar" : "Calificar")<i class="bi bi-chevron-right ms-2" aria-hidden="true"></i></a></td>
+                </tr>
+            }
+        </tbody></table></div>
+        <p class="hn-kpi-empty" id="kpiNoResults" hidden="@(Model.Rows.Count > 0)">No hay empleados que coincidan con esta selección.</p>
+        <div class="hn-kpi-footnote"><i class="bi bi-info-circle" aria-hidden="true"></i>Sin evaluación, la estimación considera únicamente el 80% fijo. El Excel de nómina incluye los ajustes registrados. Los indicadores superiores corresponden al periodo completo.</div>
+    </section>
+    <details class="hn-kpi-panel hn-kpi-chart-panel"><summary>Comparativa del periodo <span>Estimación y porcentaje variable</span></summary><div class="hn-kpi-charts"><div><h3>Estimación 80/20 por empleado</h3><div class="hn-kpi-chart"><canvas id="payChart" aria-label="Estimación por empleado" role="img"></canvas></div></div><div><h3>Variable ganada</h3><div class="hn-kpi-chart"><canvas id="varChart" aria-label="Porcentaje variable por empleado" role="img"></canvas></div></div></div></details>
+    <details class="hn-kpi-panel hn-kpi-explainer"><summary>¿Cómo se calcula el 80/20?</summary><div><p>La base quincenal es el sueldo mensual dividido entre dos. El 80% es fijo y el 20% restante depende de la evaluación.</p><p><strong>Variable ganada = suma de las siete calificaciones ÷ 35.</strong> Una evaluación con todos los indicadores en 3 obtiene el 60% del componente variable.</p><p>Estimación del periodo = fijo del 80% + máximo variable del 20% × variable ganada. Los bonos y las deducciones se aplican por separado en nómina.</p></div></details>
 </div>
-
-<div class="card shadow-sm mb-3">
-    <div class="card-body">
-        <form method="get" class="row g-2 align-items-end">
-            <div class="col-12 col-md-2">
-                <label class="form-label">Año</label>
-                <input class="form-control" name="year" value="@Model.Year" />
-            </div>
-            <div class="col-12 col-md-2">
-                <label class="form-label">Mes</label>
-                <input class="form-control" name="month" value="@Model.Month" />
-            </div>
-            <div class="col-12 col-md-3">
-                <label class="form-label">Periodo</label>
-                <select class="form-select" name="half">
-                    <option value="1" selected="@(Model.Half == 1)">1ª quincena (1–15)</option>
-                    <option value="2" selected="@(Model.Half == 2)">2ª quincena (16–fin)</option>
-                </select>
-            </div>
-            <div class="col-12 col-md-3">
-                <button class="btn btn-primary w-100">Aplicar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft">
-            <div class="card-body">
-                <div class="text-muted small">Empleados</div>
-                <div class="fs-4 fw-bold">@Model.EmployeesTotal</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft">
-            <div class="card-body">
-                <div class="text-muted small">Evaluados</div>
-                <div class="fs-4 fw-bold">@Model.EmployeesRated</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft">
-            <div class="card-body">
-                <div class="text-muted small">Promedio general</div>
-                <div class="fs-4 fw-bold">@((Model.AvgScoreAll ?? 0).ToString("0.0"))</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-lg-3">
-        <div class="card shadow-soft">
-            <div class="card-body">
-                <div class="text-muted small">Total a pagar</div>
-                <div class="fs-4 fw-bold">@Model.TotalPayrollPay.ToString("C")</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-3">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-12 col-lg-6">
-                <h6 class="mb-2">Total a pagar por empleado</h6>
-                <canvas id="payChart" height="180"></canvas>
-            </div>
-            <div class="col-12 col-lg-6">
-                <h6 class="mb-2">% variable por empleado</h6>
-                <canvas id="varChart" height="180"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-soft">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Empleado</th>
-                        <th class="text-end">Sueldo base</th>
-                        <th class="text-center">Evaluado</th>
-                        <th class="text-end">Prom</th>
-                        <th class="text-end">% Var</th>
-                        <th class="text-end">Var $</th>
-                        <th class="text-end">Total a pagar</th>
-                        <th class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var r in Model.Rows)
-                    {
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">@r.FullName</div>
-                                <div class="text-muted small">@r.UserId</div>
-                            </td>
-                            <td class="text-end">@r.SalaryBase.ToString("C")</td>
-                            <td class="text-center">
-                                @if (r.HasReview)
-                                {
-                                    <span class="badge bg-success">Sí</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">No</span>
-                                }
-                            </td>
-                            <td class="text-end">@((r.AvgScore ?? 0).ToString("0.0"))</td>
-                            <td class="text-end">@((r.VariablePercent * 100m).ToString("0.##"))%</td>
-                            <td class="text-end">@r.VariableAmount.ToString("C")</td>
-                            <td class="text-end fw-bold">@r.TotalPay.ToString("C")</td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary"
-                                   asp-page="/Admin/Performance/Rate"
-                                   asp-route-employeeId="@r.UserId"
-                                   asp-route-ym="@($"{Model.Year:D4}-{Model.Month:D2}")"
-                                   asp-route-half="@Model.Half">
-                                    Calificar
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
-    <script>
-        const labels = @Html.Raw(Model.LabelsJson);
-        const totalPay = @Html.Raw(Model.TotalPayJson);
-        const varPct = @Html.Raw(Model.VarPercentJson);
-        const chartColors = ['#2563eb', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'];
-
-        const payCfg = {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Total a pagar',
-                    data: totalPay,
-                    backgroundColor: totalPay.map((_, i) => chartColors[i % chartColors.length]),
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true } },
-                plugins: { legend: { position: 'bottom' } }
-            }
-        };
-        window.hnCharts?.decorate(payCfg);
-        new Chart(document.getElementById('payChart'), payCfg);
-
-        const varCfg = {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    label: 'Variable (%)',
-                    data: varPct,
-                    backgroundColor: varPct.map((_, i) => chartColors[i % chartColors.length]),
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true, max: 100 } },
-                plugins: { legend: { position: 'bottom' } }
-            }
-        };
-        window.hnCharts?.decorate(varCfg);
-        new Chart(document.getElementById('varChart'), varCfg);
-    </script>
+<script>
+(() => {
+    const rows = [...document.querySelectorAll('[data-kpi-row]')];
+    const search = document.getElementById('kpiSearch'), status = document.getElementById('kpiStatus'), employment = document.getElementById('kpiEmployeeStatus');
+    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    function filter() { let count=0; rows.forEach(row => { const show = normalize(row.dataset.search).includes(normalize(search.value.trim())) && (status.value==='all'||row.dataset.rated===status.value) && (employment.value==='all'||row.dataset.employeeStatus===employment.value); row.hidden=!show; if(show) count++; }); document.getElementById('kpiVisibleCount').textContent = count+' empleados'; document.getElementById('kpiNoResults').hidden=count>0; }
+    search.addEventListener('input',filter); status.addEventListener('change',filter); employment.addEventListener('change',filter);
+    const panel=document.querySelector('.hn-kpi-chart-panel'); let rendered=false;
+    panel.addEventListener('toggle',()=>{ if(!panel.open||rendered) return; if(typeof Chart==='undefined') return; rendered=true;
+        const labels=@Html.Raw(Model.LabelsJson), payments=@Html.Raw(Model.TotalPayJson), variable=@Html.Raw(Model.VarPercentJson);
+        [['payChart',payments,'Estimación 80/20'],['varChart',variable,'Variable (%)']].forEach(([id,data,label])=>{const cfg={type:'bar',data:{labels,datasets:[{label,data,backgroundColor:'#80a8e9',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,...(id==='varChart'?{max:100}:{})}}}};window.hnCharts?.decorate(cfg);new Chart(document.getElementById(id),cfg);});
+    });
+})();
+</script>
 }

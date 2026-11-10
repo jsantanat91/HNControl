@@ -74,6 +74,27 @@ internal static class ContractRenewalTests
         await editor.OnGetAsync();
         check(editor.Rows.Count == 0 && editor.Expiring.Select(c => c.Id).ToHashSet().SetEquals([eligible.Id, legacy.Id]),
             "Aviso global del asesor independiente de búsqueda y paginación, solo para sus contratos elegibles");
+        own.Rfc = "AAA010101AAA";
+        own.Email = "contacto@cliente.test";
+        await db.SaveChangesAsync();
+        foreach (var query in new[] { "hn-0100", "aaa010101aaa", "CONTACTO@CLIENTE.TEST" })
+        {
+            var search = PageFor(AppActions.ClientsViewOwn);
+            search.Name = query;
+            search.Page = 999;
+            await search.OnGetAsync();
+            check(search.Rows.Count == 1 && search.Rows[0].Id == own.Id && search.Page == 1
+                && search.Rows[0].ContractsCount == 6 && search.Rows[0].ExpiringCount == 2,
+                "Clientes: búsqueda por código/RFC/correo, paginación y métricas conservan el alcance del asesor");
+        }
+        var restrictedSearch = PageFor(AppActions.ClientsViewOwn);
+        restrictedSearch.Name = other.ClientCode;
+        await restrictedSearch.OnGetAsync();
+        check(restrictedSearch.Rows.Count == 0, "Clientes: buscar por código no expone clientes de otro responsable");
+        var noAccessSearch = PageFor();
+        noAccessSearch.Name = own.Email;
+        await noAccessSearch.OnGetAsync();
+        check(noAccessSearch.Rows.Count == 0, "Clientes: búsqueda por correo conserva la restricción de acceso");
         var all = await ContractRenewals.UpcomingAsync(db.ClientServiceContracts, today);
         check(all.Count == 3 && all.Any(c => c.Id == foreign.Id), "El panel general incluye clientes activos de varios responsables");
         check(await PageFor(AppActions.ClientsViewOwn).OnPostRenewAsync(own.Id, eligible.Id, eligible.UpdatedAt.Ticks, true, false) is ForbidResult,

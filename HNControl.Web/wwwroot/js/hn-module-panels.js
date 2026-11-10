@@ -53,6 +53,12 @@
             }, true);
         } catch { /* External pages keep their own navigation; never inspect cross-origin content. */ }
     });
+    modalElement.addEventListener('hide.bs.modal', event => {
+        try {
+            const doc = frame.contentDocument;
+            if (doc && !doc.dispatchEvent(new frame.contentWindow.CustomEvent('hn:panel-closing', { cancelable: true }))) event.preventDefault();
+        } catch { /* A cross-origin page cannot participate in the local close guard. */ }
+    });
     modalElement.addEventListener('hidden.bs.modal', () => {
         frame.src = 'about:blank';
         if (changed) window.location.reload();

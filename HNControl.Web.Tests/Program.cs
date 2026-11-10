@@ -92,6 +92,7 @@ await ServiceOrderReportTests.RunAsync(root, Check);
 await ServiceOrderReportEmailTests.RunAsync(Check);
 await OrderDeliveryTests.RunAsync(Check);
 await OperationsFlowTests.RunAsync(Check);
+await PerformanceFlowTests.RunAsync(Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
 EventDeliveryDesignTests.Run(service, Check);

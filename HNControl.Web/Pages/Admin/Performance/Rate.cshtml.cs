@@ -26,6 +26,8 @@ public class RateModel : PageModel
     [BindProperty] public InputModel Input { get; set; } = new();
 
     public string? EmployeeName { get; set; }
+    public decimal SalaryBase { get; set; }
+    public bool HasReview { get; set; }
 
     public string? Error { get; set; }
     public string? Info { get; set; }
@@ -44,16 +46,24 @@ public class RateModel : PageModel
         [Range(1, 5)] public int OrderCleanliness { get; set; } = 3;
         [Range(1, 5)] public int TechnicalSkills { get; set; } = 3;
 
-        [MaxLength(3600)] public string Notes { get; set; } = "";
+        [MaxLength(3600)] public string? Notes { get; set; } = "";
     }
 
     public async Task<IActionResult> OnGetAsync(string employeeId, string? ym = null, int? half = null, DateTime? start = null, DateTime? end = null)
     {
         await LoadListsAsync();
 
+        if (string.IsNullOrWhiteSpace(employeeId)) employeeId = EmployeeItems.FirstOrDefault()?.Value ?? "";
+        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == employeeId);
+        if (employee == null) return NotFound();
         Input.EmployeeId = employeeId;
+        EmployeeName = employee.FullName;
+        SalaryBase = employee.SalaryBase;
 
-        var (ps, pe, selectedYm, selectedHalf) = ResolvePeriod(ym, half, start, end);
+        (DateTime ps, DateTime pe, string selectedYm, int selectedHalf) resolved;
+        try { resolved = ResolvePeriod(ym, half, start, end); }
+        catch (InvalidOperationException) { resolved = ResolvePeriod(null, null, null, null); Error = "El periodo no es válido. Se muestra la quincena actual."; }
+        var (ps, pe, selectedYm, selectedHalf) = resolved;
         PeriodStart = ps;
         PeriodEnd = pe;
         Input.Ym = selectedYm;
@@ -61,11 +71,6 @@ public class RateModel : PageModel
 
         MonthItems = BuildMonthItems(selectedYm);
         HalfItems = BuildHalfItems(selectedHalf);
-
-        EmployeeName = await _db.EmployeeProfiles
-            .Where(e => e.UserId == employeeId)
-            .Select(e => e.FullName)
-            .FirstOrDefaultAsync();
 
         var psUtc = TimeUtil.UtcDate(ps);
         var peUtc = TimeUtil.UtcDate(pe);
@@ -83,6 +88,7 @@ public class RateModel : PageModel
             .OrderByDescending(r => r.UpdatedAt)
             .FirstOrDefaultAsync();
 
+        HasReview = existing != null;
         if (existing != null)
         {
             Input.PersonalPerformance = existing.PersonalPerformance;
@@ -103,6 +109,10 @@ public class RateModel : PageModel
         await LoadListsAsync();
         MonthItems = BuildMonthItems(Input.Ym);
         HalfItems = BuildHalfItems(Input.Half);
+        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == Input.EmployeeId);
+        if (employee == null) return NotFound();
+        EmployeeName = employee.FullName;
+        SalaryBase = employee.SalaryBase;
 
         if (!ModelState.IsValid)
         {
@@ -187,7 +197,8 @@ DO UPDATE SET
     ""UpdatedAt"" = EXCLUDED.""UpdatedAt"";
 ");
 
-            Info = "✅ Evaluación guardada.";
+            HasReview = true;
+            Info = "Evaluación guardada para " + EmployeeName + ".";
         }
         catch (Exception ex)
         {
@@ -203,7 +214,9 @@ DO UPDATE SET
                 PeriodEnd = DateTime.Today;
             }
 
-            Error = ex.Message;
+            HttpContext.RequestServices.GetService<ILogger<RateModel>>()?.LogError(ex, "No fue posible guardar la evaluación KPI");
+            Error = ex is InvalidOperationException && ex.Message == "Mes inválido."
+                ? "Selecciona un mes y una quincena válidos." : "No se pudo guardar la evaluación. Inténtalo de nuevo.";
         }
 
         return Page();
@@ -222,6 +235,8 @@ DO UPDATE SET
             .Select(i => new DateTime(now.Year, now.Month, 1).AddMonths(-i))
             .Select(d => new { Id = d.ToString("yyyy-MM"), Name = d.ToString("MMMM yyyy") })
             .ToList();
+        if (DateTime.TryParseExact(selectedYm, "yyyy-MM", global::System.Globalization.CultureInfo.InvariantCulture, global::System.Globalization.DateTimeStyles.None, out var selected) && !list.Any(x => x.Id == selectedYm))
+            list.Insert(0, new { Id = selectedYm, Name = selected.ToString("MMMM yyyy") });
         return new SelectList(list, "Id", "Name", selectedYm);
     }
 
@@ -243,13 +258,13 @@ DO UPDATE SET
             return (ps, pe, ym, half.Value);
         }
 
-        if (start.HasValue && end.HasValue)
+        if (start.HasValue)
         {
             var s = start.Value.Date;
-            var e = end.Value.Date;
             var ym2 = s.ToString("yyyy-MM");
             var h2 = s.Day <= 15 ? 1 : 2;
-            return (s, e, ym2, h2);
+            var canonical = ResolvePeriodFromUi(ym2, h2);
+            return (canonical.ps, canonical.pe, ym2, h2);
         }
 
         var today = DateTime.Today;
@@ -261,10 +276,11 @@ DO UPDATE SET
 
     private static (DateTime ps, DateTime pe) ResolvePeriodFromUi(string ym, int half)
     {
-        var parts = ym.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        var parts = (ym ?? "").Split('-', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 2 || !int.TryParse(parts[0], out var y) || !int.TryParse(parts[1], out var m))
             throw new InvalidOperationException("Mes inválido.");
 
+        if (y < 1900 || y > 9998 || m < 1 || m > 12 || half is not (1 or 2)) throw new InvalidOperationException("Mes inválido.");
         var monthStart = new DateTime(y, m, 1);
         var lastDay = DateTime.DaysInMonth(y, m);
 
