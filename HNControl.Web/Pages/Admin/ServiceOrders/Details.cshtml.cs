@@ -305,6 +305,8 @@ public class DetailsModel : PageModel
             .Include(o => o.Client)
             .Include(o => o.Project)
             .Include(o => o.ClientServiceContract)
+            .Include(o => o.AssignedEmployee)
+            .Include(o => o.ClaimedByEmployee)
             .Include(o => o.Checklist)
             .Include(o => o.Evidences)
             .Include(o => o.Signatures)

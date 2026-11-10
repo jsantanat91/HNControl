@@ -54,7 +54,7 @@ public class RateModel : PageModel
         await LoadListsAsync();
 
         if (string.IsNullOrWhiteSpace(employeeId)) employeeId = EmployeeItems.FirstOrDefault()?.Value ?? "";
-        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == employeeId);
+        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.IsActive && e.UserId == employeeId);
         if (employee == null) return NotFound();
         Input.EmployeeId = employeeId;
         EmployeeName = employee.FullName;
@@ -109,7 +109,7 @@ public class RateModel : PageModel
         await LoadListsAsync();
         MonthItems = BuildMonthItems(Input.Ym);
         HalfItems = BuildHalfItems(Input.Half);
-        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.UserId == Input.EmployeeId);
+        var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(e => e.IsActive && e.UserId == Input.EmployeeId);
         if (employee == null) return NotFound();
         EmployeeName = employee.FullName;
         SalaryBase = employee.SalaryBase;
@@ -224,7 +224,7 @@ DO UPDATE SET
 
     private async Task LoadListsAsync()
     {
-        var employees = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
+        var employees = await _db.EmployeeProfiles.Where(e => e.IsActive).OrderBy(e => e.FullName).ToListAsync();
         EmployeeItems = new SelectList(employees, "UserId", "FullName");
     }
 

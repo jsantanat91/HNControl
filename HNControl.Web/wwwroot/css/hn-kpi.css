@@ -29,7 +29,7 @@
 .hn-kpi-panel-heading{padding:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .hn-kpi-panel-heading h2{font-size:17px;font-weight:650;margin:0 0 6px}
 .hn-kpi-count{color:#8397b2;font-size:11px;background:#f1f6fe;padding:6px 10px;border-radius:7px}
-.hn-kpi-searchbar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;padding:0 22px 20px}
+.hn-kpi-searchbar{display:grid;grid-template-columns:2fr 1fr;gap:14px;padding:0 22px 20px}
 .hn-kpi-table{margin:0;min-width:960px;font-size:12px}
 .hn-kpi-table th{font-weight:550;color:#8a9ab0;font-size:10px;background:#f8faff!important;white-space:nowrap;padding:14px}
 .hn-kpi-table td{padding:17px 14px;border-color:#eef2f8;white-space:nowrap}

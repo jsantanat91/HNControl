@@ -102,6 +102,9 @@ public class CreateModel : PageModel
             Input.ClientServiceContractId, Input.StartDate, Input.ExpectedEndDate);
         if (Error != null) return Page();
 
+        if (!string.IsNullOrWhiteSpace(Input.AssignedUserId) && !await _db.EmployeeProfiles.AnyAsync(e => e.UserId == Input.AssignedUserId.Trim() && e.IsActive))
+        { Error = "Selecciona un empleado activo para asignar la orden."; return Page(); }
+
         var order = new ServiceOrder
         {
             DeliveryJson = new HNControl.Shared.OrderDeliveryData { Kind = Input.DeliveryKind }.Serialize(),
@@ -151,7 +154,7 @@ public class CreateModel : PageModel
             .ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Name");
 
-        var employees = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
+        var employees = await _db.EmployeeProfiles.Where(e => e.IsActive).OrderBy(e => e.FullName).ToListAsync();
         EmployeeItems = new SelectList(employees, "UserId", "FullName");
 
         TypeItems = new SelectList(Enum.GetValues<ServiceOrderType>()

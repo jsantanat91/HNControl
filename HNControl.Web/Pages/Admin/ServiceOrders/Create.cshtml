@@ -5,7 +5,10 @@
     ViewData["Title"] = "Nueva orden de servicio";
 }
 
-<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+
+<div class="hn-ops-heading">
     <div>
         <h1 class="h4 m-0">Nueva orden de servicio</h1>
         <div class="text-muted small">Crea la orden general para que cualquier tecnico pueda tomarla y trabajar por etapas.</div>
@@ -120,6 +123,8 @@
     </div>
 </form>
 
+
+</div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 

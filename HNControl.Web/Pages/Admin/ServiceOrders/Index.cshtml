@@ -6,12 +6,14 @@
     ViewData["Title"] = "Órdenes";
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+<div class="hn-ops-heading">
     <div>
         <h1 class="h4 m-0">Órdenes de Servicio</h1>
         <div class="text-muted small">Vista operativa con tipo, estado y responsable actual.</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-primary" href="/Ventas/Factibilidad" data-module-panel="Factibilidad en sitio">Factibilidad</a>
         <a class="btn btn-outline-secondary" asp-page="/Projects/Delivery/Index">Entregas anteriores</a>
         <a class="btn btn-primary" asp-page="/Admin/ServiceOrders/Create">+ Nueva orden</a>
@@ -27,7 +29,7 @@
     <div class="alert @alertClass mb-3">@Model.Flash</div>
 }
 
-<form method="get" class="card shadow-soft hn-hover mb-3">
+<form method="get" class="card hn-ops-filter mb-4">
     <div class="card-body row g-2 align-items-end mx-0">
         <div class="col-6 col-xl-2"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
         <div class="col-6 col-xl-2"><label class="form-label">Hasta</label><input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
@@ -72,45 +74,20 @@ else
         {
             var type = UiBadges.ServiceOrderTypeBadge(o.Type);
             var status = UiBadges.ServiceOrderStatusBadge(o.Status);
-            var typeKey = (type.text ?? "").ToLowerInvariant();
-            var typeChip = typeKey.Contains("levantamiento")
-                ? "hn-chip-ref"
-                : typeKey.Contains("global")
-                    ? "hn-chip-neutral"
-                    : "hn-chip-type";
-            var statusKey = (status.text ?? "").ToLowerInvariant();
-            var statusChip = statusKey.Contains("final")
-                ? "hn-chip-status-closed hn-badge-green"
-                : statusKey.Contains("rechaz")
-                    ? "hn-chip-status-down"
-                    : statusKey.Contains("proceso") || statusKey.Contains("revisi")
-                        ? "hn-chip-status-progress"
-                        : "hn-chip-type";
             <div class="col d-flex">
-                <div class="card shadow-soft hn-hover w-100">
+                <article class="card hn-order-card w-100" data-status="@o.Status">
                     <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-bold fs-5 lh-sm">@o.Title</div>
-                                <div class="text-muted small">@o.ClientName</div>
-                            </div>
-                            <div class="text-muted small">@o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
-                        </div>
-                        <div class="small mt-2">Proyecto: @o.ProjectTitle</div>
-                        <div class="small text-muted">Servicio: @o.ContractLabel</div>
-                        <div class="mt-2 d-flex flex-wrap gap-1">
-                            <span class="hn-chip @typeChip">@type.text</span>
-                            <span class="hn-chip @statusChip">@status.text</span>
-                        </div>
-                        <div class="small mt-2 text-muted">Asignado: @o.Assigned</div>
-                        <div class="small text-muted">Tomada por: @o.ClaimedBy</div>
-                        @if (o.ClaimedAt.HasValue)
-                        {
-                            <div class="small text-muted">@o.ClaimedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                        }
-                        <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
-                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/ServiceOrders/DownloadPdf" asp-route-id="@o.Id" asp-route-inline="false">Orden PDF</a>
-                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@o.Id">Admin</a>
+                        <div class="hn-ops-card-top"><span class="hn-ops-reference">OS-@o.Id.ToString("N")[..8].ToUpperInvariant()</span><span class="hn-ops-state" data-status="@o.Status">@status.text</span></div>
+                        <div class="hn-order-identity"><span class="hn-ops-icon"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span><div><h2>@o.Title</h2><p>@o.ClientName</p></div></div>
+                        <div class="hn-order-type"><i class="bi bi-tag" aria-hidden="true"></i>@type.text</div>
+                        @if (!string.IsNullOrWhiteSpace(o.ContractLabel) && o.ContractLabel != "-" && o.ContractLabel != o.Title) { <div class="hn-order-reference"><span>Servicio contratado</span><strong>@o.ContractLabel</strong></div> }
+                        @if (!string.IsNullOrWhiteSpace(o.ProjectTitle) && o.ProjectTitle != "-") { <div class="hn-order-reference"><span>Proyecto</span><strong>@o.ProjectTitle</strong></div> }
+                        <div class="hn-order-team"><div><span>Asignado a</span><strong>@(o.Assigned == "-" ? "Sin asignar" : o.Assigned)</strong></div><div><span>Tomada por</span><strong>@(o.ClaimedBy == "-" ? "Por tomar" : o.ClaimedBy)</strong>@if(o.ClaimedAt.HasValue){<small>@o.ClaimedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>}</div></div>
+                        <div class="hn-ops-date"><i class="bi bi-calendar3" aria-hidden="true"></i>Creada el @o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                        <div class="hn-ops-card-actions mt-auto">
+                            <a class="btn btn-sm hn-ops-open" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@o.Id" data-module-panel="Orden · @o.Title">Ver orden<i class="bi bi-window ms-2" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/ServiceOrders/DownloadPdf" asp-route-id="@o.Id" asp-route-inline="false"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>PDF</a>
+                            @if(Model.IsSuperAdmin) {
                             <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Eliminar esta orden de servicio? Esta acción no se puede deshacer.');">
                                 <input type="hidden" name="id" value="@o.Id" />
                                 <input type="hidden" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
@@ -119,11 +96,12 @@ else
                                 <input type="hidden" name="Status" value="@Model.Status?.ToString()" />
                                 <input type="hidden" name="Page" value="@Model.Page" />
                                 <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar orden" aria-label="Eliminar orden @o.Title"><i class="bi bi-trash" aria-hidden="true"></i></button>
                             </form>
+                            }
                         </div>
                     </div>
-                </div>
+                </article>
             </div>
         }
     </div>
@@ -135,4 +113,6 @@ else
         <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
         <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
+</div>
+
 </div>

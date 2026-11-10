@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.5.24 · 9 de noviembre de 2026
+
+- Panel: tarjetas de indicadores y nómina con el mismo estilo de Empleados, botones claros, acceso a ficha en modal y gráficas adaptables en tonos azules. Estados vacíos, porcentajes legibles y exportación del periodo seleccionado.
+- Empleados dados de baja excluidos de KPI, resumen de nómina, conteo y gráfica de desempeño del panel, y exportación Excel. Se bloquean evaluaciones y pago desde el panel para bajas, conservando los registros históricos.
+- Nuevas asignaciones de órdenes solo a empleados activos; editar otros datos permite conservar una asignación histórica de baja.
+- Órdenes: tarjetas con referencia, estado y responsables; ficha en modal organizada en Resumen, Entrega y firmas, y PDF y correo. Conserva acciones y destinatarios existentes, con pestaña recordada al generar PDF.
+- Viáticos: totales del rango y empleado seleccionados, agrupación por empleado, tarjetas semanales y revisión en modal. Formularios y comprobantes uniformes para administración y empleados.
+- Verificado en escritorio y móvil; sin cambios en reglas de cálculo ni eliminación de históricos. Sin SQL adicional ni nueva APK: desplegar únicamente la web.
+
 ## Web 2.5.23 · 9 de noviembre de 2026
 
 - Clientes: tarjetas con identidad, estado y contratos, acciones secundarias agrupadas y búsqueda por nombre, número, RFC y correo; conserva el alcance de permisos del usuario.

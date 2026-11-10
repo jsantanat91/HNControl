@@ -21,14 +21,14 @@ public class ExportPayrollModel : PageModel
         var (periodStart, periodEnd) = ResolvePeriodUtc(start, end);
 
         // 1) Fuente principal: EmployeeProfiles
-        var emps = await _db.EmployeeProfiles
+        var emps = await _db.EmployeeProfiles.Where(e => e.IsActive)
             .AsNoTracking()
             .OrderBy(e => e.FullName)
             .ToListAsync();
 
         // 2) Fallback: si por alguna razón en esta BD/entorno no hay EmployeeProfiles,
         // al menos exportamos los usuarios con rol Admin/Employee (para no mandar Excel vacío).
-        if (emps.Count == 0)
+        if (emps.Count == 0 && !await _db.EmployeeProfiles.AnyAsync())
         {
             var roleIds = await _db.Roles
                 .Where(r => r.Name == AppRoles.Admin || r.Name == AppRoles.Employee)

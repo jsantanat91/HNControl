@@ -31,7 +31,7 @@
     </div>
     <section class="hn-kpi-panel">
         <div class="hn-kpi-panel-heading"><div><h2>Evaluaciones por empleado</h2><p>Consulta, califica o actualiza la evaluación del periodo seleccionado.</p></div><span id="kpiVisibleCount" class="hn-kpi-count">@Model.Rows.Count empleados</span></div>
-        <div class="hn-kpi-searchbar"><div><label for="kpiSearch">Buscar empleado</label><input id="kpiSearch" type="search" class="form-control" placeholder="Nombre, puesto o número de empleado" /></div><div><label for="kpiStatus">Evaluación</label><select id="kpiStatus" class="form-select"><option value="all">Todos</option><option value="pending">Pendientes</option><option value="rated">Evaluados</option></select></div><div><label for="kpiEmployeeStatus">Estado del empleado</label><select id="kpiEmployeeStatus" class="form-select"><option value="all">Todos, incluidas bajas</option><option value="active">Activos</option><option value="inactive">Bajas</option></select></div></div>
+        <div class="hn-kpi-searchbar"><div><label for="kpiSearch">Buscar empleado</label><input id="kpiSearch" type="search" class="form-control" placeholder="Nombre, puesto o número de empleado" /></div><div><label for="kpiStatus">Evaluación</label><select id="kpiStatus" class="form-select"><option value="all">Todos</option><option value="pending">Pendientes</option><option value="rated">Evaluados</option></select></div></div>
         <div class="table-responsive"><table class="table hn-kpi-table align-middle"><thead><tr><th>Empleado</th><th>Estado</th><th class="text-end">Promedio</th><th class="text-end">Variable ganada</th><th class="text-end">Fijo 80%</th><th class="text-end">Variable $</th><th class="text-end">Estimación 80/20</th><th><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
             @foreach (var r in Model.Rows) {
                 <tr data-kpi-row data-search="@($"{r.FullName} {r.Position} {r.EmployeeNumber}")" data-rated="@(r.HasReview ? "rated" : "pending")" data-employee-status="@(r.IsActive ? "active" : "inactive")">
@@ -44,7 +44,7 @@
             }
         </tbody></table></div>
         <p class="hn-kpi-empty" id="kpiNoResults" hidden="@(Model.Rows.Count > 0)">No hay empleados que coincidan con esta selección.</p>
-        <div class="hn-kpi-footnote"><i class="bi bi-info-circle" aria-hidden="true"></i>Sin evaluación, la estimación considera únicamente el 80% fijo. El Excel de nómina incluye los ajustes registrados. Los indicadores superiores corresponden al periodo completo.</div>
+        <div class="hn-kpi-footnote"><i class="bi bi-info-circle" aria-hidden="true"></i>Sin evaluación, la estimación considera únicamente el 80% fijo. El Excel de nómina incluye los ajustes registrados. Solo empleados activos. Los indicadores superiores corresponden al periodo completo.</div>
     </section>
     <details class="hn-kpi-panel hn-kpi-chart-panel"><summary>Comparativa del periodo <span>Estimación y porcentaje variable</span></summary><div class="hn-kpi-charts"><div><h3>Estimación 80/20 por empleado</h3><div class="hn-kpi-chart"><canvas id="payChart" aria-label="Estimación por empleado" role="img"></canvas></div></div><div><h3>Variable ganada</h3><div class="hn-kpi-chart"><canvas id="varChart" aria-label="Porcentaje variable por empleado" role="img"></canvas></div></div></div></details>
     <details class="hn-kpi-panel hn-kpi-explainer"><summary>¿Cómo se calcula el 80/20?</summary><div><p>La base quincenal es el sueldo mensual dividido entre dos. El 80% es fijo y el 20% restante depende de la evaluación.</p><p><strong>Variable ganada = suma de las siete calificaciones ÷ 35.</strong> Una evaluación con todos los indicadores en 3 obtiene el 60% del componente variable.</p><p>Estimación del periodo = fijo del 80% + máximo variable del 20% × variable ganada. Los bonos y las deducciones se aplican por separado en nómina.</p></div></details>
@@ -53,10 +53,10 @@
 <script>
 (() => {
     const rows = [...document.querySelectorAll('[data-kpi-row]')];
-    const search = document.getElementById('kpiSearch'), status = document.getElementById('kpiStatus'), employment = document.getElementById('kpiEmployeeStatus');
+    const search = document.getElementById('kpiSearch'), status = document.getElementById('kpiStatus');
     const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    function filter() { let count=0; rows.forEach(row => { const show = normalize(row.dataset.search).includes(normalize(search.value.trim())) && (status.value==='all'||row.dataset.rated===status.value) && (employment.value==='all'||row.dataset.employeeStatus===employment.value); row.hidden=!show; if(show) count++; }); document.getElementById('kpiVisibleCount').textContent = count+' empleados'; document.getElementById('kpiNoResults').hidden=count>0; }
-    search.addEventListener('input',filter); status.addEventListener('change',filter); employment.addEventListener('change',filter);
+    function filter() { let count=0; rows.forEach(row => { const show = normalize(row.dataset.search).includes(normalize(search.value.trim())) && (status.value==='all'||row.dataset.rated===status.value); row.hidden=!show; if(show) count++; }); document.getElementById('kpiVisibleCount').textContent = count+' empleados'; document.getElementById('kpiNoResults').hidden=count>0; }
+    search.addEventListener('input',filter); status.addEventListener('change',filter);
     const panel=document.querySelector('.hn-kpi-chart-panel'); let rendered=false;
     panel.addEventListener('toggle',()=>{ if(!panel.open||rendered) return; if(typeof Chart==='undefined') return; rendered=true;
         const labels=@Html.Raw(Model.LabelsJson), payments=@Html.Raw(Model.TotalPayJson), variable=@Html.Raw(Model.VarPercentJson);

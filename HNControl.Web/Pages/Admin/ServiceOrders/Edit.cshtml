@@ -6,13 +6,16 @@
     ViewData["Title"] = "Editar orden";
 }
 
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+
 @if (Model.Input == null)
 {
     <div class="alert alert-warning">Orden no encontrada.</div>
     return;
 }
 
-<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
+<div class="hn-ops-heading">
     <div>
         <h1 class="h4 m-0">Editar orden</h1>
         <div class="text-muted small">Ajusta datos generales; cualquier tecnico podra tomar la orden para trabajarla.</div>
@@ -237,6 +240,8 @@
     </div>
             </div>
 
+
+</div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 

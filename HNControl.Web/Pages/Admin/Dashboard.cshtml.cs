@@ -107,7 +107,7 @@ public class DashboardModel : PageModel
         PayrollPeriodStart = selectedStart;
         PayrollPeriodEnd = selectedEnd;
 
-        var employees = await _db.EmployeeProfiles.CountAsync();
+        var employees = await _db.EmployeeProfiles.CountAsync(e => e.IsActive);
         var ordersInReview = await _db.ServiceOrders.Where(o => o.Status == ServiceOrderStatus.InReview).CountAsync();
 
         var today = DateTime.UtcNow.Date;
@@ -174,7 +174,7 @@ public class DashboardModel : PageModel
             .Select(g => g.OrderByDescending(x => x.PeriodStart).First())
             .ToListAsync();
 
-        var profiles = await _db.EmployeeProfiles.ToListAsync();
+        var profiles = await _db.EmployeeProfiles.Where(e => e.IsActive).ToListAsync();
 
         Top = latest
             .Join(profiles, r => r.UserId, e => e.UserId, (r, e) => new TopVm(e.UserId, e.FullName, r.VariablePercent))
@@ -284,7 +284,7 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
             return RedirectToPage(new { payrollYear = selectedYear, payrollMonth = selectedMonth, payrollHalf = selectedHalf });
         }
 
-        var employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(x => x.UserId == userId);
+        var employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(x => x.IsActive && x.UserId == userId);
         if (employee == null)
         {
             FlashError = "No se encontro el empleado.";
@@ -442,7 +442,7 @@ public async Task<IActionResult> OnPostMarkPaidAsync(string userId, int? payroll
         PayrollPeriodStart = periodStart;
         PayrollPeriodEnd = periodEnd;
 
-        var emps = await _db.EmployeeProfiles
+        var emps = await _db.EmployeeProfiles.Where(e => e.IsActive)
             .AsNoTracking()
             .OrderBy(e => e.FullName)
             .ToListAsync();

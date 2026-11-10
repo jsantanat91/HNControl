@@ -1,37 +1,20 @@
 @page "{id:guid}"
+@using HNControl.Web.Helpers
+@using HNControl.Web.Models
 @model HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel
-@{
-    ViewData["Title"] = "Orden de Servicio";
-}
-
-@if (Model.Order == null)
-{
-    <div class="alert alert-danger">Orden no encontrada.</div>
-    return;
-}
-
-<div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-    <div>
-        <h2 class="mb-1">Orden de Servicio</h2>
-        <div class="text-muted">
-            Cliente: <strong>@(Model.Order.Client?.Name ?? "-")</strong>
-            · Tipo: <strong>@Model.Order.Type</strong>
-            · Status: <strong>@Model.Order.Status</strong>
-        </div>
-    </div>
-
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Volver</a>
-        <a class="btn btn-outline-primary" asp-page="/Admin/ServiceOrders/Edit" asp-route-id="@Model.Order.Id">Editar</a>
-        <a class="btn btn-primary" target="_blank" href="@Model.PublicUrl">Link cliente</a>
-    </div>
-</div>
-
-@if (!string.IsNullOrWhiteSpace(Model.Info))
-{
-    <div class="alert alert-info">@Model.Info</div>
-}
-
+@{ ViewData["Title"] = "Orden de servicio"; }
+@if (Model.Order == null) { <div class="alert alert-danger">Orden no encontrada.</div> return; }
+@{ var order = Model.Order; var state = UiBadges.ServiceOrderStatusBadge(order.Status); var type = UiBadges.ServiceOrderTypeBadge(order.Type); }
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops hn-order-profile" data-ops-key="order-@order.Id">
+    <div class="hn-ops-toolbar"><a class="hn-ops-back" asp-page="/Admin/ServiceOrders/Index" data-module-panel-close><i class="bi bi-arrow-left" aria-hidden="true"></i>Órdenes de servicio</a><div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Edit" asp-route-id="@order.Id"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Editar orden</a>@if(!string.IsNullOrWhiteSpace(Model.PublicUrl)){<a class="btn btn-primary" target="_blank" rel="noopener" href="@Model.PublicUrl"><i class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></i>Enlace del cliente</a>}</div></div>
+    <header class="hn-ops-hero"><div><div class="hn-eyebrow">Orden de servicio · OS-@order.Id.ToString("N")[..8].ToUpperInvariant()</div><h1>@order.Title</h1><p>@(order.Client?.Name ?? "Sin cliente")</p><div class="hn-ops-hero-meta"><span>@type.text</span><span>Creada el @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></div></div><span class="hn-ops-state" data-status="@order.Status">@state.text</span></header>
+    @if (!string.IsNullOrWhiteSpace(Model.Info)) { <div class="alert alert-info mt-3" role="status">@Model.Info</div> }
+    <nav class="nav hn-ops-tabs" role="tablist" aria-label="Secciones de la orden"><button type="button" class="btn active" id="order-summary-tab" data-bs-toggle="tab" data-bs-target="#order-summary" role="tab" aria-controls="order-summary" aria-selected="true">Resumen</button><button type="button" class="btn" id="order-delivery-tab" data-bs-toggle="tab" data-bs-target="#order-delivery" role="tab" aria-controls="order-delivery" aria-selected="false">Entrega y firmas</button><button type="button" class="btn" id="order-documents-tab" data-bs-toggle="tab" data-bs-target="#order-documents" role="tab" aria-controls="order-documents" aria-selected="false">PDF y correo</button></nav>
+    <div class="tab-content">
+        <section class="tab-pane fade show active" id="order-summary" role="tabpanel" aria-labelledby="order-summary-tab" tabindex="0">
+            <div class="hn-ops-facts"><div><span>Servicio contratado</span><strong>@(order.ClientServiceContract?.Label ?? "Sin contrato vinculado")</strong></div><div><span>Proyecto</span><strong>@(order.Project?.Title ?? "Sin proyecto vinculado")</strong></div><div><span>Asignado a</span><strong>@(order.AssignedEmployee?.FullName ?? "Sin asignar")</strong></div><div><span>Tomada por</span><strong>@(order.ClaimedByEmployee?.FullName ?? "Por tomar")</strong></div></div>
+            <article class="card mb-3"><div class="card-header"><i class="bi bi-card-text me-2" aria-hidden="true"></i>Trabajo a realizar</div><div class="card-body"><div class="hn-ops-description">@(string.IsNullOrWhiteSpace(order.Description) ? "Sin descripción capturada." : order.Description)</div></div></article>
 <partial name="_ServiceOrderNotificationNotice" />
 @if (Model.CreationNotifications.Exists)
 {
@@ -54,31 +37,45 @@
     </div>
 }
 
-<div class="card shadow-sm border-0 mb-3">
-    <div class="card-header bg-white border-0 fw-semibold">Descripcion (vista previa)</div>
-    <div class="card-body">
-        @if (string.IsNullOrWhiteSpace(Model.Order.Description))
+        @if (Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview)
         {
-            <div class="text-muted">Sin descripcion capturada.</div>
-        }
-        else
-        {
-            <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit;">@Model.Order.Description</pre>
-        }
-    </div>
-</div>
+            <div class="card shadow-sm border-0 mt-3">
+                <div class="card-header bg-white border-0 fw-semibold">Validación (Admin)</div>
+                <div class="card-body">
+                    <form method="post" asp-page="./Details" asp-route-id="@Model.Order.Id" class="d-grid gap-2">
+                        @Html.AntiForgeryToken()
 
-<div class="row g-3">
-    <div class="col-12">
-        <div class="card border-primary-subtle"><div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div><span class="badge bg-primary-subtle text-primary mb-2">@HNControl.Shared.OrderDeliveryData.Read(Model.Order.DeliveryJson).KindLabel</span><h2 class="h5 mb-1">Entrega y equipos</h2><div class="text-muted small">Router, series, accesorios y modalidad de entrega dentro de la misma orden.</div></div>
-            <a class="btn btn-outline-primary" asp-page="/ServiceOrders/Delivery" asp-route-id="@Model.Order.Id">Ver / capturar entrega</a>
-        </div></div>
-    </div>
-    <div class="col-lg-7">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-0 fw-semibold">Acciones</div>
-            <div class="card-body d-flex flex-wrap gap-2">
+                        <label class="form-label text-muted small">Notas (opcional)</label>
+                        <textarea class="form-control" rows="3" name="ReviewNotes"
+                              placeholder="Ej: faltó evidencia de pruebas, se corrigió canalización, etc.">@Model.Order.AdminReviewNotes</textarea>
+
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-success" type="submit" formaction="?handler=Approve">Aprobar y finalizar</button>
+                            <button class="btn btn-danger" type="submit" formaction="?handler=Reject">Rechazar</button>
+                        </div>
+
+                        <div class="text-muted small">
+                            Aprobar: marca Finalizado y (si no existe) genera el PDF.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+<div class="my-3">                @if (!string.IsNullOrWhiteSpace(Model.Order.ClaimedByUserId))
+                {
+                    <form method="post" asp-page-handler="UnassignTechnician" asp-route-id="@Model.Order.Id"
+                          onsubmit="return confirm('¿Desasignar técnico tomado para que otro la pueda tomar?');">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-outline-warning" type="submit">Desasignar técnico</button>
+                    </form>
+                }
+</div>        </section>
+        <section class="tab-pane fade" id="order-delivery" role="tabpanel" aria-labelledby="order-delivery-tab" tabindex="0">
+            <article class="card mb-3"><div class="card-body hn-ops-callout"><div><span class="hn-ops-tag">@HNControl.Shared.OrderDeliveryData.Read(order.DeliveryJson).KindLabel</span><h2>Entrega y equipos</h2><p>Router, series, accesorios y modalidad de entrega en esta orden.</p></div><a class="btn btn-primary" asp-page="/ServiceOrders/Delivery" asp-route-id="@order.Id">Ver / capturar entrega<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a></div></article>
+            <div class="row g-3 mb-3">@foreach(var role in new[]{SignatureRole.Technician, SignatureRole.Client}) { var signature=order.Signatures.FirstOrDefault(s=>s.Role==role); <div class="col-md-6"><article class="card h-100"><div class="card-body"><div class="hn-ops-card-top"><span class="hn-ops-icon"><i class="bi bi-pen" aria-hidden="true"></i></span><span class="hn-ops-state" data-status="@(signature==null?"Created":"Finalized")">@(signature==null?"Pendiente":"Firma registrada")</span></div><h2 class="h6">@(role==SignatureRole.Technician?"Firma del técnico":"Firma del cliente")</h2>@if(signature!=null){<p class="mb-1">@signature.SignedByName</p><small class="text-muted">@signature.SignedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>}else{<p class="text-muted small mb-0">Aún no se ha registrado esta firma.</p>}</div></article></div> }</div>
+            <article class="card"><div class="card-header">Evidencias <span class="hn-ops-tag">@order.Evidences.Count</span></div><div class="card-body">@if(!order.Evidences.Any()){<div class="hn-ops-empty"><i class="bi bi-images" aria-hidden="true"></i><p>Aún no hay evidencias adjuntas.</p></div>}else{<div class="hn-ops-files">@foreach(var evidence in order.Evidences){<a asp-page="./DownloadEvidence" asp-route-evidenceId="@evidence.Id"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span>@evidence.OriginalFileName<small>@evidence.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></span><i class="bi bi-download" aria-hidden="true"></i></a>}</div>}</div></article>
+        </section>
+        <section class="tab-pane fade" id="order-documents" role="tabpanel" aria-labelledby="order-documents-tab" tabindex="0"><article class="card"><div class="card-header">Documento y envío al cliente</div><div class="card-body d-flex flex-wrap gap-2">
                 <form method="post" asp-page-handler="GeneratePdf" asp-route-id="@Model.Order.Id">
                     @Html.AntiForgeryToken()
                     <button class="btn btn-outline-primary" type="submit">Generar PDF</button>
@@ -113,17 +110,7 @@
                     }
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(Model.Order.ClaimedByUserId))
-                {
-                    <form method="post" asp-page-handler="UnassignTechnician" asp-route-id="@Model.Order.Id"
-                          onsubmit="return confirm('¿Desasignar técnico tomado para que otro la pueda tomar?');">
-                        @Html.AntiForgeryToken()
-                        <button class="btn btn-outline-warning" type="submit">Desasignar técnico</button>
-                    </form>
-                }
-            </div>
-
-        <div class="card shadow-sm border-0 mt-3">
+</div></article>        <div class="card shadow-sm border-0 mt-3">
             <div class="card-header bg-white border-0 fw-semibold d-flex justify-content-between align-items-center">
                 <span>Vista previa PDF</span>
                 <div class="d-flex gap-2">
@@ -163,48 +150,6 @@
                 Si hiciste cambios (checklist/notas/firmas), usa “Actualizar”.
             </div>
         </div>
-        </div>
 
-        @if (Model.Order.Status == HNControl.Web.Models.ServiceOrderStatus.InReview)
-        {
-            <div class="card shadow-sm border-0 mt-3">
-                <div class="card-header bg-white border-0 fw-semibold">Validación (Admin)</div>
-                <div class="card-body">
-                    <form method="post" asp-page="./Details" asp-route-id="@Model.Order.Id" class="d-grid gap-2">
-                        @Html.AntiForgeryToken()
-
-                        <label class="form-label text-muted small">Notas (opcional)</label>
-                        <textarea class="form-control" rows="3" name="ReviewNotes"
-                              placeholder="Ej: faltó evidencia de pruebas, se corrigió canalización, etc.">@Model.Order.AdminReviewNotes</textarea>
-
-                        <div class="d-flex gap-2 mt-2">
-                            <button class="btn btn-success" type="submit" formaction="?handler=Approve">Aprobar y finalizar</button>
-                            <button class="btn btn-danger" type="submit" formaction="?handler=Reject">Rechazar</button>
-                        </div>
-
-                        <div class="text-muted small">
-                            Aprobar: marca Finalizado y (si no existe) genera el PDF.
-                        </div>
-                    </form>
-                </div>
-            </div>
-        }
-    </div>
-
-    <div class="col-lg-5">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-0 fw-semibold">Firma / Evidencias</div>
-            <div class="card-body">
-                <div class="mb-2">
-                    <div class="text-muted small">Firmas registradas:</div>
-                    <div>
-                        Técnico: <strong>@(Model.Order.Signatures.Any(s => s.Role == HNControl.Web.Models.SignatureRole.Technician) ? "OK" : "Pendiente")</strong>
-                        · Cliente: <strong>@(Model.Order.Signatures.Any(s => s.Role == HNControl.Web.Models.SignatureRole.Client) ? "OK" : "Pendiente")</strong>
-                    </div>
-                </div>
-
-                <div class="text-muted small">Evidencias: <strong>@Model.Order.Evidences.Count</strong></div>
-            </div>
-        </div>
-    </div>
-</div>
+</section></div></div>
+@section Scripts { <script src="~/js/hn-operations.js" asp-append-version="true"></script> }

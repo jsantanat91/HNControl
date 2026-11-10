@@ -53,6 +53,15 @@ internal static class ServiceOrderCreationPathsTests
             .Contains("envío pendiente", StringComparison.OrdinalIgnoreCase) == true;
 
         var create = Page(new AdminCreate(db, notices));
+        db.EmployeeProfiles.Add(new EmployeeProfile { UserId = "inactive-technician", FullName = "Técnico de baja", IsActive = false });
+        await db.SaveChangesAsync();
+        var invalidAssignment = Page(new AdminCreate(db, notices));
+        invalidAssignment.Input.ClientId = client.Id;
+        invalidAssignment.Input.Title = "Asignación inválida";
+        invalidAssignment.Input.AssignedUserId = "inactive-technician";
+        check(await invalidAssignment.OnPostAsync() is PageResult && invalidAssignment.Error != null
+            && !await db.ServiceOrders.AnyAsync() && email.Attempts == 0,
+            "Órdenes: alta con empleado de baja no guarda orden ni envía notificaciones");
         var selectedDay = new DateTime(2026, 10, 28);
         create.Input = new AdminCreate.InputModel
         {

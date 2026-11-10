@@ -26,7 +26,7 @@ public class IndexModel : PageModel
     {
         if (!User.IsInRole(AppRoles.Admin)) return;
 
-        var employees = await _db.EmployeeProfiles
+        var employees = await _db.EmployeeProfiles.Where(e => e.IsActive)
             .OrderBy(e => e.FullName)
             .ToListAsync();
 

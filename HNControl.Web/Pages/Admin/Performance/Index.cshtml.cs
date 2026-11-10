@@ -38,7 +38,7 @@ public class IndexModel : PageModel
     {
         (PeriodStart, PeriodEnd) = GetCurrentQuincenaUtc(start);
 
-        var emps = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
+        var emps = await _db.EmployeeProfiles.Where(e => e.IsActive).OrderBy(e => e.FullName).ToListAsync();
 
         var reviews = await _db.PerformanceReviews
             .Where(r => r.PeriodStart >= PeriodStart && r.PeriodStart < PeriodStart.AddDays(1)

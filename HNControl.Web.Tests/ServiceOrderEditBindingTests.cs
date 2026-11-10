@@ -128,5 +128,21 @@ internal static class ServiceOrderEditBindingTests
             && await db.ServiceOrders.AnyAsync(o => o.Id == order.Id && o.Title == "Orden global actualizada" && o.Type == ServiceOrderType.Global)
             && await db.ServiceOrderWorkItems.CountAsync(w => w.OrderId == order.Id) == 2,
             "Editar una orden global conserva sus actividades y su tipo global");
+
+        db.EmployeeProfiles.Add(new EmployeeProfile { UserId = "terminated", FullName = "Empleado de baja", IsActive = false });
+        await db.SaveChangesAsync();
+        var reassignment = MainForm("No reasignar");
+        reassignment["Input.AssignedUserId"] = "terminated";
+        var blocked = await Bind(reassignment);
+        check(await blocked.OnPostAsync() is PageResult && blocked.Error != null,
+            "Órdenes: no permite asignar una orden existente a un empleado de baja");
+        await db.Entry(order).ReloadAsync();
+        check(order.AssignedUserId == null && order.Title == "Orden global actualizada",
+            "Órdenes: una reasignación inválida no modifica la orden");
+        order.AssignedUserId = "terminated";
+        await db.SaveChangesAsync();
+        var historical = await Bind(reassignment);
+        check(await historical.OnPostAsync() is RedirectToPageResult,
+            "Órdenes: permite editar otros datos conservando una asignación histórica de baja");
     }
 }

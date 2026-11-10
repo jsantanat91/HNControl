@@ -14,6 +14,9 @@
     var nonBillable = week == null ? 0m : Math.Max(0m, week.TotalAmount - week.BillableAmount);
 }
 
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops hn-viatic-week">
+
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-warning">@Model.Error</div>
@@ -23,7 +26,7 @@
     <div class="alert alert-success">@Model.Info</div>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="hn-ops-heading">
     <div>
         <h1 class="h4 m-0">Mis viáticos</h1>
         <div class="text-muted small">
@@ -47,7 +50,7 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-outline-secondary" asp-page="/Viaticos/Index">Volver</a>
+        <a class="btn btn-outline-secondary" asp-page="/Viaticos/Index" data-module-panel-close>Volver</a>
 
         @if (week != null && canEdit)
         {
@@ -94,10 +97,10 @@
 }
 else
 {
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="h3 mb-0">@week.TotalAmount.ToString("0.00")</div></div></div></div>
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Facturable</div><div class="h3 mb-0">@week.BillableAmount.ToString("0.00")</div><div class="small text-muted">Reembolso esperado</div></div></div></div>
-        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">No facturable</div><div class="h3 mb-0">@nonBillable.ToString("0.00")</div><div class="small text-muted">Gasto absorbido</div></div></div></div>
+    <div class="row g-3 mb-3 hn-viatic-totals">
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="h3 mb-0">@week.TotalAmount.ToString("C2")</div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Facturable</div><div class="h3 mb-0">@week.BillableAmount.ToString("C2")</div><div class="small text-muted">Reembolso esperado</div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">No facturable</div><div class="h3 mb-0">@nonBillable.ToString("C2")</div><div class="small text-muted">Gasto absorbido</div></div></div></div>
         <div class="col-12 col-md-6 col-xl-3"><div class="card shadow-soft hn-hover h-100"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <b>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div><div class="small">Aprobación admin: <b>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</b></div></div></div></div>
     </div>
 
@@ -156,7 +159,7 @@ else
                             </div>
 
                             <div class="small mt-2">Categoría: <b>@e.Category</b></div>
-                            <div class="small">Monto: <b>@e.Amount.ToString("0.00")</b></div>
+                            <div class="small">Monto: <b>@e.Amount.ToString("C2")</b></div>
 
                             <div class="small mt-2">
                                 Comprobante:
@@ -193,3 +196,5 @@ else
         </div>
     }
 }
+
+</div>

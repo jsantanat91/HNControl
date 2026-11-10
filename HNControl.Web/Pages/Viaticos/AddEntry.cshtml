@@ -4,6 +4,9 @@
     Layout = "_Layout";
 }
 
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+
 <h1 class="h4 mb-3">Agregar gasto</h1>
 
 @if (!string.IsNullOrWhiteSpace(Model.Error))
@@ -17,12 +20,12 @@
 
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Día</label>
+                <label class="form-label">DÃ­a</label>
                 <input class="form-control" asp-for="DayDate" type="date" />
             </div>
 
             <div class="col-md-4">
-                <label class="form-label">Categoría</label>
+                <label class="form-label">CategorÃ­a</label>
                 <select class="form-select" asp-for="Category" asp-items="Model.CategoryItems"></select>
             </div>
 
@@ -32,7 +35,7 @@
             </div>
 
             <div class="col-12">
-                <label class="form-label">Descripción</label>
+                <label class="form-label">DescripciÃ³n</label>
                 <input class="form-control" asp-for="Description" />
             </div>
 
@@ -57,6 +60,8 @@
     </div>
 </form>
 
+
+</div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

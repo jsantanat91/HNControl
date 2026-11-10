@@ -5,9 +5,11 @@
     ViewData["Title"] = "Viáticos";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+<div class="hn-ops-heading">
     <div>
-        <h1 class="h4 m-0">Admin · Viáticos</h1>
+        <h1 class="h4 m-0">Viáticos</h1><p class="text-muted small mb-0">Gastos, anticipos y comprobación de tu equipo.</p>
         @if (!string.IsNullOrWhiteSpace(Model.UserId))
         {
             <div class="text-muted small">Filtrado por empleado.</div>
@@ -20,7 +22,8 @@
     }
 </div>
 
-<form method="get" class="card shadow-soft hn-hover mb-3">
+<div class="hn-ops-stats"><article><span><i class="bi bi-wallet2" aria-hidden="true"></i>Gastos registrados</span><strong>@Model.GlobalByEmployee.Sum(x=>x.TotalAmount).ToString("C2")</strong><small>En el rango y empleado seleccionados</small></article><article><span><i class="bi bi-people" aria-hidden="true"></i>Empleados con registros</span><strong>@Model.GlobalByEmployee.Count</strong><small>Con semanas en esta consulta</small></article><article><span><i class="bi bi-calendar-week" aria-hidden="true"></i>Semanas registradas</span><strong>@Model.TotalCount</strong><small>@Model.Rows.Count visibles en esta página</small></article></div>
+<form method="get" class="card hn-ops-filter mb-4">
     <div class="card-body row g-2 align-items-end">
         <input type="hidden" name="UserId" value="@Model.UserId" />
         <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
@@ -39,44 +42,22 @@ else
     <div class="d-flex flex-column gap-3">
         @foreach (var group in Model.Groups)
         {
-            <details class="card shadow-soft hn-hover" open>
+            <details class="card hn-viatic-group" open>
                 <summary class="card-body list-unstyled" style="cursor:pointer;">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div>
-                            <div class="fw-bold fs-5 lh-sm">@group.EmployeeName</div>
-                            <div class="small text-muted">Global: @group.GlobalWeeks semana(s) · En esta página: @group.Weeks.Count semana(s)</div>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2">
-                            <span class="hn-chip hn-chip-type">Total global: @group.GlobalTotalAmount.ToString("C")</span>
-                            <span class="hn-chip hn-chip-neutral">Página: @group.PageTotalAmount.ToString("C")</span>
-                        </div>
-                    </div>
+                    <div class="hn-viatic-person"><span class="hn-ops-icon"><i class="bi bi-person" aria-hidden="true"></i></span><div><h2>@group.EmployeeName</h2><p>@group.GlobalWeeks semana(s) en el rango · @group.Weeks.Count en esta página<i class="bi bi-chevron-down ms-2" aria-hidden="true"></i></p></div></div>
+                    <div class="hn-viatic-group-total"><span>Total del empleado en el rango</span><strong>@group.GlobalTotalAmount.ToString("C2")</strong></div>
                 </summary>
                 <div class="card-body pt-0">
                     <div class="row row-cols-1 row-cols-lg-2 row-cols-xxl-3 g-3 mt-1">
                         @foreach (var w in group.Weeks)
                         {
                             <div class="col d-flex">
-                                <div class="card border w-100">
-                                    <div class="card-body d-flex flex-column">
-                                        @{
-                                            var wkKey = w.Status.GetDisplayName().ToLowerInvariant();
-                                            var wkChip = wkKey.Contains("aprob")
-                                                ? "hn-chip-status-up"
-                                                : wkKey.Contains("rechaz")
-                                                    ? "hn-chip-status-down"
-                                                    : wkKey.Contains("envi")
-                                                        ? "hn-chip-status-progress"
-                                                        : "hn-chip-neutral";
-                                        }
-                                        <div class="small text-muted">Semana: @w.WeekStart.ToString("yyyy-MM-dd")</div>
-                                        <div class="small mt-2">Estado: <span class="hn-chip @wkChip">@w.Status.GetDisplayName()</span></div>
-                                        <div class="small">Total: <b>@w.Total.ToString("C")</b></div>
-                                        <div class="mt-auto pt-3">
-                                            <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/Viaticos/Week" asp-route-id="@w.WeekId">Abrir</a>
-                                        </div>
-                                    </div>
-                                </div>
+                                <article class="card hn-week-card w-100"><div class="card-body d-flex flex-column">
+                                    <div class="hn-ops-card-top"><span class="hn-ops-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span><span class="hn-ops-state" data-status="@w.Status">@w.Status.GetDisplayName()</span></div>
+                                    <h3>Semana del @w.WeekStart.ToString("dd/MM/yyyy")</h3>
+                                    <div class="hn-week-amount"><span>Gastos registrados</span><strong>@w.Total.ToString("C2")</strong></div>
+                                    <div class="hn-ops-card-actions mt-auto"><a class="btn btn-sm hn-ops-open" asp-page="/Admin/Viaticos/Week" asp-route-id="@w.WeekId" data-module-panel="Viáticos · @group.EmployeeName">Revisar semana<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a></div>
+                                </div></article>
                             </div>
                         }
                     </div>
@@ -92,4 +73,6 @@ else
         <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
         <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
+</div>
+
 </div>

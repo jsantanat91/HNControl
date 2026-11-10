@@ -60,8 +60,8 @@ public class DashboardModel : PageModel
 
         (PeriodStart, PeriodEnd) = GetQuincenaUtc(Year, Month, Half);
 
-        // OJO: sin filtro IsActive (por tu data vieja)
-        var employees = await _db.EmployeeProfiles
+        // Las bajas se conservan en el histórico, fuera de los indicadores operativos.
+        var employees = await _db.EmployeeProfiles.Where(e => e.IsActive)
             .AsNoTracking()
             .OrderBy(e => e.FullName)
             .ToListAsync();

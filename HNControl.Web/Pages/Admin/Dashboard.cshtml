@@ -5,6 +5,8 @@
     ViewData["Title"] = "Panel";
 }
 
+<link rel="stylesheet" href="~/css/hn-dashboard.css" asp-append-version="true" />
+<div class="hn-executive">
 <div class="hn-page-heading">
     <div>
         <div class="hn-eyebrow">TU PLATAFORMA DE OPERACIÓN</div>
@@ -12,8 +14,8 @@
         <p>El estado de tu equipo, tus servicios y tu operación diaria.</p>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-primary" asp-page="/Performance/Rate">Calificar</a>
-        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll">Exportar nomina</a>
+        <a class="btn btn-outline-primary" asp-page="/Admin/Performance/Dashboard">Evaluar equipo</a>
+        <a class="btn btn-outline-secondary" asp-page="/Performance/ExportPayroll" asp-route-start="@Model.PayrollPeriodStart.ToString("yyyy-MM-dd")" asp-route-end="@Model.PayrollPeriodEnd.ToString("yyyy-MM-dd")">Exportar nómina</a>
     </div>
 </div>
 
@@ -33,25 +35,25 @@
 }
 
 <div class="row g-3">
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-blue">
             <div class="card-body">
-                <div class="text-muted small"><i class="bi bi-people" aria-hidden="true"></i>Empleados</div>
+                <div class="text-muted small"><i class="bi bi-people" aria-hidden="true"></i>Empleados activos</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.Employees</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Employees/Index">Ver</a>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
-                <div class="text-muted small"><i class="bi bi-clipboard-check" aria-hidden="true"></i>Ordenes en revision</div>
+                <div class="text-muted small"><i class="bi bi-clipboard-check" aria-hidden="true"></i>Órdenes en revisión</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.OrdersInReview</div>
-                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/ServiceOrders/Index">Ver</a>
+                <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/ServiceOrders/Index" asp-route-Status="InReview">Revisar</a>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-hourglass-split" aria-hidden="true"></i>SLA vencidos (proyectos)</div>
@@ -60,17 +62,17 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-amber">
             <div class="card-body">
-                <div class="text-muted small"><i class="bi bi-wallet2" aria-hidden="true"></i>Viaticos pendientes</div>
+                <div class="text-muted small"><i class="bi bi-wallet2" aria-hidden="true"></i>Viáticos pendientes</div>
                 <div class="fs-3 fw-bold">@Model.Kpi.PendingViaticWeeks</div>
                 <a class="btn btn-sm btn-outline-secondary mt-2" asp-page="/Admin/Viaticos/Index">Ver</a>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-green">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-calendar2-week" aria-hidden="true"></i>Vacaciones pendientes</div>
@@ -79,7 +81,7 @@
             </div>
         </div>
     </div>
-    <div hn-module="exams" class="col-md-3">
+    <div hn-module="exams" class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-blue">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-journal-check" aria-hidden="true"></i>Examenes por calificar</div>
@@ -88,7 +90,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>Inventario · ordenes pendientes</div>
@@ -97,7 +99,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-box-seam" aria-hidden="true"></i>Inventario · bajo stock</div>
@@ -108,7 +110,7 @@
     </div>
 
 
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-cyan">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-file-earmark-check" aria-hidden="true"></i>Cotizaciones aceptadas (mes)</div>
@@ -117,7 +119,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-xl-3">
         <div class="card shadow-soft hn-hover hn-kpi-card card-accent-purple">
             <div class="card-body">
                 <div class="text-muted small"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i>Ventas cotizadas (mes)</div>
@@ -132,7 +134,7 @@
     <div class="col-12">
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span>Resumen n&oacute;mina</span>
+                <div><span>Resumen de nómina</span><small class="d-block text-muted mt-1">Empleados activos · Importes de la quincena seleccionada</small></div>
                 <span class="text-muted small">@Model.PayrollPeriodLabel</span>
             </div>
             <div class="card-body">
@@ -143,7 +145,7 @@
                     </div>
                     <div class="col-12 col-md-2">
                         <label class="form-label small text-muted mb-1">Mes</label>
-                        <input class="form-control form-control-sm" type="number" name="payrollMonth" min="1" max="12" value="@Model.PayrollMonth" />
+                        <select class="form-select form-select-sm" name="payrollMonth" aria-label="Mes de nómina">@for(var month=1;month<=12;month++){<option value="@month" selected="@(Model.PayrollMonth==month)">@(global::System.Globalization.CultureInfo.GetCultureInfo("es-MX").DateTimeFormat.GetMonthName(month))</option>}</select>
                     </div>
                     <div class="col-12 col-md-3">
                         <label class="form-label small text-muted mb-1">Quincena</label>
@@ -158,12 +160,13 @@
                 </form>
 
                 <div class="row g-3">
+                    @if(!Model.PayrollRows.Any()) { <div class="col-12"><div class="hn-panel-empty">No hay empleados activos para mostrar.</div></div> }
                     @foreach (var r in Model.PayrollRows)
                     {
                         var photoUrl = Url.Page("/Admin/Dashboard", "PayrollPhoto", new { userId = r.UserId });
                         var initials = string.Join("", (r.Name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x.Substring(0, 1))).ToUpperInvariant();
                         <div class="col-12 col-lg-6">
-                            <div class="payroll-card">
+                            <article class="payroll-card" data-payroll-employee="@r.UserId">
                                 <div class="payroll-card-head">
                                     <div class="d-flex align-items-center gap-2">
                                         @if (r.HasPhoto)
@@ -178,21 +181,21 @@
                                     </div>
                                     @if (r.IsPaid)
                                     {
-                                        <span class="badge bg-success">Pagado</span>
+                                        <span class="hn-payroll-state is-paid">Pagado</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                        <span class="hn-payroll-state">Pendiente</span>
                                     }
                                 </div>
-                                <div class="small text-muted mb-2">Periodo: @Model.PayrollPeriodLabel</div>
+
 
                                 <div class="payroll-metrics">
                                     <div><span class="text-muted">Sueldo mensual</span><strong>@r.SalaryBase.ToString("C")</strong></div>
                                     <div><span class="text-muted">Variable 80/20</span><strong>@((r.VariablePct * 100m).ToString("0.#"))%</strong></div>
                                     <div><span class="text-muted">Deducciones</span><strong class="text-danger">@r.Deductions.ToString("C")</strong></div>
                                     <div><span class="text-muted">Bonos</span><strong class="text-success">@r.Bonuses.ToString("C")</strong></div>
-                                    <div><span class="text-muted">Neto estimado</span><strong>@r.NetEstimated.ToString("C")</strong></div>
+                                    <div class="payroll-net"><span class="text-muted">Neto estimado</span><strong>@r.NetEstimated.ToString("C")</strong></div>
                                 </div>
 
                                 @if (r.PaidAt.HasValue)
@@ -200,24 +203,24 @@
                                     <div class="small text-muted mt-2">Confirmado: @r.PaidAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                                 }
 
-                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                <div class="payroll-actions">
                                     @if (!r.IsPaid)
                                     {
                                         <form method="post" asp-page-handler="MarkPaid" asp-route-userId="@r.UserId" class="d-inline">
                                             <input type="hidden" name="payrollYear" value="@Model.PayrollYear" />
                                             <input type="hidden" name="payrollMonth" value="@Model.PayrollMonth" />
                                             <input type="hidden" name="payrollHalf" value="@Model.PayrollHalf" />
-                                            <button type="submit" class="btn btn-sm btn-success">Pagado</button>
+                                            <button type="submit" class="btn btn-sm btn-success">Marcar pagado</button>
                                         </form>
                                     }
-                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId">Ficha</a>
+                                    <a class="btn btn-sm btn-outline-secondary" asp-page="/Admin/Employees/Details" asp-route-userId="@r.UserId" data-module-panel="Ficha · @r.Name">Ver ficha</a>
                                     <a class="btn btn-sm btn-outline-primary"
                                        asp-page="/Admin/Employees/PayrollReceipt"
                                        asp-route-userId="@r.UserId"
                                        asp-route-start="@Model.PayrollPeriodStart.ToString("yyyy-MM-dd")"
                                        asp-route-end="@Model.PayrollPeriodEnd.ToString("yyyy-MM-dd")">Recibo PDF</a>
                                 </div>
-                            </div>
+                            </article>
                         </div>
                     }
                 </div>
@@ -229,19 +232,19 @@
 <div class="row g-3 mt-1">
     <div class="col-lg-7">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Ordenes completadas (ultimos 30 dias)</div>
+            <div class="card-header fw-semibold">Órdenes completadas · Últimos 30 días</div>
             <div class="card-body">
-                <canvas id="ordersChart" height="110"></canvas>
+                <div class="hn-panel-chart"><canvas id="ordersChart" role="img" aria-label="Órdenes completadas por día"></canvas></div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-5">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Top variable % (ultima evaluacion)</div>
+            <div class="card-header fw-semibold">Desempeño del equipo · Variable %</div>
             <div class="card-body">
-                <canvas id="topVarChart" height="185"></canvas>
-                <div class="text-muted small mt-2">Si aqui sale "0%" es porque aun no hay evaluaciones publicadas.</div>
+                <div class="hn-panel-chart"><canvas id="topVarChart" role="img" aria-label="Porcentaje variable de empleados activos"></canvas></div>
+                <div class="text-muted small mt-2">Última evaluación registrada de cada empleado activo.</div>
             </div>
         </div>
     </div>
@@ -250,19 +253,19 @@
 
 
 <div class="row g-3 mt-3">
-    <div class="col-lg-4">
+    <div class="col-lg-6">
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Ventas de cotizaciones aceptadas (6 meses)</div>
             <div class="card-body">
-                <canvas id="quoteSalesChart" height="130"></canvas>
+                <div class="hn-panel-chart"><canvas id="quoteSalesChart" role="img" aria-label="Ventas aceptadas por mes en pesos"></canvas></div>
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-6">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Inventario · movimientos aprobados (ultimos 30 dias)</div>
+            <div class="card-header fw-semibold">Inventario · Movimientos aprobados</div>
             <div class="card-body">
-                <canvas id="invChart" height="130"></canvas>
+                <div class="hn-panel-chart"><canvas id="invChart" role="img" aria-label="Entradas y salidas de inventario aprobadas"></canvas></div>
             </div>
         </div>
     </div>
@@ -271,7 +274,7 @@
         <div class="card shadow-soft hn-hover">
             <div class="card-header fw-semibold">Examenes (estatus)</div>
             <div class="card-body">
-                <canvas id="examAdminChart" height="160"></canvas>
+                <div class="hn-panel-chart"><canvas id="examAdminChart" role="img" aria-label="Estado de los exámenes"></canvas></div>
             </div>
         </div>
     </div>
@@ -280,11 +283,11 @@
 <div class="row g-3 mt-3">
     <div class="col-lg-12">
         <div class="card shadow-soft hn-hover">
-            <div class="card-header fw-semibold">Acciones rapidas</div>
+            <div class="card-header fw-semibold">Accesos rápidos</div>
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Leaves/Index" data-module-panel="Vacaciones e incidencias"><i class="bi bi-calendar2-week me-1"></i> Vacaciones</a>
-                    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
+                    <a class="btn btn-outline-secondary" asp-page="/Admin/Exams/Index" hn-module="exams"><i class="bi bi-ui-checks me-1"></i> Examenes</a>
                     <a class="btn btn-outline-secondary" asp-page="/Admin/Inventory/Approvals/Index"><i class="bi bi-box-seam me-1"></i> Inventario</a>
                     <a class="btn btn-outline-secondary" href="https://support.hubnet-solutions.net" target="_blank" rel="noopener"><i class="bi bi-life-preserver me-1"></i> Portal de soporte</a>
                 </div>
@@ -293,162 +296,33 @@
     </div>
 </div>
 
-@section Styles {
-    <style>
-        .hn-dashboard-hero {
-            border: 1px solid rgba(148, 163, 184, .26);
-            border-radius: 18px;
-            padding: 1rem 1.1rem;
-            background: #fff;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .hn-kpi-card {
-            border: 1px solid rgba(148, 163, 184, .28);
-            background: #fff;
-        }
-
-        .payroll-card {
-            border: 1px solid rgba(148, 163, 184, .34);
-            border-radius: 14px;
-            padding: .9rem;
-            background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(243,247,255,.88));
-            height: 100%;
-        }
-
-        .payroll-card-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: .5rem;
-        }
-
-        .payroll-avatar {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            object-fit: cover;
-            border: 1px solid rgba(37,99,235,.26);
-            box-shadow: 0 8px 18px rgba(15,23,42,.12);
-        }
-
-        .payroll-avatar-fallback {
-            width: 46px;
-            height: 46px;
-            border-radius: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: .9rem;
-            font-weight: 700;
-            color: #1d4ed8;
-            border: 1px solid rgba(37,99,235,.26);
-            background: linear-gradient(140deg, rgba(219,234,254,.95), rgba(191,219,254,.75));
-            box-shadow: 0 8px 18px rgba(15,23,42,.1);
-        }
-
-        .payroll-metrics {
-            display: grid;
-            gap: .45rem;
-        }
-
-        .payroll-metrics > div {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: .75rem;
-            border-bottom: 1px dashed rgba(148, 163, 184, .32);
-            padding-bottom: .2rem;
-        }
-    </style>
-}
-
+</div>
+@section Scripts {
 <script>
-    const labels = @Html.Raw(Model.OrdersLabelsJson);
-    const values = @Html.Raw(Model.OrdersValuesJson);
-
-    const cfg = {
-      type: 'line',
-      data: { labels, datasets: [{ label: 'Completadas', data: values, tension: 0.25 }] },
-      options: { scales: { y: { beginAtZero: true } } }
-    };
-
-    window.hnCharts?.decorate(cfg);
-    new Chart(document.getElementById('ordersChart'), cfg);
-
-    const examLabels = @Html.Raw(Model.ExamStatusLabelsJson);
-    const examValues = @Html.Raw(Model.ExamStatusValuesJson);
-
-    const exCfg = {
-      type: 'doughnut',
-      data: { labels: examLabels, datasets: [{ label: 'Examenes', data: examValues }] },
-      options: { plugins: { legend: { position: 'bottom' } } }
-    };
-
-    window.hnCharts?.decorate(exCfg);
-    if (document.getElementById('examAdminChart')) new Chart(document.getElementById('examAdminChart'), exCfg);
-
-    const invLabels = @Html.Raw(Model.InvLabelsJson);
-    const invIn = @Html.Raw(Model.InvInValuesJson);
-    const invOut = @Html.Raw(Model.InvOutValuesJson);
-
-    const invCfg = {
-      type: 'bar',
-      data: {
-        labels: invLabels,
-        datasets: [
-          { label: 'Entradas', data: invIn },
-          { label: 'Salidas', data: invOut }
-        ]
-      },
-      options: {
-        scales: { y: { beginAtZero: true } },
-        plugins: { legend: { position: 'bottom' } }
-      }
-    };
-
-    window.hnCharts?.decorate(invCfg);
-    new Chart(document.getElementById('invChart'), invCfg);
-
-    const quoteLabels = @Html.Raw(Model.QuoteSalesLabelsJson);
-    const quoteValues = @Html.Raw(Model.QuoteSalesValuesJson);
-    const qSalesCfg = {
-      type: 'bar',
-      data: {
-        labels: quoteLabels,
-        datasets: [{ label: 'Ventas aceptadas', data: quoteValues }]
-      },
-      options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
-    };
-    window.hnCharts?.decorate(qSalesCfg);
-    new Chart(document.getElementById('quoteSalesChart'), qSalesCfg);
-
-    const topLabels = @Html.Raw(Model.TopVarLabelsJson);
-    const topValues = @Html.Raw(Model.TopVarValuesJson);
-    const topColors = ['#2563eb', '#14b8a6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#84cc16'];
-    const topCfg = {
-      type: 'bar',
-      data: {
-        labels: topLabels,
-        datasets: [{
-          label: 'Variable %',
-          data: topValues,
-          backgroundColor: topValues.map((_, i) => topColors[i % topColors.length]),
-          borderRadius: 8
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        scales: { x: { beginAtZero: true, max: 100 } },
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
+(() => {
+    if (typeof Chart === 'undefined') return;
+    const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+    function draw(id, labels, datasets, options = {}, kind = 'bar', emptyWhenZero = true) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        if (!labels.length || (emptyWhenZero && !datasets.some(set => set.data.some(value => Number(value) !== 0)))) {
+            canvas.hidden = true;
+            const empty = document.createElement('div'); empty.className = 'hn-panel-empty';
+            empty.textContent = 'Sin registros en este periodo.'; canvas.parentElement.append(empty); return;
         }
-      }
-    };
-    window.hnCharts?.decorate(topCfg);
-    new Chart(document.getElementById('topVarChart'), topCfg);
+        const config = { type: kind, data: { labels, datasets }, options: {
+            responsive: true, maintainAspectRatio: false, layout: { padding: { left: 8, right: 8 } },
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: datasets.length > 1, position: 'bottom', labels: { usePointStyle: true, boxWidth: 7 } } },
+            scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8, maxRotation: 0 } }, y: { beginAtZero: true, grid: { color: '#edf2f8' }, ticks: { precision: 0 } } }, ...options
+        }};
+        new Chart(canvas, config);
+    }
+    draw('ordersChart', @Html.Raw(Model.OrdersLabelsJson), [{ label: 'Órdenes completadas', data: @Html.Raw(Model.OrdersValuesJson), borderColor: '#5489d3', backgroundColor: '#eaf2ff', borderWidth: 2, pointRadius: 2, pointHoverRadius: 5, tension: 0, fill: true }], {}, 'line');
+    draw('invChart', @Html.Raw(Model.InvLabelsJson), [{ label: 'Entradas', data: @Html.Raw(Model.InvInValuesJson), backgroundColor: '#75a3e4', borderRadius: 4 }, { label: 'Salidas', data: @Html.Raw(Model.InvOutValuesJson), backgroundColor: '#60b5b1', borderRadius: 4 }]);
+    draw('quoteSalesChart', @Html.Raw(Model.QuoteSalesLabelsJson), [{ label: 'Ventas aceptadas', data: @Html.Raw(Model.QuoteSalesValuesJson), backgroundColor: '#80a8df', borderRadius: 6, maxBarThickness: 42 }], { plugins: { legend: { display: false }, tooltip: { callbacks: { label: item => money.format(item.raw) } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: value => money.format(value) }, grid: { color: '#edf2f8' } } } });
+    draw('topVarChart', @Html.Raw(Model.TopVarLabelsJson), [{ label: 'Variable ganada', data: @Html.Raw(Model.TopVarValuesJson), backgroundColor: '#739fdf', borderRadius: 5, maxBarThickness: 18 }], { indexAxis: 'y', scales: { x: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' }, grid: { color: '#edf2f8' } }, y: { grid: { display: false }, ticks: { callback: function(value) { const label=this.getLabelForValue(value); return label.length>22 ? label.slice(0,20)+'…' : label; } } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: item => Number(item.raw).toFixed(1)+'% del componente variable' } } } }, 'bar', false);
+    draw('examAdminChart', @Html.Raw(Model.ExamStatusLabelsJson), [{ label: 'Exámenes', data: @Html.Raw(Model.ExamStatusValuesJson), backgroundColor: '#80a8df', borderRadius: 5 }]);
+})();
 </script>
+}

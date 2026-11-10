@@ -20,6 +20,9 @@
     var isDifferenceNegative = difference < 0m;
 }
 
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops hn-viatic-week">
+
 @if (!string.IsNullOrWhiteSpace(Model.Error))
 {
     <div class="alert alert-warning">@Model.Error</div>
@@ -29,19 +32,10 @@
     <div class="alert alert-success">@Model.Info</div>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-        <h1 class="h4 m-0">Revision de viaticos</h1>
-        <div class="text-muted small">
-            Empleado: <strong>@(week.EmployeeProfile?.FullName ?? week.UserId)</strong>
-            · Semana: <strong>@week.WeekStartDate.ToString("yyyy-MM-dd")</strong>
-            · Flujo: <strong>@week.FlowType.GetDisplayName()</strong>
-            · Estado: <strong>@week.Status.GetDisplayName()</strong>
-        </div>
-    </div>
-
+<div class="hn-ops-heading">
+    <div><h1 class="h4 m-0">Revisión de viáticos</h1><p class="small text-muted mb-0">Comprobantes y autorizaciones de la semana.</p></div>
     <div class="d-flex gap-2 flex-wrap">
-        <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index">Volver</a>
+        <a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index" data-module-panel-close>Volver</a>
         <a class="btn btn-outline-primary" asp-page="/Admin/Viaticos/ExportWeek" asp-route-id="@week.Id">Exportar CSV</a>
 
         <form method="post" asp-page-handler="Delete" class="d-inline" onsubmit="return confirm('¿Eliminar esta semana completa?');">
@@ -51,11 +45,12 @@
     </div>
 </div>
 
-<div class="row g-3 mb-3">
-    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="fs-4 fw-semibold">@week.TotalAmount.ToString("0.00")</div></div></div></div>
-    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Facturable</div><div class="fs-4 fw-semibold">@week.BillableAmount.ToString("0.00")</div><div class="text-muted small">Reembolso esperado</div></div></div></div>
-    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">No facturable</div><div class="fs-4 fw-semibold">@nonBillable.ToString("0.00")</div><div class="text-muted small">Gasto absorbido</div></div></div></div>
-    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <strong>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong><br />Aprobacion: <strong>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong></div></div></div></div>
+<header class="hn-ops-hero"><div><div class="hn-eyebrow">Viáticos · @week.FlowType.GetDisplayName()</div><h2>@(week.EmployeeProfile?.FullName ?? week.UserId)</h2><p>Semana del @week.WeekStartDate.ToString("dd/MM/yyyy")</p></div><span class="hn-ops-state" data-status="@week.Status">@week.Status.GetDisplayName()</span></header>
+<div class="row g-3 mb-3 hn-viatic-totals">
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Total cargado</div><div class="fs-4 fw-semibold">@week.TotalAmount.ToString("C2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Facturable</div><div class="fs-4 fw-semibold">@week.BillableAmount.ToString("C2")</div><div class="text-muted small">Reembolso esperado</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">No facturable</div><div class="fs-4 fw-semibold">@nonBillable.ToString("C2")</div><div class="text-muted small">Gasto absorbido</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-soft hn-hover"><div class="card-body"><div class="text-muted small">Flujo</div><div class="small">Solicitud: <strong>@(week.SubmittedAt.HasValue ? week.SubmittedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong><br />Aprobación: <strong>@(week.ApprovedAt.HasValue ? week.ApprovedAt.Value.ToString("yyyy-MM-dd HH:mm") : "-")</strong></div></div></div></div>
 </div>
 
 @if (isTravel)
@@ -68,7 +63,7 @@
                 <div class="col-md-4">Destino: <b>@(string.IsNullOrWhiteSpace(week.TripDestination) ? "-" : week.TripDestination)</b></div>
                 <div class="col-md-4">Solicitado: <b>@week.RequestedAdvanceAmount.ToString("C")</b></div>
                 <div class="col-md-4">Aprobado: <b>@week.ApprovedAdvanceAmount.ToString("C")</b></div>
-                <div class="col-md-4">Deposito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
+                <div class="col-md-4">Depósito: <b>@(week.DepositedAt.HasValue ? week.DepositedAt.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</b></div>
                 <div class="col-md-12">Motivo: <b>@(string.IsNullOrWhiteSpace(week.TripPurpose) ? "-" : week.TripPurpose)</b></div>
             </div>
         </div>
@@ -118,7 +113,7 @@
 
 <div class="card shadow-sm hn-hover mb-3">
     <div class="card-header fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>Acciones de revision</span>
+        <span>Comprobantes y revisión</span>
         @if (week.Status == ViaticWeekStatus.Submitted)
         {
             <div class="d-flex flex-wrap gap-2">
@@ -143,12 +138,12 @@
             <div class="d-flex flex-wrap gap-2">
                 <form method="post" asp-page-handler="ApproveSettlement" class="d-inline">
                     <input type="hidden" name="id" value="@week.Id" />
-                    <button class="btn btn-sm btn-success" type="submit">Aprobar comprobacion final</button>
+                    <button class="btn btn-sm btn-success" type="submit">Aprobar comprobación final</button>
                 </form>
                 <form method="post" asp-page-handler="Reject" class="d-flex gap-2">
                     <input type="hidden" name="id" value="@week.Id" />
                     <input class="form-control form-control-sm" style="width:260px" name="reason" placeholder="Motivo del rechazo" required />
-                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar comprobacion</button>
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar comprobación</button>
                 </form>
             </div>
         }
@@ -156,10 +151,11 @@
 
     <div class="card-body border-top">
         <div class="row g-3">
+            @if (!week.Entries.Any()) { <div class="col-12 hn-ops-empty"><i class="bi bi-receipt" aria-hidden="true"></i><p>Esta semana todavía no tiene gastos registrados.</p></div> }
             @foreach (var e in week.Entries.OrderBy(x => x.DayDate).ThenBy(x => x.Category))
             {
                 <div class="col-12 col-lg-6">
-                    <div class="border rounded-3 p-3 h-100 hn-hover">
+                    <div class="border rounded-3 p-3 h-100 hn-expense-entry">
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="fw-semibold">@e.Category</div>
@@ -254,6 +250,8 @@
     </div>
 }
 
+
+</div>
 @section Scripts
 {
     <script>

@@ -3,9 +3,17 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.23";
+    public const string Version = "2.5.24";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.24", new DateOnly(2026, 11, 9), "Panel, órdenes y viáticos", new[]
+        {
+            new ReleaseChange("Panel", "Tarjetas de indicadores y nómina alineadas con Empleados, acciones más claras y gráficas en tonos azules con estados vacíos. Exportación de nómina del periodo seleccionado."),
+            new ReleaseChange("Empleados activos", "Las bajas quedan fuera del panel, KPI, comparativas y Excel de nómina. No permiten nuevas evaluaciones ni asignaciones de órdenes; se conservan perfiles, evaluaciones y asignaciones históricas."),
+            new ReleaseChange("Órdenes de servicio", "Tarjetas con estado y responsables, ficha en modal y pestañas de resumen, entrega y firmas, y PDF y correo. Conserva formularios, validación, evidencia y destinatarios."),
+            new ReleaseChange("Viáticos", "Resumen por empleado, tarjetas semanales y revisión en modal. Formularios y comprobantes con diseño uniforme en administración y portal del empleado."),
+            new ReleaseChange("Compatibilidad", "Conserva reglas de cálculo e históricos. Solo requiere desplegar la web; sin SQL adicional ni nueva APK.")
+        }),
         new ReleaseNote("2.5.23", new DateOnly(2026, 11, 9), "Clientes y KPI 80/20", new[]
         {
             new ReleaseChange("Clientes", "Tarjetas alineadas con Empleados, acciones secundarias agrupadas y búsqueda por nombre, número, RFC o correo. Ficha en modal con contratos, datos fiscales, contactos, actividad y accesos en pestañas."),

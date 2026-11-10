@@ -140,6 +140,10 @@ public class EditModel : PageModel
             { Error ??= "Se requieren ambas firmas antes de finalizar la entrega."; return Page(); }
         }
 
+        if (!string.IsNullOrWhiteSpace(Input.AssignedUserId) && Input.AssignedUserId.Trim() != order.AssignedUserId
+            && !await _db.EmployeeProfiles.AnyAsync(e => e.UserId == Input.AssignedUserId.Trim() && e.IsActive))
+        { Error = "Selecciona un empleado activo para asignar la orden."; return Page(); }
+
         order.Title = (Input.Title ?? "").Trim();
 
         // Si ya es Global (tiene actividades), no permitimos â€œbajarâ€ el tipo.
@@ -461,8 +465,9 @@ public class EditModel : PageModel
         var clients = await _db.Clients.OrderBy(c => c.Name).ToListAsync();
         ClientItems = new SelectList(clients, "Id", "Name");
 
-        var employees = await _db.EmployeeProfiles.OrderBy(e => e.FullName).ToListAsync();
-        EmployeeItems = new SelectList(employees, "UserId", "FullName");
+        var currentAssigned = Input?.AssignedUserId;
+        var employees = await _db.EmployeeProfiles.Where(e => e.IsActive || e.UserId == currentAssigned).OrderBy(e => e.FullName).ToListAsync();
+        EmployeeItems = new SelectList(employees.Select(e => new { e.UserId, FullName = e.FullName + (e.IsActive ? "" : " (Baja · asignación anterior)") }), "UserId", "FullName");
 
         var allTypes = Enum.GetValues<ServiceOrderType>()
             .DistinctBy(t => (int)t)

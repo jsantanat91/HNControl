@@ -41,7 +41,7 @@ public class EditModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string userId, DateTime? start)
     {
-        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == userId);
+        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.IsActive && e.UserId == userId);
         if (Employee == null) return NotFound();
 
         (PeriodStart, PeriodEnd) = GetQuincenaUtc(start);
@@ -90,7 +90,7 @@ public class EditModel : PageModel
     {
         if (!ModelState.IsValid) return Page();
 
-        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.UserId == Input.UserId);
+        Employee = await _db.EmployeeProfiles.FirstOrDefaultAsync(e => e.IsActive && e.UserId == Input.UserId);
         if (Employee == null) return NotFound();
 
         var ps = TimeUtil.UtcDate(Input.PeriodStart);
