@@ -27,9 +27,9 @@ public class PayrollReceiptService : IPayrollReceiptService
             .FirstOrDefaultAsync(x => x.UserId == userId);
         if (profile == null) return null;
 
-        var pStart = periodStart.Date;
-        var pEnd = periodEnd.Date;
-        var pDate = payrollDate.Date;
+        var pStart = TimeUtil.UtcDate(periodStart);
+        var pEnd = TimeUtil.UtcDate(periodEnd);
+        var pDate = TimeUtil.UtcDate(payrollDate);
         var pStartUtc = TimeUtil.UtcDate(pStart);
         var pEndUtc = TimeUtil.UtcDate(pEnd);
 

@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.25 · 15 de noviembre de 2026
+
+- Corrige `DateTime Kind=Unspecified` al preparar el correo de pago: las fechas de nómina se normalizan a UTC antes de consultar PostgreSQL, manteniendo el día de calendario seleccionado.
+- Corrige la consulta de bonos y deducciones que el panel mostraba en cero al ocultar ese error. Panel, Excel y recibo usan los ajustes correspondientes para sumar bonos y restar deducciones.
+- Normaliza también las fechas del registro de ajustes aplicados al confirmar el pago; mantiene los importes históricos y la idempotencia por quincena.
+- Regresión reproducida y validada con PostgreSQL real en una base local de prueba y correo simulado. Ejecutar con `HNCONTROL_TEST_POSTGRES` y `dotnet run --project HNControl.Web.Tests -- --payroll-postgres`; crea y elimina únicamente un esquema temporal propio.
+- Sin SQL adicional ni nueva APK. Desplegar la web y volver a intentar la confirmación que quedó pendiente.
+
 ## Web 2.5.24 · 9 de noviembre de 2026
 
 - Panel: tarjetas de indicadores y nómina con el mismo estilo de Empleados, botones claros, acceso a ficha en modal y gráficas adaptables en tonos azules. Estados vacíos, porcentajes legibles y exportación del periodo seleccionado.

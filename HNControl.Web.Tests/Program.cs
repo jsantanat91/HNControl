@@ -5,6 +5,14 @@ using HNControl.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
+if (args.FirstOrDefault() == "--payroll-postgres")
+{
+    var checks = 0;
+    await PayrollPostgresTests.RunAsync((ok, label) => { if (!ok) throw new Exception("FAIL: " + label); checks++; Console.WriteLine("PASS: " + label); });
+    Console.WriteLine($"All {checks} PostgreSQL payroll checks passed.");
+    return;
+}
+
 if (args.FirstOrDefault() == "--operations")
 {
     var checks = 0;

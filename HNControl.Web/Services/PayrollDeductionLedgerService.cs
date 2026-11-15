@@ -30,8 +30,8 @@ public class PayrollDeductionLedgerService : IPayrollDeductionLedger
 
         try
         {
-            var pStart = periodStart.Date;
-            var pEnd = periodEnd.Date;
+            var pStart = TimeUtil.UtcDate(periodStart);
+            var pEnd = TimeUtil.UtcDate(periodEnd);
             if (pEnd < pStart) (pStart, pEnd) = (pEnd, pStart);
 
             var employee = await _db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == userId, ct);
@@ -83,7 +83,7 @@ public class PayrollDeductionLedgerService : IPayrollDeductionLedger
                     UserId = userId,
                     PeriodStart = pStart,
                     PeriodEnd = pEnd,
-                    PayrollDate = payrollDate.Date,
+                    PayrollDate = TimeUtil.UtcDate(payrollDate),
                     Amount = amount,
                     Direction = d.Direction,
                     Concept = d.Concept,

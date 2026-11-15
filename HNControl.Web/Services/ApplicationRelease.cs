@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.24";
+    public const string Version = "2.5.25";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.25", new DateOnly(2026, 11, 15), "Corrección de nómina y correo de pago", new[]
+        {
+            new ReleaseChange("Nómina", "Normaliza las fechas de consulta de bonos y deducciones para PostgreSQL, conservando los días de la quincena. Corrige los ajustes mostrados en cero en el panel y el error al construir el recibo."),
+            new ReleaseChange("Confirmación de pago", "Corrige las fechas al registrar deducciones y bonos aplicados. Conserva los importes del recibo después del pago y evita duplicar aplicaciones al repetir la confirmación."),
+            new ReleaseChange("Validación", "Pruebas con PostgreSQL para panel, Excel, recibo, correo simulado y reintentos. No requiere SQL ni nueva APK; desplegar la web.")
+        }),
         new ReleaseNote("2.5.24", new DateOnly(2026, 11, 9), "Panel, órdenes y viáticos", new[]
         {
             new ReleaseChange("Panel", "Tarjetas de indicadores y nómina alineadas con Empleados, acciones más claras y gráficas en tonos azules con estados vacíos. Exportación de nómina del periodo seleccionado."),

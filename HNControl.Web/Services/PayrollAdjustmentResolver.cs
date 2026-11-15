@@ -8,6 +8,9 @@ public static class PayrollAdjustmentResolver
     public static async Task<(decimal deductions, decimal bonuses, List<PayrollAdjustmentLine> lines)> CalculateAsync(
         ApplicationDbContext db, string userId, decimal baseQuincenal, decimal estimatedQuincenal, DateTime periodStart, DateTime periodEnd)
     {
+        // Payroll periods are calendar dates. Preserve the day while supplying UTC to timestamptz queries.
+        periodStart = TimeUtil.UtcDate(periodStart);
+        periodEnd = TimeUtil.UtcDate(periodEnd);
         var applied = await db.EmployeeDeductionApplications.AsNoTracking()
             .Where(x => x.UserId == userId && x.PeriodStart == periodStart.Date && x.PeriodEnd == periodEnd.Date).ToListAsync();
         var appliedIds = applied.Select(x => x.DeductionId).ToList();
