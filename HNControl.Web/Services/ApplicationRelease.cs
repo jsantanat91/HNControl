@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.25";
+    public const string Version = "2.5.26";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.26", new DateOnly(2026, 11, 18), "Portal de firma de contratos", new[]
+        {
+            new ReleaseChange("Diseño", "Página pública de contratos y NDA renovada: identidad HN en azul, revisión y descarga del documento, estado de cada firma y formulario adaptable a celular."),
+            new ReleaseChange("Firma", "Área de firma con guía visual, indicador de captura y acción para limpiar. Conserva el trazo al redimensionar o girar la pantalla y permite dibujar con mouse, dedo o lápiz digital."),
+            new ReleaseChange("Confirmación", "Distingue firma del cliente registrada, firma HN pendiente y documento completado. Mantiene los enlaces, validaciones, documentos y notificaciones existentes; sin SQL ni nueva APK.")
+        }),
         new ReleaseNote("2.5.25", new DateOnly(2026, 11, 15), "Corrección de nómina y correo de pago", new[]
         {
             new ReleaseChange("Nómina", "Normaliza las fechas de consulta de bonos y deducciones para PostgreSQL, conservando los días de la quincena. Corrige los ajustes mostrados en cero en el panel y el error al construir el recibo."),

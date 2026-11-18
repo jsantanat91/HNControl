@@ -1,159 +1,106 @@
 @page "{token}"
 @using HNControl.Web.Models
+@using HNControl.Web.Services
 @model HNControl.Web.Pages.Public.ClientDocumentModel
 @{
     Layout = "_LayoutPublic";
     ViewData["Title"] = "Firma de documento";
+    var document = Model.DocumentRef;
+    var completed = document != null && ClientDocumentSigningService.IsCompleted(document);
+    var clientSigned = document?.SignedAt.HasValue == true;
+    var isNda = document?.DocumentType == ClientLegalDocumentType.NDA;
 }
-
-@if (Model.DocumentRef == null)
-{
-    <div class="container py-4">
-        <div class="alert alert-danger">Documento no encontrado o link inválido.</div>
-    </div>
-    return;
+@section Styles {
+    <link rel="stylesheet" href="~/css/hn-document-signing.css" asp-append-version="true" />
 }
-
-<div class="container py-4">
-    <div class="card shadow-soft hn-hover mb-3">
-        <div class="card-body">
-            <h2 class="h4 mb-1">@Model.DocumentRef.Title</h2>
-            <div class="text-muted small mb-3">
-                Cliente: <b>@(Model.DocumentRef.Client?.Name ?? "-")</b>
-                · Tipo: <b>@(Model.DocumentRef.DocumentType == ClientLegalDocumentType.NDA ? "NDA" : "Contrato")</b>
-                · Estatus: <b>@(HNControl.Web.Services.ClientDocumentSigningService.IsCompleted(Model.DocumentRef) ? "Firmado" : Model.DocumentRef.SignedAt.HasValue ? "Pendiente de firma HN Solutions" : "Pendiente de su firma")</b>
-            </div>
-
-            <a class="btn btn-outline-primary btn-sm" href="?handler=DownloadPdf&token=@RouteData.Values["token"]">Descargar PDF actual</a>
-        </div>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(Model.Error))
+<div class="hn-signing">
+    <header class="signing-brand">
+        <div class="signing-wordmark"><span class="signing-monogram" aria-hidden="true">HN</span><div><strong>HN Solutions</strong><span>DOCUMENTOS Y CONTRATOS</span></div></div>
+        <span class="signing-private"><i class="bi bi-file-earmark-check" aria-hidden="true"></i> Portal de firma</span>
+    </header>
+    @if (document == null)
     {
-        <div class="alert alert-danger">@Model.Error</div>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(Model.Notice))
-    {
-        <div class="alert alert-warning">@Model.Notice</div>
-    }
-    @if (Model.DocumentRef.SignedAt.HasValue)
-    {
-        <div class="alert alert-success">
-            Documento firmado por <b>@Model.DocumentRef.SignedByName</b> · @Model.DocumentRef.SignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-            @if (Model.DocumentRef.DocumentType == ClientLegalDocumentType.Contract && !Model.DocumentRef.ProviderSignedAt.HasValue)
-            {
-                <p class="mb-0 mt-2">Su firma está registrada. Cuando HN Solutions complete su firma, enviaremos el PDF final por correo al cliente y a Administración.</p>
-            }
-            @if (Model.DocumentRef.ProviderSignedAt.HasValue)
-            {
-                <p class="mb-0 mt-2">Firmado por HN Solutions: <strong>@Model.DocumentRef.ProviderSignedByName</strong> · @Model.DocumentRef.ProviderSignedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</p>
-            }
-        </div>
+        <section class="signing-panel signing-unavailable"><span class="signing-icon"><i class="bi bi-file-earmark-x" aria-hidden="true"></i></span><h1>Documento no disponible</h1><p>El documento no se encontró o el enlace no es válido. Solicite un nuevo enlace a HN Solutions.</p></section>
     }
     else
     {
-        <form method="post" asp-page-handler="Sign" class="card shadow-soft hn-hover" onsubmit="return captureSig()">
-            <div class="card-header fw-semibold">Firma digital</div>
-            <div class="card-body">
-                <input type="hidden" name="token" value="@RouteData.Values["token"]" />
-                <input type="hidden" id="sigDataUrl" name="sigDataUrl" />
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Nombre de quien firma</label>
-                        <input class="form-control" name="signerName" maxlength="200" value="@Model.DocumentRef.Client?.LegalRepresentative" required />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Correo de quien firma</label>
-                        <input type="email" maxlength="256" class="form-control" name="signerEmail" value="@(Model.DocumentRef.Client?.LegalEmail ?? Model.DocumentRef.Client?.Email ?? Model.DocumentRef.Client?.BillingEmail)" required />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Dibuja tu firma</label>
-                        <div class="border rounded-4 bg-light p-2">
-                            <canvas id="sigCanvas" class="w-100" style="height:220px; touch-action:none;"></canvas>
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="clearSig()">Limpiar</button>
-                        <div id="signatureError" class="text-danger mt-2" hidden>Dibuje su firma antes de continuar.</div>
-                        <div class="form-check mt-3">
-                            <input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="acceptTerms" required />
-                            <label class="form-check-label" for="acceptTerms">He revisado el documento y acepto firmarlo electrónicamente en representación del cliente.</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer">
-                <button class="btn btn-primary" type="submit">Firmar documento</button>
-            </div>
-        </form>
-    }
-</div>
-
-@section Scripts
-{
-    <script>
-        const canvas = document.getElementById('sigCanvas');
-        let hasSignature = false;
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            const resize = () => {
-                const dpr = window.devicePixelRatio || 1;
-                const rect = canvas.getBoundingClientRect();
-                canvas.width = Math.floor(rect.width * dpr);
-                canvas.height = Math.floor(rect.height * dpr);
-                hasSignature = false;
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                ctx.lineWidth = 2.5;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = '#111827';
-            };
-            resize();
-            window.addEventListener('resize', resize);
-
-            let drawing = false;
-            let lx = 0, ly = 0;
-            const pos = ev => {
-                const r = canvas.getBoundingClientRect();
-                if (ev.touches && ev.touches.length)
-                    return { x: ev.touches[0].clientX - r.left, y: ev.touches[0].clientY - r.top };
-                return { x: ev.clientX - r.left, y: ev.clientY - r.top };
-            };
-            const start = ev => { drawing = true; const p = pos(ev); lx = p.x; ly = p.y; ev.preventDefault(); };
-            const move = ev => {
-                if (!drawing) return;
-                const p = pos(ev);
-                ctx.beginPath();
-                ctx.moveTo(lx, ly);
-                ctx.lineTo(p.x, p.y);
-                ctx.stroke();
-                hasSignature = true;
-                lx = p.x; ly = p.y;
-                ev.preventDefault();
-            };
-            const end = ev => { drawing = false; if (ev) ev.preventDefault(); };
-
-            canvas.addEventListener('mousedown', start);
-            canvas.addEventListener('mousemove', move);
-            window.addEventListener('mouseup', end);
-            canvas.addEventListener('touchstart', start, { passive: false });
-            canvas.addEventListener('touchmove', move, { passive: false });
-            window.addEventListener('touchend', end, { passive: false });
+        <section class="signing-hero" aria-labelledby="document-title">
+            <div class="signing-eyebrow">@(isNda ? "ACUERDO DE CONFIDENCIALIDAD" : "CONTRATO DE SERVICIOS")</div>
+            <h1 id="document-title">@document.Title</h1>
+            <div class="signing-hero-bottom"><p><i class="bi bi-building" aria-hidden="true"></i>@(document.Client?.Name ?? "Cliente")</p><span class="signing-status @(completed ? "is-complete" : "")"><span aria-hidden="true"></span>@(completed ? "Firma completada" : clientSigned ? "Pendiente de firma HN Solutions" : "Pendiente de su firma")</span></div>
+        </section>
+        @if (!string.IsNullOrWhiteSpace(Model.Error))
+        {
+            <div class="alert alert-danger signing-alert" role="alert">@Model.Error</div>
         }
-
-        function clearSig() {
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            hasSignature = false;
+        @if (!string.IsNullOrWhiteSpace(Model.Notice))
+        {
+            <div class="alert alert-warning signing-alert" role="status">@Model.Notice</div>
         }
-
-        function captureSig() {
-            if (!canvas || !hasSignature) {
-                document.getElementById('signatureError').hidden = false;
-                return false;
+        <div class="signing-grid">
+            <aside class="signing-aside">
+                <section class="signing-panel signing-review">
+                    <div class="signing-section-title"><span class="signing-step">01</span><h2>@(clientSigned ? "Su documento" : "Revise su documento")</h2></div>
+                    <p>@(clientSigned ? "Consulte o descargue la versión actual de su documento. Conserve una copia para su consulta." : "Descargue y lea el documento antes de firmarlo. Puede conservar una copia para su consulta.")</p>
+                    <div class="signing-file"><span class="signing-icon"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></span><div><strong>@(isNda ? "Acuerdo de confidencialidad" : "Contrato de servicios")</strong><span>Documento PDF · @(completed ? "Firmado" : "Versión actual")</span></div></div>
+                    <a class="btn signing-download" href="?handler=DownloadPdf&amp;token=@RouteData.Values["token"]"><i class="bi bi-download" aria-hidden="true"></i>@(completed ? "Descargar PDF firmado" : "Descargar PDF actual")</a>
+                </section>
+                <section class="signing-panel signing-progress" aria-labelledby="signing-progress-title">
+                    <h2 id="signing-progress-title">Estado de las firmas</h2>
+                    <div class="signing-party"><span class="signing-party-icon @(clientSigned ? "is-done" : "")"><i class="bi @(clientSigned ? "bi-check-lg" : "bi-pen")" aria-hidden="true"></i></span><div><strong>Cliente</strong><span>@(clientSigned ? "Firma registrada" : "Pendiente de su firma")</span></div></div>
+                    @if (!isNda || document.ProviderSignedAt.HasValue)
+                    {
+                        <div class="signing-party"><span class="signing-party-icon @(document.ProviderSignedAt.HasValue ? "is-done" : "")"><i class="bi @(document.ProviderSignedAt.HasValue ? "bi-check-lg" : "bi-clock")" aria-hidden="true"></i></span><div><strong>HN Solutions</strong><span>@(document.ProviderSignedAt.HasValue ? "Firma registrada" : "Firma pendiente")</span></div></div>
+                    }
+                </section>
+                @if (!clientSigned)
+                {
+                    <p class="signing-tip"><i class="bi bi-info-circle" aria-hidden="true"></i>Puede firmar con el mouse, el dedo o un lápiz digital.</p>
+                }
+            </aside>
+            @if (clientSigned)
+            {
+                <section class="signing-panel signing-confirmation" aria-labelledby="confirmation-title">
+                    <span class="signing-success-icon"><i class="bi bi-check-lg" aria-hidden="true"></i></span>
+                    <div class="signing-eyebrow">FIRMA REGISTRADA</div>
+                    <h2 id="confirmation-title">@(completed ? "Su documento está firmado." : "Gracias. Recibimos su firma.")</h2>
+                    <p>@(completed ? "El documento firmado está disponible para descargar. Guarde una copia para su consulta." : "Cuando HN Solutions complete su firma, enviaremos el PDF final por correo al cliente y a Administración.")</p>
+                    <dl class="signing-record"><div><dt>Firmado por el cliente</dt><dd>@document.SignedByName</dd><dd class="signing-record-date">@document.SignedAt?.ToLocalTime().ToString("dd/MM/yyyy · HH:mm")</dd></div>
+                    @if (document.ProviderSignedAt.HasValue)
+                    {
+                        <div><dt>Firmado por HN Solutions</dt><dd>@document.ProviderSignedByName</dd><dd class="signing-record-date">@document.ProviderSignedAt?.ToLocalTime().ToString("dd/MM/yyyy · HH:mm")</dd></div>
+                    }
+                    </dl>
+                </section>
             }
-            document.getElementById('sigDataUrl').value = canvas.toDataURL('image/png');
-            canvas.closest('form').querySelector('button[type=submit]').disabled = true;
-            return true;
-        }
-    </script>
+            else
+            {
+                <form method="post" asp-page-handler="Sign" class="signing-panel signing-form" onsubmit="return captureSig()">
+                    <div class="signing-form-head"><div class="signing-section-title"><span class="signing-step">02</span><h2>Complete su firma</h2></div><p>Confirme sus datos y dibuje su firma para continuar.</p></div>
+                    <div class="signing-form-body">
+                        <input type="hidden" name="token" value="@RouteData.Values["token"]" />
+                        <input type="hidden" id="sigDataUrl" name="sigDataUrl" />
+                        <div class="signing-fields">
+                            <div><label class="form-label" for="signerName">Nombre de quien firma</label><input id="signerName" class="form-control" name="signerName" autocomplete="name" maxlength="200" value="@document.Client?.LegalRepresentative" required /></div>
+                            <div><label class="form-label" for="signerEmail">Correo de quien firma</label><input id="signerEmail" type="email" autocomplete="email" maxlength="256" class="form-control" name="signerEmail" value="@(document.Client?.LegalEmail ?? document.Client?.Email ?? document.Client?.BillingEmail)" required /></div>
+                        </div>
+                        <div class="signing-pad-heading"><label class="form-label" for="sigCanvas">Su firma autógrafa</label><button type="button" class="signing-clear" onclick="clearSig()"><i class="bi bi-eraser" aria-hidden="true"></i> Limpiar firma</button></div>
+                        <div class="signing-pad">
+                            <canvas id="sigCanvas" aria-label="Área para dibujar su firma" aria-describedby="signatureHint signatureError">Dibuje su firma con el mouse, el dedo o un lápiz digital.</canvas>
+                            <div id="signaturePlaceholder" class="signing-pad-placeholder" aria-hidden="true"><i class="bi bi-pen"></i><span>Dibuje su firma aquí</span></div>
+                            <span class="signing-pad-line" aria-hidden="true"></span>
+                        </div>
+                        <div class="signing-pad-help"><span id="signatureHint">Use el espacio en blanco para firmar.</span><span id="signatureState" aria-live="polite">Sin firma</span></div>
+                        <div id="signatureError" class="text-danger small mt-2" role="alert" hidden>Dibuje su firma antes de continuar.</div>
+                        <div class="signing-consent"><input class="form-check-input" type="checkbox" name="acceptTerms" value="true" id="acceptTerms" required /><label for="acceptTerms">He revisado el documento y acepto firmarlo electrónicamente en representación del cliente.</label></div>
+                    </div>
+                    <div class="signing-submit"><button class="btn btn-primary" type="submit"><span>Firmar documento</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button><p><i class="bi bi-file-earmark-check" aria-hidden="true"></i> Su firma se incorporará al documento.</p></div>
+                </form>
+            }
+        </div>
+    }
+    <footer class="signing-footer"><span>HN Solutions</span><span>Conectividad para su empresa.</span></footer>
+</div>
+@section Scripts {
+    <script src="~/js/hn-document-signing.js" asp-append-version="true"></script>
 }

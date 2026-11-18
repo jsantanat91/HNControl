@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.26 · 18 de noviembre de 2026
+
+- Rediseño de la página pública de firma de contratos y NDA: encabezado azul HN, descarga y revisión del documento, estado de las firmas y formulario con secciones claras.
+- Captura de firma con guía visual, indicador de firma lista, limpieza y conservación del trazo al redimensionar o girar el celular. Compatible con mouse, dedo y lápiz digital.
+- Confirmaciones separadas para firma del cliente registrada y documento completado. Conserva las reglas existentes de contrato y NDA, aceptación, tokens, generación de documentos y correos.
+- Verificación en navegador de estados, descarga, validación de firma vacía, captura táctil, cambio de tamaño y envío local con correo y conversión PDF simulados.
+- Desplegar únicamente la web. Sin SQL adicional ni nueva APK.
+
 ## Web 2.5.25 · 15 de noviembre de 2026
 
 - Corrige `DateTime Kind=Unspecified` al preparar el correo de pago: las fechas de nómina se normalizan a UTC antes de consultar PostgreSQL, manteniendo el día de calendario seleccionado.
