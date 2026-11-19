@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.26";
+    public const string Version = "2.5.27";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.27", new DateOnly(2026, 11, 19), "SLA y soporte en contratos recurrentes", new[]
+        {
+            new ReleaseChange("Contratos", "Nueva revisión del contrato recurrente: disponibilidad mensual de Internet Dedicado del 99.85%, respuesta humana en 15 minutos, diagnóstico en una hora, actualizaciones por hora y objetivo de recuperación en cuatro horas. Best Effort conserva condiciones diferenciadas."),
+            new ReleaseChange("Soporte", "WhatsApp NOC 5526014566 como canal preferente, soporte@hubnet-solutions.com.mx y support.hubnet-solutions.net para abrir tickets. Medición, exclusiones justificadas y compensaciones sin espera mínima de 72 horas."),
+            new ReleaseChange("Compatibilidad", "Bienvenida alineada con la revisión de cada contrato. Documentos anteriores y firmas conservan su plantilla original. Solo desplegar la web; sin SQL ni nueva APK.")
+        }),
         new ReleaseNote("2.5.26", new DateOnly(2026, 11, 18), "Portal de firma de contratos", new[]
         {
             new ReleaseChange("Diseño", "Página pública de contratos y NDA renovada: identidad HN en azul, revisión y descarga del documento, estado de cada firma y formulario adaptable a celular."),

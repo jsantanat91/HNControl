@@ -142,8 +142,10 @@ internal static class ContractRenewalTests
             .Replace("al corte y “EL USUARIO” se obliga a pagar dichas facturas a más tardar el día 1 (uno) del mes correspondiente.",
                 "al corte. La primera factura se pagará contra entrega del Servicio. A partir de la segunda factura, “EL USUARIO” se obliga a pagar a más tardar el día 15 (quince) del mismo mes del corte.")
             .Replace("en la caratula del presente.", "en el apartado de firmas del presente contrato."));
-        check(main.SkipWhile(s => s != clauses[0]).TakeWhile(s => s != "Firmas de conformidad").SequenceEqual(approved),
-            "El contrato conserva las 26 cláusulas y remite al apartado final de firmas");
+        bool ChangedSlaClause(string s) => s.StartsWith("OCTAVA.") || s.StartsWith("DECIMA TERCERA.");
+        check(main.SkipWhile(s => s != clauses[0]).TakeWhile(s => s != "Firmas de conformidad")
+                .Where(s => !ChangedSlaClause(s)).SequenceEqual(approved.Where(s => !ChangedSlaClause(s))),
+            "El nuevo SLA conserva literalmente las declaraciones y cláusulas ajenas a fallas y compensaciones");
         var body = current.Descendants(w + "body").Single();
         var last = body.Elements().Last(e => e.Name != w + "sectPr");
         var signers = last.Elements(w + "tr").Single().Elements(w + "tc").ToArray();

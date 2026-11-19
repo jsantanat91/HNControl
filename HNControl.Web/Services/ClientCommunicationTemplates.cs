@@ -53,7 +53,25 @@ public static class ClientCommunicationTemplates
 
     public static string Welcome(Client client, IEnumerable<(ClientLegalDocument Document, string Url)> documents)
     {
-        var links = string.Join("", documents.Select(item => $"""
+        var items = documents.ToList();
+        // Only summarize the new SLA when every contract in this welcome incorporates it.
+        // Older snapshots remain authoritative when invitations are resent.
+        var contracts = items.Where(x => x.Document.DocumentType == ClientLegalDocumentType.Contract).ToList();
+        var usesCurrentSla = contracts.Count > 0 && contracts.All(x =>
+        {
+            var snapshot = string.IsNullOrWhiteSpace(x.Document.SigningSnapshotJson) ? null
+                : System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson);
+            return snapshot?.ServiceTemplateRevision >= 3 && !EventContract.IsEvent(snapshot.Contract);
+        });
+        var serviceTerms = usesCurrentSla ? """
+            <li><strong>Internet Dedicado:</strong> disponibilidad mínima mensual del <strong>99.85%</strong>, medida en el punto de entrega conforme al contrato. Ante una interrupción total: primera respuesta humana en hasta 15 minutos, diagnóstico inicial en hasta una hora y actualizaciones cada hora, con atención 24/7.</li>
+            <li><strong>Objetivo de recuperación para Dedicado:</strong> hasta cuatro horas transcurridas. Es un objetivo operativo; no sustituye la disponibilidad mensual ni las compensaciones por incumplimiento.</li>
+            <li><strong>Best Effort:</strong> ancho de banda compartido, sin porcentaje de disponibilidad garantizado salvo acuerdo expreso en su anexo. Primera respuesta en hasta una hora de soporte, diagnóstico en hasta cuatro y actualizaciones cada cuatro horas de soporte. Objetivo de recuperación de 24 a 48 horas transcurridas, sujeto al diagnóstico y al proveedor de acceso.</li>
+            <li><strong>Horario y compensaciones:</strong> consulte el apartado de niveles de servicio de su contrato. En Best Effort, si el anexo no especifica otro horario, la atención es 24/7. No se exige esperar 72 horas de interrupción para las compensaciones que correspondan.</li>
+            """ : """
+            <li><strong>Garantías y atención:</strong> la disponibilidad, los tiempos de soporte y las compensaciones son los establecidos en cada contrato y su Anexo de Servicios. Consulte el documento enlazado para conocer las condiciones de su servicio.</li>
+            """;
+        var links = string.Join("", items.Select(item => $"""
             <div style="border:1px solid #dbe5ef;border-radius:8px;padding:18px;margin:14px 0">
             <strong>{E(item.Document.Title)}</strong><br>
             Plazo: {E(ContractPeriod(item.Document))}<br>
@@ -69,14 +87,15 @@ public static class ClientCommunicationTemplates
             {{links}}
             <p>Cuando el cliente y HN Solutions hayan firmado el contrato, recibirá una confirmación por correo con el PDF final firmado. No es necesario imprimirlo ni reenviarlo.</p>
             <ul style="padding-left:20px">
-            <li><strong>Garantía de servicio:</strong> SLA del 99.85% de disponibilidad, con los compromisos de simetría, ancho de banda y latencia establecidos en el contrato, así como las penalizaciones o condiciones de cancelación aplicables en caso de incumplimiento.</li>
+            {{serviceTerms}}
             <li><strong>Beneficios incluidos:</strong> instalación básica, equipo e IP pública, conforme al servicio contratado.</li>
-            <li><strong>Atención y soporte 24/7/365:</strong> asistencia técnica y atención personalizada todos los días del año.</li>
             </ul>
             <p style="background:#edf6fc;padding:16px;border-left:3px solid #086db4">
-            WhatsApp: <a href="https://wa.me/525526014566">55 2601 4566</a><br>
+            <strong>Abra un ticket de soporte por cualquiera de estos canales:</strong><br>
+            WhatsApp del NOC (canal preferente): <a href="https://wa.me/525526014566">5526014566</a><br>
             Sistema de tickets: <a href="https://support.hubnet-solutions.net">support.hubnet-solutions.net</a><br>
             Correo: <a href="mailto:soporte@hubnet-solutions.com.mx">soporte@hubnet-solutions.com.mx</a></p>
+            <p>Indique su número de cliente o contrato, la sede y una descripción de la falla. Nuestro equipo le comunicará el folio para seguimiento; no es necesario duplicar el reporte en los tres canales.</p>
             <h2 style="font-size:19px;color:#086db4;margin-top:28px">02 · Facturación y fechas de pago</h2>
             <p>La fecha de corte es el <strong>día 1 de cada mes</strong>. Dentro de los cinco días siguientes al corte recibirá su factura en PDF y XML en el correo de facturación registrado{{(string.IsNullOrWhiteSpace(client.BillingEmail) ? "." : $": <strong>{E(client.BillingEmail)}</strong>.")}}</p>
             <p>La <strong>primera factura se paga contra entrega del servicio</strong>. A partir de la segunda factura, la fecha límite de pago es el <strong>día 15 del mismo mes del corte</strong>.</p>

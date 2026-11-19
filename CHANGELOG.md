@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.27 · 19 de noviembre de 2026
+
+- Nuevos contratos recurrentes con plantilla `Contrato_Servicios_v3.docx`: Internet Dedicado con disponibilidad mínima mensual de 99.85%, respuesta humana en 15 minutos 24/7, diagnóstico inicial en una hora, actualización cada hora y objetivo de recuperación de cuatro horas. Best Effort con respuesta de una hora de soporte, diagnóstico de cuatro, actualización cada cuatro y recuperación objetivo de 24 a 48 horas transcurridas.
+- Apartado de medición en el punto de entrega, periodos mensuales, evidencia y exclusiones documentadas. Los objetivos de recuperación no sustituyen la garantía mensual. Se elimina la espera mínima de 72 horas para compensaciones; el incumplimiento del SLA dedicado conserva el beneficio contractual mínimo del 20% mensual, sin reducir derechos legales superiores.
+- Carátula y apartado de soporte: WhatsApp NOC **5526014566** como canal preferente, **soporte@hubnet-solutions.com.mx** y **https://support.hubnet-solutions.net** para abrir un ticket.
+- Bienvenida alineada con el nuevo contrato; si incluye documentos históricos remite a las condiciones de cada uno. Plantillas anteriores, contratos ya emitidos, contratos eventuales y ambas firmas se conservan.
+- Desplegar únicamente la web. Sin SQL ni nueva APK. Las nuevas condiciones requieren emitir un documento nuevo; no se sustituyen contratos existentes.
+
 ## Web 2.5.26 · 18 de noviembre de 2026
 
 - Rediseño de la página pública de firma de contratos y NDA: encabezado azul HN, descarga y revisión del documento, estado de las firmas y formulario con secciones claras.

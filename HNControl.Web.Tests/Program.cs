@@ -104,6 +104,7 @@ await PerformanceFlowTests.RunAsync(Check);
 await ActiveEmployeeVisibilityTests.RunAsync(Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
+ServiceSlaTests.Run(service, Check);
 EventDeliveryDesignTests.Run(service, Check);
 await UnsignedDocumentDeletionTests.RunAsync(service, Check);
 await ServiceInventoryTests.RunAsync(Check);

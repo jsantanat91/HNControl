@@ -46,6 +46,7 @@ public class TemplateDocxService : ITemplateDocxService
                 0 => "Contrato_Blanco.docx",
                 1 => "Contrato_Servicios.docx",
                 2 => "Contrato_Servicios_v2.docx",
+                3 => "Contrato_Servicios_v3.docx",
                 _ => throw new InvalidOperationException("La revisión de la plantilla del contrato no está disponible.")
             };
 
@@ -56,7 +57,8 @@ public class TemplateDocxService : ITemplateDocxService
         if (document.DocumentType == ClientLegalDocumentType.Contract &&
             (EventContract.IsEvent(contract) ? eventRevision >= 2 : revision > 0))
             replacements["FECHAHOY"] = AppTime.ToMx(document.CreatedAt).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
-        if (document.DocumentType == ClientLegalDocumentType.Contract && EventContract.IsEvent(contract) && eventRevision >= 2
+        if (document.DocumentType == ClientLegalDocumentType.Contract
+            && (EventContract.IsEvent(contract) ? eventRevision >= 2 : revision >= 3)
             && replacements["ESTADOC"] == "MÃ©xico")
             replacements["ESTADOC"] = "México";
 

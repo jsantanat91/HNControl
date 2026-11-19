@@ -6,7 +6,7 @@ namespace HNControl.Web.Services;
 // Freeze the template inputs when the document is prepared, before either party signs.
 public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract? Contract)
 {
-    public const int CurrentServiceTemplateRevision = 2;
+    public const int CurrentServiceTemplateRevision = 3;
     public const int CurrentEventTemplateRevision = 2;
     public bool UsesCorporateServiceTemplate { get; init; }
     public int? ServiceTemplateRevision { get; init; }
