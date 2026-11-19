@@ -12,6 +12,8 @@ services:
       ConnectionStrings__Default: "Host=database_primary;Port=5432;Database=hncontrol;Username=hncontrol_user;Password=${HNCONTROL_DB_PASSWORD};Include Error Detail=false"
 
       PublicLinks__BaseUrl: "https://control.hubnet-solutions.net"
+      SupportIntegration__ApiKey: "${HN_SUPPORT_INTEGRATION_KEY:-}"
+      SupportIntegration__SourceId: "hn-support"
       Storage__BasePath: "App_Data/uploads"
       Database__PgDumpPath: "pg_dump"
       Database__PsqlPath: "psql"

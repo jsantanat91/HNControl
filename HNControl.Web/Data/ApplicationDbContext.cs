@@ -72,6 +72,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     public DbSet<ServiceInventoryAccount> ServiceInventoryAccounts => Set<ServiceInventoryAccount>();
     public DbSet<ServiceInventoryItem> ServiceInventoryItems => Set<ServiceInventoryItem>();
+    public DbSet<SupportOrderLink> SupportOrderLinks => Set<SupportOrderLink>();
 
     // --------------------
     // Inventarios
@@ -138,6 +139,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        b.Entity<SupportOrderLink>(e => {
+            e.HasIndex(x => new { x.SourceId, x.TicketId }).IsUnique();
+            e.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        });
         b.Entity<EmployeeDeduction>().HasIndex(x => x.SourceServiceOrderId).IsUnique();
 
 

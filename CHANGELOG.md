@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.31 · 19 de noviembre de 2026
+
+- API interna para HN Support 2.3.0: inventario de servicios y cuentas con filtro, búsqueda y paginación. DTO explícito sin contraseñas, notas ni costos.
+- Órdenes desde tickets de Support: confirma cliente, servicio, técnico y fechas; guarda orden y referencia juntas. Restricción única por origen/ticket evita duplicados y no repite avisos ante reintentos.
+- Conserva flujo técnico, checklist y sistema de notificaciones existente. Referencia al ticket en el detalle administrativo de la orden. Los clientes de Support solo abren tickets.
+- Clave de servidor compartida, HTTPS y límite de solicitudes. Integración deshabilitada si no se configura. Tabla aditiva SupportOrderLinks, creada al iniciar con clave; SQL alternativo incluido para permisos restringidos.
+- Mantiene Web 2.5.30 y notas anteriores sin alteración; sin nueva APK. Activación y límites en [guía de integración](docs/support-integration-2.5.31.md).
+
 ## Web 2.5.30 · 19 de noviembre de 2026
 
 - Nueva variante **Servicios web mensuales**, seleccionable al crear o editar el servicio del cliente. Datos públicos propios: plataforma, URL HTTPS, plan, alcance, licencias y horario de soporte. Precarga nombre y enlace de Check-in/GPS sin inferir funciones incluidas; admite otras plataformas.

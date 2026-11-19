@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.30";
+    public const string Version = "2.5.31";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.31", new DateOnly(2026, 11, 19), "Inventario y órdenes conectados con HN Support", new[]
+        {
+            new ReleaseChange("Integración", "API interna autenticada para consultar servicios, cuentas, cliente, carrier, línea y serie desde Support. No exporta contraseñas, notas privadas ni costos."),
+            new ReleaseChange("Órdenes", "Creación manual desde tickets de Support, con validación de cliente/servicio y técnico. Idempotencia por origen y ticket; conserva checklist, flujo técnico y notificaciones persistentes de Control."),
+            new ReleaseChange("Operación", "La orden muestra referencia al ticket de Support. Requiere clave compartida y Support 2.3.0. Tabla aditiva SupportOrderLinks al activar; SQL alternativo incluido. Sin nueva APK ni cambios a versiones históricas.")
+        }),
         new ReleaseNote("2.5.30", new DateOnly(2026, 11, 19), "Contratos de servicios web mensuales", new[]
         {
             new ReleaseChange("Contratos", "Nueva variante para plataformas y software mensual: nombre, URL, plan, alcance, licencias y horario de soporte. Check-in y GPS tienen sus direcciones precargadas; conserva firmas autógrafas y registro digital."),

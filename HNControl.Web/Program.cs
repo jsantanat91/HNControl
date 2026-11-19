@@ -109,6 +109,7 @@ builder.Services.AddAuthorization(options =>
     }));
 });
 builder.Services.AddControllers();
+builder.Services.AddScoped<SupportIntegrationAuth>();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
 builder.Services.AddScoped<ServiceInventoryService>();
@@ -141,6 +142,7 @@ if (builder.Configuration.GetValue<bool>("Features:MonitoringEnabled"))
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("support-integration", o => { o.PermitLimit = 240; o.Window = TimeSpan.FromMinutes(1); o.QueueLimit = 0; });
     options.AddPolicy("public-quotes", context => context.Request.Method != "POST"
         ? RateLimitPartition.GetNoLimiter("read")
         : RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
@@ -319,6 +321,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureClientPortalSchemaAsync(db);
     await EnsureSystemConfigurationSchemaAsync(db);
     await EnsureDeductionLedgerSchemaAsync(db);
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["SupportIntegration:ApiKey"]))
+        await db.Database.ExecuteSqlRawAsync(SupportIntegrationSchema.Sql);
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await EnsureEmployeeNumbersAsync(db);

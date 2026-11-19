@@ -5,6 +5,14 @@ using HNControl.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
+if (args.FirstOrDefault() == "--support-integration")
+{
+    var checks = 0;
+    await SupportIntegrationTests.RunAsync((ok, label) => { if (!ok) throw new Exception("FAIL: " + label); checks++; Console.WriteLine("PASS: " + label); });
+    Console.WriteLine($"All {checks} Support integration checks passed.");
+    return;
+}
+
 if (args.FirstOrDefault() == "--payroll-postgres")
 {
     var checks = 0;
@@ -107,6 +115,7 @@ await CarrierDeletionTests.RunAsync(Check);
 await EngineeringNotificationSettingsTests.RunAsync(Check);
 await ServiceOrderCreationNotificationTests.RunAsync(Check);
 await ServiceOrderCreationPathsTests.RunAsync(Check);
+await SupportIntegrationTests.RunAsync(Check);
 SignatureLayoutTests.Run(service, Check);
 EventContractTests.Run(service, Check);
 await RelatedFormDataTests.RunAsync(Check);

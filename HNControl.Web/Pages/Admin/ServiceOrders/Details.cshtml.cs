@@ -30,6 +30,7 @@ public class DetailsModel : PageModel
 
     public ServiceOrder? Order { get; set; }
     public string PublicUrl { get; set; } = "";
+    public SupportOrderLink? SupportOrigin { get; private set; }
     public string? Info { get; set; }
     public string PdfEmailRecipient { get; private set; } = "";
     public IReadOnlyCollection<string> PdfEmailCopies { get; private set; } = Array.Empty<string>();
@@ -47,6 +48,8 @@ public class DetailsModel : PageModel
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         await LoadAsync(id);
+        if (!string.IsNullOrWhiteSpace(_cfg["SupportIntegration:ApiKey"]))
+            SupportOrigin = await _db.SupportOrderLinks.AsNoTracking().FirstOrDefaultAsync(x => x.OrderId == id);
         return Order == null ? NotFound() : Page();
     }
 
