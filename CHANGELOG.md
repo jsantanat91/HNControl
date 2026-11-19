@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.5.28 · 19 de noviembre de 2026
+
+- Contrato recurrente general v4 con Anexo A integrado: modalidad, capacidad en Mbps, red propia/reventa/mixta, operador de acceso, punto de entrega, vigencia, parámetros y método de medición, escalamiento y referencias regulatorias verificadas.
+- Captura desde alta/edición del servicio contratado. Guarda avances pero bloquea emitir un contrato de Internet con anexo técnico incompleto o velocidades incompatibles con la simetría. Reutiliza datos y metadatos existentes; congela proveedor y ficha al preparar la firma.
+- Por indicación del usuario, cuatro horas es el máximo de **primera respuesta humana** para incidentes de Internet Dedicado, 24/7. Se conserva el objetivo temprano de 15 minutos y el objetivo separado de recuperación en cuatro horas. No se promete reparación máxima en cuatro horas. Disponibilidad mensual 99.85% y compensaciones independientes.
+- Matriz NOC/Ingeniería/Operaciones; informes mensuales en los primeros cinco días hábiles y extractos en cinco días hábiles por correo o ticket. Evidencia consultable y controvertible. Son obligaciones operativas del formato; esta versión no automatiza informes ni reactiva monitoreo.
+- Ajustes por LMTR/NOM-184: responsabilidad ante el cliente aun con terceros, bonificación mínima explícita, cancelación sin pena automática sobre rentas, propiedad de equipos según entrega, protección ante reclamaciones y referencias a CRT/PROFECO. El formato no acredita concesión, autorización ni registro de modelo; ver `docs/contratos-anexo-regulatorio-2.5.28.md`.
+- Bienvenida alineada a la revisión del documento. Firmas autógrafas/hash y revisiones históricas conservadas. Sin cambios SQL ni APK; requiere desplegar la web. Contratos existentes se modifican solo mediante acuerdo expreso, no al regenerar silenciosamente sus condiciones.
+
 ## Web 2.5.27 · 19 de noviembre de 2026
 
 - Nuevos contratos recurrentes con plantilla `Contrato_Servicios_v3.docx`: Internet Dedicado con disponibilidad mínima mensual de 99.85%, respuesta humana en 15 minutos 24/7, diagnóstico inicial en una hora, actualización cada hora y objetivo de recuperación de cuatro horas. Best Effort con respuesta de una hora de soporte, diagnóstico de cuatro, actualización cada cuatro y recuperación objetivo de 24 a 48 horas transcurridas.

@@ -46,6 +46,7 @@ public class EditModel : PageModel
 
     public class InputModel
     {
+        public ClientServiceAnnexData Annex { get; set; } = new();
         [Required] public Guid Id { get; set; }
 
         [Required] public ClientServiceType ServiceType { get; set; }
@@ -143,6 +144,7 @@ public class EditModel : PageModel
             SelectedServiceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes.ToList() : [Contract.ServiceType.ToString()],
             Label = Contract.Label,
             Provider = Contract.Provider,
+            Annex = ClientServiceAnnex.Read(Contract.Notes),
             AccountNumber = string.IsNullOrWhiteSpace(Contract.AccountNumber) ? ClientCode : Contract.AccountNumber,
             ContractNumber = string.IsNullOrWhiteSpace(Contract.ContractNumber) ? $"{ClientCode}-01" : Contract.ContractNumber,
             MonthlyAmount = Contract.MonthlyAmount,
@@ -206,6 +208,9 @@ public class EditModel : PageModel
             if (eventError != null) ModelState.AddModelError("Input.ContractEndDate", eventError);
             Input.ContractTermOption = "Eventual";
         }
+        if (Input.BillingRecurrence != "Eventual" && Input.SelectedServiceTypes.Contains("Internet")
+            && ClientServiceAnnex.ValidateSymmetry(Input.Annex, Input.InternetCapacity, Input.InternetCapacityOther) is { } symmetryError)
+            ModelState.AddModelError("Input.Annex.Symmetry", symmetryError);
         if (!ModelState.IsValid)
         {
             Error = BuildModelStateError();
@@ -223,6 +228,7 @@ public class EditModel : PageModel
         Contract.ContractStartDate = Input.ContractStartDate?.Date;
         Contract.ContractEndDate = Input.ContractEndDate?.Date;
         Contract.ProjectId = Input.ProjectId;
+        var originalNotes = Contract.Notes;
         Contract.Notes = ComposeNotesMetadata(
             (Input.Notes ?? "").Trim(),
             Input.BillingRecurrence,
@@ -243,6 +249,13 @@ public class EditModel : PageModel
             Input.ServerCpuCores,
             Input.ServerRam,
             Input.ServerDisk);
+        Contract.Notes = ClientServiceAnnex.Write(ClientServiceAnnex.PreserveMetadata(originalNotes, Contract.Notes), Input.Annex);
+        if (Contract.Notes.Length > 2000)
+        {
+            ModelState.AddModelError("Input.Notes", "Notas, datos técnicos y anexo exceden 2000 caracteres. Reduzca las observaciones o referencias.");
+            Error = BuildModelStateError();
+            return Page();
+        }
         Contract.UpdatedAt = DateTime.UtcNow;
 
         if (Input.SignedContract != null && Input.SignedContract.Length > 0)

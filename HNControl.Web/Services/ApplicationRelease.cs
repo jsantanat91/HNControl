@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.27";
+    public const string Version = "2.5.28";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.28", new DateOnly(2026, 11, 19), "Anexo de Servicios y condiciones de atención", new[]
+        {
+            new ReleaseChange("Contratos", "Anexo A integrado con capacidad de bajada/subida, modalidad, red propia o de terceros, punto de entrega, medición y referencias regulatorias verificadas. Captura desde el servicio contratado; valida los datos técnicos antes de emitir."),
+            new ReleaseChange("Atención", "Dedicado: disponibilidad mensual 99.85% y máximo de primera respuesta humana de cuatro horas, 24/7. La recuperación conserva un objetivo separado. Matriz de escalamiento, acceso a evidencia e informes mensuales previstos en el contrato."),
+            new ReleaseChange("Condiciones", "Responsabilidad de HN ante el cliente en reventa y red propia, evidencia controvertible, compensaciones explícitas y ajustes de cancelación y propiedad de equipos. No declara como concedidos títulos pendientes."),
+            new ReleaseChange("Compatibilidad", "Conserva plantillas históricas y ambas firmas. Sin SQL ni APK; desplegar la web. Los compromisos de informes requieren operación del NOC; no activa monitoreo ni envíos automáticos.")
+        }),
         new ReleaseNote("2.5.27", new DateOnly(2026, 11, 19), "SLA y soporte en contratos recurrentes", new[]
         {
             new ReleaseChange("Contratos", "Nueva revisión del contrato recurrente: disponibilidad mensual de Internet Dedicado del 99.85%, respuesta humana en 15 minutos, diagnóstico en una hora, actualizaciones por hora y objetivo de recuperación en cuatro horas. Best Effort conserva condiciones diferenciadas."),

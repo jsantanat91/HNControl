@@ -35,9 +35,9 @@
             <div class="card-body">
                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                 <input type="hidden" name="type" value="@ClientLegalDocumentType.Contract" />
-                <label class="form-label">Contrato base (opcional)</label>
-                <select class="form-select mb-3" name="contractId">
-                    <option value="">-- Sin contrato ligado --</option>
+                <label class="form-label">Servicio contratado y anexo</label>
+                <select class="form-select mb-3" name="contractId" required>
+                    <option value="">-- Seleccione el servicio --</option>
                     @foreach (var c in Model.Contracts)
                     {
                         <option value="@c.Id">@c.Label - @c.Provider - @c.MonthlyAmount?.ToString("C")</option>
@@ -45,7 +45,7 @@
                 </select>
                 <div class="small text-muted">
                     Los datos del cliente se llenan autom&aacute;ticamente desde su ficha (raz&oacute;n social, RFC, estado, municipio, correo de facturaci&oacute;n y datos del contrato).
-                    Si ya existe un PDF previo para este contrato, se reemplaza por el nuevo.
+                    Complete el Anexo de Servicios desde Editar servicio. El PDF integra la ficha técnica, SLA, soporte y firmas. Los documentos que ya contienen firmas no se reemplazan.
                 </div>
             </div>
             <div class="card-footer">

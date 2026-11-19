@@ -24,12 +24,14 @@ public class TemplateDocxService : ITemplateDocxService
             !document.SignedAt.HasValue && !document.ProviderSignedAt.HasValue && string.IsNullOrEmpty(document.PdfStoragePath);
         var revision = newDraft ? ClientSigningSnapshot.CurrentServiceTemplateRevision : 0;
         var eventRevision = newDraft ? ClientSigningSnapshot.CurrentEventTemplateRevision : 1;
+        ContractProviderIdentity? providerIdentity = null;
         if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
         {
             var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson)
                 ?? throw new InvalidOperationException("No se pudo leer la versión del contrato preparada para firma.");
             client = snapshot.Client;
             contract = snapshot.Contract;
+            providerIdentity = snapshot.ProviderIdentity;
             revision = snapshot.ServiceTemplateRevision ?? (snapshot.UsesCorporateServiceTemplate ? 1 : 0);
             eventRevision = snapshot.EventTemplateRevision ?? 1;
         }
@@ -47,6 +49,7 @@ public class TemplateDocxService : ITemplateDocxService
                 1 => "Contrato_Servicios.docx",
                 2 => "Contrato_Servicios_v2.docx",
                 3 => "Contrato_Servicios_v3.docx",
+                4 => "Contrato_Servicios_v4.docx",
                 _ => throw new InvalidOperationException("La revisión de la plantilla del contrato no está disponible.")
             };
 
@@ -62,6 +65,36 @@ public class TemplateDocxService : ITemplateDocxService
             && replacements["ESTADOC"] == "MÃ©xico")
             replacements["ESTADOC"] = "México";
 
+        if (document.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract) && revision >= 4)
+        {
+            foreach (var field in ClientServiceAnnex.Replacements(contract)) replacements[field.Key] = field.Value;
+            replacements["HNNOMBRELEGAL"] = Safe(providerIdentity?.LegalName, "Razón social HN pendiente de configurar");
+            replacements["HNRFC"] = Safe(providerIdentity?.Rfc, "No registrado");
+            replacements["HNDOMICILIO"] = Safe(providerIdentity?.FiscalAddress, "No registrado");
+            replacements["HNCP"] = Safe(providerIdentity?.PostalCode, "No registrado");
+            replacements["HNREPRESENTANTE"] = document.ProviderSignedAt.HasValue
+                ? Safe(document.ProviderSignedByName, "Representante autorizado de HN") : "Representante autorizado de HN";
+            replacements["ANEXOESTADO"] = ClientServiceAnnex.MissingRequired(contract).Count == 0
+                ? "Ficha técnica del servicio. Los datos regulatorios deben corresponder a documentos vigentes verificables."
+                : "BORRADOR: faltan datos técnicos. Complete el anexo antes de emitirlo para firma.";
+            ClientServiceContractMetadata.ParseMeta(contract?.Notes).TryGetValue("Plazo", out var annexTerm);
+            var hasExplicitTerm = annexTerm?.Equals("Indefinido", StringComparison.OrdinalIgnoreCase) == true
+                || (int.TryParse(annexTerm, out var annexMonths) && annexMonths > 0);
+            replacements["PERIODOC"] = hasExplicitTerm ? BuildContractPeriod(document, contract)
+                : contract?.ContractStartDate.HasValue == true && contract.ContractEndDate.HasValue
+                    ? $"Del {contract.ContractStartDate:dd/MM/yyyy} al {contract.ContractEndDate:dd/MM/yyyy}"
+                    : "Sin plazo mínimo registrado";
+            replacements["ANEXOVIGENCIA"] = contract?.ContractStartDate.HasValue == true && contract.ContractEndDate.HasValue
+                ? $"{contract.ContractStartDate:dd/MM/yyyy} al {contract.ContractEndDate:dd/MM/yyyy}"
+                : contract?.ContractStartDate.HasValue == true
+                    ? $"Desde {contract.ContractStartDate:dd/MM/yyyy}" : "Inicio por acordar expresamente";
+            replacements["CONTRATOC"] = Regex.Replace(replacements["CONTRATOC"], @"\b(\d+(?:[.,]\d+)?)\s+MB\b", "$1 Mbps");
+            replacements["RFCC"] = Safe(client.Rfc, "No registrado");
+            replacements["CPC"] = Safe(client.FiscalZipCode, "No registrado");
+            replacements["EMAILC"] = Safe(client.BillingEmail, client.Email, "No registrado");
+            replacements["ESTADOC"] = Safe(client.State, "No registrado");
+            replacements["SUCURSALC"] = Safe(contract?.BranchAddress, contract?.Branch, "No registrada");
+        }
         return ReplaceDocumentXml(DocxSignatureImages.Insert(bytes, document.ClientSignatureImage, document.ProviderSignatureImage), replacements);
     }
 

@@ -1,0 +1,68 @@
+@model HNControl.Web.Services.ClientServiceAnnexData
+<div class="border rounded-3 p-3 mt-2">
+    <h3 class="h6 mb-1">Anexo de Servicios de Internet</h3>
+    <p class="form-text mb-3">Estos datos identifican el alcance del enlace en el documento. Puedes guardar avances; completa los datos necesarios antes de emitir un contrato nuevo.</p>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label" asp-for="Modality">Modalidad contratada</label>
+            <select class="form-select" asp-for="Modality"><option value="">Seleccionar</option><option value="Dedicado">Internet Dedicado</option><option value="BestEffort">Best Effort</option></select>
+            <span asp-validation-for="Modality" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="NetworkMode">Forma de prestación</label>
+            <select class="form-select" asp-for="NetworkMode"><option value="">Seleccionar</option><option value="Reventa">Reventa de servicio</option><option value="RedPropia">Red propia</option><option value="Mixta">Red propia y acceso de terceros</option></select>
+            <span asp-validation-for="NetworkMode" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="AccessMedium">Medio de acceso</label>
+            <input class="form-control" asp-for="AccessMedium" maxlength="40" placeholder="Fibra óptica, microondas..." />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="UploadCapacity">Velocidad de subida</label>
+            <input class="form-control" asp-for="UploadCapacity" maxlength="30" placeholder="Ej. 100 Mbps" />
+            <div class="form-text">La bajada se toma de la capacidad registrada arriba.</div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="Symmetry">Simetría del enlace</label>
+            <select class="form-select" asp-for="Symmetry"><option value="">Seleccionar</option><option value="Simetrico">Simétrico</option><option value="Asimetrico">Asimétrico</option></select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="PublicIpConditions">IP pública y condiciones</label>
+            <input class="form-control" asp-for="PublicIpConditions" maxlength="100" placeholder="Cantidad, fija/dinámica o no incluida" />
+        </div>
+        <div class="col-12">
+            <label class="form-label" asp-for="DeliveryPoint">Punto de entrega y alcance</label>
+            <input class="form-control" asp-for="DeliveryPoint" maxlength="120" placeholder="Equipo, puerto e interfaz donde se entrega el servicio al cliente" />
+            <div class="form-text">El sitio y su dirección se toman de la sección de ubicación.</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" asp-for="InstallationDate">Fecha pactada de instalación o activación</label>
+            <input class="form-control" asp-for="InstallationDate" type="date" asp-format="{0:yyyy-MM-dd}" />
+            <span class="text-danger" asp-validation-for="InstallationDate"></span>
+            <div class="form-text">Registra la fecha acordada con el cliente. No se toma automáticamente del inicio de vigencia.</div>
+        </div>
+        <div class="col-12">
+            <details>
+                <summary class="fw-semibold">Parámetros de calidad y escalamiento</summary>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4"><label class="form-label" asp-for="Latency">Latencia comprometida</label><input class="form-control" asp-for="Latency" maxlength="60" placeholder="Límite y unidad acordados" /></div>
+                    <div class="col-md-4"><label class="form-label" asp-for="Jitter">Jitter comprometido</label><input class="form-control" asp-for="Jitter" maxlength="60" placeholder="Límite y unidad acordados" /></div>
+                    <div class="col-md-4"><label class="form-label" asp-for="PacketLoss">Pérdida de paquetes</label><input class="form-control" asp-for="PacketLoss" maxlength="60" placeholder="Porcentaje máximo acordado" /></div>
+                    <div class="col-12"><label class="form-label" asp-for="MeasurementScope">Perímetro y método de medición</label><input class="form-control" asp-for="MeasurementScope" maxlength="120" placeholder="Extremos de prueba, intervalo y condiciones de medición" /></div>
+                    <div class="col-12"><label class="form-label" asp-for="EscalationContact">Responsable del escalamiento</label><input class="form-control" asp-for="EscalationContact" maxlength="100" placeholder="Nombre y cargo del responsable" /><div class="form-text">Contacto por NOC: WhatsApp 5526014566, soporte@hubnet-solutions.com.mx o support.hubnet-solutions.net. No se publica un teléfono personal.</div></div>
+                </div>
+            </details>
+        </div>
+        <div class="col-12">
+            <details>
+                <summary class="fw-semibold">Referencia regulatoria verificada</summary>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6"><label class="form-label" asp-for="AuthorizationHolder">Titular de la autorización o concesión</label><input class="form-control" asp-for="AuthorizationHolder" maxlength="100" /></div>
+                    <div class="col-md-6"><label class="form-label" asp-for="AuthorizationReference">Folio y tipo de título vigente</label><input class="form-control" asp-for="AuthorizationReference" maxlength="70" /></div>
+                    <div class="col-12"><label class="form-label" asp-for="ProfecoRegistration">Registro PROFECO del modelo de contrato</label><input class="form-control" asp-for="ProfecoRegistration" maxlength="60" placeholder="Folio verificado, cuando se cuente con él" /></div>
+                </div>
+                <p class="form-text mb-0">Capture únicamente datos comprobados del título correspondiente. Una solicitud en trámite no equivale a una autorización. El proveedor de acceso se registra en Referencias y seguimiento.</p>
+            </details>
+        </div>
+    </div>
+</div>

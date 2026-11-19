@@ -14,8 +14,8 @@ internal static class ServiceSlaTests
         var doc = new ClientLegalDocument { DocumentType = ClientLegalDocumentType.Contract,
             SigningSnapshotJson = ClientSigningSnapshot.Capture(client, contract) };
         var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(doc.SigningSnapshotJson)!;
-        check(snapshot.ServiceTemplateRevision == 3 && snapshot.EventTemplateRevision == 2,
-            "Nuevos contratos recurrentes congelan SLA v3; los eventuales mantienen v2");
+        check(snapshot.ServiceTemplateRevision == 4 && snapshot.EventTemplateRevision == 2,
+            "Nuevos contratos recurrentes congelan anexo v4; los eventuales mantienen v2");
 
         string WordText()
         {
@@ -34,10 +34,10 @@ internal static class ServiceSlaTests
         check(text.Contains("disponibilidad mínima mensual del 99.85%")
             && text.Contains("punto de entrega al cliente") && text.Contains("64 minutos y 48 segundos"),
             "SLA dedicado mensual 99.85 con medición y ejemplo coherentes");
-        check(text.Contains("Hasta 15 minutos, 24/7") && text.Contains("Hasta 1 hora")
+        check(text.Contains("Máximo contractual: 4 horas transcurridas, 24/7") && text.Contains("Objetivo: 15 minutos")
             && text.Contains("Cada hora") && text.Contains("Hasta 4 horas transcurridas")
             && text.Contains("no es un plazo máximo garantizado"),
-            "Dedicado distingue respuesta humana, diagnóstico, actualizaciones y objetivo de recuperación");
+            "Dedicado distingue máximo de respuesta humana y objetivo de recuperación");
         check(text.Contains("No tiene un porcentaje de disponibilidad garantizado")
             && text.Contains("Entre 24 y 48 horas transcurridas") && !text.Contains("89.5%"),
             "Best Effort tiene sus propios objetivos sin promesa genérica de disponibilidad");

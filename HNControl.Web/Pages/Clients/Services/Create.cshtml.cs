@@ -51,6 +51,7 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        public ClientServiceAnnexData Annex { get; set; } = new();
         public Guid? ServicePackageId { get; set; }
 
         [Required] public ClientServiceType ServiceType { get; set; } = ClientServiceType.Internet;
@@ -191,6 +192,9 @@ public class CreateModel : PageModel
             if (eventError != null) ModelState.AddModelError("Input.ContractEndDate", eventError);
             Input.ContractTermOption = "Eventual";
         }
+        if (Input.BillingRecurrence != "Eventual" && Input.SelectedServiceTypes.Contains("Internet")
+            && ClientServiceAnnex.ValidateSymmetry(Input.Annex, Input.InternetCapacity, Input.InternetCapacityOther) is { } symmetryError)
+            ModelState.AddModelError("Input.Annex.Symmetry", symmetryError);
         if (!ModelState.IsValid)
         {
             Error = BuildModelStateError();
@@ -249,6 +253,13 @@ public class CreateModel : PageModel
             UpdatedAt = DateTime.UtcNow
         };
 
+        contract.Notes = ClientServiceAnnex.Write(contract.Notes, Input.Annex);
+        if (contract.Notes.Length > 2000)
+        {
+            ModelState.AddModelError("Input.Notes", "Notas, datos técnicos y anexo exceden 2000 caracteres. Reduzca las observaciones o referencias.");
+            Error = BuildModelStateError();
+            return Page();
+        }
         _db.ClientServiceContracts.Add(contract);
         await _db.SaveChangesAsync();
 

@@ -21,7 +21,7 @@ if (args.FirstOrDefault() == "--operations")
     return;
 }
 
-var root = Path.GetFullPath(args.FirstOrDefault() ?? "HNControl.Web");
+var root = Path.GetFullPath(args.FirstOrDefault() == "--annex" ? "HNControl.Web" : args.FirstOrDefault() ?? "HNControl.Web");
 var service = new TemplateDocxService(new TestEnvironment(root));
 var client = new Client { Name = "Cliente de prueba", LegalRepresentative = "Representante de prueba" };
 var doc = new ClientLegalDocument
@@ -47,6 +47,13 @@ void Check(bool condition, string description)
     count++;
     Console.WriteLine("PASS: " + description);
 }
+if (args.FirstOrDefault() == "--annex")
+{
+    ClientServiceAnnexTests.Run(Check);
+    await AnnexContractTests.RunAsync(service, Check);
+    Console.WriteLine($"All {count} annex checks passed.");
+    return;
+}
 ClientServiceContract Contract(string label, string notes, ClientServiceType type = ClientServiceType.Internet) =>
     new() { Label = label, Notes = notes + "\n[META] Plazo=24", ServiceType = type };
 var cases = new[]
@@ -65,15 +72,15 @@ var cases = new[]
 foreach (var (contract, expected) in cases)
 {
     var xml = Read(service.BuildClientLegalDocx(doc, client, contract));
-    Check(Cell(xml, "Servicios Contratados:") == expected, expected);
-    Check(Cell(xml, "Periodo de Contratación:") == "24 meses (Cancelación Anticipada: 30% de rentas devengadas.)", "Plazo y leyenda completos");
+    Check(Cell(xml, "Servicios Contratados:") == expected.Replace(" MB", " Mbps"), expected);
+    Check(Cell(xml, "Periodo de Contratación:") == "24 meses", "Plazo nuevo sin pena automática sobre rentas");
 }
 var noContract = Read(service.BuildClientLegalDocx(doc, client, null));
 Check(Cell(noContract, "Servicios Contratados:") == "Nombre anterior", "Documento sin contrato conserva su servicio");
 var indefinite = Contract("Internet Dedicado", "[META] InternetCapacidad=10");
 indefinite.Notes = "[META] InternetCapacidad=10\n[META] Plazo=Indefinido";
 Check(Cell(Read(service.BuildClientLegalDocx(doc, client, indefinite)), "Periodo de Contratación:")
-    == "Indefinido (Cancelación Anticipada: 30% de rentas devengadas.)", "Plazo indefinido preservado");
+    == "Indefinido", "Plazo indefinido sin penalidad automática");
 doc.DocumentType = ClientLegalDocumentType.NDA;
 var nda = Read(service.BuildClientLegalDocx(doc, client, cases[0].Item1));
 Check(!nda.ToString().Contains("Cancelación Anticipada"), "NDA sin cláusula de cancelación");
@@ -105,6 +112,8 @@ await ActiveEmployeeVisibilityTests.RunAsync(Check);
 await ContractRenewalTests.RunAsync(Check);
 ContractRenewalTests.CheckTemplate(root, service, Check);
 ServiceSlaTests.Run(service, Check);
+ClientServiceAnnexTests.Run(Check);
+await AnnexContractTests.RunAsync(service, Check);
 EventDeliveryDesignTests.Run(service, Check);
 await UnsignedDocumentDeletionTests.RunAsync(service, Check);
 await ServiceInventoryTests.RunAsync(Check);

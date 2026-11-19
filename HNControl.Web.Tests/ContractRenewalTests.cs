@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text.Json;
 using System.Security.Claims;
 using System.Xml.Linq;
 using HNControl.Web.Data;
@@ -131,7 +132,8 @@ internal static class ContractRenewalTests
         var client = new Client { Name = "Cliente de prueba" };
         var doc = new ClientLegalDocument
         {
-            SigningSnapshotJson = ClientSigningSnapshot.Capture(client, null),
+            SigningSnapshotJson = JsonSerializer.Serialize(JsonSerializer.Deserialize<ClientSigningSnapshot>(
+                ClientSigningSnapshot.Capture(client, null))! with { ServiceTemplateRevision = 3 }),
             CreatedAt = new DateTime(2026, 10, 2, 1, 0, 0, DateTimeKind.Utc)
         };
         var current = Body(service.BuildClientLegalDocx(doc, client, null));
@@ -145,7 +147,7 @@ internal static class ContractRenewalTests
         bool ChangedSlaClause(string s) => s.StartsWith("OCTAVA.") || s.StartsWith("DECIMA TERCERA.");
         check(main.SkipWhile(s => s != clauses[0]).TakeWhile(s => s != "Firmas de conformidad")
                 .Where(s => !ChangedSlaClause(s)).SequenceEqual(approved.Where(s => !ChangedSlaClause(s))),
-            "El nuevo SLA conserva literalmente las declaraciones y cláusulas ajenas a fallas y compensaciones");
+            "La revisión histórica v3 conserva literalmente las cláusulas originales ajenas a fallas y compensaciones");
         var body = current.Descendants(w + "body").Single();
         var last = body.Elements().Last(e => e.Name != w + "sectPr");
         var signers = last.Elements(w + "tr").Single().Elements(w + "tc").ToArray();

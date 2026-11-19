@@ -73,7 +73,7 @@ internal static class ClientCommunicationTests
         converter.Fail = false;
         await signing.SaveSignedPdfAsync(doc);
         var signedText = WordText(converter.LastDocx!);
-        check(signedText.Contains("Internet Dedicado 10 MB") && !signedText.Contains("999 MB") && signedText.Contains("24 meses"), "Segunda firma conserva las condiciones originales");
+        check(signedText.Contains("Internet Dedicado 10 Mbps") && !signedText.Contains("999 Mbps") && signedText.Contains("24 meses"), "Segunda firma conserva las condiciones originales");
         check(signedText.Contains("Representante del cliente") && signedText.Contains("Administrador de prueba") && !signedText.Contains("PENDIENTE DE FIRMA HN"), "DOCX final contiene ambas firmas independientes");
         email.Fail = true;
         try { await signing.NotifyCompletedAsync(doc.Id); check(false, "SMTP debe fallar"); }

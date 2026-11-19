@@ -76,7 +76,7 @@
                     <div class="fw-semibold mb-2">Datos de Internet</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label" asp-for="Input.InternetCapacity">Capacidad MB</label>
+                            <label class="form-label" asp-for="Input.InternetCapacity">Velocidad de bajada (Mbps)</label>
                             <select class="form-select" asp-for="Input.InternetCapacity">
                                 <option value="">-- Seleccionar --</option>
                                 @foreach (var mb in new[] { "10", "20", "30", "50", "100", "200", "300", "500", "1000", "Otro" })
@@ -91,6 +91,9 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-12 contract-tech-section" data-tech-section="Internet">
+                <partial name="_ClientServiceAnnex" for="Input.Annex" />
             </div>
             <div class="col-12 contract-tech-section" data-tech-section="Telefonia">
                 <div class="border rounded-3 p-3">
@@ -261,7 +264,7 @@
             </header>
             <div class="row g-3 hn-form-section-fields">
             <div class="col-md-4">
-                <label class="form-label" asp-for="Input.Provider">Proveedor</label>
+                <label class="form-label" asp-for="Input.Provider">Proveedor de acceso</label>
                 <input class="form-control" asp-for="Input.Provider" list="providers" placeholder="Ej: Telmex / Totalplay" />
                 <datalist id="providers">
                     <option value="Telmex"></option>

@@ -102,6 +102,22 @@ public class DocumentsModel : PageModel
             ? await _db.ClientServiceContracts.FirstOrDefaultAsync(x => x.Id == contractId.Value && x.ClientId == clientId)
             : null;
         if (contractId.HasValue && contract == null) return BadRequest("El contrato no pertenece al cliente.");
+        if (type == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract))
+        {
+            var missing = ClientServiceAnnex.MissingRequired(contract);
+            if (missing.Count > 0)
+            {
+                Flash = "Complete el Anexo de Servicios en Editar servicio antes de generar el contrato: " + string.Join(", ", missing) + ".";
+                FlashType = "warning";
+                return RedirectToPage(new { clientId });
+            }
+            if ((await GetProviderIdentityAsync())?.IsComplete != true)
+            {
+                Flash = "Complete la razón social, RFC, domicilio fiscal y código postal de HN en Configuración antes de emitir el contrato.";
+                FlashType = "warning";
+                return RedirectToPage(new { clientId });
+            }
+        }
 
         var doc = await _db.ClientLegalDocuments
             .FirstOrDefaultAsync(x =>
@@ -393,6 +409,14 @@ public class DocumentsModel : PageModel
         byte[]? pdfBytes = null;
         if (dbDoc.Client != null)
         {
+            var provider = await GetProviderIdentityAsync();
+            if (dbDoc.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(dbDoc.ClientServiceContract))
+            {
+                var missing = ClientServiceAnnex.MissingRequired(dbDoc.ClientServiceContract);
+                if (missing.Count > 0) throw new InvalidOperationException("Complete el Anexo de Servicios en Editar servicio: " + string.Join(", ", missing) + ".");
+                if (provider?.IsComplete != true)
+                    throw new InvalidOperationException("Complete la razón social, RFC, domicilio fiscal y código postal de HN en Configuración antes de emitir el contrato.");
+            }
             if (dbDoc.ClientServiceContract != null)
             {
                 var documentSubject = FirstNonEmpty(dbDoc.ClientServiceContract.Label, dbDoc.Client.Name);
@@ -405,7 +429,7 @@ public class DocumentsModel : PageModel
                 dbDoc.ContractEndDate = dbDoc.ClientServiceContract.ContractEndDate;
             }
 
-            dbDoc.SigningSnapshotJson = ClientSigningSnapshot.Capture(dbDoc.Client, dbDoc.ClientServiceContract);
+            dbDoc.SigningSnapshotJson = ClientSigningSnapshot.Capture(dbDoc.Client, dbDoc.ClientServiceContract, provider: provider);
             var docxBytes = _docxTemplates.BuildClientLegalDocx(dbDoc, dbDoc.Client, dbDoc.ClientServiceContract);
             pdfBytes = await _officePdfConverter.TryConvertDocxToPdfAsync(docxBytes, $"legal_{dbDoc.DocumentType}_{dbDoc.Id:N}");
         }
@@ -420,6 +444,10 @@ public class DocumentsModel : PageModel
         dbDoc.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
+
+    private Task<ContractProviderIdentity?> GetProviderIdentityAsync() => _db.SystemConfigurations.AsNoTracking()
+        .Select(c => new ContractProviderIdentity(c.CompanyLegalName, c.CompanyRfc, c.CompanyFiscalAddress, c.CompanyFiscalZipCode))
+        .FirstOrDefaultAsync();
 
     public async Task<IActionResult> OnPostSignProviderAsync(Guid clientId, Guid docId, bool acceptTerms, string? sigDataUrl = null)
     {

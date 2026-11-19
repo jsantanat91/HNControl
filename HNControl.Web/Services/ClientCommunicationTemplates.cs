@@ -63,7 +63,15 @@ public static class ClientCommunicationTemplates
                 : System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson);
             return snapshot?.ServiceTemplateRevision >= 3 && !EventContract.IsEvent(snapshot.Contract);
         });
-        var serviceTerms = usesCurrentSla ? """
+        var usesIntegratedAnnex = usesCurrentSla && contracts.All(x =>
+            System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson!)?.ServiceTemplateRevision >= 4);
+        var serviceTerms = usesIntegratedAnnex ? """
+            <li><strong>Su Anexo A:</strong> está integrado en el contrato y contiene la modalidad, la capacidad, el punto de entrega, la red utilizada y las condiciones de calidad del servicio. HN responde ante usted también cuando utilice infraestructura de terceros.</li>
+            <li><strong>Internet Dedicado:</strong> disponibilidad mínima mensual del <strong>99.85%</strong>. Primera respuesta humana ante incidentes con objetivo de 15 minutos y <strong>máximo contractual de cuatro horas transcurridas, 24/7</strong>. Un acuse automático no sustituye la atención humana.</li>
+            <li><strong>Restablecimiento:</strong> el objetivo operativo para una interrupción total en Dedicado es de cuatro horas desde la detección o reporte, lo que ocurra antes. No es un máximo garantizado de reparación. El tiempo de respuesta no sustituye la disponibilidad mensual ni las compensaciones.</li>
+            <li><strong>Best Effort:</strong> sin disponibilidad porcentual garantizada salvo pacto expreso. Primera respuesta en hasta una hora, diagnóstico inicial en hasta cuatro y actualizaciones cada cuatro horas. Recuperación objetivo de 24 a 48 horas transcurridas.</li>
+            <li><strong>Soporte y evidencia:</strong> atención gratuita 24/7 en ambas modalidades. El contrato define escalamiento a Ingeniería y Operaciones, informe mensual dentro de los primeros cinco días hábiles y acceso a extractos dentro de cinco días hábiles. No se exige esperar 72 horas para las compensaciones aplicables.</li>
+            """ : usesCurrentSla ? """
             <li><strong>Internet Dedicado:</strong> disponibilidad mínima mensual del <strong>99.85%</strong>, medida en el punto de entrega conforme al contrato. Ante una interrupción total: primera respuesta humana en hasta 15 minutos, diagnóstico inicial en hasta una hora y actualizaciones cada hora, con atención 24/7.</li>
             <li><strong>Objetivo de recuperación para Dedicado:</strong> hasta cuatro horas transcurridas. Es un objetivo operativo; no sustituye la disponibilidad mensual ni las compensaciones por incumplimiento.</li>
             <li><strong>Best Effort:</strong> ancho de banda compartido, sin porcentaje de disponibilidad garantizado salvo acuerdo expreso en su anexo. Primera respuesta en hasta una hora de soporte, diagnóstico en hasta cuatro y actualizaciones cada cuatro horas de soporte. Objetivo de recuperación de 24 a 48 horas transcurridas, sujeto al diagnóstico y al proveedor de acceso.</li>
@@ -88,7 +96,7 @@ public static class ClientCommunicationTemplates
             <p>Cuando el cliente y HN Solutions hayan firmado el contrato, recibirá una confirmación por correo con el PDF final firmado. No es necesario imprimirlo ni reenviarlo.</p>
             <ul style="padding-left:20px">
             {{serviceTerms}}
-            <li><strong>Beneficios incluidos:</strong> instalación básica, equipo e IP pública, conforme al servicio contratado.</li>
+            <li><strong>Alcance contratado:</strong> instalación, equipos e IP pública únicamente en las condiciones expresamente indicadas en su contrato y anexo.</li>
             </ul>
             <p style="background:#edf6fc;padding:16px;border-left:3px solid #086db4">
             <strong>Abra un ticket de soporte por cualquiera de estos canales:</strong><br>
@@ -110,7 +118,7 @@ public static class ClientCommunicationTemplates
             </table>
             <p>Incluya su número de cliente como referencia para facilitar la identificación de su pago.</p>
             <h2 style="font-size:19px;color:#086db4;margin-top:28px">04 · Confirmación de entrega del servicio</h2>
-            <p>El servicio se considerará entregado cuando reciba el correo de confirmación de que está activo y funciona conforme a lo solicitado. Ese mensaje incluirá la información técnica y de servicio necesaria para validar o configurar su conexión.</p>
+            <p>{{(usesIntegratedAnnex ? "La entrega se documentará mediante una orden de servicio con pruebas de aceptación y la conformidad de usted o de su representante autorizado. Recibirá los datos técnicos para validar o configurar su conexión." : "El servicio se considerará entregado cuando reciba el correo de confirmación de que está activo y funciona conforme a lo solicitado. Ese mensaje incluirá la información técnica y de servicio necesaria para validar o configurar su conexión.")}}</p>
             <p>Quedamos a sus órdenes para cualquier duda o comentario.</p>
             """);
     }
