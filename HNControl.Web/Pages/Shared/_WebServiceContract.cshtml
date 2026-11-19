@@ -1,0 +1,128 @@
+@model HNControl.Web.Services.WebServiceContractData
+<div class="border rounded-3 p-3 mt-2">
+    <h3 class="h6 mb-1">Servicio web mensual</h3>
+    <p class="form-text mb-3">Mensual sin plazo forzoso, con corte el día 1 y pago el día 15. Define el acceso y el alcance que se contratará.</p>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label" for="webServicePreset">Plataforma</label>
+            <select class="form-select" id="webServicePreset">
+                <option value="">Otra / captura manual</option>
+                <option value="checkin" data-name="HN Check-in" data-url="@HNControl.Web.Services.WebServiceContract.CheckInUrl">HN Check-in</option>
+                <option value="gps" data-name="HN Tracking GPS" data-url="@HNControl.Web.Services.WebServiceContract.GpsUrl">HN Tracking GPS</option>
+            </select>
+            <div class="form-text">Completa únicamente el nombre y la dirección web.</div>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" asp-for="PlatformName">Nombre de la plataforma</label>
+            <input class="form-control" asp-for="PlatformName" maxlength="100" />
+            <span class="text-danger" asp-validation-for="PlatformName"></span>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" asp-for="ServiceUrl">URL pública de acceso</label>
+            <input class="form-control" asp-for="ServiceUrl" type="url" maxlength="200" placeholder="https://" />
+            <span class="text-danger" asp-validation-for="ServiceUrl"></span>
+            <div class="form-text">Sin usuarios, contraseñas, tokens ni enlaces privados de sesión.</div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" asp-for="PlanName">Nombre del plan <span class="text-muted">(opcional)</span></label>
+            <input class="form-control" asp-for="PlanName" maxlength="80" />
+        </div>
+        <div class="col-12">
+            <label class="form-label" asp-for="IncludedScope">Alcance incluido en el contrato</label>
+            <textarea class="form-control" asp-for="IncludedScope" rows="3" maxlength="600" placeholder="Describe las funciones y límites expresamente contratados."></textarea>
+            <span class="text-danger" asp-validation-for="IncludedScope"></span>
+            <div class="form-text">Este texto aparecerá en el documento del cliente. Las notas internas se capturan por separado.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" asp-for="LicensedQuantity">Cantidad <span class="text-muted">(opcional)</span></label>
+            <input class="form-control" asp-for="LicensedQuantity" type="number" min="1" max="1000000" step="1" />
+            <span class="text-danger" asp-validation-for="LicensedQuantity"></span>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" asp-for="LicenseUnit">Unidad de licencia</label>
+            <input class="form-control" asp-for="LicenseUnit" maxlength="40" placeholder="Ej. usuarios o dispositivos" />
+            <div class="form-text">Completa cantidad y unidad si el plan tiene un límite.</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" asp-for="SupportHours">Horario de soporte contratado</label>
+            <input class="form-control" asp-for="SupportHours" maxlength="120" placeholder="Días, horario y zona horaria acordados" />
+            <span class="text-danger" asp-validation-for="SupportHours"></span>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const format = document.getElementById('Input_ContractFormat');
+        const webFields = document.querySelector('[data-web-contract]');
+        if (!format || !webFields) return;
+        const serviceOnly = [...document.querySelectorAll('.contract-tech-section')];
+        ['Input_ServicePackageId', 'includedServicesLabel', 'Input_Provider', 'Input_AccountNumber', 'Input_ContractTermOption', 'Input_ContractEndDate'].forEach(id => {
+            const box = document.getElementById(id)?.closest('[class*="col-"]');
+            if (box) serviceOnly.push(box);
+        });
+        const location = document.getElementById('Input_Branch')?.closest('section');
+        if (location) serviceOnly.push(location);
+        const recurrence = document.getElementById('Input_BillingRecurrence');
+        const term = document.getElementById('Input_ContractTermOption');
+        const end = document.getElementById('Input_ContractEndDate');
+        const sections = [...format.closest('form').querySelectorAll('.hn-form-section')];
+        const hints = sections.slice(0, 2).map(section => section.querySelector('.hn-form-section-hint'));
+        const standardHints = hints.map(hint => hint.textContent);
+        let wasWeb = format.value === 'WebMensual';
+        let standardTerms = null;
+        const refresh = () => {
+            const enabled = format.value === 'WebMensual';
+            if (enabled && !wasWeb) standardTerms = { recurrence: recurrence.value, term: term.value, end: end.value };
+            if (!enabled && wasWeb && standardTerms) {
+                recurrence.value = standardTerms.recurrence;
+                term.value = standardTerms.term;
+                end.value = standardTerms.end;
+            }
+            wasWeb = enabled;
+            webFields.hidden = !enabled;
+            webFields.querySelectorAll('input, select, textarea, button').forEach(x => x.disabled = !enabled);
+            serviceOnly.forEach(box => {
+                box.hidden = enabled;
+                box.querySelectorAll('input, select, textarea, button').forEach(x => x.disabled = enabled);
+            });
+            if (enabled) {
+                recurrence.value = 'Mensual';
+                term.value = 'Indefinido';
+                end.value = '';
+            }
+            recurrence.disabled = enabled;
+            recurrence.dispatchEvent(new Event('change', { bubbles: true }));
+            if (enabled) term.closest('[class*="col-"]').hidden = true;
+            hints[0].textContent = enabled ? 'Define la plataforma, el alcance incluido y el soporte contratado.' : standardHints[0];
+            hints[1].textContent = enabled ? 'Establece la mensualidad, el alta opcional y la fecha de inicio.' : standardHints[1];
+            let step = 0;
+            sections.filter(section => !section.hidden).forEach(section => {
+                const badge = section.querySelector('.hn-form-step');
+                if (badge) badge.textContent = String(++step).padStart(2, '0');
+            });
+        };
+        format.addEventListener('change', refresh);
+        refresh();
+        // Event-date helpers also run on page load; reapply this variant after their initial update.
+        setTimeout(() => {
+            refresh();
+            document.getElementById('Input_ContractStartDate')?.addEventListener('change', () => {
+                if (format.value === 'WebMensual') term.closest('[class*="col-"]').hidden = true;
+            });
+        }, 0);
+        const preset = document.getElementById('webServicePreset');
+        const name = document.getElementById('Input_Web_PlatformName');
+        const url = document.getElementById('Input_Web_ServiceUrl');
+        const label = document.getElementById('Input_Label');
+        const initial = [...preset.options].find(x => x.dataset.url === url.value && x.dataset.name === name.value);
+        if (initial) preset.value = initial.value;
+        preset.addEventListener('change', () => {
+            const selected = preset.selectedOptions[0];
+            if (!selected?.dataset.url) return;
+            name.value = selected.dataset.name;
+            url.value = selected.dataset.url;
+            if (!label.value.trim()) label.value = name.value;
+        });
+        name.addEventListener('change', () => { if (!label.value.trim()) label.value = name.value; });
+    });
+</script>

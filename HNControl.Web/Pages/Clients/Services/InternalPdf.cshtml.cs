@@ -63,7 +63,8 @@ public class InternalPdfModel : PageModel
     private static byte[] Render(ClientServiceContract contract)
     {
         var tech = ClientServiceContractMetadata.ParseTechnical(contract.Notes);
-        var serviceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes : [contract.ServiceType.ToString()];
+        var isWeb = WebServiceContract.IsWeb(contract);
+        var serviceTypes = isWeb ? new[] { "Servicios web" } : tech.ServiceTypes.Any() ? tech.ServiceTypes : [contract.ServiceType.ToString()];
         var notes = ClientServiceContractMetadata.StripMeta(contract.Notes);
         var recurrence = MetaValue(contract.Notes, "Recurrencia");
         var term = MetaValue(contract.Notes, "Plazo");
@@ -114,11 +115,14 @@ public class InternalPdfModel : PageModel
                             });
 
                             Row(table, "Cliente", contract.Client?.Name);
-                            Row(table, "Sucursal", contract.Branch);
-                            Row(table, "Direccion sucursal", contract.BranchAddress);
+                            if (!isWeb)
+                            {
+                                Row(table, "Sucursal", contract.Branch);
+                                Row(table, "Direccion sucursal", contract.BranchAddress);
+                                Row(table, "Proveedor", contract.Provider);
+                                Row(table, "Cuenta", contract.AccountNumber);
+                            }
                             Row(table, "Contrato", contract.Label);
-                            Row(table, "Proveedor", contract.Provider);
-                            Row(table, "Cuenta", contract.AccountNumber);
                             Row(table, "Numero de contrato", contract.ContractNumber);
                             Row(table, "Proyecto", contract.Project?.Title);
                         });
@@ -142,19 +146,35 @@ public class InternalPdfModel : PageModel
                             });
 
                             Row(table, EventContract.IsEvent(contract) ? "Importe único del evento antes de IVA" : "Monto mensual antes de IVA", (contract.MonthlyAmount ?? 0m).ToString("C2"));
-                            Row(table, "Costo de instalacion antes de IVA", tech.InstallationCost.ToString("C2"));
+                            Row(table, isWeb ? "Alta y configuración antes de IVA" : "Costo de instalacion antes de IVA", tech.InstallationCost.ToString("C2"));
                             Row(table, "Recurrencia", recurrence);
-                            Row(table, "Tiempo de contrato", EventContract.IsEvent(contract) ? EventContract.Period(contract) : FormatTerm(term));
+                            Row(table, "Tiempo de contrato", isWeb ? "Mensual, sin plazo forzoso" : EventContract.IsEvent(contract) ? EventContract.Period(contract) : FormatTerm(term));
                             Row(table, "Inicio", contract.ContractStartDate?.ToString("dd/MM/yyyy"));
-                            Row(table, "Vencimiento", contract.ContractEndDate?.ToString("dd/MM/yyyy"));
+                            if (!isWeb) Row(table, "Vencimiento", contract.ContractEndDate?.ToString("dd/MM/yyyy"));
                             Row(table, "Venta relacionada", saleId);
-                            Row(table, "Factibilidad origen", feasibilityId);
+                            if (!isWeb) Row(table, "Factibilidad origen", feasibilityId);
                         });
                     });
 
                     col.Item().Element(Card).Column(c =>
                     {
-                        c.Item().Text("Ficha tecnica completa").Bold().FontSize(12);
+                        c.Item().Text(isWeb ? "Alcance de la plataforma" : "Ficha tecnica completa").Bold().FontSize(12);
+
+                        if (isWeb)
+                        {
+                            var web = WebServiceContract.Read(contract.Notes);
+                            c.Item().PaddingTop(8).Table(table =>
+                            {
+                                DefineTwoColumns(table);
+                                Row(table, "Plataforma", web.PlatformName);
+                                Row(table, "Acceso", web.ServiceUrl);
+                                if (!string.IsNullOrWhiteSpace(web.PlanName)) Row(table, "Plan", web.PlanName);
+                                if (web.LicensedQuantity.HasValue && !string.IsNullOrWhiteSpace(web.LicenseUnit))
+                                    Row(table, "Licencias", $"{web.LicensedQuantity} {web.LicenseUnit}");
+                                Row(table, "Horario de soporte", web.SupportHours);
+                            });
+                            if (!string.IsNullOrWhiteSpace(web.IncludedScope)) c.Item().PaddingTop(8).Text(web.IncludedScope);
+                        }
 
                         if (serviceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase))
                         {

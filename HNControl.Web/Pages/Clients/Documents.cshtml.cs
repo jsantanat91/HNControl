@@ -102,12 +102,14 @@ public class DocumentsModel : PageModel
             ? await _db.ClientServiceContracts.FirstOrDefaultAsync(x => x.Id == contractId.Value && x.ClientId == clientId)
             : null;
         if (contractId.HasValue && contract == null) return BadRequest("El contrato no pertenece al cliente.");
-        if (type == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract))
+        if (type == ClientLegalDocumentType.Contract && (WebServiceContract.IsWeb(contract) || !EventContract.IsEvent(contract)))
         {
-            var missing = ClientServiceAnnex.MissingRequired(contract);
+            var missing = WebServiceContract.IsWeb(contract) ? WebServiceContract.MissingRequired(contract)
+                : ClientServiceAnnex.MissingRequired(contract);
             if (missing.Count > 0)
             {
-                Flash = "Complete el Anexo de Servicios en Editar servicio antes de generar el contrato: " + string.Join(", ", missing) + ".";
+                var section = WebServiceContract.IsWeb(contract) ? "los datos de Servicios web" : "el Anexo de Servicios";
+                Flash = $"Complete {section} en Editar servicio antes de generar el contrato: " + string.Join(", ", missing) + ".";
                 FlashType = "warning";
                 return RedirectToPage(new { clientId });
             }
@@ -148,7 +150,7 @@ public class DocumentsModel : PageModel
         var documentSubject = FirstNonEmpty(contract?.Label, client.Name);
         doc.Title = type == ClientLegalDocumentType.NDA
             ? $"NDA - {documentSubject}"
-            : $"Contrato de servicios - {documentSubject}";
+            : $"{(WebServiceContract.IsWeb(contract) ? "Contrato de servicios web mensuales" : "Contrato de servicios")} - {documentSubject}";
         doc.TermsBody = BuildTemplateTerms(type, client, contract);
         doc.MonthlyAmount = contract?.MonthlyAmount;
         doc.ContractStartDate = contract?.ContractStartDate;
@@ -410,10 +412,17 @@ public class DocumentsModel : PageModel
         if (dbDoc.Client != null)
         {
             var provider = await GetProviderIdentityAsync();
-            if (dbDoc.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(dbDoc.ClientServiceContract))
+            if (dbDoc.DocumentType == ClientLegalDocumentType.Contract
+                && (WebServiceContract.IsWeb(dbDoc.ClientServiceContract) || !EventContract.IsEvent(dbDoc.ClientServiceContract)))
             {
-                var missing = ClientServiceAnnex.MissingRequired(dbDoc.ClientServiceContract);
-                if (missing.Count > 0) throw new InvalidOperationException("Complete el Anexo de Servicios en Editar servicio: " + string.Join(", ", missing) + ".");
+                var missing = WebServiceContract.IsWeb(dbDoc.ClientServiceContract)
+                    ? WebServiceContract.MissingRequired(dbDoc.ClientServiceContract)
+                    : ClientServiceAnnex.MissingRequired(dbDoc.ClientServiceContract);
+                if (missing.Count > 0)
+                {
+                    var section = WebServiceContract.IsWeb(dbDoc.ClientServiceContract) ? "los datos de Servicios web" : "el Anexo de Servicios";
+                    throw new InvalidOperationException($"Complete {section} en Editar servicio: " + string.Join(", ", missing) + ".");
+                }
                 if (provider?.IsComplete != true)
                     throw new InvalidOperationException("Complete la razón social, RFC, domicilio fiscal y código postal de HN en Configuración antes de emitir el contrato.");
             }
@@ -422,7 +431,7 @@ public class DocumentsModel : PageModel
                 var documentSubject = FirstNonEmpty(dbDoc.ClientServiceContract.Label, dbDoc.Client.Name);
                 dbDoc.Title = dbDoc.DocumentType == ClientLegalDocumentType.NDA
                     ? $"NDA - {documentSubject}"
-                    : $"Contrato de servicios - {documentSubject}";
+                    : $"{(WebServiceContract.IsWeb(dbDoc.ClientServiceContract) ? "Contrato de servicios web mensuales" : "Contrato de servicios")} - {documentSubject}";
                 dbDoc.TermsBody = BuildTemplateTerms(dbDoc.DocumentType, dbDoc.Client, dbDoc.ClientServiceContract);
                 dbDoc.MonthlyAmount = dbDoc.ClientServiceContract.MonthlyAmount;
                 dbDoc.ContractStartDate = dbDoc.ClientServiceContract.ContractStartDate;

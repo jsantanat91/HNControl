@@ -51,6 +51,9 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        [Required, RegularExpression("Servicios|WebMensual")]
+        public string ContractFormat { get; set; } = WebServiceContract.StandardVariant;
+        public WebServiceContractData Web { get; set; } = new();
         public ClientServiceAnnexData Annex { get; set; } = new();
         public Guid? ServicePackageId { get; set; }
 
@@ -168,6 +171,28 @@ public class CreateModel : PageModel
         await LoadServicePackagesAsync();
         await LoadSalesOpportunitiesAsync();
 
+        var webContract = Input.ContractFormat == WebServiceContract.Variant;
+        if (webContract)
+        {
+            Input.ServiceType = ClientServiceType.Otro;
+            Input.SelectedServiceTypes = ["Otro"];
+            Input.BillingRecurrence = "Mensual";
+            Input.ContractTermOption = "Indefinido";
+            Input.ContractEndDate = null;
+            Input.ServicePackageId = null;
+            ModelState.Remove("Input.BillingRecurrence");
+            ModelState.Remove("Input.ContractTermOption");
+            ModelState.Remove("Input.ContractEndDate");
+            ModelState.Remove("Input.ServicePackageId");
+            if (string.IsNullOrWhiteSpace(Input.Label) && !string.IsNullOrWhiteSpace(Input.Web.PlatformName))
+            {
+                Input.Label = Input.Web.PlatformName.Trim();
+                ModelState.Remove("Input.Label");
+            }
+        }
+        foreach (var key in ModelState.Keys.Where(x => x.StartsWith(webContract ? "Input.Annex." : "Input.Web.", StringComparison.Ordinal)).ToList())
+            ModelState.Remove(key);
+
         if (Input.ServicePackageId.HasValue && string.IsNullOrWhiteSpace(Input.Label))
         {
             var packageName = await _db.QuoteCatalogItems
@@ -253,7 +278,8 @@ public class CreateModel : PageModel
             UpdatedAt = DateTime.UtcNow
         };
 
-        contract.Notes = ClientServiceAnnex.Write(contract.Notes, Input.Annex);
+        if (!webContract) contract.Notes = ClientServiceAnnex.Write(contract.Notes, Input.Annex);
+        contract.Notes = WebServiceContract.Write(contract.Notes, Input.Web, webContract);
         if (contract.Notes.Length > 2000)
         {
             ModelState.AddModelError("Input.Notes", "Notas, datos técnicos y anexo exceden 2000 caracteres. Reduzca las observaciones o referencias.");

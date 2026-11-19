@@ -21,7 +21,7 @@ if (args.FirstOrDefault() == "--operations")
     return;
 }
 
-var root = Path.GetFullPath(args.FirstOrDefault() == "--annex" ? "HNControl.Web" : args.FirstOrDefault() ?? "HNControl.Web");
+var root = Path.GetFullPath(args.FirstOrDefault() is "--annex" or "--web-contract" ? "HNControl.Web" : args.FirstOrDefault() ?? "HNControl.Web");
 var service = new TemplateDocxService(new TestEnvironment(root));
 var client = new Client { Name = "Cliente de prueba", LegalRepresentative = "Representante de prueba" };
 var doc = new ClientLegalDocument
@@ -46,6 +46,13 @@ void Check(bool condition, string description)
     if (!condition) throw new Exception("FAIL: " + description);
     count++;
     Console.WriteLine("PASS: " + description);
+}
+if (args.FirstOrDefault() == "--web-contract")
+{
+    await WebServiceContractMetadataTests.RunAsync(Check);
+    await WebContractTests.RunAsync(service, Check);
+    Console.WriteLine($"All {count} web contract checks passed.");
+    return;
 }
 if (args.FirstOrDefault() == "--annex")
 {
@@ -116,6 +123,8 @@ ServiceSlaTests.Run(service, Check);
 ClientServiceAnnexTests.Run(Check);
 await AnnexContractTests.RunAsync(service, Check);
 SimplifiedAnnexTests.Run(service, Check);
+await WebServiceContractMetadataTests.RunAsync(Check);
+await WebContractTests.RunAsync(service, Check);
 EventDeliveryDesignTests.Run(service, Check);
 await UnsignedDocumentDeletionTests.RunAsync(service, Check);
 await ServiceInventoryTests.RunAsync(Check);

@@ -124,7 +124,12 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
             ? Url.Page("/Public/ClientDocument", null, new { token = doc.PublicToken }, Request.Scheme) ?? ""
             : $"{baseUrl}/Public/ClientDocument/{doc.PublicToken}"));
         var selectedContract = EventContract.FrozenContract(document!);
-        if (EventContract.IsEvent(selectedContract))
+        if (ClientSigningSnapshot.WebContract(document!) != null)
+        {
+            Subject = ClientCommunicationTemplates.WebWelcomeSubject;
+            HtmlBody = ClientCommunicationTemplates.Welcome(Client, links);
+        }
+        else if (EventContract.IsEvent(selectedContract))
         {
             Error = EventContract.Validate(selectedContract!.ContractStartDate, selectedContract.ContractEndDate, selectedContract.MonthlyAmount);
             if (Error != null) return null;

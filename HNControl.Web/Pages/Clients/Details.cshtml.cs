@@ -175,8 +175,10 @@ public class DetailsModel : PageModel
                 var endText = end.HasValue ? end.Value.ToString("yyyy-MM-dd") : "-";
                 var meta = ParseContractMeta(x.Notes);
                 var tech = ClientServiceContractMetadata.ParseTechnical(x.Notes);
-                var serviceTypes = tech.ServiceTypes.Any() ? tech.ServiceTypes : [x.ServiceType.ToString()];
-                var technicalSummary = BuildTechnicalSummary(tech);
+                var webContract = WebServiceContract.IsWeb(x);
+                IReadOnlyList<string> serviceTypes = webContract ? ["Servicios web"]
+                    : tech.ServiceTypes.Any() ? tech.ServiceTypes : [x.ServiceType.ToString()];
+                var technicalSummary = webContract ? BuildWebServiceSummary(WebServiceContract.Read(x.Notes)) : BuildTechnicalSummary(tech);
 
                 var projTitle = (x.ProjectId.HasValue && projMap.TryGetValue(x.ProjectId.Value, out var t))
                     ? t
@@ -184,17 +186,17 @@ public class DetailsModel : PageModel
 
                 return new ContractRow(
                     x.Id,
-                    x.ServiceType.ToString(),
+                    webContract ? "Servicios web" : x.ServiceType.ToString(),
                     x.Label,
-                    x.Provider,
-                    x.AccountNumber,
+                    webContract ? "" : x.Provider,
+                    webContract ? "" : x.AccountNumber,
                     x.ContractNumber,
                     (x.MonthlyAmount ?? 0m).ToString("C2"),
-                    meta.Recurrence,
-                    EventContract.IsEvent(x) ? EventContract.Period(x) : meta.TermText,
+                    webContract ? "Mensual" : meta.Recurrence,
+                    webContract ? "Mensual sin plazo forzoso" : EventContract.IsEvent(x) ? EventContract.Period(x) : meta.TermText,
                     meta.SalesReference,
-                    x.Branch,
-                    x.BranchAddress,
+                    webContract ? "" : x.Branch,
+                    webContract ? "" : x.BranchAddress,
                     endText,
                     status,
                     badge,
@@ -569,6 +571,18 @@ public class DetailsModel : PageModel
         };
 
         return (recurrence, termText, sale);
+    }
+
+    private static IReadOnlyList<string> BuildWebServiceSummary(WebServiceContractData data)
+    {
+        var rows = new List<string>();
+        if (!string.IsNullOrWhiteSpace(data.PlatformName)) rows.Add($"Plataforma: {data.PlatformName}");
+        if (!string.IsNullOrWhiteSpace(data.PlanName)) rows.Add($"Plan: {data.PlanName}");
+        if (WebServiceContract.IsValidUrl(data.ServiceUrl)) rows.Add($"Acceso: {data.ServiceUrl}");
+        if (data.LicensedQuantity is >= 1 and <= 1000000 && !string.IsNullOrWhiteSpace(data.LicenseUnit))
+            rows.Add($"Licencias: {data.LicensedQuantity} {data.LicenseUnit}");
+        if (!string.IsNullOrWhiteSpace(data.SupportHours)) rows.Add($"Soporte: {data.SupportHours}");
+        return rows;
     }
 
     private static IReadOnlyList<string> BuildTechnicalSummary(ClientServiceTechnicalMetadata tech)

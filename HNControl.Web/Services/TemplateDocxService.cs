@@ -24,6 +24,7 @@ public class TemplateDocxService : ITemplateDocxService
             !document.SignedAt.HasValue && !document.ProviderSignedAt.HasValue && string.IsNullOrEmpty(document.PdfStoragePath);
         var revision = newDraft ? ClientSigningSnapshot.CurrentServiceTemplateRevision : 0;
         var eventRevision = newDraft ? ClientSigningSnapshot.CurrentEventTemplateRevision : 1;
+        var webRevision = newDraft && WebServiceContract.IsWeb(contract) ? ClientSigningSnapshot.CurrentWebTemplateRevision : 0;
         ContractProviderIdentity? providerIdentity = null;
         if (!string.IsNullOrWhiteSpace(document.SigningSnapshotJson))
         {
@@ -34,9 +35,15 @@ public class TemplateDocxService : ITemplateDocxService
             providerIdentity = snapshot.ProviderIdentity;
             revision = snapshot.ServiceTemplateRevision ?? (snapshot.UsesCorporateServiceTemplate ? 1 : 0);
             eventRevision = snapshot.EventTemplateRevision ?? 1;
+            webRevision = snapshot.WebTemplateRevision ?? 0;
         }
         var templateName = document.DocumentType == ClientLegalDocumentType.NDA
             ? "NDA.docx"
+            : webRevision > 0 ? webRevision switch
+            {
+                1 => "Contrato_Servicios_Web_v1.docx",
+                _ => throw new InvalidOperationException("La revisión de la plantilla de servicios web no está disponible.")
+            }
             : EventContract.IsEvent(contract) ? eventRevision switch
             {
                 1 => "Contrato_Eventual.docx",
@@ -66,7 +73,7 @@ public class TemplateDocxService : ITemplateDocxService
             && replacements["ESTADOC"] == "MÃ©xico")
             replacements["ESTADOC"] = "México";
 
-        if (document.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract) && revision >= 4)
+        if (document.DocumentType == ClientLegalDocumentType.Contract && (webRevision > 0 || !EventContract.IsEvent(contract) && revision >= 4))
         {
             foreach (var field in ClientServiceAnnex.Replacements(contract)) replacements[field.Key] = field.Value;
             replacements["HNNOMBRELEGAL"] = Safe(providerIdentity?.LegalName, "Razón social HN pendiente de configurar");
@@ -101,9 +108,39 @@ public class TemplateDocxService : ITemplateDocxService
             replacements["ESTADOC"] = Safe(client.State, "No registrado");
             replacements["SUCURSALC"] = Safe(contract?.BranchAddress, contract?.Branch, "No registrada");
         }
+        if (document.DocumentType == ClientLegalDocumentType.Contract && webRevision > 0)
+        {
+            foreach (var field in WebServiceContract.Replacements(contract)) replacements[field.Key] = field.Value;
+            replacements["CONTRATOC"] = Safe(contract?.Label, "Servicios web mensuales");
+            replacements["PERIODOC"] = "Mensual, sin plazo forzoso";
+            replacements["ANEXOVIGENCIA"] = contract?.ContractStartDate is { } start
+                ? $"A partir del {start:dd/MM/yyyy}" : "Inicio por acordar";
+            var monthlyBase = contract?.MonthlyAmount ?? 0m;
+            var setupBase = ClientServiceContractMetadata.ParseTechnical(contract?.Notes).InstallationCost;
+            string WithVat(decimal value) => (value + decimal.Round(value * 0.16m, 2, MidpointRounding.AwayFromZero))
+                .ToString("N2", new CultureInfo("es-MX"));
+            replacements["WEBMENSUALTOTAL"] = WithVat(monthlyBase);
+            replacements["WEBALTATOTAL"] = WithVat(setupBase);
+        }
         return ReplaceDocumentXml(DocxSignatureImages.Insert(bytes, document.ClientSignatureImage, document.ProviderSignatureImage), replacements,
-            document.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract) && revision >= 5
+            document.DocumentType == ClientLegalDocumentType.Contract && webRevision > 0
+                ? xml => RemoveUnusedWebRows(xml, contract)
+                : document.DocumentType == ClientLegalDocumentType.Contract && !EventContract.IsEvent(contract) && revision >= 5
                 ? xml => RemoveUnusedServiceAnnexRows(xml, contract) : null);
+    }
+
+    private static string RemoveUnusedWebRows(string xml, ClientServiceContract? contract)
+    {
+        var data = WebServiceContract.Read(contract?.Notes);
+        var absent = new List<string>();
+        if (string.IsNullOrWhiteSpace(data.PlanName)) absent.Add("WEBPLAN");
+        if (!data.LicensedQuantity.HasValue || string.IsNullOrWhiteSpace(data.LicenseUnit)) absent.Add("WEBLICENCIAS");
+        var document = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        foreach (var row in document.Descendants(w + "tr").ToList())
+            if (absent.Any(token => string.Concat(row.Descendants(w + "t").Select(x => x.Value)).Contains(token, StringComparison.Ordinal)))
+                row.Remove();
+        return document.ToString(SaveOptions.DisableFormatting);
     }
 
     private static string RemoveUnusedServiceAnnexRows(string xml, ClientServiceContract? contract)

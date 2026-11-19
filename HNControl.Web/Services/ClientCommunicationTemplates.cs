@@ -5,6 +5,48 @@ namespace HNControl.Web.Services;
 
 public static class ClientCommunicationTemplates
 {
+    public const string WebWelcomeSubject = "HN Solutions · Bienvenida a sus servicios web mensuales";
+
+    private static string WebWelcome(Client client, IReadOnlyList<(ClientLegalDocument Document, string Url)> documents)
+    {
+        var sections = string.Join("", documents.Select(item =>
+        {
+            var contract = ClientSigningSnapshot.WebContract(item.Document);
+            if (contract == null) return $"<p><a href=\"{E(item.Url)}\">Revisar documento: {E(item.Document.Title)}</a></p>";
+            var data = WebServiceContract.Read(contract.Notes);
+            var license = data.LicensedQuantity.HasValue && !string.IsNullOrWhiteSpace(data.LicenseUnit)
+                ? $"<br><strong>Licencias:</strong> {data.LicensedQuantity} {E(data.LicenseUnit)}" : "";
+            var monthly = contract.MonthlyAmount ?? 0m;
+            var total = monthly + decimal.Round(monthly * .16m, 2, MidpointRounding.AwayFromZero);
+            return $"""
+                <div style="border:1px solid #dbe5ef;border-radius:8px;padding:18px;margin:14px 0">
+                <strong>{E(data.PlatformName)}</strong><br>
+                Servicio: {E(contract.Label)} · Contrato: {E(contract.ContractNumber)}<br>
+                {(string.IsNullOrWhiteSpace(data.PlanName) ? "" : $"Plan: {E(data.PlanName)}<br>")}
+                <strong>Alcance:</strong> {E(data.IncludedScope)}{license}<br>
+                <strong>Mensualidad con IVA (16%):</strong> {total.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("es-MX"))}<br>
+                <strong>Horario de soporte:</strong> {E(data.SupportHours)}<br>
+                {(WebServiceContract.IsValidUrl(data.ServiceUrl) ? $"<a href=\"{E(data.ServiceUrl)}\">Acceder a la plataforma</a><br>" : "")}
+                <a href="{E(item.Url)}" style="display:inline-block;background:#086db4;color:#fff;padding:10px 16px;border-radius:5px;margin-top:12px">Revisar y firmar contrato</a>
+                </div>
+                """;
+        }));
+        return Layout("Sus servicios web con HN Solutions", $"""
+            <p>Estimado(a) <strong>{E(client.Name)}</strong>:</p>
+            <p>Gracias por elegir nuestras plataformas. Revise los servicios, alcance y condiciones de su suscripción:</p>
+            {sections}
+            <p>La activación y los accesos se coordinan con el contacto autorizado. Las credenciales se entregan por un canal seguro; no se incluyen en el contrato. Una vez firmadas ambas partes recibirá el PDF final.</p>
+            <h2 style="font-size:19px;color:#086db4">Facturación mensual</h2>
+            <p>Suscripción mensual sin plazo forzoso. Corte el día 1 y pago el día 15 del mismo mes. La primera factura se paga contra activación efectiva y se prorratea cuando corresponda. Los cargos de alta o configuración son los indicados en el contrato.</p>
+            <p>La mensualidad no autoriza cargos automáticos a su cuenta. La renovación se comunica con al menos cinco días naturales de anticipación y puede solicitar la cancelación inmediata por los canales electrónicos de soporte, sin penalización ni condicionar su recepción al pago de saldos.</p>
+            <h2 style="font-size:19px;color:#086db4">Soporte y datos</h2>
+            <p>WhatsApp del NOC: <a href="https://wa.me/525526014566">5526014566</a><br>
+            <a href="mailto:soporte@hubnet-solutions.com.mx">soporte@hubnet-solutions.com.mx</a><br>
+            <a href="https://support.hubnet-solutions.net">Portal de soporte</a></p>
+            <p>Indique su número de contrato y plataforma. La atención se brinda en el horario pactado y los incidentes reciben diagnóstico y seguimiento conforme a su impacto.</p>
+            <p>Después de la baja se conserva contractualmente la información durante un año, con acceso restringido y posibilidad de solicitar su exportación. Se respetan los derechos de supresión y los plazos legales que correspondan. La conservación no mantiene activa la suscripción ni autoriza usos adicionales de los datos.</p>
+            """, "Atención y Servicios Web");
+    }
     public const string EventWelcomeSubject = "HN Solutions · Bienvenida y coordinación de conectividad para su evento";
     public static string EventWelcome(Client client, ClientServiceContract contract, IEnumerable<(ClientLegalDocument Document, string Url)> documents)
     {
@@ -57,6 +99,8 @@ public static class ClientCommunicationTemplates
         // Only summarize the new SLA when every contract in this welcome incorporates it.
         // Older snapshots remain authoritative when invitations are resent.
         var contracts = items.Where(x => x.Document.DocumentType == ClientLegalDocumentType.Contract).ToList();
+        if (contracts.Count > 0 && contracts.All(x => ClientSigningSnapshot.WebContract(x.Document) != null))
+            return WebWelcome(client, items);
         var usesCurrentSla = contracts.Count > 0 && contracts.All(x =>
         {
             var snapshot = string.IsNullOrWhiteSpace(x.Document.SigningSnapshotJson) ? null

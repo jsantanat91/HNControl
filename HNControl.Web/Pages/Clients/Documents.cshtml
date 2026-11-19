@@ -1,5 +1,6 @@
 @page "{clientId:guid}"
 @using HNControl.Web.Models
+@using HNControl.Web.Services
 @model HNControl.Web.Pages.Clients.DocumentsModel
 @{
     Layout = "_Layout";
@@ -36,16 +37,19 @@
                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                 <input type="hidden" name="type" value="@ClientLegalDocumentType.Contract" />
                 <label class="form-label">Servicio contratado y anexo</label>
-                <select class="form-select mb-3" name="contractId" required>
+                <select class="form-select mb-3" name="contractId" id="legalServiceSelection" required>
                     <option value="">-- Seleccione el servicio --</option>
                     @foreach (var c in Model.Contracts)
                     {
-                        <option value="@c.Id">@c.Label - @c.Provider - @c.MonthlyAmount?.ToString("C")</option>
+                        var format = WebServiceContract.IsWeb(c) ? "Servicios web mensuales"
+                            : EventContract.IsEvent(c) ? "Evento" : "Internet y servicios";
+                        <option value="@c.Id" data-format="@format">@c.Label · @format · @c.MonthlyAmount?.ToString("C")</option>
                     }
                 </select>
+                <div class="alert alert-primary py-2 small" role="status" id="legalFormatPreview">Selecciona un servicio para ver el formato de contrato.</div>
                 <div class="small text-muted">
                     Los datos del cliente se llenan autom&aacute;ticamente desde su ficha (raz&oacute;n social, RFC, estado, municipio, correo de facturaci&oacute;n y datos del contrato).
-                    El contrato toma los datos del servicio seleccionado. Revisa su modalidad, velocidad, ubicación y vigencia desde Editar servicio. Incluye SLA, acceso a soporte y firmas; los documentos firmados conservan sus condiciones.
+                    El formato se toma del servicio seleccionado: Internet y servicios, evento o servicios web mensuales. Puedes configurarlo desde Editar servicio. Cada variante incluye sus propias condiciones y ambas firmas; los documentos firmados conservan su versión.
                 </div>
             </div>
             <div class="card-footer">
@@ -286,6 +290,14 @@
 @section Scripts {
     <script>
         (() => {
+            const serviceSelection = document.getElementById('legalServiceSelection');
+            const formatPreview = document.getElementById('legalFormatPreview');
+            const showFormat = () => {
+                const format = serviceSelection?.selectedOptions[0]?.dataset.format;
+                if (formatPreview) formatPreview.textContent = format ? `Formato a generar: ${format}` : 'Selecciona un servicio para ver el formato de contrato.';
+            };
+            serviceSelection?.addEventListener('change', showFormat);
+            showFormat();
             const modalEl = document.getElementById("sendSignatureModal");
             if (!modalEl || !window.bootstrap) return;
 

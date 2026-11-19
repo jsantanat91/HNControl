@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.29";
+    public const string Version = "2.5.30";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.30", new DateOnly(2026, 11, 19), "Contratos de servicios web mensuales", new[]
+        {
+            new ReleaseChange("Contratos", "Nueva variante para plataformas y software mensual: nombre, URL, plan, alcance, licencias y horario de soporte. Check-in y GPS tienen sus direcciones precargadas; conserva firmas autógrafas y registro digital."),
+            new ReleaseChange("Condiciones", "Mensual sin plazo forzoso, corte el día 1 y pago el 15. Conservación contractual restringida durante un año tras la baja, con exportación y respeto a los derechos de protección de datos."),
+            new ReleaseChange("Comunicación", "Bienvenida específica para servicios web, con alcance e importe contratado. El formato no incorpora las condiciones de SLA de Internet."),
+            new ReleaseChange("Compatibilidad", "Documentos existentes conservan su versión. Sin SQL ni APK; desplegar la web. Las obligaciones de conservación, exportación y avisos requieren operación de cada plataforma.")
+        }),
         new ReleaseNote("2.5.29", new DateOnly(2026, 11, 19), "Contrato simplificado y portal de soporte", new[]
         {
             new ReleaseChange("Contratos", "Ficha con servicio, modalidad, velocidad, ubicación, vigencia y cargos de HN Control. Retira red/reventa, operador, IP y campos técnicos previos a la instalación. Datos opcionales solo aparecen cuando están registrados."),

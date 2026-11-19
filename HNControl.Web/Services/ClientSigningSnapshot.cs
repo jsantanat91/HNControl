@@ -13,10 +13,19 @@ public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract?
 {
     public const int CurrentServiceTemplateRevision = 5;
     public const int CurrentEventTemplateRevision = 2;
+    public const int CurrentWebTemplateRevision = 1;
     public bool UsesCorporateServiceTemplate { get; init; }
     public int? ServiceTemplateRevision { get; init; }
     public int? EventTemplateRevision { get; init; }
+    public int? WebTemplateRevision { get; init; }
     public ContractProviderIdentity? ProviderIdentity { get; init; }
+
+    public static ClientServiceContract? WebContract(ClientLegalDocument document)
+    {
+        if (document.DocumentType != ClientLegalDocumentType.Contract || string.IsNullOrWhiteSpace(document.SigningSnapshotJson)) return null;
+        var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(document.SigningSnapshotJson);
+        return snapshot?.WebTemplateRevision > 0 ? snapshot.Contract : null;
+    }
 
     public static string Capture(Client client, ClientServiceContract? contract, bool corporateServiceTemplate = true,
         ContractProviderIdentity? provider = null) => JsonSerializer.Serialize(
@@ -36,6 +45,8 @@ public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract?
             ProviderIdentity = provider,
             UsesCorporateServiceTemplate = corporateServiceTemplate,
             ServiceTemplateRevision = corporateServiceTemplate ? CurrentServiceTemplateRevision : 0,
-            EventTemplateRevision = corporateServiceTemplate ? CurrentEventTemplateRevision : 1
+            EventTemplateRevision = corporateServiceTemplate ? CurrentEventTemplateRevision : 1,
+            WebTemplateRevision = corporateServiceTemplate && WebServiceContract.IsWeb(contract)
+                ? CurrentWebTemplateRevision : null
         });
 }

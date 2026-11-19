@@ -86,7 +86,7 @@
                                             <div class="small text-muted">@c.BranchAddress</div>
                                         }
                                         <details class="hn-contract-more">
-                                            <summary>Datos técnicos y referencias</summary>
+                                            <summary>@(c.ServiceType == "Servicios web" ? "Plataforma, plan y soporte" : "Datos técnicos y referencias")</summary>
                                             @if (!string.IsNullOrWhiteSpace(c.Provider)) { <div class="small mb-1">Proveedor: <b>@c.Provider</b></div> }
                                             @if (!string.IsNullOrWhiteSpace(c.AccountNumber) && c.AccountNumber != Model.Client.ClientCode) { <div class="small text-muted mb-1">Cuenta: @c.AccountNumber</div> }
                                             @if (!string.IsNullOrWhiteSpace(c.SalesReference) && c.SalesReference != "-") { <div class="small text-muted mb-1">Venta: @c.SalesReference</div> }

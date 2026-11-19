@@ -29,6 +29,14 @@
     <div class="card-body">
         <input type="hidden" asp-for="Input.Id" />
         <div asp-validation-summary="All" class="alert alert-warning mb-3"></div>
+        <div class="px-3 pb-3">
+            <label class="form-label" asp-for="Input.ContractFormat">Formato del contrato</label>
+            <select class="form-select" asp-for="Input.ContractFormat">
+                <option value="Servicios">Servicios</option>
+                <option value="WebMensual">Servicio web mensual</option>
+            </select>
+            <div class="form-text">Selecciona servicio web para el acceso mensual a una plataforma.</div>
+        </div>
 
         <section class="hn-form-section">
             <header class="hn-form-section-heading">
@@ -66,6 +74,7 @@
                 <label class="form-label" asp-for="Input.Label">Nombre del servicio / contrato</label>
                 <input class="form-control" asp-for="Input.Label" />
             </div>
+            <div class="col-12" data-web-contract hidden><partial name="_WebServiceContract" for="Input.Web" /></div>
             <div class="col-12 contract-tech-section" data-tech-section="Internet">
                 <div class="border rounded-3 p-3">
                     <div class="fw-semibold mb-2">Datos de Internet</div>
@@ -215,7 +224,7 @@
                 <input class="form-control" asp-for="Input.MonthlyAmount" type="number" min="0" step="0.01" placeholder="0.00" />
             </div>
             <div class="col-md-3">
-                <label class="form-label" asp-for="Input.InstallationCost">Instalación antes de IVA</label>
+                <label class="form-label" asp-for="Input.InstallationCost">Alta o instalación antes de IVA</label>
                 <input class="form-control" asp-for="Input.InstallationCost" type="number" min="0" step="0.01" placeholder="0.00" />
             </div>
             <div class="col-md-6">
@@ -313,7 +322,7 @@
                 }
             </div>
             <div class="col-12">
-                <label class="form-label" asp-for="Input.Notes">Notas</label>
+                <label class="form-label" asp-for="Input.Notes">Notas internas</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Notes"></textarea>
             </div>
             </div>
@@ -333,19 +342,22 @@
             const toggles = Array.from(document.querySelectorAll('.service-type-toggle'));
             const sections = Array.from(document.querySelectorAll('.contract-tech-section'));
             const primary = document.getElementById('primaryServiceType');
+            const format = document.getElementById('Input_ContractFormat');
 
             function refreshServiceSections() {
+                const web = format?.value === 'WebMensual';
                 const selected = toggles.filter(x => x.checked).map(x => x.value);
                 toggles.forEach(input => {
                     input.closest('.service-type-chip')?.classList.toggle('btn-primary', input.checked);
                     input.closest('.service-type-chip')?.classList.toggle('btn-outline-primary', !input.checked);
                 });
                 sections.forEach(section => {
-                    section.style.display = selected.includes(section.dataset.techSection) ? '' : 'none';
+                    section.style.display = !web && selected.includes(section.dataset.techSection) ? '' : 'none';
                 });
-                if (primary) primary.value = selected[0] || 'Otro';
+                if (primary) primary.value = web ? 'Otro' : selected[0] || 'Otro';
             }
 
+            format?.addEventListener('change', refreshServiceSections);
             toggles.forEach(x => x.addEventListener('change', refreshServiceSections));
             refreshServiceSections();
             ['InternetCapacity', 'CctvChannels', 'SecurityBrand'].forEach(name => {

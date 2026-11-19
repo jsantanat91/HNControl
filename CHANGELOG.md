@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.30 · 19 de noviembre de 2026
+
+- Nueva variante **Servicios web mensuales**, seleccionable al crear o editar el servicio del cliente. Datos públicos propios: plataforma, URL HTTPS, plan, alcance, licencias y horario de soporte. Precarga nombre y enlace de Check-in/GPS sin inferir funciones incluidas; admite otras plataformas.
+- Contrato SaaS independiente con carátula, ficha de alcance, condiciones de licencia, operación, privacidad, pagos y cancelación. Firmas autógrafas de ambas partes y registro digital; conserva los contratos de Internet, eventos y documentos ya emitidos.
+- Mensual sin plazo forzoso, corte día 1 y pago día 15. Importes antes de IVA y totales con IVA 16%. Custodia contractual restringida durante un año tras la baja, exportación durante ese periodo y eliminación o conservación conforme a los derechos y obligaciones legales aplicables.
+- Bienvenida específica con datos congelados del documento y canales NOC. No envía credenciales ni notas internas. La emisión valida datos web e identidad fiscal de HN; plan y licencias opcionales se omiten cuando están vacíos.
+- Sin SQL ni nueva APK. Desplegar la web. Esta versión no modifica las plataformas externas ni automatiza retención, eliminación o avisos de renovación. Detalles y fuentes: `docs/contratos-servicios-web-2.5.30.md`.
+
 ## Web 2.5.29 · 19 de noviembre de 2026
 
 - Contrato recurrente v5 con ficha simplificada: servicio, modalidad Dedicado/Best Effort, velocidad, sede/dirección, vigencia y cargos registrados. Retira red/reventa, operador de acceso, IP, medio/punto de entrega y parámetros técnicos manuales de la ficha.
