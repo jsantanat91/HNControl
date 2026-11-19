@@ -53,8 +53,9 @@ internal static class AnnexContractTests
             ProviderSignedByName = "Firma de prueba HN", ProviderSignedByEmail = "hn@example.test",
             ProviderSignedByUserId = "admin-demo", ClientSignatureImage = image, ProviderSignatureImage = image
         };
-        var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(doc.SigningSnapshotJson)!;
-        check(snapshot.ServiceTemplateRevision == 4, "Contrato nuevo congela la plantilla de anexo v4");
+        var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(doc.SigningSnapshotJson)! with { ServiceTemplateRevision = 4 };
+        doc.SigningSnapshotJson = JsonSerializer.Serialize(snapshot);
+        check(snapshot.ServiceTemplateRevision == 4, "Fixture histórico conserva la plantilla de anexo v4");
         check(snapshot.ProviderIdentity == provider && !doc.SigningSnapshotJson.Contains("Smtp", StringComparison.OrdinalIgnoreCase),
             "Snapshot conserva solo identidad fiscal del prestador sin configuración SMTP");
         check(ClientServiceAnnex.MissingRequired(contract).Count == 0, "Contrato DEMO tiene anexo técnico completo");
@@ -168,16 +169,17 @@ internal static class AnnexContractTests
             && converter.LastDocx == null && draft.SigningSnapshotJson == oldSnapshot
             && draft.PdfStoragePath == "pdf-previo-sin-modificar.pdf",
             "Regeneración incompleta conserva PDF y snapshot anteriores");
-        contract.Notes = CompleteNotes();
-        contract.Provider = "Operador DEMO";
+        contract.Notes = ClientServiceAnnex.Write("[META] Plazo=12\n[META] InternetCapacidad=100\n[META] CostoInstalacion=1500",
+            new ClientServiceAnnexData { Modality = "Dedicado" });
+        contract.MonthlyAmount = 4500;
         contract.BranchAddress = "Domicilio de entrega DEMO";
         contract.ContractStartDate = new DateTime(2026, 12, 1);
         await db.SaveChangesAsync();
         check(await page.OnPostGenerateAsync(client.Id, ClientLegalDocumentType.Contract, contract.Id) is RedirectToPageResult
             && page.FlashType == "success" && converter.LastDocx != null
             && draft.PdfStoragePath != "pdf-previo-sin-modificar.pdf"
-            && JsonSerializer.Deserialize<ClientSigningSnapshot>(draft.SigningSnapshotJson!)?.ServiceTemplateRevision == 4,
-            "Completar el anexo permite generar PDF y congelar revisión v4");
+            && JsonSerializer.Deserialize<ClientSigningSnapshot>(draft.SigningSnapshotJson!)?.ServiceTemplateRevision == 5,
+            "Datos esenciales del servicio permiten generar PDF y congelar revisión v5");
         var configuredProvider = await db.SystemConfigurations.SingleAsync();
         var captured = draft.SigningSnapshotJson!;
         configuredProvider.CompanyRfc = "MODIFICADO";

@@ -14,8 +14,9 @@ internal static class ServiceSlaTests
         var doc = new ClientLegalDocument { DocumentType = ClientLegalDocumentType.Contract,
             SigningSnapshotJson = ClientSigningSnapshot.Capture(client, contract) };
         var snapshot = JsonSerializer.Deserialize<ClientSigningSnapshot>(doc.SigningSnapshotJson)!;
-        check(snapshot.ServiceTemplateRevision == 4 && snapshot.EventTemplateRevision == 2,
-            "Nuevos contratos recurrentes congelan anexo v4; los eventuales mantienen v2");
+        check(snapshot.ServiceTemplateRevision == 5 && snapshot.EventTemplateRevision == 2,
+            "Nuevos contratos recurrentes congelan anexo v5; los eventuales mantienen v2");
+        doc.SigningSnapshotJson = JsonSerializer.Serialize(snapshot with { ServiceTemplateRevision = 4 });
 
         string WordText()
         {

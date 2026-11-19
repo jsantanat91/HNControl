@@ -11,7 +11,7 @@ public sealed record ContractProviderIdentity(string? LegalName, string? Rfc, st
 // Freeze the template inputs when the document is prepared, before either party signs.
 public sealed record ClientSigningSnapshot(Client Client, ClientServiceContract? Contract)
 {
-    public const int CurrentServiceTemplateRevision = 4;
+    public const int CurrentServiceTemplateRevision = 5;
     public const int CurrentEventTemplateRevision = 2;
     public bool UsesCorporateServiceTemplate { get; init; }
     public int? ServiceTemplateRevision { get; init; }

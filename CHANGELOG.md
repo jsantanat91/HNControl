@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.5.29 · 19 de noviembre de 2026
+
+- Contrato recurrente v5 con ficha simplificada: servicio, modalidad Dedicado/Best Effort, velocidad, sede/dirección, vigencia y cargos registrados. Retira red/reventa, operador de acceso, IP, medio/punto de entrega y parámetros técnicos manuales de la ficha.
+- Subida/simetría, instalación y referencias regulatorias verificadas quedan opcionales y sus filas se omiten cuando no hay datos. La emisión exige solo datos esenciales coherentes; no inventa velocidades, fechas ni títulos. La edición conserva los metadatos históricos ocultos.
+- Monitoreo e informes mensuales se consultan con el acceso del cliente en `https://support.hubnet-solutions.net`. Informe disponible en los primeros cinco días hábiles; copias/extractos gratuitos en cinco días hábiles. Mantiene WhatsApp/correo, evidencia objetable y atención si el portal no está disponible.
+- Segunda revisión de coherencia legal: prestación bajo la marca HN con responsabilidad ante el usuario; cobro desde prestación efectiva, cambios consentidos y representación conforme a las firmas. No afirma propiedad de toda infraestructura ni presenta trámites pendientes como concedidos.
+- Conserva disponibilidad mensual 99.85%, máximo de primera respuesta humana de cuatro horas y objetivo separado de restablecimiento. Firmas autógrafas/hash, snapshots y lógica de emisión histórica v4 preservados. Ver `docs/contratos-anexo-simplificado-2.5.29.md`.
+- Bienvenida alineada a v5. Solo desplegar la web; sin SQL ni APK. El portal de soporte ya existe: esta versión cambia las referencias del contrato, no su plataforma externa.
+
 ## Web 2.5.28 · 19 de noviembre de 2026
 
 - Contrato recurrente general v4 con Anexo A integrado: modalidad, capacidad en Mbps, red propia/reventa/mixta, operador de acceso, punto de entrega, vigencia, parámetros y método de medición, escalamiento y referencias regulatorias verificadas.

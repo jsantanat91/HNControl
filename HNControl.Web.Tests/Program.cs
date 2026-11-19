@@ -51,6 +51,7 @@ if (args.FirstOrDefault() == "--annex")
 {
     ClientServiceAnnexTests.Run(Check);
     await AnnexContractTests.RunAsync(service, Check);
+    SimplifiedAnnexTests.Run(service, Check);
     Console.WriteLine($"All {count} annex checks passed.");
     return;
 }
@@ -114,6 +115,7 @@ ContractRenewalTests.CheckTemplate(root, service, Check);
 ServiceSlaTests.Run(service, Check);
 ClientServiceAnnexTests.Run(Check);
 await AnnexContractTests.RunAsync(service, Check);
+SimplifiedAnnexTests.Run(service, Check);
 EventDeliveryDesignTests.Run(service, Check);
 await UnsignedDocumentDeletionTests.RunAsync(service, Check);
 await ServiceInventoryTests.RunAsync(Check);

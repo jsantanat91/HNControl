@@ -61,11 +61,23 @@ public static class ClientCommunicationTemplates
         {
             var snapshot = string.IsNullOrWhiteSpace(x.Document.SigningSnapshotJson) ? null
                 : System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson);
-            return snapshot?.ServiceTemplateRevision >= 3 && !EventContract.IsEvent(snapshot.Contract);
+            return snapshot?.ServiceTemplateRevision >= 3 && !EventContract.IsEvent(snapshot.Contract)
+                && (snapshot.ServiceTemplateRevision < 5 || snapshot.Contract?.ServiceType == ClientServiceType.Internet
+                    || ClientServiceContractMetadata.ParseTechnical(snapshot.Contract?.Notes).ServiceTypes
+                        .Contains("Internet", StringComparer.OrdinalIgnoreCase));
         });
         var usesIntegratedAnnex = usesCurrentSla && contracts.All(x =>
             System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson!)?.ServiceTemplateRevision >= 4);
-        var serviceTerms = usesIntegratedAnnex ? """
+        var usesSupportPortal = usesIntegratedAnnex && contracts.All(x =>
+            System.Text.Json.JsonSerializer.Deserialize<ClientSigningSnapshot>(x.Document.SigningSnapshotJson!)?.ServiceTemplateRevision >= 5);
+        var serviceTerms = usesSupportPortal ? """
+            <li><strong>Su Anexo A:</strong> está integrado en el contrato con el servicio, la modalidad, velocidad, ubicación, vigencia y cargos pactados. HN Solutions responde ante usted por la prestación del servicio.</li>
+            <li><strong>Internet Dedicado:</strong> disponibilidad mínima mensual del <strong>99.85%</strong>. Primera respuesta humana ante incidentes con objetivo de 15 minutos y <strong>máximo contractual de cuatro horas transcurridas, 24/7</strong>. Un acuse automático no sustituye la atención humana.</li>
+            <li><strong>Restablecimiento:</strong> el objetivo operativo para una interrupción total en Dedicado es de cuatro horas desde la detección o reporte, lo que ocurra antes. No es un máximo garantizado de reparación. El tiempo de respuesta no sustituye la disponibilidad mensual ni las compensaciones.</li>
+            <li><strong>Best Effort:</strong> sin disponibilidad porcentual garantizada salvo pacto expreso. Primera respuesta en hasta una hora, diagnóstico inicial en hasta cuatro y actualizaciones cada cuatro horas. Recuperación objetivo de 24 a 48 horas transcurridas.</li>
+            <li><strong>Monitoreo e informes:</strong> consulte su servicio y sus informes mensuales en <a href="https://support.hubnet-solutions.net">la plataforma de soporte</a> con su acceso de cliente. El informe estará disponible dentro de los primeros cinco días hábiles del mes siguiente; puede solicitar gratuitamente copia o extractos, que recibirá dentro de cinco días hábiles.</li>
+            <li><strong>Soporte:</strong> atención gratuita 24/7 en ambas modalidades, con escalamiento a Ingeniería y Operaciones. Si no puede acceder al portal, utilice WhatsApp o correo. Los informes pueden aclararse por esos mismos canales y no se exige esperar 72 horas para las compensaciones aplicables.</li>
+            """ : usesIntegratedAnnex ? """
             <li><strong>Su Anexo A:</strong> está integrado en el contrato y contiene la modalidad, la capacidad, el punto de entrega, la red utilizada y las condiciones de calidad del servicio. HN responde ante usted también cuando utilice infraestructura de terceros.</li>
             <li><strong>Internet Dedicado:</strong> disponibilidad mínima mensual del <strong>99.85%</strong>. Primera respuesta humana ante incidentes con objetivo de 15 minutos y <strong>máximo contractual de cuatro horas transcurridas, 24/7</strong>. Un acuse automático no sustituye la atención humana.</li>
             <li><strong>Restablecimiento:</strong> el objetivo operativo para una interrupción total en Dedicado es de cuatro horas desde la detección o reporte, lo que ocurra antes. No es un máximo garantizado de reparación. El tiempo de respuesta no sustituye la disponibilidad mensual ni las compensaciones.</li>
@@ -96,7 +108,7 @@ public static class ClientCommunicationTemplates
             <p>Cuando el cliente y HN Solutions hayan firmado el contrato, recibirá una confirmación por correo con el PDF final firmado. No es necesario imprimirlo ni reenviarlo.</p>
             <ul style="padding-left:20px">
             {{serviceTerms}}
-            <li><strong>Alcance contratado:</strong> instalación, equipos e IP pública únicamente en las condiciones expresamente indicadas en su contrato y anexo.</li>
+            <li><strong>Alcance contratado:</strong> {{(usesSupportPortal ? "las condiciones particulares constan en el contrato y su anexo; los equipos y datos técnicos de instalación se documentan en la orden de servicio." : "instalación, equipos e IP pública únicamente en las condiciones expresamente indicadas en su contrato y anexo.")}}</li>
             </ul>
             <p style="background:#edf6fc;padding:16px;border-left:3px solid #086db4">
             <strong>Abra un ticket de soporte por cualquiera de estos canales:</strong><br>

@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.28";
+    public const string Version = "2.5.29";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.29", new DateOnly(2026, 11, 19), "Contrato simplificado y portal de soporte", new[]
+        {
+            new ReleaseChange("Contratos", "Ficha con servicio, modalidad, velocidad, ubicación, vigencia y cargos de HN Control. Retira red/reventa, operador, IP y campos técnicos previos a la instalación. Datos opcionales solo aparecen cuando están registrados."),
+            new ReleaseChange("Soporte", "Monitoreo e informes mensuales mediante el acceso del cliente en support.hubnet-solutions.net. Conserva WhatsApp, correo, escalamiento y solicitud gratuita de copias o extractos."),
+            new ReleaseChange("Condiciones", "Segunda revisión de coherencia: HN responde por el servicio, inicio de cobros desde la prestación efectiva y cambios con consentimiento. Mantiene 99.85% y cuatro horas máximas de primera respuesta humana para Dedicado."),
+            new ReleaseChange("Compatibilidad", "Nueva revisión v5 para contratos nuevos; documentos emitidos y firmas conservan su versión. Sin SQL ni APK; desplegar la web.")
+        }),
         new ReleaseNote("2.5.28", new DateOnly(2026, 11, 19), "Anexo de Servicios y condiciones de atención", new[]
         {
             new ReleaseChange("Contratos", "Anexo A integrado con capacidad de bajada/subida, modalidad, red propia o de terceros, punto de entrega, medición y referencias regulatorias verificadas. Captura desde el servicio contratado; valida los datos técnicos antes de emitir."),

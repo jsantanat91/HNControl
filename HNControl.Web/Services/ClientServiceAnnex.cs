@@ -50,6 +50,13 @@ public static class ClientServiceAnnex
         ("AnexoEscalamiento", nameof(ClientServiceAnnexData.EscalationContact))
     ];
 
+    // Retained for previously prepared contracts; these fields are no longer edited by the form.
+    private static readonly HashSet<string> HistoricalFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AnexoRed", "AnexoMedio", "AnexoPunto", "AnexoIP", "AnexoLatencia", "AnexoJitter",
+        "AnexoPerdida", "AnexoMedicion", "AnexoEscalamiento"
+    };
+
     public static ClientServiceAnnexData Read(string? notes)
     {
         var values = ClientServiceContractMetadata.ParseMeta(notes);
@@ -71,16 +78,20 @@ public static class ClientServiceAnnex
     public static string Write(string? notes, ClientServiceAnnexData? data)
     {
         data ??= new();
-        var keys = Fields.Select(f => f.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var lines = (notes ?? "").Split('\n').Select(x => x.TrimEnd('\r'))
-            .Where(x => !keys.Contains(MetaKey(x))).ToList();
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var field in Fields)
         {
             var raw = typeof(ClientServiceAnnexData).GetProperty(field.Property)!.GetValue(data);
             var value = (raw is DateTime date ? date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : (string?)raw ?? "")
                 .Replace('\r', ' ').Replace('\n', ' ').Trim();
-            if (value.Length > 0) lines.Add($"[META] {field.Key}={value}");
+            values[field.Key] = value;
         }
+        var replacedKeys = values.Where(x => !HistoricalFields.Contains(x.Key) || x.Value.Length > 0)
+            .Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var lines = (notes ?? "").Split('\n').Select(x => x.TrimEnd('\r'))
+            .Where(x => !replacedKeys.Contains(MetaKey(x))).ToList();
+        foreach (var value in values.Where(x => x.Value.Length > 0))
+            lines.Add($"[META] {value.Key}={value.Value}");
         return string.Join(Environment.NewLine, lines).Trim();
     }
 
@@ -128,6 +139,58 @@ public static class ClientServiceAnnex
     }
 
     public static IReadOnlyList<string> MissingRequired(ClientServiceContract? contract)
+    {
+        if (contract == null) return ["servicio contratado"];
+        var technical = ClientServiceContractMetadata.ParseTechnical(contract.Notes);
+        if (EventContract.IsEvent(contract) || (contract.ServiceType != ClientServiceType.Internet
+            && !technical.ServiceTypes.Contains("Internet", StringComparer.OrdinalIgnoreCase))) return [];
+        var data = Read(contract.Notes);
+        var missing = new List<string>();
+        if (data.Modality is not ("Dedicado" or "BestEffort")) missing.Add("modalidad de Internet");
+        if (string.IsNullOrWhiteSpace(technical.InternetCapacity) || (technical.InternetCapacity == "Otro"
+            && string.IsNullOrWhiteSpace(technical.InternetCapacityOther))) missing.Add("velocidad de bajada");
+        var hasUpload = !string.IsNullOrWhiteSpace(data.UploadCapacity);
+        var hasSymmetry = !string.IsNullOrWhiteSpace(data.Symmetry);
+        if (hasUpload || hasSymmetry)
+        {
+            if (!hasUpload) missing.Add("velocidad de subida para la simetría indicada");
+            if (data.Symmetry is not ("Simetrico" or "Asimetrico")) missing.Add("simetría para la velocidad de subida indicada");
+            if (hasUpload && hasSymmetry && ValidateSymmetry(data, technical.InternetCapacity, technical.InternetCapacityOther) != null)
+                missing.Add("velocidades coherentes con la simetría");
+        }
+        if (string.IsNullOrWhiteSpace(contract.BranchAddress)) missing.Add("dirección del servicio");
+        if (!contract.ContractStartDate.HasValue) missing.Add("fecha de inicio del servicio");
+        var metadata = ClientServiceContractMetadata.ParseMeta(contract.Notes);
+        if (metadata.TryGetValue("AnexoInstalacion", out var installation) && !string.IsNullOrWhiteSpace(installation)
+            && !data.InstallationDate.HasValue) missing.Add("fecha pactada de instalación o activación válida");
+        metadata.TryGetValue("Plazo", out var term);
+        var indefinite = string.Equals(term, "Indefinido", StringComparison.OrdinalIgnoreCase);
+        var monthlyTerm = int.TryParse(term, out var months) && months > 0;
+        if (!indefinite && !monthlyTerm && !contract.ContractEndDate.HasValue) missing.Add("plazo o fecha de fin del servicio");
+        if (contract.ContractStartDate.HasValue && contract.ContractEndDate.HasValue
+            && contract.ContractEndDate.Value.Date < contract.ContractStartDate.Value.Date)
+            missing.Add("fechas de vigencia coherentes");
+        if (indefinite && contract.ContractEndDate.HasValue)
+            missing.Add("plazo indefinido sin fecha de fin");
+        if (monthlyTerm && contract.ContractStartDate.HasValue)
+        {
+            try
+            {
+                var anniversary = contract.ContractStartDate.Value.Date.AddMonths(months);
+                if (contract.ContractEndDate.HasValue && contract.ContractEndDate.Value.Date != anniversary
+                    && contract.ContractEndDate.Value.Date != anniversary.AddDays(-1))
+                    missing.Add("plazo coherente con las fechas de vigencia");
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                missing.Add("plazo dentro del rango de fechas admitido");
+            }
+        }
+        return missing;
+    }
+
+    // Frozen v4 wording must keep its original completeness rules when another party signs later.
+    public static IReadOnlyList<string> MissingRequiredV4(ClientServiceContract? contract)
     {
         if (contract == null) return ["servicio contratado"];
         var technical = ClientServiceContractMetadata.ParseTechnical(contract.Notes);
