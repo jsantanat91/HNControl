@@ -110,7 +110,7 @@
                     <div class="fw-semibold mb-1">Destinatarios del PDF</div>
                     <div>Cliente: <strong>@(string.IsNullOrWhiteSpace(Model.PdfEmailRecipient) ? "Sin correo registrado" : Model.PdfEmailRecipient)</strong></div>
                     <div>Copia (CC): @(Model.PdfEmailCopies.Count > 0 ? string.Join(", ", Model.PdfEmailCopies) : "Sin copias configuradas")</div>
-                    <div class="text-muted mt-1">Las copias se administran en Configuración → Ingeniería. Se adjunta el PDF actualizado con las firmas registradas.</div>
+                    <div class="text-muted mt-1">Incluye los contactos en copia de esta orden y las copias internas de Configuración → Ingeniería. Se adjunta el PDF actualizado con las firmas registradas.</div>
                     @if (Model.PdfEmailConfigurationError != null)
                     {
                         <div class="text-danger">@Model.PdfEmailConfigurationError</div>

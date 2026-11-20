@@ -46,6 +46,7 @@ public class EditModel : PageModel
 
     public class InputModel
     {
+        public ClientContactSelection Contacts { get; set; } = new();
         [Required, RegularExpression("Servicios|WebMensual")]
         public string ContractFormat { get; set; } = WebServiceContract.StandardVariant;
         public WebServiceContractData Web { get; set; } = new();
@@ -143,6 +144,7 @@ public class EditModel : PageModel
         Input = new InputModel
         {
             Id = Contract.Id,
+            Contacts = ClientContactRouting.Selection(Contract.NotificationContactsJson),
             ContractFormat = WebServiceContract.IsWeb(Contract) ? WebServiceContract.Variant : WebServiceContract.StandardVariant,
             Web = WebServiceContract.Read(Contract.Notes),
             ServiceType = Contract.ServiceType,
@@ -242,6 +244,10 @@ public class EditModel : PageModel
             return Page();
         }
 
+        string? contactsJson;
+        try { contactsJson = await ClientContactRouting.CaptureAsync(_db, ClientId, Input.Contacts, Contract.NotificationContactsJson); }
+        catch (ArgumentException ex) { ModelState.AddModelError("Input.Contacts", ex.Message); return Page(); }
+        Contract.NotificationContactsJson = contactsJson;
         Contract.ServiceType = PrimaryServiceType(Input.SelectedServiceTypes, Input.ServiceType);
         Contract.Label = (Input.Label ?? "").Trim();
         if (!webContract)

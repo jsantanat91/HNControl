@@ -58,7 +58,7 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
             Error = "No se pudo confirmar el envío del correo. Revise la configuración SMTP y los correos recibidos antes de reintentar.";
             return Page();
         }
-        TempData["ClientDetailsInfo"] = $"Correo de bienvenida de {SelectedContractLabel} enviado a {Recipient}. Copias internas: {InternalCopies.Count}.";
+        TempData["ClientDetailsInfo"] = $"Correo de bienvenida de {SelectedContractLabel} enviado a {Recipient}. Copias (cliente e internas): {InternalCopies.Count}.";
         TempData["ClientDetailsInfoType"] = "success";
         return RedirectToPage("Details", new { id = clientId });
     }
@@ -112,7 +112,13 @@ public class WelcomeModel(ApplicationDbContext db, IActionAccessService actions,
         var serviceContractId = ContractId == Guid.Empty ? (Guid?)null : ContractId;
         var document = await availableDocuments.Where(x => x.ClientServiceContractId == serviceContractId)
             .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).FirstOrDefaultAsync();
-        if (document != null) documents.Add(document);
+        if (document != null)
+        {
+            documents.Add(document);
+            var route = ClientContactRouting.Resolve(document.NotificationContactsJson, Client);
+            Recipient = route.Primary.Email;
+            InternalCopies = ClientContactRouting.Copies(route, InternalCopies);
+        }
         if (!ClientCommunicationTemplates.IsEmail(Recipient)) Error = "Registre un correo válido del cliente antes de enviar la bienvenida.";
         else if (string.IsNullOrWhiteSpace(Client.ClientCode)) Error = "Asigne el número de cliente desde su ficha antes de enviar la bienvenida.";
         else if (documents.Count == 0 || documents.Any(x => string.IsNullOrWhiteSpace(x.PublicToken) || string.IsNullOrWhiteSpace(x.PdfStoragePath)))

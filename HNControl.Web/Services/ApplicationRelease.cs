@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.31";
+    public const string Version = "2.5.32";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.32", new DateOnly(2026, 11, 20), "Contacto de firma y copias por documento", new[]
+        {
+            new ReleaseChange("Clientes", "Selecciona un contacto principal y contactos en copia al crear servicios contratados, contratos/NDA y órdenes. Las órdenes y documentos pueden heredar la selección del servicio contratado."),
+            new ReleaseChange("Correo", "Avisos de órdenes, PDF, bienvenida, invitaciones y confirmaciones respetan la selección guardada y conservan las copias internas configuradas, sin correos duplicados."),
+            new ReleaseChange("Firmas", "La invitación muestra el nombre y correo del principal. Los documentos con firmas conservan sus contactos; cambiar destinatarios de una invitación pendiente requiere un nuevo enlace."),
+            new ReleaseChange("Despliegue", "Ejecutar Sql/20261120_document_contacts.sql antes de desplegar la web. Tres columnas opcionales; no modifica datos históricos. No requiere APK nueva.")
+        }),
         new ReleaseNote("2.5.31", new DateOnly(2026, 11, 19), "Inventario y órdenes conectados con HN Support", new[]
         {
             new ReleaseChange("Integración", "API interna autenticada para consultar servicios, cuentas, cliente, carrier, línea y serie desde Support. No exporta contraseñas, notas privadas ni costos."),

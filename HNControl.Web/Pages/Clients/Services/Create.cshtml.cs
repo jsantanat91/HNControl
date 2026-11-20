@@ -51,6 +51,7 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        public ClientContactSelection Contacts { get; set; } = new();
         [Required, RegularExpression("Servicios|WebMensual")]
         public string ContractFormat { get; set; } = WebServiceContract.StandardVariant;
         public WebServiceContractData Web { get; set; } = new();
@@ -238,6 +239,9 @@ public class CreateModel : PageModel
         if (selectedPackage != null && Enum.TryParse<ClientServiceType>(selectedPackage.VariantValue, true, out var parsedType))
             serviceType = parsedType;
 
+        string? contactsJson;
+        try { contactsJson = await ClientContactRouting.CaptureAsync(_db, ClientId, Input.Contacts); }
+        catch (ArgumentException ex) { ModelState.AddModelError("Input.Contacts", ex.Message); return Page(); }
         var contract = new ClientServiceContract
         {
             ClientId = ClientId,
@@ -279,6 +283,7 @@ public class CreateModel : PageModel
         };
 
         if (!webContract) contract.Notes = ClientServiceAnnex.Write(contract.Notes, Input.Annex);
+        contract.NotificationContactsJson = contactsJson;
         contract.Notes = WebServiceContract.Write(contract.Notes, Input.Web, webContract);
         if (contract.Notes.Length > 2000)
         {

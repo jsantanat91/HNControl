@@ -34,9 +34,11 @@ public class EditModel : PageModel
     [BindProperty(Name = nameof(NewWorkItem))] public NewWorkItemInput NewWorkItem { get; set; } = new();
 
     public string? Error { get; set; }
+    public bool ContactsLocked { get; set; }
 
     public class InputModel
     {
+        public ClientContactSelection Contacts { get; set; } = new();
         [Required] public Guid Id { get; set; }
 
         [Required(ErrorMessage = "Escribe el título de la orden."), MaxLength(200)]
@@ -82,9 +84,11 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == id);
         if (order == null) return NotFound();
 
+        ContactsLocked = await _db.ServiceOrderSignatures.AnyAsync(s => s.OrderId == id);
         Input = new InputModel
         {
             Id = order.Id,
+            Contacts = ClientContactRouting.Selection(order.NotificationContactsJson),
             Title = order.Title,
             Type = order.Type,
             Status = order.Status,
@@ -110,6 +114,7 @@ public class EditModel : PageModel
         await LoadListsAsync();
 
         if (Input == null) return NotFound();
+        ContactsLocked = await _db.ServiceOrderSignatures.AnyAsync(s => s.OrderId == Input.Id);
         WorkItems = await _db.ServiceOrderWorkItems.Where(w => w.OrderId == Input.Id).OrderBy(w => w.SortOrder).ToListAsync();
         NewWorkItem.Type = Input.Type == ServiceOrderType.Global ? ServiceOrderType.Preventivo : Input.Type;
 
@@ -127,6 +132,10 @@ public class EditModel : PageModel
             Input.ClientServiceContractId, Input.StartDate, Input.ExpectedEndDate);
         if (Error != null) return Page();
 
+        // Serialize contact edits with both web and mobile signature submission.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        if (_db.Database.IsNpgsql())
+            await _db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {Input.Id} FOR UPDATE").LoadAsync();
         var order = await _db.ServiceOrders
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(x => x.Id == Input.Id);
@@ -144,6 +153,13 @@ public class EditModel : PageModel
             && !await _db.EmployeeProfiles.AnyAsync(e => e.UserId == Input.AssignedUserId.Trim() && e.IsActive))
         { Error = "Selecciona un empleado activo para asignar la orden."; return Page(); }
 
+        ContactsLocked = await _db.ServiceOrderSignatures.AnyAsync(s => s.OrderId == order.Id);
+        string? contactsJson;
+        try { contactsJson = await ClientContactRouting.CaptureAsync(_db, Input.ClientId, Input.Contacts, order.NotificationContactsJson); }
+        catch (ArgumentException ex) { Error = ex.Message; return Page(); }
+        if (ContactsLocked && (order.ClientId != Input.ClientId || contactsJson != order.NotificationContactsJson))
+        { Error = "La orden ya tiene firmas. Se conservan el cliente y sus contactos."; return Page(); }
+        order.NotificationContactsJson = contactsJson;
         order.Title = (Input.Title ?? "").Trim();
 
         // Si ya es Global (tiene actividades), no permitimos â€œbajarâ€ el tipo.
@@ -167,6 +183,7 @@ public class EditModel : PageModel
             await ServiceOrderCommissionService.FinalizeAsync(_db, order, DateTime.UtcNow);
         else
             await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return RedirectToPage("/Admin/ServiceOrders/Details", new { id = order.Id });
     }
 
@@ -407,9 +424,11 @@ public class EditModel : PageModel
 
         if (order == null) return NotFound();
 
+        ContactsLocked = await _db.ServiceOrderSignatures.AnyAsync(s => s.OrderId == id);
         Input = new InputModel
         {
             Id = order.Id,
+            Contacts = ClientContactRouting.Selection(order.NotificationContactsJson),
             Title = order.Title,
             Type = order.Type,
             Status = order.Status,
@@ -458,6 +477,13 @@ public class EditModel : PageModel
                 Notes = ""
             });
         }
+    }
+
+    public async Task<JsonResult> OnGetContactsAsync(Guid clientId, Guid? contractId)
+    {
+        var saved = contractId.HasValue ? await _db.ClientServiceContracts.AsNoTracking()
+            .Where(c => c.Id == contractId && c.ClientId == clientId).Select(c => c.NotificationContactsJson).FirstOrDefaultAsync() : null;
+        return new(await ClientContactRouting.OptionsAsync(_db, clientId, saved));
     }
 
     private async Task LoadListsAsync()

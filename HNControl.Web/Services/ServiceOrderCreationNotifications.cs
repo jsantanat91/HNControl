@@ -25,6 +25,10 @@ public sealed class ServiceOrderCreationNotifications(
     // Persist this with the order. StartedAt is later overwritten by the operational workflow.
     public void QueueCreated(ServiceOrder order, bool scheduledDateConfirmed = true)
     {
+        if (string.IsNullOrWhiteSpace(order.NotificationContactsJson) && order.ClientServiceContractId.HasValue)
+            order.NotificationContactsJson = db.ClientServiceContracts.AsNoTracking()
+                .Where(c => c.Id == order.ClientServiceContractId && c.ClientId == order.ClientId)
+                .Select(c => c.NotificationContactsJson).FirstOrDefault();
         db.ServiceOrderAuditLogs.Add(new ServiceOrderAuditLog
         {
             OrderId = order.Id,
@@ -104,7 +108,9 @@ public sealed class ServiceOrderCreationNotifications(
         }
         else
         {
-            recipient = order.Client == null ? "" : ClientCommunicationTemplates.Recipient(order.Client);
+            var route = order.Client == null ? null : ClientContactRouting.Resolve(order.NotificationContactsJson, order.Client);
+            recipient = route?.Primary.Email ?? "";
+            if (route != null) copies = ClientContactRouting.Copies(route, Array.Empty<string>());
             if (!ClientCommunicationTemplates.IsEmail(recipient))
                 throw new InvalidOperationException("Registre un correo válido para el cliente.");
         }

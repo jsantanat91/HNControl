@@ -1,5 +1,13 @@
 # HN Control — notas de versión
 
+## Web 2.5.32 · 20 de noviembre de 2026
+
+- Contacto principal (quien firma) y contactos del cliente en copia para servicios contratados, contratos/NDA y órdenes. Los documentos y órdenes heredan la selección del servicio y permiten personalizarla antes de firmar.
+- Destinatarios guardados por documento: los cambios posteriores en la agenda no redirigen silenciosamente sus correos. Validación de pertenencia al cliente y eliminación de correos repetidos.
+- Avisos al cliente, PDF de órdenes, bienvenida, invitación y confirmación de firma usan esos destinatarios y conservan las copias internas. Ingeniería mantiene su aviso operativo separado.
+- Selección bloqueada cuando ya existen firmas. Cambiar destinatarios de una invitación pendiente revoca el enlace anterior; es necesario reenviar la invitación.
+- **Despliegue:** ejecutar primero `HNControl.Web/Sql/20261120_document_contacts.sql` y después actualizar la web. Agrega tres columnas opcionales sin sustituir datos históricos. Sin nueva APK.
+
 ## Web 2.5.31 · 19 de noviembre de 2026
 
 - API interna para HN Support 2.3.0: inventario de servicios y cuentas con filtro, búsqueda y paginación. DTO explícito sin contraseñas, notas ni costos.

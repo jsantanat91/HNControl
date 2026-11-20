@@ -52,6 +52,7 @@ public class DocumentsModel : PageModel
         _recipients = recipients;
     }
 
+    [BindProperty] public ClientContactSelection Contacts { get; set; } = new();
     public Client? Client { get; set; }
     public List<ClientServiceContract> Contracts { get; set; } = new();
     public List<LegalDocRow> Docs { get; set; } = new();
@@ -75,7 +76,10 @@ public class DocumentsModel : PageModel
         string? ContractLabel,
         bool ProviderSigned,
         string? ProviderSignedBy,
-        bool ConfirmationSent, bool ProviderAutograph);
+        bool ConfirmationSent, bool ProviderAutograph)
+    {
+        public string? NotificationContactsJson { get; init; }
+    }
 
     public record SignContactOption(
         Guid Id,
@@ -94,6 +98,7 @@ public class DocumentsModel : PageModel
     public async Task<IActionResult> OnPostGenerateAsync(Guid clientId, ClientLegalDocumentType type, Guid? contractId)
     {
         if (!await CanManageAsync(clientId)) return Forbid();
+        if (!ModelState.IsValid) return BadRequest("Revise los contactos seleccionados.");
         if (!Enum.IsDefined(type)) return BadRequest();
         var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == clientId);
         if (client == null) return NotFound();
@@ -146,6 +151,18 @@ public class DocumentsModel : PageModel
             FlashType = "warning";
             return RedirectToPage(new { clientId });
         }
+        try
+        {
+            var changed = await ClientContactRouting.CaptureAsync(_db, clientId, Contacts,
+                doc.NotificationContactsJson ?? contract?.NotificationContactsJson);
+            if (changed != doc.NotificationContactsJson)
+            {
+                doc.PublicToken = Guid.NewGuid().ToString("N");
+                doc.SentAt = null;
+            }
+            doc.NotificationContactsJson = changed;
+        }
+        catch (ArgumentException ex) { Flash = ex.Message; FlashType = "warning"; return RedirectToPage(new { clientId }); }
         doc.Status = ClientLegalDocumentStatus.Draft;
         var documentSubject = FirstNonEmpty(contract?.Label, client.Name);
         doc.Title = type == ClientLegalDocumentType.NDA
@@ -179,6 +196,7 @@ public class DocumentsModel : PageModel
     public async Task<IActionResult> OnPostSendForSignatureAsync(Guid clientId, Guid docId, Guid? contactId)
     {
         if (!await CanManageAsync(clientId)) return Forbid();
+        if (!ModelState.IsValid) return BadRequest("Revise los contactos seleccionados.");
         var doc = await _db.ClientLegalDocuments
             .Include(x => x.Client)
             .FirstOrDefaultAsync(x => x.Id == docId && x.ClientId == clientId);
@@ -205,27 +223,25 @@ public class DocumentsModel : PageModel
             }
         }
 
-        ClientContact? selectedContact = null;
-        if (contactId.HasValue && contactId.Value != Guid.Empty)
+        if (!Contacts.Configured && contactId.HasValue && contactId != Guid.Empty)
         {
-            selectedContact = await _db.ClientContacts
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.ClientId == clientId && x.Id == contactId.Value);
-            if (selectedContact == null)
-            {
-                Flash = "El contacto seleccionado no pertenece al cliente.";
-                FlashType = "danger";
-                return RedirectToPage(new { clientId });
-            }
+            Contacts = ClientContactRouting.Selection(doc.NotificationContactsJson);
+            Contacts.Configured = true;
+            Contacts.PrimaryContactId = contactId;
         }
-
-        var recipient = FirstNonEmpty(selectedContact?.Email, doc.Client?.BillingEmail, doc.Client?.Email);
-        if (string.IsNullOrWhiteSpace(recipient))
+        try
         {
-            Flash = "El contacto seleccionado no tiene correo (o el cliente no tiene correo de facturacion/principal).";
-            FlashType = "danger";
-            return RedirectToPage(new { clientId });
+            var changed = await ClientContactRouting.CaptureAsync(_db, clientId, Contacts, doc.NotificationContactsJson);
+            if (doc.ProviderSignedAt.HasValue && changed != doc.NotificationContactsJson)
+            { Flash = "El documento ya tiene firma HN. Sus contactos se conservan."; FlashType = "warning"; return RedirectToPage(new { clientId }); }
+            if (changed != doc.NotificationContactsJson) doc.PublicToken = Guid.NewGuid().ToString("N");
+            doc.NotificationContactsJson = changed;
         }
+        catch (ArgumentException ex) { Flash = ex.Message; FlashType = "danger"; return RedirectToPage(new { clientId }); }
+        var route = ClientContactRouting.Resolve(doc.NotificationContactsJson, doc.Client!);
+        var recipient = route.Primary.Email;
+        if (!ClientCommunicationTemplates.IsEmail(recipient))
+        { Flash = "El contacto principal debe tener un correo válido."; FlashType = "danger"; return RedirectToPage(new { clientId }); }
 
         if (string.IsNullOrWhiteSpace(doc.PublicToken))
             doc.PublicToken = Guid.NewGuid().ToString("N");
@@ -254,12 +270,7 @@ public class DocumentsModel : PageModel
             }
         }
 
-        var recipientName = FirstNonEmpty(
-            selectedContact?.Name,
-            doc.Client?.LegalRepresentative,
-            doc.Client?.ContactName,
-            doc.Client?.Name,
-            "cliente");
+        var recipientName = route.Primary.Name;
 
         await _email.SendAsync(
             recipient,
@@ -273,10 +284,57 @@ public class DocumentsModel : PageModel
             """,
             attachment,
             attachmentName,
-            "application/pdf", await _recipients.GetAsync());
+            "application/pdf", ClientContactRouting.Copies(route, await _recipients.GetAsync()));
 
         Flash = "Documento enviado para firma digital.";
         FlashType = "success";
+        return RedirectToPage(new { clientId });
+    }
+
+    public async Task<IActionResult> OnGetContactsAsync(Guid clientId, Guid? contractId, Guid? docId)
+    {
+        if (!await CanManageAsync(clientId)) return Forbid();
+        string? saved = null;
+        if (docId.HasValue)
+        {
+            var doc = await _db.ClientLegalDocuments.AsNoTracking().FirstOrDefaultAsync(d => d.Id == docId && d.ClientId == clientId);
+            if (doc == null) return NotFound();
+            saved = doc.NotificationContactsJson;
+        }
+        else if (contractId.HasValue)
+        {
+            var contract = await _db.ClientServiceContracts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == contractId && c.ClientId == clientId);
+            if (contract == null) return NotFound();
+            saved = contract.NotificationContactsJson;
+        }
+        return new JsonResult(await ClientContactRouting.OptionsAsync(_db, clientId, saved));
+    }
+
+    public async Task<IActionResult> OnPostSaveContactsAsync(Guid clientId, Guid docId)
+    {
+        if (!await CanManageAsync(clientId)) return Forbid();
+        if (!ModelState.IsValid) return BadRequest("Revise los contactos seleccionados.");
+        var doc = await _db.ClientLegalDocuments.FirstOrDefaultAsync(d => d.Id == docId && d.ClientId == clientId);
+        if (doc == null) return NotFound();
+        if (doc.SignedAt.HasValue || doc.ProviderSignedAt.HasValue)
+        { Flash = "El documento ya tiene firmas. Sus contactos se conservan."; FlashType = "warning"; return RedirectToPage(new { clientId }); }
+        try
+        {
+            var changed = await ClientContactRouting.CaptureAsync(_db, clientId, Contacts, doc.NotificationContactsJson);
+            if (changed != doc.NotificationContactsJson)
+            {
+                doc.PublicToken = Guid.NewGuid().ToString("N");
+                doc.Status = ClientLegalDocumentStatus.Draft;
+                doc.TokenExpiresAt = null;
+                doc.SentAt = null;
+            }
+            doc.NotificationContactsJson = changed;
+            doc.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            Flash = "Contactos guardados. Si cambió el firmante, envíe nuevamente la invitación.";
+            FlashType = "success";
+        }
+        catch (ArgumentException ex) { Flash = ex.Message; FlashType = "warning"; }
         return RedirectToPage(new { clientId });
     }
 
@@ -395,7 +453,7 @@ public class DocumentsModel : PageModel
                 x.ProviderSignedAt.HasValue,
                 x.ProviderSignedByName,
                 x.CompletionEmailSentAt.HasValue, !string.IsNullOrEmpty(x.ProviderSignatureStoragePath)
-            ))
+            ) { NotificationContactsJson = x.NotificationContactsJson })
             .ToListAsync();
     }
 

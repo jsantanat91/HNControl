@@ -51,6 +51,10 @@ public class ClientDocumentModel(
             Error = "Ingrese su nombre y correo válidos y confirme la aceptación del documento.";
             return Page();
         }
+        var designated = ClientContactRouting.Read(doc.NotificationContactsJson)?.Primary;
+        if (designated != null && (!signerEmail.Equals(designated.Email, StringComparison.OrdinalIgnoreCase)
+            || !signerName.Equals(designated.Name, StringComparison.OrdinalIgnoreCase)))
+        { Error = "La firma corresponde al contacto principal designado. Solicite a HN un cambio de contacto si es necesario."; return Page(); }
         var bytes = ParseDataUrl(sigDataUrl);
         if (bytes == null)
         {

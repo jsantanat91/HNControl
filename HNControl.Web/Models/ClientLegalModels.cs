@@ -17,6 +17,8 @@ public enum ClientLegalDocumentStatus
 
 public class ClientLegalDocument
 {
+    public string? NotificationContactsJson { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid ClientId { get; set; }

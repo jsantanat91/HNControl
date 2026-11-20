@@ -17,7 +17,8 @@ public static class ServiceOrderCommissionService
     // Saving the final status and its commission is one transaction. Row lock serializes retries.
     public static async Task FinalizeAsync(ApplicationDbContext db, ServiceOrder order, DateTime utcNow)
     {
-        await using var tx = await db.Database.BeginTransactionAsync();
+        // An editor may already hold the order lock while validating its signatures.
+        await using var tx = db.Database.CurrentTransaction == null ? await db.Database.BeginTransactionAsync() : null;
         var source = db.Database.IsNpgsql()
             ? db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {order.Id} FOR UPDATE")
             : db.ServiceOrders.Where(x => x.Id == order.Id);
@@ -46,6 +47,6 @@ public static class ServiceOrderCommissionService
             }
         }
         await db.SaveChangesAsync();
-        await tx.CommitAsync();
+        if (tx != null) await tx.CommitAsync();
     }
 }

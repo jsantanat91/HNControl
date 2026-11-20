@@ -76,6 +76,8 @@ public enum SignatureRole
 
 public class ServiceOrder
 {
+    public string? NotificationContactsJson { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid ClientId { get; set; }

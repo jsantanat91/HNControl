@@ -340,7 +340,7 @@ public class WorkModel : PageModel
 
         var techName = await GetCurrentUserDisplayNameAsync();
         await UpsertSignatureIfPresentAsync(id, SignatureRole.Technician, techName, TechSigDataUrl);
-        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, Order.Client?.Name, ClientSigDataUrl);
+        await UpsertSignatureIfPresentAsync(id, SignatureRole.Client, Order.Client == null ? null : ClientContactRouting.Resolve(Order.NotificationContactsJson, Order.Client).Primary.Name, ClientSigDataUrl);
 
         _db.ChangeTracker.Clear();
         await LoadAsync(id);

@@ -70,6 +70,8 @@
             </div>
             </div>
         </section>
+        <partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Input.ClientId, Model.Input.Contacts, "Input.Contacts", "#clientSelect", "#contractSelect", Model.ContactsLocked))' />
+
         <section class="hn-form-section">
             <header class="hn-form-section-heading">
                 <span class="hn-form-step" aria-hidden="true">02</span>

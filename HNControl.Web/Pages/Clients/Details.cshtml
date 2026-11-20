@@ -545,6 +545,13 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            const openLinkedSection = () => {
+                const tab = Array.from(document.querySelectorAll('.hn-client-tabs [data-bs-target]'))
+                    .find(button => button.dataset.bsTarget === location.hash);
+                if (tab && window.bootstrap?.Tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+            };
+            openLinkedSection();
+            window.addEventListener('hashchange', openLinkedSection);
             document.getElementById('projectsPrev')?.addEventListener('click', () => { projectPage--; renderProjects(); });
             document.getElementById('projectsNext')?.addEventListener('click', () => { projectPage++; renderProjects(); });
             document.getElementById('quotesPrev')?.addEventListener('click', () => { quotePage--; renderQuotes(); });

@@ -372,7 +372,8 @@ public class ServiceOrdersController : ControllerBase
         if (o.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed)
             return Conflict(new { message = "La orden ya no permite envÃ­o a revisiÃ³n." });
 
-        var clientName = await _db.Clients.Where(x => x.Id == o.ClientId).Select(x => x.Name).FirstOrDefaultAsync() ?? "Cliente";
+        var clientName = ClientContactRouting.Read(o.NotificationContactsJson)?.Primary.Name
+            ?? await _db.Clients.Where(x => x.Id == o.ClientId).Select(x => x.Name).FirstOrDefaultAsync() ?? "Cliente";
         var techName = await _db.EmployeeProfiles
             .Where(e => e.UserId == userId)
             .Select(e => e.FullName)

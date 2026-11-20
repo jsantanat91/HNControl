@@ -21,6 +21,8 @@ public enum ClientServiceType
 /// </summary>
 public class ClientServiceContract
 {
+    public string? NotificationContactsJson { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public Guid ClientId { get; set; }

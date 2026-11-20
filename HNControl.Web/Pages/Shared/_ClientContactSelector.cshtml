@@ -1,0 +1,32 @@
+@model HNControl.Web.Services.ContactSelectorModel
+@inject HNControl.Web.Data.ApplicationDbContext ContactDb
+@{
+    var options = await HNControl.Web.Services.ClientContactRouting.OptionsAsync(ContactDb, Model.ClientId, Model.Selection.Saved);
+}
+<div class="border rounded-3 p-3 my-3" data-contact-selector data-client-id="@Model.ClientId" data-prefix="@Model.Prefix"
+     data-client-selector="@Model.ClientSelector" data-contract-selector="@Model.ContractSelector" data-url="@Url.Page(null, "Contacts")" data-locked="@Model.Locked.ToString().ToLowerInvariant()">
+    <h3 class="h6 mb-1"><i class="bi bi-people me-2" aria-hidden="true"></i>Contactos del documento</h3>
+    <p class="small text-muted">El principal recibe la solicitud de firma. Las copias reciben los avisos y documentos; se mantienen también las copias internas configuradas.</p>
+    <input type="hidden" name="@(Model.Prefix).Configured" value="@((!Model.Locked).ToString().ToLowerInvariant())" />
+    <label class="form-label d-block">Contacto principal · quien firma
+        <select class="form-select mt-1" name="@(Model.Prefix).PrimaryContactId" data-contact-primary aria-label="Contacto principal · quien firma" disabled="@Model.Locked">
+            @foreach (var c in options.Options)
+            {
+                <option value="@c.Id" selected="@(c.Id == (Model.Selection.PrimaryContactId?.ToString() ?? ""))">@c.Name · @(string.IsNullOrWhiteSpace(c.Email) ? "Sin correo" : c.Email)</option>
+            }
+        </select>
+    </label>
+    <div class="form-label mt-3">Contactos en copia</div>
+    <div data-contact-copies class="d-flex flex-column gap-2" style="max-height:220px;overflow:auto">
+        @foreach (var c in options.Options.Where(c => c.Id.Length > 0))
+        {
+            <label class="d-flex align-items-center gap-2 small"><input class="form-check-input mt-0" type="checkbox" name="@(Model.Prefix).CopyContactIds" value="@c.Id" checked="@(Model.Selection.CopyContactIds.Contains(Guid.Parse(c.Id)))" disabled="@(Model.Locked || c.Id == Model.Selection.PrimaryContactId?.ToString())" />@c.Name · @c.Email</label>
+        }
+    </div>
+    <div data-contact-status class="small text-muted mt-2" role="status"></div>
+    <a class="small d-inline-block mt-2" data-contact-manage href="/Clients/Details/@Model.ClientId#client-contacts">Administrar contactos del cliente</a>
+    @if (Model.Locked) { <div class="small text-muted mt-2">Esta orden ya tiene firmas; se conservan sus contactos.</div> }
+    <script type="application/json" data-contact-options>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(options, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))</script>
+    <script type="application/json" data-contact-selection>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Selection, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)))</script>
+</div>
+<script src="~/js/client-contact-selector.js" asp-append-version="true" defer></script>

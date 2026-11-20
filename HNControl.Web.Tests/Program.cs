@@ -29,7 +29,7 @@ if (args.FirstOrDefault() == "--operations")
     return;
 }
 
-var root = Path.GetFullPath(args.FirstOrDefault() is "--annex" or "--web-contract" ? "HNControl.Web" : args.FirstOrDefault() ?? "HNControl.Web");
+var root = Path.GetFullPath(args.FirstOrDefault() is "--annex" or "--web-contract" or "--contacts" ? "HNControl.Web" : args.FirstOrDefault() ?? "HNControl.Web");
 var service = new TemplateDocxService(new TestEnvironment(root));
 var client = new Client { Name = "Cliente de prueba", LegalRepresentative = "Representante de prueba" };
 var doc = new ClientLegalDocument
@@ -60,6 +60,12 @@ if (args.FirstOrDefault() == "--web-contract")
     await WebServiceContractMetadataTests.RunAsync(Check);
     await WebContractTests.RunAsync(service, Check);
     Console.WriteLine($"All {count} web contract checks passed.");
+    return;
+}
+if (args.FirstOrDefault() == "--contacts")
+{
+    await ClientContactRoutingTests.RunAsync(service, Check);
+    Console.WriteLine($"All {count} contact routing checks passed.");
     return;
 }
 if (args.FirstOrDefault() == "--annex")
@@ -107,6 +113,7 @@ if (args.Length > 1)
     File.WriteAllBytes(args[1], service.BuildClientLegalDocx(doc, client, cases[0].Item1));
 }
 await ClientCommunicationTests.RunAsync(service, Check);
+await ClientContactRoutingTests.RunAsync(service, Check);
 await DeliveryCommunicationTests.RunAsync(service, Check);
 await WelcomeContractSelectionTests.RunAsync(Check);
 await SystemHealthTests.RunAsync(root, Check);

@@ -800,6 +800,8 @@ namespace HNControl.Web.Migrations
 
             modelBuilder.Entity("HNControl.Web.Models.ClientLegalDocument", b =>
                 {
+                    b.Property<string>("NotificationContactsJson").HasColumnType("text");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
@@ -961,6 +963,8 @@ namespace HNControl.Web.Migrations
 
             modelBuilder.Entity("HNControl.Web.Models.ClientServiceContract", b =>
                 {
+                    b.Property<string>("NotificationContactsJson").HasColumnType("text");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
@@ -3958,6 +3962,8 @@ namespace HNControl.Web.Migrations
 
             modelBuilder.Entity("HNControl.Web.Models.ServiceOrder", b =>
                 {
+                    b.Property<string>("NotificationContactsJson").HasColumnType("text");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");

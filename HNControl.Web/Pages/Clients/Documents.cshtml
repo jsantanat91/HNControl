@@ -46,6 +46,7 @@
                         <option value="@c.Id" data-format="@format">@c.Label · @format · @c.MonthlyAmount?.ToString("C")</option>
                     }
                 </select>
+                <partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Client.Id, Model.Contacts, "Contacts", ContractSelector: "#legalServiceSelection"))' />
                 <div class="alert alert-primary py-2 small" role="status" id="legalFormatPreview">Selecciona un servicio para ver el formato de contrato.</div>
                 <div class="small text-muted">
                     Los datos del cliente se llenan autom&aacute;ticamente desde su ficha (raz&oacute;n social, RFC, estado, municipio, correo de facturaci&oacute;n y datos del contrato).
@@ -65,13 +66,14 @@
                 <input type="hidden" name="clientId" value="@Model.Client.Id" />
                 <input type="hidden" name="type" value="@ClientLegalDocumentType.NDA" />
                 <label class="form-label">Contrato base (opcional)</label>
-                <select class="form-select mb-3" name="contractId">
+                <select class="form-select mb-3" name="contractId" id="ndaServiceSelection">
                     <option value="">-- Sin contrato ligado --</option>
                     @foreach (var c in Model.Contracts)
                     {
                         <option value="@c.Id">@c.Label - @c.Provider</option>
                     }
                 </select>
+                <partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Client.Id, Model.Contacts, "Contacts", ContractSelector: "#ndaServiceSelection"))' />
                 <div class="small text-muted">
                     NDA autocompletado con datos del cliente y contrato ligado. Siempre genera/reemplaza el PDF final.
                 </div>
@@ -126,6 +128,7 @@
                         var typeBadge = d.Type == "NDA" ? "text-bg-info" : "text-bg-primary";
                         var contractLabel = string.IsNullOrWhiteSpace(d.ContractLabel) ? null : d.ContractLabel;
                         var title = d.Title;
+                        var contacts = ClientContactRouting.Resolve(d.NotificationContactsJson, Model.Client);
                         if (!string.IsNullOrWhiteSpace(contractLabel) && !title.Contains(contractLabel, StringComparison.OrdinalIgnoreCase))
                         {
                             title = $"{title} - {contractLabel}";
@@ -156,6 +159,11 @@
                                         <div class="small text-muted">Sin contrato base ligado</div>
                                     }
 
+                                    <div class="mt-3 p-2 rounded bg-light small">
+                                        <div><strong>Principal / firma:</strong> @contacts.Primary.Name · @contacts.Primary.Email</div>
+                                        <div><strong>Copias del cliente:</strong> @(contacts.Copies.Count == 0 ? "Sin contactos adicionales" : string.Join(", ", contacts.Copies.Select(c => c.Email)))</div>
+                                        <div class="text-muted">También se incluyen las copias internas de Configuración.</div>
+                                    </div>
                                     <div class="mt-3 small">
                                         @if (d.IsSigned)
                                         {
@@ -248,7 +256,7 @@
 }
 
 <div class="modal fade" id="sendSignatureModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="post" asp-page-handler="SendForSignature">
                 <div class="modal-header">
@@ -261,23 +269,11 @@
 
                     <div class="small text-muted mb-2" id="signDocTitle"></div>
 
-                    <label class="form-label" for="signContactId">Contacto que firmar&aacute;</label>
-                    <select class="form-select" id="signContactId" name="contactId">
-                        <option value="">Contacto principal del cliente (ficha)</option>
-                        @foreach (var c in Model.SignContacts)
-                        {
-                            var hint = string.IsNullOrWhiteSpace(c.Email) ? "sin correo" : c.Email;
-                            <option value="@c.Id">
-                                @(c.IsPrimary ? "Principal: " : "")@c.Label - @hint
-                            </option>
-                        }
-                    </select>
-                    <div class="form-text">
-                        Si eliges un contacto sin correo, se usar&aacute; el correo del cliente (facturaci&oacute;n/principal).
-                    </div>
+                    <partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Client.Id, new(), "Contacts"))' />
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-outline-primary" formaction="?handler=SaveContacts">Guardar contactos</button>
                     <button type="submit" class="btn btn-primary">Enviar firma</button>
                 </div>
             </form>
@@ -311,6 +307,7 @@
                     const title = btn.getAttribute("data-doc-title") || "";
                     if (docIdInput) docIdInput.value = docId;
                     if (docTitle) docTitle.textContent = `Documento: ${title}`;
+                    modalEl.querySelector("[data-contact-selector]")?.reloadContacts?.({ docId });
                     modal.show();
                 });
             });

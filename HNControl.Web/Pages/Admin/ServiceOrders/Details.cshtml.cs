@@ -316,12 +316,13 @@ public class DetailsModel : PageModel
             .Include(o => o.WorkItems)
             .FirstOrDefaultAsync(o => o.Id == id);
 
-        PdfEmailRecipient = Order?.Client == null ? "" : ClientCommunicationTemplates.Recipient(Order.Client);
+        var route = Order?.Client == null ? null : ClientContactRouting.Resolve(Order.NotificationContactsJson, Order.Client);
+        PdfEmailRecipient = route?.Primary.Email ?? "";
         try
         {
             if (Order != null) CreationNotifications = await _notifications.GetStateAsync(id);
-            PdfEmailCopies = (await _notifications.EngineeringRecipientsAsync())
-                .Where(x => !x.Equals(PdfEmailRecipient, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var internalCopies = await _notifications.EngineeringRecipientsAsync();
+            PdfEmailCopies = route == null ? internalCopies : ClientContactRouting.Copies(route, internalCopies);
             PdfEmailConfigurationError = null;
         }
         catch (ArgumentException)

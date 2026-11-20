@@ -56,11 +56,13 @@ public class ClientDocumentSigningService(
             || !doc.PdfGeneratedAt.HasValue || doc.PdfGeneratedAt < doc.SignedAt
             || (doc.ProviderSignedAt.HasValue && doc.PdfGeneratedAt < doc.ProviderSignedAt))
             throw new InvalidOperationException("El PDF final con las firmas todavía no está disponible.");
-        var recipient = ClientCommunicationTemplates.Recipient(doc.Client);
+        var route = ClientContactRouting.Resolve(doc.NotificationContactsJson, doc.Client);
+        var recipient = route.Primary.Email;
         if (!ClientCommunicationTemplates.IsEmail(recipient))
             throw new InvalidOperationException("Registre un correo válido del cliente para enviar la confirmación.");
-        var copies = (await recipients.GetAsync()).ToList();
-        if (ClientCommunicationTemplates.IsEmail(doc.SignedByEmail)) copies.Add(doc.SignedByEmail!);
+        var copies = ClientContactRouting.Copies(route, await recipients.GetAsync()).ToList();
+        if (ClientCommunicationTemplates.IsEmail(doc.SignedByEmail) && !doc.SignedByEmail!.Equals(recipient, StringComparison.OrdinalIgnoreCase)) copies.Add(doc.SignedByEmail!);
+        copies = copies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var fileName = $"{(doc.DocumentType == ClientLegalDocumentType.Contract ? "Contrato" : "NDA")}_firmado_{doc.Id:N}.pdf";
         var (stream, _, _) = await storage.OpenAsync(doc.PdfStoragePath, fileName);
         await using (stream)

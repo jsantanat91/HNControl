@@ -35,6 +35,7 @@ public class CreateModel : PageModel
 
     public class InputModel
     {
+        public ClientContactSelection Contacts { get; set; } = new();
         public string DeliveryKind { get; set; } = "service";
         [Required, MaxLength(200)]
         public string Title { get; set; } = "";
@@ -72,6 +73,7 @@ public class CreateModel : PageModel
             if (contract != null)
             {
                 Input.ClientServiceContractId = contract.Id;
+                Input.Contacts = ClientContactRouting.Selection(contract.NotificationContactsJson);
                 Input.ProjectId ??= contract.ProjectId;
             }
         }
@@ -105,8 +107,12 @@ public class CreateModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.AssignedUserId) && !await _db.EmployeeProfiles.AnyAsync(e => e.UserId == Input.AssignedUserId.Trim() && e.IsActive))
         { Error = "Selecciona un empleado activo para asignar la orden."; return Page(); }
 
+        string? contactsJson;
+        try { contactsJson = await ClientContactRouting.CaptureAsync(_db, Input.ClientId, Input.Contacts); }
+        catch (ArgumentException ex) { Error = ex.Message; return Page(); }
         var order = new ServiceOrder
         {
+            NotificationContactsJson = contactsJson,
             DeliveryJson = new HNControl.Shared.OrderDeliveryData { Kind = Input.DeliveryKind }.Serialize(),
             Title = (Input.Title ?? "").Trim(),
             Type = Input.DeliveryKind == "hardware" ? ServiceOrderType.EntregaHardware : Input.Type,
@@ -145,6 +151,13 @@ public class CreateModel : PageModel
 
     public async Task<JsonResult> OnGetContractsAsync(Guid clientId, Guid? projectId) =>
         new(await ServiceOrderFormData.ContractsAsync(_db, clientId, projectId));
+
+    public async Task<JsonResult> OnGetContactsAsync(Guid clientId, Guid? contractId)
+    {
+        var saved = contractId.HasValue ? await _db.ClientServiceContracts.AsNoTracking()
+            .Where(c => c.Id == contractId && c.ClientId == clientId).Select(c => c.NotificationContactsJson).FirstOrDefaultAsync() : null;
+        return new(await ClientContactRouting.OptionsAsync(_db, clientId, saved));
+    }
 
     private async Task LoadListsAsync()
     {
