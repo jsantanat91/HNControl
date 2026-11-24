@@ -248,6 +248,49 @@ body.hn-auth-refresh { background: #fff; }
 .hn-refresh .hn-employee-card-actions .btn { background: #ffffffb3; }
 .hn-refresh .btn-close { position: relative; min-width: 32px; min-height: 32px; padding: 0 !important; background: transparent !important; color: #60718b; opacity: 1; }
 .hn-refresh .btn-close::before { content: '\00d7'; position: absolute; inset: 0; display: grid; place-items: center; font: 24px/1 Arial, sans-serif; }
+/* 2.6.2 — Encabezado de módulo como card azul (lo marca el script del layout con .hn-head-card). */
+.hn-refresh .hn-main .hn-head-card {
+    position: relative; isolation: isolate; overflow: hidden;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 22px;
+    background: linear-gradient(110deg, #151e2c 0%, #142238 60%, #193b6a 100%);
+    border: 1px solid #20334d; border-radius: 16px; padding: 26px 30px; margin-bottom: 24px !important;
+    color: #fff;
+}
+.hn-refresh .hn-main .hn-head-card::after { content: ''; position: absolute; z-index: -1; width: 360px; height: 360px; right: -110px; top: -150px; border: 1px solid #659df81c; border-radius: 50%; box-shadow: 0 0 0 55px #659df808, 0 0 0 110px #659df806; pointer-events: none; }
+.hn-refresh .hn-main .hn-head-card :is(h1, h2, h3, .h4, .h5, strong, b, .fw-semibold, .fw-bold) { color: #fff !important; }
+.hn-refresh .hn-main .hn-head-card :is(p, small, .small, .text-muted, .text-secondary, .form-text):not(.dropdown-menu *) { color: #a3b3ca !important; }
+.hn-refresh .hn-main .hn-head-card a:not(.btn):not(.dropdown-item) { color: #9cc3ff; }
+.hn-refresh .hn-main .hn-head-card .breadcrumb-item, .hn-refresh .hn-main .hn-head-card .breadcrumb-item::before { color: #a3b3ca !important; }
+.hn-refresh .hn-main .hn-head-card .form-label { color: #c5d2e4; }
+.hn-refresh .hn-main .hn-head-card .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-close) {
+    background: rgba(255, 255, 255, .08) !important; border-color: rgba(255, 255, 255, .18) !important; color: #e6eefc !important;
+}
+.hn-refresh .hn-main .hn-head-card .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-close):is(:hover, .active, [aria-expanded="true"]) {
+    background: rgba(255, 255, 255, .16) !important; border-color: rgba(255, 255, 255, .28) !important; color: #fff !important;
+}
+.hn-refresh .hn-main .hn-head-card .btn-primary { background: #3b82f6 !important; border-color: #3b82f6 !important; color: #fff !important; }
+.hn-refresh .hn-main .hn-head-card .btn-primary:hover { background: #2f6fe0 !important; }
+.hn-refresh .hn-main .hn-head-card .badge.text-bg-light, .hn-refresh .hn-main .hn-head-card .badge.bg-light { background: rgba(255, 255, 255, .14) !important; color: #e6eefc !important; }
+.hn-refresh .hn-main .hn-head-card .dropdown-menu { color: var(--hn-text); }
+/* La clase se aplica ya con estilos calculados: sin transición para que no se vea el color anterior. */
+.hn-refresh .hn-main .hn-head-card, .hn-refresh .hn-main .hn-head-card * { transition: none !important; }
+/* Encabezado sin contenedor propio (h1 + subtítulo): apilado. */
+.hn-refresh .hn-main .hn-head-card.is-stack { display: block; }
+.hn-refresh .hn-main .hn-head-card.is-stack > h1 { margin-bottom: 4px; }
+.hn-refresh .hn-main .hn-head-card.is-stack > :last-child { margin-bottom: 0; }
+@media (max-width: 767.98px) {
+    .hn-refresh .hn-main .hn-head-card { padding: 20px; border-radius: 14px; }
+}
+/* 2.6.2 — Filtros tipo chip claros (Factibilidad). */
+.hn-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hn-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #e2e7ef; border-radius: 999px; background: #fff; color: #52647f; font-size: 12px; font-weight: 600; text-decoration: none; transition: background-color .15s, border-color .15s; }
+.hn-filter-chip:hover { background: #f5f8fd; border-color: #d3deee; color: #245dcc; }
+.hn-filter-chip > span { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: #eef1f6; color: #66758c; font-size: 10.5px; text-align: center; }
+.hn-filter-chip.is-active { background: #eaf2ff; border-color: #bcd4fb; color: #1d4ed8; }
+.hn-filter-chip.is-active > span { background: #d6e5ff; color: #1d4ed8; }
+.hn-filter-chip-warn { color: #9a6a12; }
+.hn-filter-chip-warn.is-active { background: #fff6e2; border-color: #f3dca6; color: #8a5a00; }
+.hn-filter-chip-warn.is-active > span { background: #fbe9bf; color: #8a5a00; }
 .hn-module-panel .modal-dialog { max-width: 1420px; width: calc(100% - 40px); }
 .hn-module-panel .modal-body { height: min(78vh, 950px); }
 .hn-module-panel iframe { display: block; width: 100%; height: 100%; border: 0; background: #f6f7fa; }

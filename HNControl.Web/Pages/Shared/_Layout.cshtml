@@ -577,8 +577,43 @@
 
             <main class="hn-main">
                 <div class="container-xl">
-                    @if (isSalesPath) { <partial name="~/Pages/Sales/_SalesSubmenu.cshtml" /> }
+                    @* Factibilidad (2.6.2) es un módulo aislado: sin el submenú ni las acciones de cotización de Ventas. *@
+                    @if (isSalesPath && !path.StartsWith("/Ventas/Factibilidad", StringComparison.OrdinalIgnoreCase)) { <partial name="~/Pages/Sales/_SalesSubmenu.cshtml" /> }
                     @RenderBody()
+                    <script>
+                        // Encabezado de cada módulo como card azul (2.6.2): el primer h1 de la página y sus botones.
+                        (function () {
+                            var main = document.currentScript.parentElement;
+                            if (document.body.hasAttribute('data-hn-head-off') || main.querySelector('.hn-feature-banner, .hn-head-card')) return;
+                            var h1 = main.querySelector('h1');
+                            if (!h1 || h1.closest('.card, .modal, form, .hn-person-hero, .hn-mon-hero, .hn-context-tabs, .hn-sales-actions')) return;
+                            // Bloque de encabezado: el contenedor flex más cercano (h1 + botones) a máximo 3 niveles.
+                            var head = null, el = h1.parentElement;
+                            for (var i = 0; i < 3 && el && el !== main; i++, el = el.parentElement) {
+                                if (el.classList.contains('row')) return; // h1 dentro de una rejilla de contenido: se deja igual
+                                var cs = getComputedStyle(el);
+                                if (cs.display === 'flex' && cs.flexDirection !== 'column') { head = el; break; }
+                            }
+                            if (head && head.querySelector('.card, table, textarea')) return;
+                            if (!head) {
+                                head = document.createElement('div');
+                                head.className = 'is-stack';
+                                h1.parentNode.insertBefore(head, h1);
+                                head.appendChild(h1);
+                                var sub = head.nextElementSibling;
+                                if (sub && /^(P|SMALL)$/.test(sub.tagName) || (sub && sub.classList.contains('text-muted'))) head.appendChild(sub);
+                            }
+                            // Solo si el encabezado está al inicio de la página (no un h1 a mitad del contenido).
+                            var top = head; while (top.parentElement && top.parentElement !== main) top = top.parentElement;
+                            var idx = Array.prototype.indexOf.call(main.children, top);
+                            if (idx < 0) return;
+                            var antes = Array.prototype.slice.call(main.children, 0, idx).filter(function (c) {
+                                return !/^(LINK|SCRIPT|STYLE|INPUT)$/.test(c.tagName) && !c.matches('.hn-context-tabs, .hn-sales-actions, .alert, [hidden]');
+                            });
+                            if (antes.length > 1) return;
+                            head.classList.add('hn-head-card');
+                        })();
+                    </script>
                 </div>
             </main>
 

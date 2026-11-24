@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## Web 2.6.2 · 24 de noviembre de 2026
+
+- Encabezado de módulo en card azul (el mismo degradado del dashboard) en todas las pantallas: título, descripción y botones dentro de la card. Lo aplica el layout al primer encabezado de la página. Las pantallas que ya tienen su propio banner (Dashboard, Salud del sistema) quedan igual, y una página puede excluirse con `data-hn-head-off` en `<body>`.
+- Factibilidad queda aislada del flujo de Ventas: ya no muestra el submenú de Ventas ni el bloque de cotización (Nueva cotización, cotizador público, copiar enlace). Los filtros por estado son chips claros dentro de la tarjeta de búsqueda, en lugar de botones oscuros.
+- **Despliegue:** sin SQL ni configuración nueva.
+
 ## Web 2.6.1 · 24 de noviembre de 2026
 
 - Factibilidad aparece en el menú principal, arriba de Órdenes (antes solo se abría desde Órdenes), con un contador rojo de levantamientos en estado *Nueva*. Visible para quien tiene el permiso de ver factibilidades.

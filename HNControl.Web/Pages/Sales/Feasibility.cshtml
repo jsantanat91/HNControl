@@ -27,16 +27,17 @@
 @if (!string.IsNullOrWhiteSpace(Model.Message)) { <div class="alert alert-success py-2">@Model.Message</div> }
 @if (!string.IsNullOrWhiteSpace(Model.Error)) { <div class="alert alert-danger py-2">@Model.Error</div> }
 
-<div class="d-flex flex-wrap gap-2 mb-3">
-    <a class="btn btn-sm @(Model.Status == null && Model.Cliente != "sin" ? "btn-dark" : "btn-outline-dark")" href="@Link(null, null, 1, false, false)">Todas <span class="badge text-bg-light ms-1">@Model.AllCount</span></a>
-    @foreach (var s in Enum.GetValues<LevantamientoSurveyStatus>())
-    {
-        <a class="btn btn-sm @(Model.Status == s ? "btn-dark" : "btn-outline-dark")" href="@Link(s, null, 1, false)">@FeasibilityModel.StatusLabel(s) <span class="badge text-bg-light ms-1">@(Model.Counts.GetValueOrDefault(s))</span></a>
-    }
-    <a class="btn btn-sm @(Model.Cliente == "sin" ? "btn-warning" : "btn-outline-warning")" href="@Link(null, "sin", 1, false, false)"><i class="bi bi-person-exclamation"></i> Sin cliente <span class="badge text-bg-light ms-1">@Model.Unlinked</span></a>
-</div>
-
 <form method="get" class="card shadow-soft border-0 mb-3">
+    <div class="card-body pb-0">
+        <div class="hn-filter-chips">
+            <a class="hn-filter-chip @(Model.Status == null && Model.Cliente != "sin" ? "is-active" : "")" href="@Link(null, null, 1, false, false)">Todas <span>@Model.AllCount</span></a>
+            @foreach (var s in Enum.GetValues<LevantamientoSurveyStatus>())
+            {
+                <a class="hn-filter-chip @(Model.Status == s ? "is-active" : "")" href="@Link(s, null, 1, false)">@FeasibilityModel.StatusLabel(s) <span>@(Model.Counts.GetValueOrDefault(s))</span></a>
+            }
+            <a class="hn-filter-chip hn-filter-chip-warn @(Model.Cliente == "sin" ? "is-active" : "")" href="@Link(null, "sin", 1, false, false)"><i class="bi bi-person-exclamation"></i> Sin cliente <span>@Model.Unlinked</span></a>
+        </div>
+    </div>
     <div class="card-body row g-2 align-items-end">
         <div class="col-12 col-md-5">
             <label class="form-label small mb-1">Buscar</label>

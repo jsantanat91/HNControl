@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.1";
+    public const string Version = "2.6.2";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.2", new DateOnly(2026, 11, 24), "Encabezados en card azul y Factibilidad aislada", new[]
+        {
+            new ReleaseChange("Interfaz", "El encabezado de cada módulo (título, descripción y botones) se muestra en una card azul como la del dashboard."),
+            new ReleaseChange("Factibilidad", "Factibilidad queda aislada del flujo de Ventas: sin el submenú ni las acciones de cotización. Los filtros por estado son chips claros dentro de la tarjeta de búsqueda."),
+            new ReleaseChange("Despliegue", "Sin SQL ni configuración nueva.")
+        }),
         new ReleaseNote("2.6.1", new DateOnly(2026, 11, 24), "Factibilidad en el menú y órdenes abiertas", new[]
         {
             new ReleaseChange("Ventas", "Factibilidad vuelve al menú principal, arriba de Órdenes, con un contador de levantamientos nuevos."),
