@@ -110,6 +110,7 @@ builder.Services.AddAuthorization(options =>
 });
 builder.Services.AddControllers();
 builder.Services.AddScoped<SupportIntegrationAuth>();
+builder.Services.AddScoped<LevantamientoIntegrationAuth>();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
 builder.Services.AddScoped<ServiceInventoryService>();
@@ -143,6 +144,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("support-integration", o => { o.PermitLimit = 240; o.Window = TimeSpan.FromMinutes(1); o.QueueLimit = 0; });
+    options.AddFixedWindowLimiter("levantamiento-integration", o => { o.PermitLimit = 60; o.Window = TimeSpan.FromMinutes(1); o.QueueLimit = 0; });
     options.AddPolicy("public-quotes", context => context.Request.Method != "POST"
         ? RateLimitPartition.GetNoLimiter("read")
         : RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions

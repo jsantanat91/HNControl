@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.32";
+    public const string Version = "2.5.33";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.33", new DateOnly(2026, 11, 24), "Consulta de clientes para el levantamiento técnico", new[]
+        {
+            new ReleaseChange("Integración", "API interna para el formulario de levantamiento: con RFC o número de cliente y un correo registrado (principal, facturación o de un contacto) precarga empresa, contacto, teléfono, ciudad, dirección y giro."),
+            new ReleaseChange("Seguridad", "Clave propia, distinta de Support, y límite de 60 consultas por minuto. Solo clientes activos; no exporta datos fiscales, representante legal, otros correos ni ids internos. Un RFC o correo que no coincide no revela si el cliente existe."),
+            new ReleaseChange("Despliegue", "Configurar HN_LEVANTAMIENTO_INTEGRATION_KEY (32+ caracteres) y desplegar la web. Sin SQL ni APK nueva; sin clave la consulta queda deshabilitada.")
+        }),
         new ReleaseNote("2.5.32", new DateOnly(2026, 11, 20), "Contacto de firma y copias por documento", new[]
         {
             new ReleaseChange("Clientes", "Selecciona un contacto principal y contactos en copia al crear servicios contratados, contratos/NDA y órdenes. Las órdenes y documentos pueden heredar la selección del servicio contratado."),

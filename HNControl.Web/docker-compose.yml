@@ -14,6 +14,7 @@ services:
       PublicLinks__BaseUrl: "https://control.hubnet-solutions.net"
       SupportIntegration__ApiKey: "${HN_SUPPORT_INTEGRATION_KEY:-}"
       SupportIntegration__SourceId: "hn-support"
+      LevantamientoIntegration__ApiKey: "${HN_LEVANTAMIENTO_INTEGRATION_KEY:-}"
       Storage__BasePath: "App_Data/uploads"
       Database__PgDumpPath: "pg_dump"
       Database__PsqlPath: "psql"

@@ -13,6 +13,14 @@ if (args.FirstOrDefault() == "--support-integration")
     return;
 }
 
+if (args.FirstOrDefault() == "--levantamiento-integration")
+{
+    var checks = 0;
+    await LevantamientoIntegrationTests.RunAsync((ok, label) => { if (!ok) throw new Exception("FAIL: " + label); checks++; Console.WriteLine("PASS: " + label); });
+    Console.WriteLine($"All {checks} Levantamiento integration checks passed.");
+    return;
+}
+
 if (args.FirstOrDefault() == "--payroll-postgres")
 {
     var checks = 0;
@@ -123,6 +131,7 @@ await EngineeringNotificationSettingsTests.RunAsync(Check);
 await ServiceOrderCreationNotificationTests.RunAsync(Check);
 await ServiceOrderCreationPathsTests.RunAsync(Check);
 await SupportIntegrationTests.RunAsync(Check);
+await LevantamientoIntegrationTests.RunAsync(Check);
 SignatureLayoutTests.Run(service, Check);
 EventContractTests.Run(service, Check);
 await RelatedFormDataTests.RunAsync(Check);

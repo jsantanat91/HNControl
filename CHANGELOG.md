@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## Web 2.5.33 · 24 de noviembre de 2026
+
+- API interna para el levantamiento técnico (`POST /api/integrations/levantamiento/clients/lookup`): el cliente escribe su RFC o número de cliente y un correo registrado (principal, facturación, legal o de un contacto) y el formulario precarga empresa, contacto, cargo, teléfono, ciudad, dirección y giro.
+- Clave propia (`X-HN-Levantamiento-Key`), distinta de la de Support, y límite de 60 consultas por minuto. Solo clientes activos que no son prospectos temporales. DTO explícito sin datos fiscales, representante legal, otros correos ni ids internos; RFC o correo incorrecto responden igual que un cliente inexistente.
+- **Despliegue:** definir `HN_LEVANTAMIENTO_INTEGRATION_KEY` (32+ caracteres) en el entorno de docker-compose y actualizar la web. Sin SQL ni nueva APK; sin clave la consulta responde 503. Detalles en [guía de integración](docs/levantamiento-integration-2.5.33.md).
+
 ## Web 2.5.32 · 20 de noviembre de 2026
 
 - Contacto principal (quien firma) y contactos del cliente en copia para servicios contratados, contratos/NDA y órdenes. Los documentos y órdenes heredan la selección del servicio y permiten personalizarla antes de firmar.
