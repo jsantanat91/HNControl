@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using AdminCreate = HNControl.Web.Pages.Admin.ServiceOrders.CreateModel;
 using AdminDetails = HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel;
+using AdminIndex = HNControl.Web.Pages.Admin.ServiceOrders.IndexModel;
 using FeasibilityPage = HNControl.Web.Pages.Sales.FeasibilityDetailModel;
 using TicketsPage = HNControl.Web.Pages.Tickets.IndexModel;
 
@@ -171,6 +172,31 @@ internal static class ServiceOrderCreationPathsTests
             && firstTrackedTicketOrder.EstimatedEndDate?.Kind == DateTimeKind.Utc
             && secondTicketOrder.EstimatedEndDate?.Date == selectedDay.AddDays(3),
             "Altas sucesivas desde tickets generan tokens públicos únicos y guardan fechas UTC sin cambiar el día seleccionado");
+
+        // Listado administrativo: por defecto solo abiertas, sin importar el mes en que se crearon.
+        var oldOpen = new ServiceOrder { ClientId = client.Id, Title = "Abierta antigua", Status = ServiceOrderStatus.PendingClientSignature,
+            PublicToken = Guid.NewGuid().ToString("N"), CreatedAt = DateTime.UtcNow.AddMonths(-3) };
+        var closed = new ServiceOrder { ClientId = client.Id, Title = "Cerrada", Status = ServiceOrderStatus.Finalized,
+            PublicToken = Guid.NewGuid().ToString("N"), CreatedAt = DateTime.UtcNow };
+        var rejected = new ServiceOrder { ClientId = client.Id, Title = "Rechazada", Status = ServiceOrderStatus.Rejected,
+            PublicToken = Guid.NewGuid().ToString("N"), CreatedAt = DateTime.UtcNow };
+        db.ServiceOrders.AddRange(oldOpen, closed, rejected);
+        await db.SaveChangesAsync();
+        async Task<List<string>> List(string? status, bool recent = false)
+        {
+            var page = Page(new AdminIndex(db)); page.StatusFilter = status; page.PageSize = 100;
+            if (recent) { page.DateFrom = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)); page.DateTo = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)); }
+            await page.OnGetAsync();
+            return page.Rows.Select(r => r.Title).ToList();
+        }
+        var byDefault = await List(null);
+        var all = await List(AdminIndex.AllFilter, recent: true);
+        var onlyFinalized = await List("Finalized", recent: true);
+        check(byDefault.Contains("Abierta antigua") && byDefault.Contains("Alta administrativa")
+            && !byDefault.Contains("Cerrada") && !byDefault.Contains("Rechazada")
+            && all.Contains("Cerrada") && all.Contains("Rechazada") && !all.Contains("Abierta antigua")
+            && onlyFinalized is ["Cerrada"],
+            "Órdenes: el listado muestra por defecto solo las abiertas (de cualquier fecha); Todas y cada estatus siguen disponibles");
     }
 
     private sealed class FailingEmail : IEmailSender

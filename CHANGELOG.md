@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## Web 2.6.1 · 24 de noviembre de 2026
+
+- Factibilidad aparece en el menú principal, arriba de Órdenes (antes solo se abría desde Órdenes), con un contador rojo de levantamientos en estado *Nueva*. Visible para quien tiene el permiso de ver factibilidades.
+- Órdenes de servicio (administración): por defecto muestra solo las abiertas (todo excepto Finalizada y Rechazada) sin importar el mes de creación. En Estatus se puede elegir *Todas* (que conserva el rango del mes actual) o un estatus específico; se agrega *Pendiente firma del cliente*.
+- **Despliegue:** sin SQL ni configuración nueva.
+
 ## Web 2.6.0 · 24 de noviembre de 2026
 
 - **Factibilidades** (`/Ventas/Factibilidad`): la pantalla ahora lista los levantamientos que llegan del formulario web, con PDF, secciones, urgencia y archivo de varios sitios. Tiene filtros por estado (Nueva, En revisión, Factible, No factible, Cotizada), por cliente y "Sin cliente", además de búsqueda por empresa, RFC, contacto, correo o servicio.

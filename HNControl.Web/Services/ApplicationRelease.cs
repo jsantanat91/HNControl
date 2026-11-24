@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.0";
+    public const string Version = "2.6.1";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.1", new DateOnly(2026, 11, 24), "Factibilidad en el menú y órdenes abiertas", new[]
+        {
+            new ReleaseChange("Ventas", "Factibilidad vuelve al menú principal, arriba de Órdenes, con un contador de levantamientos nuevos."),
+            new ReleaseChange("Órdenes", "El listado de órdenes de servicio muestra por defecto solo las abiertas, de cualquier fecha. El filtro Estatus permite ver Todas o un estatus específico; se agrega Pendiente firma del cliente."),
+            new ReleaseChange("Despliegue", "Sin SQL ni configuración nueva.")
+        }),
         new ReleaseNote("2.6.0", new DateOnly(2026, 11, 24), "Factibilidades conectadas al levantamiento técnico", new[]
         {
             new ReleaseChange("Ventas", "Ventas › Factibilidad muestra los levantamientos recibidos del formulario web, con su PDF, secciones y archivo de varios sitios. Se filtran por cliente, por estado o los que no tienen cliente."),

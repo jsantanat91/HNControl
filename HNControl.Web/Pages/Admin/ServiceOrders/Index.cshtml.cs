@@ -16,7 +16,14 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public DateOnly? DateFrom { get; set; }
     [BindProperty(SupportsGet = true)] public DateOnly? DateTo { get; set; }
     [BindProperty(SupportsGet = true)] public ServiceOrderType? Type { get; set; }
-    [BindProperty(SupportsGet = true)] public ServiceOrderStatus? Status { get; set; }
+    /// <summary>"abiertas" (default, also when empty), "todas" or a <see cref="ServiceOrderStatus"/> name.</summary>
+    [BindProperty(SupportsGet = true, Name = "Status")] public string? StatusFilter { get; set; }
+    public const string OpenFilter = "abiertas";
+    public const string AllFilter = "todas";
+    public ServiceOrderStatus? Status { get; private set; }
+    public bool OnlyOpen { get; private set; }
+    /// <summary>Canonical value for links and hidden fields.</summary>
+    public string StatusKey => OnlyOpen ? OpenFilter : Status?.ToString() ?? AllFilter;
     [BindProperty(SupportsGet = true)] public int Page { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
     public bool IsSuperAdmin { get; private set; }
@@ -29,6 +36,7 @@ public class IndexModel : PageModel
         ServiceOrderStatus.Created,
         ServiceOrderStatus.InProgress,
         ServiceOrderStatus.InReview,
+        ServiceOrderStatus.PendingClientSignature,
         ServiceOrderStatus.Finalized,
         ServiceOrderStatus.Rejected
     };
@@ -64,8 +72,10 @@ public class IndexModel : PageModel
         IsSuperAdmin = AppRoles.IsGlobalAdmin(User);
         PageSize = PageSize is 10 or 20 or 50 or 100 ? PageSize : 20;
         Page = Page < 1 ? 1 : Page;
+        ParseStatusFilter();
 
-        if (!DateFrom.HasValue && !DateTo.HasValue)
+        // Open orders show regardless of age unless a range is chosen; other views keep the current-month default.
+        if (!DateFrom.HasValue && !DateTo.HasValue && !OnlyOpen)
         {
             var now = DateOnly.FromDateTime(DateTime.Today);
             DateFrom = new DateOnly(now.Year, now.Month, 1);
@@ -92,7 +102,9 @@ public class IndexModel : PageModel
             q = q.Where(o => o.CreatedAt < toExclusiveUtc);
         }
 
-        if (Status.HasValue)
+        if (OnlyOpen)
+            q = q.Where(o => o.Status != ServiceOrderStatus.Finalized && o.Status != ServiceOrderStatus.Rejected);
+        else if (Status.HasValue)
             q = q.Where(o => o.Status == Status.Value);
         if (Type.HasValue)
             q = q.Where(o => o.Type == Type.Value);
@@ -120,10 +132,20 @@ public class IndexModel : PageModel
         )).ToList();
     }
 
+    private void ParseStatusFilter()
+    {
+        var value = (StatusFilter ?? "").Trim();
+        if (value.Length == 0 || value.Equals(OpenFilter, StringComparison.OrdinalIgnoreCase)) { OnlyOpen = true; return; }
+        if (value.Equals(AllFilter, StringComparison.OrdinalIgnoreCase)) return;
+        if (Enum.TryParse<ServiceOrderStatus>(value, true, out var parsed) && Enum.IsDefined(parsed)) Status = parsed;
+        else OnlyOpen = true;
+    }
+
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         if (!AppRoles.IsGlobalAdmin(User))
             return Forbid();
+        ParseStatusFilter();
 
         var order = await _db.ServiceOrders.FirstOrDefaultAsync(x => x.Id == id);
         if (order is null)
@@ -134,7 +156,7 @@ public class IndexModel : PageModel
                 DateFrom = DateFrom?.ToString("yyyy-MM-dd"),
                 DateTo = DateTo?.ToString("yyyy-MM-dd"),
                 Type = Type?.ToString(),
-                Status = Status?.ToString(),
+                Status = StatusKey,
                 Page,
                 PageSize
             });
@@ -156,7 +178,7 @@ public class IndexModel : PageModel
             DateFrom = DateFrom?.ToString("yyyy-MM-dd"),
             DateTo = DateTo?.ToString("yyyy-MM-dd"),
             Type = Type?.ToString(),
-            Status = Status?.ToString(),
+            Status = StatusKey,
             Page,
             PageSize
         });

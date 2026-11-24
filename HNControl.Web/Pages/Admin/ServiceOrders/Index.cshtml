@@ -47,11 +47,12 @@
         <div class="col-6 col-xl-2">
             <label class="form-label">Estatus</label>
             <select class="form-select" name="Status">
-                <option value="">Todos</option>
+                <option value="@IndexModel.OpenFilter" selected="@Model.OnlyOpen">Abiertas</option>
+                <option value="@IndexModel.AllFilter" selected="@(!Model.OnlyOpen && Model.Status == null)">Todas</option>
                 @foreach (var st in Model.StatusOptions)
                 {
                     var lbl = UiBadges.ServiceOrderStatusBadge(st).text;
-                    <option value="@st" selected="@(Model.Status == st)">@lbl</option>
+                    <option value="@st" selected="@(!Model.OnlyOpen && Model.Status == st)">@lbl</option>
                 }
             </select>
         </div>
@@ -93,7 +94,7 @@ else
                                 <input type="hidden" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" />
                                 <input type="hidden" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" />
                                 <input type="hidden" name="Type" value="@Model.Type?.ToString()" />
-                                <input type="hidden" name="Status" value="@Model.Status?.ToString()" />
+                                <input type="hidden" name="Status" value="@Model.StatusKey" />
                                 <input type="hidden" name="Page" value="@Model.Page" />
                                 <input type="hidden" name="PageSize" value="@Model.PageSize" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar orden" aria-label="Eliminar orden @o.Title"><i class="bi bi-trash" aria-hidden="true"></i></button>
@@ -110,8 +111,8 @@ else
 <div class="d-flex justify-content-between align-items-center mt-3">
     <div class="text-muted small">Total: @Model.TotalCount · P&aacute;gina @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.Status?.ToString())" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.StatusKey)" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/ServiceOrders/Index" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-Type="@(Model.Type?.ToString())" asp-route-Status="@(Model.StatusKey)" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
 </div>
 
