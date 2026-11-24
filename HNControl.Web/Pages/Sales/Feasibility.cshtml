@@ -1,431 +1,135 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Sales.FeasibilityModel
+@using HNControl.Web.Models
+@using HNControl.Web.Pages.Sales
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Ventas · Factibilidad";
+    ViewData["Title"] = "Ventas · Factibilidades";
+    string Link(LevantamientoSurveyStatus? status = null, string? cliente = null, int p = 1, bool keepStatus = true, bool keepClient = true) =>
+        "/Ventas/Factibilidad?" + string.Join("&", new[]
+        {
+            (keepStatus ? status ?? Model.Status : status) is { } s ? "status=" + s : null,
+            (keepClient ? cliente ?? Model.Cliente : cliente) is { Length: > 0 } c ? "cliente=" + Uri.EscapeDataString(c) : null,
+            string.IsNullOrWhiteSpace(Model.Q) ? null : "q=" + Uri.EscapeDataString(Model.Q),
+            p > 1 ? "p=" + p : null
+        }.Where(x => x != null));
+    var pages = (Model.Total + FeasibilityModel.PageSize - 1) / FeasibilityModel.PageSize;
 }
 
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-        <h1 class="h4 mb-0">Factibilidad en sitio</h1>
-        <div class="text-muted small">Selecciona cliente/prospecto, registra direccion/coordenadas/contacto y convierte a orden si el cliente acepta.</div>
+        <h1 class="h4 mb-0">Factibilidades</h1>
+        <div class="text-muted small">Levantamientos técnicos recibidos del formulario web, con su PDF. Liga o crea el cliente y genera la orden de servicio.</div>
     </div>
-    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#newFeasibilityModal">+ Nueva factibilidad</button>
+    <a class="btn btn-outline-secondary btn-sm" href="https://hubnet-solutions.net/levantamiento/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Abrir formulario</a>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(Model.Message))
+@if (!string.IsNullOrWhiteSpace(Model.Message)) { <div class="alert alert-success py-2">@Model.Message</div> }
+@if (!string.IsNullOrWhiteSpace(Model.Error)) { <div class="alert alert-danger py-2">@Model.Error</div> }
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-sm @(Model.Status == null && Model.Cliente != "sin" ? "btn-dark" : "btn-outline-dark")" href="@Link(null, null, 1, false, false)">Todas <span class="badge text-bg-light ms-1">@Model.AllCount</span></a>
+    @foreach (var s in Enum.GetValues<LevantamientoSurveyStatus>())
+    {
+        <a class="btn btn-sm @(Model.Status == s ? "btn-dark" : "btn-outline-dark")" href="@Link(s, null, 1, false)">@FeasibilityModel.StatusLabel(s) <span class="badge text-bg-light ms-1">@(Model.Counts.GetValueOrDefault(s))</span></a>
+    }
+    <a class="btn btn-sm @(Model.Cliente == "sin" ? "btn-warning" : "btn-outline-warning")" href="@Link(null, "sin", 1, false, false)"><i class="bi bi-person-exclamation"></i> Sin cliente <span class="badge text-bg-light ms-1">@Model.Unlinked</span></a>
+</div>
+
+<form method="get" class="card shadow-soft border-0 mb-3">
+    <div class="card-body row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+            <label class="form-label small mb-1">Buscar</label>
+            <input class="form-control" name="q" value="@Model.Q" placeholder="Empresa, RFC, contacto, correo o servicio" />
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label small mb-1">Cliente</label>
+            <select class="form-select" name="cliente">
+                <option value="">Todos los clientes</option>
+                <option value="sin" selected="@(Model.Cliente == "sin")">Sin cliente en Control</option>
+                @foreach (var c in Model.ClientOptions)
+                {
+                    <option value="@c.Id" selected="@(Model.Cliente == c.Id.ToString())">@c.Label (@c.Count)</option>
+                }
+            </select>
+        </div>
+        @if (Model.Status != null) { <input type="hidden" name="status" value="@Model.Status" /> }
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button class="btn btn-primary flex-fill" type="submit"><i class="bi bi-search"></i> Filtrar</button>
+            <a class="btn btn-outline-secondary" href="/Ventas/Factibilidad">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+@if (Model.FilteredClientName != null)
 {
-    <div class="alert alert-success py-2">@Model.Message</div>
-}
-@if (!string.IsNullOrWhiteSpace(Model.Error))
-{
-    <div class="alert alert-danger py-2">@Model.Error</div>
+    <div class="alert alert-info py-2 small">Mostrando las factibilidades de <b>@Model.FilteredClientName</b>.</div>
 }
 
 <div class="card shadow-soft border-0">
-    <div class="card-header fw-semibold">Factibilidades registradas</div>
-    <div class="card-body">
-        @if (!Model.Rows.Any())
-        {
-            <div class="text-muted">Sin factibilidades aun.</div>
-        }
-        else
-        {
-            <div class="row g-3">
+    <div class="card-header fw-semibold d-flex justify-content-between">
+        <span>Levantamientos</span><span class="text-muted small">@Model.Total resultado(s)</span>
+    </div>
+    @if (!Model.Rows.Any())
+    {
+        <div class="card-body text-muted">
+            @(Model.AllCount == 0
+                ? "Aún no llega ningún levantamiento. Cada envío del formulario web aparecerá aquí con su PDF."
+                : "Sin resultados con estos filtros.")
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                    <tr><th>Recibido</th><th>Empresa</th><th>Servicios</th><th>Cliente en Control</th><th>Estado</th><th></th></tr>
+                </thead>
+                <tbody>
                 @foreach (var x in Model.Rows)
                 {
-                    <div class="col-12 col-xl-6">
-                        <article class="border rounded-3 p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
-                                <div>
-                                    <div class="fw-semibold">@x.Title</div>
-                                    <div class="small text-muted">
-                                        <span class="badge text-bg-light border me-1">@(x.IsProspect ? "Prospecto" : "Cliente")</span>
-                                        @x.ClientName · @x.ProjectName
-                                    </div>
-                                </div>
-                                <span class="badge @(x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.ConvertedToOrder ? "text-bg-success" : x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Rejected ? "text-bg-danger" : x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted ? "text-bg-info" : "text-bg-secondary")">@x.Status</span>
-                            </div>
-
-                            <div class="small mt-2"><b>Direccion:</b> @x.SiteAddress</div>
-                            <div class="small"><b>Coordenadas:</b> @x.Coordinates</div>
-                            <div class="small"><b>Contacto sitio:</b> @x.SiteContactName · @x.SiteContactPhone</div>
-                            <div class="small"><b>Sitios/Capacidad:</b> @x.MultiSites</div>
-                            <div class="small text-muted mt-2">Alta: @x.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                            @if (!string.IsNullOrWhiteSpace(x.NotesBase))
+                    <tr>
+                        <td class="small text-nowrap">@x.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy")<div class="text-muted">@x.ReceivedAt.ToLocalTime().ToString("HH:mm")</div></td>
+                        <td>
+                            <div class="fw-semibold">@x.Company</div>
+                            <div class="small text-muted">@x.ContactName @(string.IsNullOrEmpty(x.Phone) ? "" : "· " + x.Phone)</div>
+                            @if (!string.IsNullOrEmpty(x.Rfc)) { <div class="small text-muted">RFC @x.Rfc</div> }
+                        </td>
+                        <td class="small" style="max-width:280px">
+                            @x.Services
+                            @if (!string.IsNullOrEmpty(x.Urgency)) { <div class="text-muted">Urgencia: @x.Urgency</div> }
+                            @if (x.HasSites) { <span class="badge text-bg-light border"><i class="bi bi-file-earmark-spreadsheet"></i> Varios sitios</span> }
+                        </td>
+                        <td class="small">
+                            @if (x.ClientId != null)
                             {
-                                <div class="small mt-2">@x.NotesBase</div>
+                                <a href="/Ventas/Factibilidad?cliente=@x.ClientId">@x.ClientName</a>
+                                <div class="text-muted">@x.ClientCode</div>
                             }
-
-                            <div class="mt-3 d-flex gap-2 flex-wrap">
-                                @if (!string.IsNullOrWhiteSpace(x.Coordinates) && x.Coordinates != "-")
-                                {
-                                    <button class="btn btn-sm btn-outline-dark"
-                                            type="button"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#mapModal"
-                                            data-title="@x.Title"
-                                            data-coords="@x.Coordinates"
-                                            data-address="@x.SiteAddress">
-                                        Mapa
-                                    </button>
-                                }
-
-                                @if (x.HasSitesExcel)
-                                {
-                                    <a class="btn btn-sm btn-outline-secondary" asp-page-handler="ExportSites" asp-route-id="@x.Id">Excel sitios</a>
-                                }
-
-                                @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Open)
-                                {
-                                    <button class="btn btn-sm btn-outline-primary"
-                                            type="button"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editFeasibilityModal"
-                                            data-id="@x.Id"
-                                            data-client-id="@x.ClientId"
-                                            data-project-id="@x.ProjectId"
-                                            data-title="@x.Title"
-                                            data-address="@x.SiteAddress"
-                                            data-coordinates="@x.Coordinates"
-                                            data-contact-name="@x.SiteContactName"
-                                            data-contact-phone="@x.SiteContactPhone"
-                                            data-multi-sites="@x.MultiSites"
-                                            data-notes="@x.NotesBase">
-                                        Editar
-                                    </button>
-                                    <form method="post" asp-page-handler="Accept" class="d-inline">
-                                        <input type="hidden" name="id" value="@x.Id" />
-                                        <button class="btn btn-sm btn-outline-success" type="submit">Aceptar</button>
-                                    </form>
-                                    <form method="post" asp-page-handler="Reject" class="d-inline">
-                                        <input type="hidden" name="id" value="@x.Id" />
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Rechazar</button>
-                                    </form>
-                                }
-
-                                @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted || x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Rejected)
-                                {
-                                    <form method="post" asp-page-handler="Reopen" class="d-inline">
-                                        <input type="hidden" name="id" value="@x.Id" />
-                                        <button class="btn btn-sm btn-outline-warning" type="submit">Reabrir</button>
-                                    </form>
-                                }
-
-                                @if (x.Status == HNControl.Web.Models.ServiceFeasibilityStatus.Accepted)
-                                {
-                                    <form method="post" asp-page-handler="Convert" class="d-inline">
-                                        <input type="hidden" name="id" value="@x.Id" />
-                                        <button class="btn btn-sm btn-primary" type="submit">Convertir a orden</button>
-                                    </form>
-                                    @if (!x.ConvertedContractId.HasValue)
-                                    {
-                                        <form method="post" asp-page-handler="ConvertContract" class="d-inline">
-                                            <input type="hidden" name="id" value="@x.Id" />
-                                            <button class="btn btn-sm btn-outline-success" type="submit">Convertir a contrato</button>
-                                        </form>
-                                    }
-                                }
-
-                                @if (x.ConvertedServiceOrderId.HasValue)
-                                {
-                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Admin/ServiceOrders/Details" asp-route-id="@x.ConvertedServiceOrderId.Value">Ver orden</a>
-                                }
-                                @if (x.ConvertedContractId.HasValue)
-                                {
-                                    <a class="btn btn-sm btn-outline-success" asp-page="/Clients/Services/Details" asp-route-id="@x.ConvertedContractId.Value">Ver contrato</a>
-                                }
-                            </div>
-                        </article>
-                    </div>
+                            else
+                            {
+                                <span class="badge text-bg-warning">Sin cliente</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @FeasibilityModel.StatusBadge(x.Status)">@FeasibilityModel.StatusLabel(x.Status)</span>
+                            @if (x.HasOrder) { <div class="small text-success mt-1"><i class="bi bi-clipboard-check"></i> Con orden</div> }
+                        </td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="/Ventas/Factibilidad/@x.Id">Abrir</a></td>
+                    </tr>
                 }
+                </tbody>
+            </table>
+        </div>
+        @if (pages > 1)
+        {
+            <div class="card-footer d-flex justify-content-between align-items-center small">
+                <span>Página @Model.PageNumber de @pages</span>
+                <div class="btn-group">
+                    <a class="btn btn-sm btn-outline-secondary @(Model.PageNumber <= 1 ? "disabled" : "")" href="@Link(p: Model.PageNumber - 1)">Anterior</a>
+                    <a class="btn btn-sm btn-outline-secondary @(Model.PageNumber >= pages ? "disabled" : "")" href="@Link(p: Model.PageNumber + 1)">Siguiente</a>
+                </div>
             </div>
         }
-    </div>
-</div>
-
-<div class="modal fade" id="newFeasibilityModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Nueva factibilidad</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <form method="post" asp-page-handler="Create" class="row g-3" id="feasibilityForm" enctype="multipart/form-data">
-                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
-                    <div class="col-md-7">
-                        <label class="form-label">Titulo</label>
-                        <input class="form-control" asp-for="Input.Title" placeholder="Ej: Factibilidad FO - Plaza Norte" />
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label">Cliente / Prospecto</label>
-                        <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="feasClient"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Proyecto (opcional)</label>
-                        <select class="form-select" asp-for="Input.ProjectId" id="feasProject">
-                            <option value="">-- Sin proyecto --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Coordenadas</label>
-                        <input class="form-control" asp-for="Input.Coordinates" placeholder="19.4326,-99.1332" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Sitios multiples (coordenadas/capacidad MB)</label>
-                        <textarea class="form-control" asp-for="Input.MultiSites" rows="3" placeholder="Sitio A | 19.4326,-99.1332 | 200 MB&#10;Sitio B | 19.5200,-99.2300 | 100 MB"></textarea>
-                        <div class="text-muted small mt-1">Formato por linea: Direccion | Coordenadas | Capacidad MB.</div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Cargar Excel de sitios (opcional)</label>
-                        <input class="form-control" type="file" name="SitesExcel" accept=".xlsx,.xls" />
-                        <div class="text-muted small mt-1">Columnas esperadas: A=Direccion, B=Coordenadas, C=Capacidad MB.</div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Direccion en sitio</label>
-                        <input class="form-control" asp-for="Input.SiteAddress" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Contacto en sitio</label>
-                        <input class="form-control" asp-for="Input.SiteContactName" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Telefono contacto</label>
-                        <input class="form-control" asp-for="Input.SiteContactPhone" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Notas</label>
-                        <textarea class="form-control" asp-for="Input.Notes" rows="3" maxlength="2000"></textarea>
-                    </div>
-                    <div class="col-12 d-flex justify-content-end gap-2">
-                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
-                        <button class="btn btn-primary" type="submit">Guardar factibilidad</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="editFeasibilityModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Editar factibilidad</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <form method="post" asp-page-handler="Update" class="row g-3" id="editFeasibilityForm" enctype="multipart/form-data">
-                    <input type="hidden" asp-for="EditInput.Id" id="editFeasId" />
-                    <div class="col-md-7">
-                        <label class="form-label">Titulo</label>
-                        <input class="form-control" asp-for="EditInput.Title" id="editFeasTitle" />
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label">Cliente / Prospecto</label>
-                        <select class="form-select" asp-for="EditInput.ClientId" asp-items="Model.ClientItems" id="editFeasClient"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Proyecto (opcional)</label>
-                        <select class="form-select" asp-for="EditInput.ProjectId" id="editFeasProject">
-                            <option value="">-- Sin proyecto --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Coordenadas</label>
-                        <input class="form-control" asp-for="EditInput.Coordinates" id="editFeasCoords" placeholder="19.4326,-99.1332" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Sitios multiples (coordenadas/capacidad MB)</label>
-                        <textarea class="form-control" asp-for="EditInput.MultiSites" id="editFeasSites" rows="3"></textarea>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Cargar Excel de sitios (opcional)</label>
-                        <input class="form-control" type="file" name="EditSitesExcel" accept=".xlsx,.xls" />
-                        <div class="text-muted small mt-1">Si subes archivo, se actualizan los sitios del bloque Excel.</div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Direccion en sitio</label>
-                        <input class="form-control" asp-for="EditInput.SiteAddress" id="editFeasAddress" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Contacto en sitio</label>
-                        <input class="form-control" asp-for="EditInput.SiteContactName" id="editFeasContactName" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Telefono contacto</label>
-                        <input class="form-control" asp-for="EditInput.SiteContactPhone" id="editFeasContactPhone" />
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Notas</label>
-                        <textarea class="form-control" asp-for="EditInput.Notes" id="editFeasNotes" rows="3" maxlength="2000"></textarea>
-                    </div>
-                    <div class="col-12 d-flex justify-content-end gap-2">
-                        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
-                        <button class="btn btn-primary" type="submit">Guardar cambios</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="mapModalTitle">Ubicacion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="small text-muted mb-2" id="mapModalAddress"></div>
-                <iframe id="mapIframe" title="Mapa de coordenadas" style="width:100%;height:430px;border:1px solid #d7dde8;border-radius:.5rem;" loading="lazy"></iframe>
-            </div>
-            <div class="modal-footer">
-                <a id="mapOpenExternal" class="btn btn-outline-primary" href="#" target="_blank" rel="noopener">Abrir en mapa</a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-@section Scripts {
-<partial name="_ValidationScriptsPartial" />
-<script>
-(() => {
-    const client = document.getElementById('feasClient');
-    const project = document.getElementById('feasProject');
-    if (!client || !project) return;
-
-    async function loadProjects() {
-        const clientId = client.value;
-        if (!clientId) return;
-        const url = `?handler=Projects&clientId=${encodeURIComponent(clientId)}`;
-        try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
-            const rows = await resp.json();
-            const current = project.value;
-            project.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
-            rows.forEach(x => {
-                const opt = document.createElement('option');
-                opt.value = x.id;
-                opt.textContent = x.text;
-                project.appendChild(opt);
-            });
-            if (current) project.value = current;
-        } catch {}
     }
-
-    client.addEventListener('change', loadProjects);
-    loadProjects();
-})();
-
-(() => {
-    const modal = document.getElementById('editFeasibilityModal');
-    const client = document.getElementById('editFeasClient');
-    const project = document.getElementById('editFeasProject');
-    if (!modal || !client || !project) return;
-
-    async function loadProjects(clientId, selectedProjectId) {
-        if (!clientId) return;
-        const url = `?handler=Projects&clientId=${encodeURIComponent(clientId)}`;
-        try {
-            const resp = await fetch(url, { credentials: 'same-origin' });
-            const rows = await resp.json();
-            project.querySelectorAll('option[value]:not([value=""])').forEach(o => o.remove());
-            rows.forEach(x => {
-                const opt = document.createElement('option');
-                opt.value = x.id;
-                opt.textContent = x.text;
-                project.appendChild(opt);
-            });
-            if (selectedProjectId) {
-                project.value = selectedProjectId;
-            }
-        } catch {}
-    }
-
-    modal.addEventListener('show.bs.modal', async (ev) => {
-        const btn = ev.relatedTarget;
-        if (!btn) return;
-
-        const id = btn.getAttribute('data-id') || '';
-        const clientId = btn.getAttribute('data-client-id') || '';
-        const projectId = btn.getAttribute('data-project-id') || '';
-
-        document.getElementById('editFeasId').value = id;
-        document.getElementById('editFeasTitle').value = btn.getAttribute('data-title') || '';
-        document.getElementById('editFeasAddress').value = btn.getAttribute('data-address') || '';
-        const coordsRaw = btn.getAttribute('data-coordinates') || '';
-        document.getElementById('editFeasCoords').value = coordsRaw === '-' ? '' : coordsRaw;
-        document.getElementById('editFeasContactName').value = btn.getAttribute('data-contact-name') || '';
-        document.getElementById('editFeasContactPhone').value = btn.getAttribute('data-contact-phone') || '';
-        const sitesRaw = btn.getAttribute('data-multi-sites') || '';
-        document.getElementById('editFeasSites').value = sitesRaw === '-' ? '' : sitesRaw;
-        document.getElementById('editFeasNotes').value = btn.getAttribute('data-notes') || '';
-
-        client.value = clientId;
-        await loadProjects(clientId, projectId);
-    });
-
-    client.addEventListener('change', async () => {
-        await loadProjects(client.value, '');
-    });
-})();
-
-(() => {
-    const modal = document.getElementById('mapModal');
-    if (!modal) return;
-    const title = document.getElementById('mapModalTitle');
-    const addr = document.getElementById('mapModalAddress');
-    const iframe = document.getElementById('mapIframe');
-    const external = document.getElementById('mapOpenExternal');
-
-    function parseCoords(raw) {
-        if (!raw) return null;
-        const parts = String(raw).split(',').map(x => x.trim());
-        if (parts.length < 2) return null;
-        const lat = Number(parts[0]);
-        const lon = Number(parts[1]);
-        if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
-        return { lat, lon };
-    }
-
-    modal.addEventListener('show.bs.modal', (ev) => {
-        const btn = ev.relatedTarget;
-        const coords = btn?.getAttribute('data-coords') || '';
-        const t = btn?.getAttribute('data-title') || 'Ubicacion';
-        const a = btn?.getAttribute('data-address') || '';
-        const p = parseCoords(coords);
-
-        title.textContent = t;
-        addr.textContent = `${a}${coords ? ` · ${coords}` : ''}`;
-
-        if (!p) {
-            iframe.removeAttribute('src');
-            external.href = '#';
-            external.classList.add('disabled');
-            return;
-        }
-
-        const bbox = `${p.lon - 0.01}%2C${p.lat - 0.01}%2C${p.lon + 0.01}%2C${p.lat + 0.01}`;
-        iframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${p.lat}%2C${p.lon}`;
-        external.href = `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=17/${p.lat}/${p.lon}`;
-        external.classList.remove('disabled');
-    });
-})();
-
-@if (Model.OpenCreateModal)
-{
-<text>
-(() => {
-    const modalEl = document.getElementById('newFeasibilityModal');
-    if (!modalEl || !window.bootstrap) return;
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show();
-})();
-</text>
-}
-</script>
-}
+</div>

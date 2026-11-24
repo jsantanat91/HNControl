@@ -1,0 +1,196 @@
+@page "/Ventas/Factibilidad/{id:guid}"
+@model HNControl.Web.Pages.Sales.FeasibilityDetailModel
+@using HNControl.Web.Models
+@using HNControl.Web.Pages.Sales
+@{
+    Layout = "_Layout";
+    var s = Model.Survey;
+    ViewData["Title"] = "Factibilidad · " + s.Company;
+}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <a class="small text-decoration-none" href="/Ventas/Factibilidad"><i class="bi bi-arrow-left"></i> Factibilidades</a>
+        <h1 class="h4 mb-0 mt-1">@s.Company</h1>
+        <div class="text-muted small">
+            Recibido el @s.ReceivedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @s.Services
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <span class="badge fs-6 @FeasibilityModel.StatusBadge(s.Status)">@FeasibilityModel.StatusLabel(s.Status)</span>
+        @if (s.PdfBytes != null)
+        {
+            <a class="btn btn-outline-dark btn-sm" asp-page-handler="Pdf" asp-route-id="@s.Id" target="_blank"><i class="bi bi-file-earmark-pdf"></i> Ver PDF</a>
+        }
+        @if (s.SitesBytes != null)
+        {
+            <a class="btn btn-outline-success btn-sm" asp-page-handler="Sites" asp-route-id="@s.Id"><i class="bi bi-file-earmark-spreadsheet"></i> Excel de sitios</a>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message)) { <div class="alert alert-success py-2">@Model.Message</div> }
+@if (!string.IsNullOrWhiteSpace(Model.Error)) { <div class="alert alert-danger py-2">@Model.Error</div> }
+
+<div class="row g-3">
+    <div class="col-12 col-xl-4 order-xl-2">
+
+        @* ---------- Paso 1: cliente ---------- *@
+        <div class="card shadow-soft border-0 mb-3">
+            <div class="card-header fw-semibold"><span class="badge text-bg-dark me-1">1</span> Cliente en Control</div>
+            <div class="card-body">
+                @if (Model.LinkedClient != null)
+                {
+                    <div class="fw-semibold">@Model.LinkedClient.Name</div>
+                    <div class="small text-muted mb-2">@Model.LinkedClient.ClientCode @(string.IsNullOrEmpty(Model.LinkedClient.Rfc) ? "" : "· RFC " + Model.LinkedClient.Rfc)</div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a class="btn btn-sm btn-outline-primary" href="/Clients/Details/@Model.LinkedClient.Id">Ficha del cliente</a>
+                        @if (Model.OtherSurveysOfClient > 0)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" href="/Ventas/Factibilidad?cliente=@Model.LinkedClient.Id">+@Model.OtherSurveysOfClient factibilidad(es) más</a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning small py-2">Este levantamiento no está ligado a un cliente. Para crear la orden de servicio primero crea el cliente o ligalo a uno existente.</div>
+                    @if (Model.CanCreateClient)
+                    {
+                        <form method="post" asp-page-handler="CreateClient" asp-route-id="@s.Id" class="mb-3"
+                              onsubmit="return confirm('¿Crear el cliente @s.Company.Replace("'", "") con los datos del levantamiento?');">
+                            <button class="btn btn-primary w-100" type="submit"><i class="bi bi-person-plus"></i> Crear cliente con estos datos</button>
+                            <div class="form-text">Se crea con razón social, RFC, correo, teléfono, dirección y contacto principal. Los datos fiscales se completan después en la ficha.</div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mb-3">Tu perfil no tiene permiso para crear clientes; pide a un administrador que lo cree.</div>
+                    }
+                    <form method="post" asp-page-handler="Link" asp-route-id="@s.Id">
+                        <label class="form-label small mb-1">…o ligar a un cliente existente</label>
+                        <div class="input-group input-group-sm">
+                            <select class="form-select" name="LinkClientId" required>
+                                <option value="">Seleccione…</option>
+                                @foreach (var c in Model.ClientChoices) { <option value="@c.Id">@c.Label</option> }
+                            </select>
+                            <button class="btn btn-outline-primary" type="submit">Ligar</button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+
+        @* ---------- Paso 2: orden ---------- *@
+        <div class="card shadow-soft border-0 mb-3">
+            <div class="card-header fw-semibold"><span class="badge text-bg-dark me-1">2</span> Orden de servicio</div>
+            <div class="card-body">
+                @if (Model.Order != null)
+                {
+                    <div class="small mb-2"><i class="bi bi-clipboard-check text-success"></i> @Model.Order.Title</div>
+                    <a class="btn btn-sm btn-outline-success" href="/Admin/ServiceOrders/Details/@Model.Order.Id">Abrir orden</a>
+                }
+                else if (Model.LinkedClient == null)
+                {
+                    <button class="btn btn-secondary w-100" type="button" disabled><i class="bi bi-lock"></i> Crear orden de levantamiento</button>
+                    <div class="form-text">Disponible cuando el levantamiento tenga cliente.</div>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="CreateOrder" asp-route-id="@s.Id" onsubmit="return confirm('¿Crear la orden de levantamiento técnico para @Model.LinkedClient.Name.Replace("'", "")?');">
+                        <button class="btn btn-success w-100" type="submit"><i class="bi bi-clipboard-plus"></i> Crear orden de levantamiento</button>
+                        <div class="form-text">Orden tipo Levantamiento técnico con el resumen y la liga a esta factibilidad. Se notifica como cualquier orden nueva.</div>
+                    </form>
+                }
+            </div>
+        </div>
+
+        @* ---------- Seguimiento ---------- *@
+        <div class="card shadow-soft border-0">
+            <div class="card-header fw-semibold">Seguimiento</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Status" asp-route-id="@s.Id">
+                    <label class="form-label small mb-1">Estado</label>
+                    <select class="form-select form-select-sm mb-2" name="NewStatus">
+                        @foreach (var st in Enum.GetValues<LevantamientoSurveyStatus>())
+                        {
+                            <option value="@st" selected="@(st == s.Status)">@FeasibilityModel.StatusLabel(st)</option>
+                        }
+                    </select>
+                    <label class="form-label small mb-1">Notas internas</label>
+                    <textarea class="form-control form-control-sm mb-2" name="Notes" rows="4" maxlength="4000" placeholder="Cobertura, proveedor, costo estimado, siguiente paso…">@s.InternalNotes</textarea>
+                    <button class="btn btn-sm btn-primary" type="submit">Guardar</button>
+                    @if (s.UpdatedByUserId != null) { <span class="small text-muted ms-2">Actualizado @s.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span> }
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8 order-xl-1">
+        <div class="card shadow-soft border-0 mb-3">
+            <div class="card-header fw-semibold">Contacto</div>
+            <div class="card-body row g-2 small">
+                <div class="col-md-6"><span class="text-muted">Contacto:</span> @s.ContactName @(string.IsNullOrEmpty(s.ContactRole) ? "" : "(" + s.ContactRole + ")")</div>
+                <div class="col-md-6"><span class="text-muted">Correo:</span> <a href="mailto:@s.Email">@s.Email</a></div>
+                <div class="col-md-6"><span class="text-muted">Teléfono:</span> <a href="tel:@s.Phone">@s.Phone</a></div>
+                <div class="col-md-6"><span class="text-muted">RFC:</span> @(string.IsNullOrEmpty(s.Rfc) ? "—" : s.Rfc)</div>
+                <div class="col-md-6"><span class="text-muted">Ciudad:</span> @s.City</div>
+                <div class="col-md-6"><span class="text-muted">Dirección:</span> @s.Address</div>
+                <div class="col-md-6"><span class="text-muted">Urgencia:</span> @s.Urgency</div>
+                <div class="col-md-6"><span class="text-muted">Presupuesto:</span> @s.Budget</div>
+                @if (!string.IsNullOrEmpty(s.Executive)) { <div class="col-md-6"><span class="text-muted">Ejecutivo:</span> @s.Executive</div> }
+                @if (!string.IsNullOrEmpty(s.Visit)) { <div class="col-md-6"><span class="text-muted">Visita técnica:</span> @s.Visit</div> }
+            </div>
+        </div>
+
+        @if (Model.Sites.Any())
+        {
+            <div class="card shadow-soft border-0 mb-3">
+                <div class="card-header fw-semibold d-flex justify-content-between">
+                    <span><i class="bi bi-geo-alt"></i> Sitios (@Model.Sites.Count)</span>
+                    <span class="small text-muted">@s.SitesFileName</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 small">
+                        <thead class="table-light"><tr><th>#</th><th>Dirección</th><th class="text-end">MB</th><th>Notas</th></tr></thead>
+                        <tbody>
+                        @for (var i = 0; i < Model.Sites.Count; i++)
+                        {
+                            var site = Model.Sites[i];
+                            <tr><td>@(i + 1)</td><td>@site.Address</td><td class="text-end">@site.Capacity</td><td class="text-muted">@site.Notes</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (s.SitesBytes != null)
+        {
+            <div class="alert alert-secondary small">El archivo de sitios no se pudo leer aquí; descárgalo con el botón “Excel de sitios”.</div>
+        }
+
+        @foreach (var sec in Model.Sections.Where(x => x.Title != "Datos de la empresa"))
+        {
+            <div class="card shadow-soft border-0 mb-3">
+                <div class="card-header fw-semibold">@sec.Title</div>
+                <div class="card-body py-2">
+                    <dl class="row mb-0 small">
+                    @foreach (var it in sec.Items)
+                    {
+                        if (it.Heading != null)
+                        {
+                            <dt class="col-12 text-uppercase text-primary mt-2" style="font-size:.72rem;letter-spacing:.05em">@it.Heading</dt>
+                        }
+                        else
+                        {
+                            <dt class="col-sm-5 fw-normal text-muted">@it.Key</dt>
+                            <dd class="col-sm-7 mb-1" style="white-space:pre-line">
+                                @if (it.IsLink) { <a href="@it.Value" target="_blank" rel="noopener">Abrir en Google Maps</a> } else { @it.Value }
+                            </dd>
+                        }
+                    }
+                    </dl>
+                </div>
+            </div>
+        }
+    </div>
+</div>

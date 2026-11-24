@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.34";
+    public const string Version = "2.6.0";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.0", new DateOnly(2026, 11, 24), "Factibilidades conectadas al levantamiento técnico", new[]
+        {
+            new ReleaseChange("Ventas", "Ventas › Factibilidad muestra los levantamientos recibidos del formulario web, con su PDF, secciones y archivo de varios sitios. Se filtran por cliente, por estado o los que no tienen cliente."),
+            new ReleaseChange("Clientes y órdenes", "Desde la factibilidad se crea el cliente con los datos capturados, o se liga a uno existente, y después la orden de levantamiento técnico con su resumen. La orden exige un cliente."),
+            new ReleaseChange("Integración", "Con un RFC válido, el formulario precarga el representante legal, el teléfono y el correo principal del cliente. Con un correo de contacto registrado precarga ese contacto."),
+            new ReleaseChange("Despliegue", "La tabla LevantamientoSurveys se crea sola al iniciar (respaldo: Sql/20261124_levantamiento_surveys.sql). Usa la misma clave de 2.5.33. Las factibilidades manuales anteriores se conservan en la base. Desplegar antes del parche 2.4.0 del formulario.")
+        }),
         new ReleaseNote("2.5.34", new DateOnly(2026, 11, 24), "Levantamiento: búsqueda solo con RFC", new[]
         {
             new ReleaseChange("Integración", "El formulario de levantamiento recupera los datos de la empresa (razón social, RFC, giro, ciudad y dirección) solo con un RFC válido. El correo registrado pasa a ser opcional y agrega el contacto, cargo y teléfono."),

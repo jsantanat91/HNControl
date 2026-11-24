@@ -111,6 +111,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 builder.Services.AddScoped<SupportIntegrationAuth>();
 builder.Services.AddScoped<LevantamientoIntegrationAuth>();
+builder.Services.AddScoped<LevantamientoSurveyService>();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
 builder.Services.AddScoped<ServiceInventoryService>();
@@ -325,6 +326,15 @@ using (var scope = app.Services.CreateScope())
     await EnsureDeductionLedgerSchemaAsync(db);
     if (!string.IsNullOrWhiteSpace(builder.Configuration["SupportIntegration:ApiKey"]))
         await db.Database.ExecuteSqlRawAsync(SupportIntegrationSchema.Sql);
+    try
+    {
+        // Always ensured: the Factibilidades page reads this table even before the key is configured.
+        await db.Database.ExecuteSqlRawAsync(LevantamientoSurveySchema.Sql);
+    }
+    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InsufficientPrivilege)
+    {
+        app.Logger.LogWarning("LevantamientoSurveys requiere permiso CREATE: ejecute Sql/20261124_levantamiento_surveys.sql. {Message}", ex.MessageText);
+    }
 
     await SeedRolesAndAdminAsync(services, app.Configuration);
     await EnsureEmployeeNumbersAsync(db);

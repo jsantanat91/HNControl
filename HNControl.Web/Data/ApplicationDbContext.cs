@@ -73,6 +73,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<ServiceInventoryAccount> ServiceInventoryAccounts => Set<ServiceInventoryAccount>();
     public DbSet<ServiceInventoryItem> ServiceInventoryItems => Set<ServiceInventoryItem>();
     public DbSet<SupportOrderLink> SupportOrderLinks => Set<SupportOrderLink>();
+    public DbSet<LevantamientoSurvey> LevantamientoSurveys => Set<LevantamientoSurvey>();
 
     // --------------------
     // Inventarios
@@ -142,6 +143,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
         b.Entity<SupportOrderLink>(e => {
             e.HasIndex(x => new { x.SourceId, x.TicketId }).IsUnique();
             e.HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<LevantamientoSurvey>(e => {
+            e.HasIndex(x => x.ExternalId).IsUnique();
+            e.HasIndex(x => new { x.ClientId, x.ReceivedAt });
+            e.HasIndex(x => new { x.Status, x.ReceivedAt });
+            e.HasIndex(x => x.Rfc);
+            e.HasOne(x => x.Client).WithMany().HasForeignKey(x => x.ClientId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.ServiceOrder).WithMany().HasForeignKey(x => x.ServiceOrderId).OnDelete(DeleteBehavior.SetNull);
         });
         b.Entity<EmployeeDeduction>().HasIndex(x => x.SourceServiceOrderId).IsUnique();
 

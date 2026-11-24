@@ -1,5 +1,17 @@
 # HN Control — notas de versión
 
+## Web 2.6.0 · 24 de noviembre de 2026
+
+- **Factibilidades** (`/Ventas/Factibilidad`): la pantalla ahora lista los levantamientos que llegan del formulario web, con PDF, secciones, urgencia y archivo de varios sitios. Tiene filtros por estado (Nueva, En revisión, Factible, No factible, Cotizada), por cliente y "Sin cliente", además de búsqueda por empresa, RFC, contacto, correo o servicio.
+- Detalle por factibilidad (`/Ventas/Factibilidad/{id}`), en dos pasos:
+  1. Crear el cliente con los datos del levantamiento (código HN-xxxx, contacto principal y acceso al portal sin enviar correo) o ligarlo a uno existente. Si el RFC ya existe, liga al cliente existente en lugar de duplicarlo, y las demás factibilidades del mismo RFC quedan ligadas también.
+  2. Crear la orden de levantamiento técnico, solo con cliente. Incluye el resumen, hasta 15 sitios y la liga a la factibilidad; repetir el clic abre la misma orden.
+  - También guarda estado y notas internas.
+- `POST /api/integrations/levantamiento/surveys`: recibe cada envío, idempotente por `externalId`, valida el PDF (`%PDF-`, 5 MB) y el archivo de sitios (.xlsx/.xls/.csv, 5 MB), y liga el cliente por número de cliente o RFC.
+- Consulta de cliente: con un RFC válido devuelve el representante legal (con su cargo), el teléfono principal y el primer correo principal. Un correo registrado de contacto devuelve ese contacto. Siguen fuera los datos fiscales, los correos de facturación y legal, los correos secundarios y los ids.
+- La factibilidad manual anterior se retira de la interfaz; sus registros (`ServiceFeasibilities`) se conservan y siguen ligados a servicios y órdenes existentes.
+- **Despliegue:** la tabla `LevantamientoSurveys` se crea al iniciar. Si el usuario de base no tiene permiso CREATE, ejecutar `Sql/20261124_levantamiento_surveys.sql`. Misma clave de 2.5.33. Desplegar antes del parche 2.4.0 del formulario. Guía: [integración](docs/levantamiento-integration-2.5.33.md).
+
 ## Web 2.5.34 · 24 de noviembre de 2026
 
 - Levantamiento: con solo un RFC válido el formulario recupera los datos de la empresa (razón social, RFC, giro, ciudad y dirección). El correo registrado es opcional y agrega contacto, cargo y teléfono (`contactVerified: true`).

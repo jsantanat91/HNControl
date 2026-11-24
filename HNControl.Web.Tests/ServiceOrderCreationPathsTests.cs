@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using AdminCreate = HNControl.Web.Pages.Admin.ServiceOrders.CreateModel;
 using AdminDetails = HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel;
-using FeasibilityPage = HNControl.Web.Pages.Sales.FeasibilityModel;
+using FeasibilityPage = HNControl.Web.Pages.Sales.FeasibilityDetailModel;
 using TicketsPage = HNControl.Web.Pages.Tickets.IndexModel;
 
 internal static class ServiceOrderCreationPathsTests
@@ -84,31 +84,33 @@ internal static class ServiceOrderCreationPathsTests
         services.AddIdentityCore<ApplicationUser>().AddEntityFrameworkStores<ApplicationDbContext>();
         using var provider = services.BuildServiceProvider();
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
-        var feasibility = new ServiceFeasibility
+        var feasibility = new LevantamientoSurvey
         {
-            ClientId = client.Id, Title = "Factibilidad aceptada", SiteAddress = "Dirección de prueba",
-            SiteContactName = "Contacto", SiteContactPhone = "5500000000", Status = ServiceFeasibilityStatus.Accepted
+            ExternalId = "lev-orden-1", ClientId = client.Id, Company = client.Name, Email = "cliente@example.test",
+            Services = "Internet dedicado", ContactName = "Contacto", Phone = "5500000000", Address = "Dirección de prueba"
         };
-        db.ServiceFeasibilities.Add(feasibility);
+        db.LevantamientoSurveys.Add(feasibility);
         await db.SaveChangesAsync();
-        var convert = Page(new FeasibilityPage(db, userManager, null!, notices));
-        var conversionResult = await convert.OnPostConvertAsync(feasibility.Id) as RedirectToPageResult;
+        var convert = Page(new FeasibilityPage(db, null!, userManager, new LevantamientoSurveyService(db), notices, null!, config));
+        var conversionResult = await convert.OnPostCreateOrderAsync(feasibility.Id) as RedirectToPageResult;
         await db.Entry(feasibility).ReloadAsync();
-        var convertedId = feasibility.ConvertedServiceOrderId!.Value;
+        var convertedId = feasibility.ServiceOrderId!.Value;
         var convertedSchedule = await RequestSnapshot(convertedId);
+        var convertedOrder = await db.ServiceOrders.AsNoTracking().SingleAsync(x => x.Id == convertedId);
         check(conversionResult?.RouteValues?["id"]?.Equals(convertedId) == true
-            && feasibility.Status == ServiceFeasibilityStatus.ConvertedToOrder
-            && await db.ServiceOrders.AnyAsync(x => x.Id == convertedId) && convertedSchedule?.ScheduledDateConfirmed == false,
-            "Conversión de factibilidad guarda orden, vínculo y solicitud de avisos aunque SMTP falle");
+            && feasibility.Status == LevantamientoSurveyStatus.InReview && convertedOrder.Type == ServiceOrderType.LevantamientoTecnico
+            && convertedOrder.Description!.Contains("https://control.example.test/Ventas/Factibilidad/" + feasibility.Id)
+            && convertedSchedule?.ScheduledDateConfirmed == false,
+            "Factibilidad → orden de levantamiento guarda orden, vínculo y solicitud de avisos aunque SMTP falle");
         check(PendingNotice(convert) && email.Attempts == 4,
-            "Conversión de factibilidad muestra aviso de entrega pendiente para Ingeniería y cliente");
+            "Factibilidad → orden muestra aviso de entrega pendiente para Ingeniería y cliente");
         var countBeforeRepeat = await db.ServiceOrders.CountAsync();
-        var repeatResult = await convert.OnPostConvertAsync(feasibility.Id) as RedirectToPageResult;
+        var repeatResult = await convert.OnPostCreateOrderAsync(feasibility.Id) as RedirectToPageResult;
         check(repeatResult?.RouteValues?["id"]?.Equals(convertedId) == true
             && await db.ServiceOrders.CountAsync() == countBeforeRepeat && email.Attempts == 4
             && await db.ServiceOrderAuditLogs.CountAsync(x => x.OrderId == convertedId
                 && x.EventType == ServiceOrderAuditEvent.CreationNotificationRequested) == 1,
-            "Repetir conversión de factibilidad no crea otra orden ni duplica solicitudes o intentos de correo");
+            "Repetir orden desde factibilidad no crea otra orden ni duplica solicitudes o intentos de correo");
 
         var ticket = new Ticket
         {
