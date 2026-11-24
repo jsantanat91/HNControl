@@ -88,18 +88,19 @@ internal static class ServiceOrderCreationPathsTests
         var feasibility = new LevantamientoSurvey
         {
             ExternalId = "lev-orden-1", ClientId = client.Id, Company = client.Name, Email = "cliente@example.test",
-            Services = "Internet dedicado", ContactName = "Contacto", Phone = "5500000000", Address = "Dirección de prueba"
+            Services = "Internet dedicado", ContactName = "Contacto", Phone = "5500000000", Address = "Dirección de prueba",
+            Status = LevantamientoSurveyStatus.Feasible, DecidedAt = DateTime.UtcNow
         };
         db.LevantamientoSurveys.Add(feasibility);
         await db.SaveChangesAsync();
-        var convert = Page(new FeasibilityPage(db, null!, userManager, new LevantamientoSurveyService(db), notices, null!, config));
+        var convert = Page(new FeasibilityPage(db, null!, userManager, new LevantamientoSurveyService(db), notices, null!, null!, config));
         var conversionResult = await convert.OnPostCreateOrderAsync(feasibility.Id) as RedirectToPageResult;
         await db.Entry(feasibility).ReloadAsync();
         var convertedId = feasibility.ServiceOrderId!.Value;
         var convertedSchedule = await RequestSnapshot(convertedId);
         var convertedOrder = await db.ServiceOrders.AsNoTracking().SingleAsync(x => x.Id == convertedId);
         check(conversionResult?.RouteValues?["id"]?.Equals(convertedId) == true
-            && feasibility.Status == LevantamientoSurveyStatus.InReview && convertedOrder.Type == ServiceOrderType.LevantamientoTecnico
+            && feasibility.Status == LevantamientoSurveyStatus.Feasible && convertedOrder.Type == ServiceOrderType.LevantamientoTecnico
             && convertedOrder.Description!.Contains("https://control.example.test/Ventas/Factibilidad/" + feasibility.Id)
             && convertedSchedule?.ScheduledDateConfirmed == false,
             "Factibilidad → orden de levantamiento guarda orden, vínculo y solicitud de avisos aunque SMTP falle");

@@ -112,6 +112,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<SupportIntegrationAuth>();
 builder.Services.AddScoped<LevantamientoIntegrationAuth>();
 builder.Services.AddScoped<LevantamientoSurveyService>();
+builder.Services.AddScoped<LevantamientoDecisionMailer>();
 builder.Services.AddScoped<MobileJwtTokenService>();
 builder.Services.AddScoped<SystemHealthReader>();
 builder.Services.AddScoped<ServiceInventoryService>();

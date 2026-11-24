@@ -3,9 +3,16 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.2";
+    public const string Version = "2.6.3";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.3", new DateOnly(2026, 11, 24), "Dictamen de viabilidad en Factibilidades", new[]
+        {
+            new ReleaseChange("Factibilidad", "Nuevo paso Dictamen de viabilidad antes de la orden: se revisan cobertura, capacidad en red y servidores, última milla, condiciones del sitio, equipamiento y tiempos, y se marca Viable o No viable con comentarios para el cliente."),
+            new ReleaseChange("Correo", "El dictamen se envía al cliente con el formato homologado de Control, con el resultado, la causa o las condiciones, los puntos evaluados, los siguientes pasos y el PDF del levantamiento. Se puede previsualizar y reenviar."),
+            new ReleaseChange("Flujo", "La orden de servicio solo se crea con dictamen viable. No viable detiene el flujo, aunque el cliente sí se puede crear o ligar."),
+            new ReleaseChange("Despliegue", "Columnas nuevas en LevantamientoSurveys que la web agrega al iniciar; respaldo manual en Sql/20261124_levantamiento_dictamen.sql.")
+        }),
         new ReleaseNote("2.6.2", new DateOnly(2026, 11, 24), "Encabezados en card azul y Factibilidad aislada", new[]
         {
             new ReleaseChange("Interfaz", "El encabezado de cada módulo (título, descripción y botones) se muestra en una card azul como la del dashboard."),

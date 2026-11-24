@@ -6,8 +6,8 @@ public enum LevantamientoSurveyStatus
 {
     [Display(Name = "Nueva")] New = 1,
     [Display(Name = "En revisión")] InReview = 2,
-    [Display(Name = "Factible")] Feasible = 3,
-    [Display(Name = "No factible")] NotFeasible = 4,
+    [Display(Name = "Viable")] Feasible = 3,
+    [Display(Name = "No viable")] NotFeasible = 4,
     [Display(Name = "Cotizada")] Quoted = 5
 }
 
@@ -49,6 +49,16 @@ public class LevantamientoSurvey
 
     public LevantamientoSurveyStatus Status { get; set; } = LevantamientoSurveyStatus.New;
     [MaxLength(4000)] public string InternalNotes { get; set; } = "";
+    // Dictamen de viabilidad (2.6.3): se emite antes de la orden; "No viable" detiene el flujo.
+    /// <summary>[{k, r}] with r = "si" | "no" | "na" for each <see cref="LevantamientoReview.Checks"/> key.</summary>
+    public string ReviewChecksJson { get; set; } = "[]";
+    /// <summary>Comments sent to the customer with the decision (reasons, conditions, next steps).</summary>
+    [MaxLength(4000)] public string DecisionComments { get; set; } = "";
+    public DateTime? DecidedAt { get; set; }
+    [MaxLength(64)] public string? DecidedByUserId { get; set; }
+    [MaxLength(256)] public string DecisionEmailTo { get; set; } = "";
+    public DateTime? DecisionEmailSentAt { get; set; }
+
     public Guid? ServiceOrderId { get; set; }
     public ServiceOrder? ServiceOrder { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

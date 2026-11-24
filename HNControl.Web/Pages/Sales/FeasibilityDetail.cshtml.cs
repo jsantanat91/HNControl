@@ -18,8 +18,27 @@ public class FeasibilityDetailModel(
     LevantamientoSurveyService surveys,
     ServiceOrderCreationNotifications notifications,
     IClientPortalAccessService portalAccess,
+    LevantamientoDecisionMailer mailer,
     IConfiguration config) : PageModel
 {
+    public List<LevantamientoReview.CheckResult> ReviewResults { get; set; } = [];
+    public bool IsDecided => Survey.DecidedAt != null && Survey.Status is LevantamientoSurveyStatus.Feasible or LevantamientoSurveyStatus.NotFeasible or LevantamientoSurveyStatus.Quoted;
+
+    // Dictamen de viabilidad (2.6.3)
+    [BindProperty] public Dictionary<string, string?> Checks { get; set; } = new();
+    [BindProperty] public string? Decision { get; set; }
+    [BindProperty] public string? ClientComments { get; set; }
+    [BindProperty] public bool SendEmail { get; set; }
+    [BindProperty] public string? EmailTo { get; set; }
+    public string? DecisionError { get; set; }
+
+    /// <summary>Manual status changes allowed in Seguimiento; Viable / No viable only come from the decision.</summary>
+    public static LevantamientoSurveyStatus[] AllowedStatuses(LevantamientoSurveyStatus current) => current switch
+    {
+        LevantamientoSurveyStatus.New or LevantamientoSurveyStatus.InReview => [LevantamientoSurveyStatus.New, LevantamientoSurveyStatus.InReview],
+        LevantamientoSurveyStatus.Feasible or LevantamientoSurveyStatus.Quoted => [LevantamientoSurveyStatus.Feasible, LevantamientoSurveyStatus.Quoted],
+        _ => [current]
+    };
     public LevantamientoSurvey Survey { get; set; } = default!;
     public List<LevantamientoSection> Sections { get; set; } = [];
     public List<LevantamientoSite> Sites { get; set; } = [];
@@ -49,6 +68,9 @@ public class FeasibilityDetailModel(
         Notes = survey.InternalNotes;
         Sections = LevantamientoSurveyService.ParseSections(survey.SectionsJson);
         Sites = LevantamientoSurveyService.ReadSites(survey.SitesFileName, survey.SitesBytes);
+        ReviewResults = LevantamientoReview.Parse(survey.ReviewChecksJson);
+        ClientComments = survey.DecisionComments;
+        EmailTo = string.IsNullOrWhiteSpace(survey.DecisionEmailTo) ? survey.Email : survey.DecisionEmailTo;
         CanCreateClient = await CanCreateClientAsync();
         if (survey.ClientId != null)
             OtherSurveysOfClient = await db.LevantamientoSurveys.CountAsync(x => x.ClientId == survey.ClientId && x.Id != id);
@@ -93,13 +115,56 @@ public class FeasibilityDetailModel(
         var survey = await db.LevantamientoSurveys.FirstOrDefaultAsync(x => x.Id == id);
         if (survey == null) return NotFound();
         if (!Enum.IsDefined(NewStatus)) { Error = "Estado no válido."; return RedirectToPage(new { id }); }
-        survey.Status = NewStatus;
+        // Viable / No viable solo se asignan con el dictamen; aquí solo se mueve dentro de su etapa.
+        if (AllowedStatuses(survey.Status).Contains(NewStatus)) survey.Status = NewStatus;
         survey.InternalNotes = LevantamientoSurveyService.Clip(Notes, 4000);
         survey.UpdatedAt = DateTime.UtcNow;
         survey.UpdatedByUserId = users.GetUserId(User);
         await db.SaveChangesAsync();
         Message = "Factibilidad actualizada.";
         return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDecisionAsync(Guid id)
+    {
+        if (!await FeasibilityModel.CanViewAsync(User, actions)) return Forbid();
+        if (Decision is not ("viable" or "no_viable")) { Error = "Elige si el proyecto es viable o no viable."; return RedirectToPage(new { id }); }
+        var viable = Decision == "viable";
+        var error = await surveys.DecideAsync(id, viable, Checks, ClientComments, users.GetUserId(User));
+        if (error != null)
+        {
+            // Se vuelve a mostrar el formulario con lo capturado para no perder la revisión.
+            var (checks, comments, sendEmail, emailTo) = (Checks, ClientComments, SendEmail, EmailTo);
+            var page = await OnGetAsync(id);
+            if (page is not PageResult) return page;
+            ReviewResults = LevantamientoReview.Normalize(checks);
+            (ClientComments, SendEmail, EmailTo, DecisionError) = (comments, sendEmail, emailTo, error);
+            return page;
+        }
+        var result = viable ? "Proyecto dictaminado como viable. Ya puedes crear la orden de servicio." : "Proyecto dictaminado como no viable. El flujo se detiene: no se puede crear la orden.";
+        if (!SendEmail) { Message = result + " No se envió correo al cliente."; return RedirectToPage(new { id }); }
+        var mailError = await mailer.SendAsync(id, EmailTo);
+        if (mailError != null) { Message = result; Error = mailError + " Puedes reenviarlo desde el dictamen."; }
+        else Message = result + " Se envió el correo al cliente.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostSendDecisionAsync(Guid id)
+    {
+        if (!await FeasibilityModel.CanViewAsync(User, actions)) return Forbid();
+        var mailError = await mailer.SendAsync(id, EmailTo);
+        if (mailError != null) Error = mailError; else Message = "Se envió el dictamen al cliente.";
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>Preview of the customer email exactly as it will be sent.</summary>
+    public async Task<IActionResult> OnGetDecisionPreviewAsync(Guid id)
+    {
+        if (!await FeasibilityModel.CanViewAsync(User, actions)) return Forbid();
+        var survey = await db.LevantamientoSurveys.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (survey?.DecidedAt == null) return NotFound();
+        var sites = LevantamientoSurveyService.ReadSites(survey.SitesFileName, survey.SitesBytes).Count;
+        return Content(LevantamientoReview.EmailBody(survey, sites, survey.PdfBytes is { Length: > 0 }), "text/html; charset=utf-8");
     }
 
     public async Task<IActionResult> OnPostCreateClientAsync(Guid id)

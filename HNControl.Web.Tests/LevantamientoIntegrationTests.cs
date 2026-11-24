@@ -158,11 +158,50 @@ internal static class LevantamientoIntegrationTests
         var (otraVez, otraVezError) = await surveys.CreateClientAsync(nuevoId, "u1");
         check(otraVez==null && otraVezError!=null && await db.Clients.CountAsync(x => x.Rfc=="NUE010101AB2")==1,
             "Factibilidades: no duplica el cliente si ya está ligado");
+        // ---------- Dictamen de viabilidad (2.6.3) ----------
+        var (sinDictamen, sinDictamenError) = await surveys.CreateOrderAsync(nuevoId, "u1", "x");
+        check(sinDictamen==null && sinDictamenError!.Contains("dictamen") && !await db.ServiceOrders.AnyAsync(),
+            "Dictamen: sin dictamen viable no se crea la orden aunque haya cliente");
+        var todosSi = LevantamientoReview.Checks.ToDictionary(c => c.Key, c => (string?)LevantamientoReview.Yes);
+        var pendientes = new Dictionary<string, string?> { ["cobertura"] = "si" };
+        var conNo = new Dictionary<string, string?>(todosSi) { ["capacidad"] = "no" };
+        check(await surveys.DecideAsync(nuevoId, true, pendientes, "", "u1") is { } e1 && e1.Contains("Pendientes")
+            && await surveys.DecideAsync(nuevoId, true, conNo, "", "u1") is { } e2 && e2.Contains("Capacidad")
+            && await surveys.DecideAsync(nuevoId, false, conNo, "corto", "u1") != null
+            && (await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId)).DecidedAt == null,
+            "Dictamen: viable exige todos los puntos sin \"No\"; no viable exige la causa");
+        var causa = "Sin capacidad en el nodo <Norte> hasta enero.";
+        check(await surveys.DecideAsync(nuevoId, false, conNo, causa, "u1") == null, "Dictamen: registra no viable con su causa");
+        var noViable = await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId);
+        var (ordenNoViable, ordenNoViableError) = await surveys.CreateOrderAsync(nuevoId, "u1", "x");
+        var cuerpoNo = LevantamientoReview.EmailBody(noViable, 2, true);
+        check(noViable.Status==LevantamientoSurveyStatus.NotFeasible && noViable.DecidedByUserId=="u1"
+            && LevantamientoReview.Parse(noViable.ReviewChecksJson).Count==LevantamientoReview.Checks.Count
+            && ordenNoViable==null && ordenNoViableError!.Contains("no viable"),
+            "Dictamen: no viable detiene el flujo y no permite crear la orden");
+        check(cuerpoNo.Contains("no viable por ahora") && cuerpoNo.Contains("&lt;Norte&gt;") && !cuerpoNo.Contains("<Norte>")
+            && cuerpoNo.Contains("No disponible") && cuerpoNo.Contains("2 sitio(s)") && cuerpoNo.Contains("HN SOLUTIONS")
+            && LevantamientoReview.EmailSubject(noViable).Contains("Resultado"),
+            "Dictamen: el correo usa el formato homologado, explica la causa y escapa el texto");
+        var correo = new CapturingEmail();
+        var mailer = new LevantamientoDecisionMailer(db, correo, new DocumentNotificationRecipients(db));
+        check(await mailer.SendAsync(nuevoId, "no-es-correo") != null && correo.Sent.Count == 0
+            && await mailer.SendAsync(nuevoId, null) == null && correo.Sent is [{ To: "marta@nueva.test" }]
+            && (await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId)).DecisionEmailSentAt != null,
+            "Dictamen: envía el correo al contacto del levantamiento y registra el envío");
+        check(await surveys.DecideAsync(nuevoId, true, todosSi, "Cobertura confirmada.", "u1") == null
+            && (await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId)) is { Status: LevantamientoSurveyStatus.Feasible, DecisionEmailSentAt: null }
+            && LevantamientoReview.EmailBody(await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId), 0, false) is { } cuerpoSi
+            && cuerpoSi.Contains("Proyecto viable") && !cuerpoSi.Contains("Adjuntamos"),
+            "Dictamen: se puede cambiar a viable antes de la orden y queda pendiente reenviar el correo");
+
         var (orden, _) = await surveys.CreateOrderAsync(nuevoId, "u1", "https://control.test/Ventas/Factibilidad/" + nuevoId);
         await db.SaveChangesAsync();
         var guardada = await db.LevantamientoSurveys.AsNoTracking().SingleAsync(x => x.Id == nuevoId);
+        check(await surveys.DecideAsync(nuevoId, false, conNo, causa, "u1") is { } bloqueado && bloqueado.Contains("orden"),
+            "Dictamen: con orden creada ya no se puede cambiar");
         check(orden!=null && orden.ClientId==alta.Id && orden.Type==ServiceOrderType.LevantamientoTecnico && guardada.ServiceOrderId==orden.Id
-            && guardada.Status==LevantamientoSurveyStatus.InReview && orden.Description!.Contains("Av. Tres 1, MTY · 200 MB")
+            && guardada.Status==LevantamientoSurveyStatus.Feasible && orden.Description!.Contains("Av. Tres 1, MTY · 200 MB")
             && orden.Description.Contains("Ancho de banda: 100 Mbps") && !orden.Description.Contains("google.com/maps"),
             "Factibilidades: con cliente crea la orden de levantamiento con resumen y sitios");
         check((await surveys.CreateOrderAsync(nuevoId, "u1", "x")).Order==null
@@ -176,5 +215,16 @@ internal static class LevantamientoIntegrationTests
         var (existente, _) = await surveys.CreateClientAsync(mismoRfc, "u1");
         check(existente?.Id==client.Id && await db.Clients.CountAsync(x => x.Rfc=="ABC010101XY1")==1,
             "Factibilidades: crear cliente con un RFC ya registrado liga al existente en lugar de duplicar");
+    }
+
+    private sealed class CapturingEmail : IEmailSender
+    {
+        public List<(string To, string Subject, string Body, string? Attachment)> Sent { get; } = [];
+        public Task SendAsync(string toEmail, string subject, string htmlBody, byte[]? attachmentBytes = null, string? attachmentName = null,
+            string? attachmentContentType = null, IReadOnlyCollection<string>? ccEmails = null)
+        {
+            Sent.Add((toEmail, subject, htmlBody, attachmentName));
+            return Task.CompletedTask;
+        }
     }
 }

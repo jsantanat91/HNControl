@@ -291,6 +291,14 @@ body.hn-auth-refresh { background: #fff; }
 .hn-filter-chip-warn { color: #9a6a12; }
 .hn-filter-chip-warn.is-active { background: #fff6e2; border-color: #f3dca6; color: #8a5a00; }
 .hn-filter-chip-warn.is-active > span { background: #fbe9bf; color: #8a5a00; }
+/* 2.6.3 — Dictamen de viabilidad (Factibilidad). */
+.hn-verdict { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid; }
+.hn-verdict > i { font-size: 22px; line-height: 1; }
+.hn-verdict.is-yes { background: #ecfdf3; border-color: #bbe7cc; color: #166534; }
+.hn-verdict.is-no { background: #fef2f2; border-color: #f5c6c6; color: #991b1b; }
+.hn-check-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #edf0f5; }
+.hn-check-row .btn-group { flex-shrink: 0; }
+.hn-refresh .hn-main .hn-check-row .btn-sm { padding: .25rem .55rem !important; }
 .hn-module-panel .modal-dialog { max-width: 1420px; width: calc(100% - 40px); }
 .hn-module-panel .modal-body { height: min(78vh, 950px); }
 .hn-module-panel iframe { display: block; width: 100%; height: 100%; border: 0; background: #f6f7fa; }

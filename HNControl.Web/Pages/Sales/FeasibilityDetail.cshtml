@@ -2,6 +2,7 @@
 @model HNControl.Web.Pages.Sales.FeasibilityDetailModel
 @using HNControl.Web.Models
 @using HNControl.Web.Pages.Sales
+@using HNControl.Web.Services
 @{
     Layout = "_Layout";
     var s = Model.Survey;
@@ -53,7 +54,7 @@
                 }
                 else
                 {
-                    <div class="alert alert-warning small py-2">Este levantamiento no está ligado a un cliente. Para crear la orden de servicio primero crea el cliente o ligalo a uno existente.</div>
+                    <div class="alert alert-warning small py-2">Este levantamiento no está ligado a un cliente. Puedes crearlo o ligarlo aunque el proyecto no sea viable; la orden de servicio lo necesita.</div>
                     @if (Model.CanCreateClient)
                     {
                         <form method="post" asp-page-handler="CreateClient" asp-route-id="@s.Id" class="mb-3"
@@ -80,14 +81,130 @@
             </div>
         </div>
 
-        @* ---------- Paso 2: orden ---------- *@
+        @* ---------- Paso 2: dictamen de viabilidad ---------- *@
+        @{
+            var viableNow = LevantamientoSurveyService.IsViable(s.Status) && Model.IsDecided;
+            var notViable = s.Status == LevantamientoSurveyStatus.NotFeasible;
+            var showForm = !Model.IsDecided || Model.DecisionError != null;
+            var decision = Model.Decision ?? (Model.IsDecided ? (notViable ? "no_viable" : "viable") : null);
+        }
+        <div class="card shadow-soft border-0 mb-3" id="dictamen">
+            <div class="card-header fw-semibold"><span class="badge text-bg-dark me-1">2</span> Dictamen de viabilidad</div>
+            <div class="card-body">
+                @if (Model.IsDecided)
+                {
+                    <div class="hn-verdict @(notViable ? "is-no" : "is-yes") mb-3">
+                        <i class="bi @(notViable ? "bi-x-octagon" : "bi-check2-circle")"></i>
+                        <div>
+                            <div class="fw-semibold">@(notViable ? "No viable · el flujo se detiene" : "Viable")</div>
+                            <div class="small">Dictaminado el @s.DecidedAt!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(s.DecisionComments))
+                    {
+                        <div class="small text-muted mb-1">Comentarios enviados al cliente</div>
+                        <div class="small mb-3" style="white-space:pre-line">@s.DecisionComments</div>
+                    }
+                    @if (Model.ReviewResults.Any())
+                    {
+                        <ul class="list-unstyled small mb-3">
+                            @foreach (var c in LevantamientoReview.Checks)
+                            {
+                                var r = LevantamientoReview.ResultOf(Model.ReviewResults, c.Key);
+                                <li class="d-flex justify-content-between border-bottom py-1">
+                                    <span>@c.Label</span>
+                                    <span class="fw-semibold @(r == LevantamientoReview.Yes ? "text-success" : r == LevantamientoReview.No ? "text-danger" : "text-muted")">@LevantamientoReview.ResultLabel(r)</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    <div class="small mb-2">
+                        @if (s.DecisionEmailSentAt != null)
+                        {
+                            <span><i class="bi bi-envelope-check text-success"></i> Enviado a @s.DecisionEmailTo el @s.DecisionEmailSentAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        }
+                        else
+                        {
+                            <span class="text-warning-emphasis"><i class="bi bi-envelope-exclamation"></i> Aún no se envía el correo al cliente.</span>
+                        }
+                    </div>
+                    <form method="post" asp-page-handler="SendDecision" asp-route-id="@s.Id" class="mb-2">
+                        <div class="input-group input-group-sm">
+                            <input class="form-control" type="email" name="EmailTo" value="@Model.EmailTo" required />
+                            <button class="btn btn-outline-primary" type="submit"><i class="bi bi-send"></i> @(s.DecisionEmailSentAt != null ? "Reenviar" : "Enviar")</button>
+                        </div>
+                    </form>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a class="btn btn-sm btn-outline-secondary" asp-page-handler="DecisionPreview" asp-route-id="@s.Id" target="_blank"><i class="bi bi-eye"></i> Ver correo</a>
+                        @if (Model.Order == null && !showForm)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#dictamen-form"><i class="bi bi-pencil"></i> Cambiar dictamen</button>
+                        }
+                    </div>
+                }
+                @if (Model.Order == null)
+                {
+                    <form method="post" asp-page-handler="Decision" asp-route-id="@s.Id" id="dictamen-form" class="collapse @(showForm ? "show" : "") @(Model.IsDecided ? "mt-3 pt-3 border-top" : "")"
+                          onsubmit="var v=this.querySelector('[name=Decision]:checked');return !!v && confirm(v.value==='viable' ? '¿Dictaminar el proyecto como VIABLE?' : '¿Dictaminar el proyecto como NO VIABLE? El flujo se detiene y no se podrá crear la orden.');">
+                        @if (Model.DecisionError != null) { <div class="alert alert-danger small py-2">@Model.DecisionError</div> }
+                        <div class="small text-muted mb-2">Revisa cada punto antes de comprometer el proyecto.</div>
+                        @foreach (var c in LevantamientoReview.Checks)
+                        {
+                            var r = LevantamientoReview.ResultOf(Model.ReviewResults, c.Key);
+                            <div class="hn-check-row">
+                                <div>
+                                    <div class="small fw-semibold">@c.Label</div>
+                                    <div class="text-muted" style="font-size:11px">@c.Hint</div>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    @foreach (var (val, txt, cls) in new[] { (LevantamientoReview.Yes, "Sí", "success"), (LevantamientoReview.No, "No", "danger"), (LevantamientoReview.NotApplicable, "N/A", "secondary") })
+                                    {
+                                        var rid = $"chk-{c.Key}-{val}";
+                                        <input type="radio" class="btn-check" name="Checks[@c.Key]" id="@rid" value="@val" checked="@(r == val)" autocomplete="off" />
+                                        <label class="btn btn-outline-@cls" for="@rid">@txt</label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        <label class="form-label small mt-3 mb-1">Comentarios para el cliente</label>
+                        <textarea class="form-control form-control-sm mb-1" name="ClientComments" rows="4" maxlength="4000"
+                                  placeholder="Viable: condiciones, alcance o tiempos. No viable: la causa (sin cobertura, sin capacidad…).">@Model.ClientComments</textarea>
+                        <div class="form-text mb-3">Se incluyen en el correo al cliente. Las notas internas de Seguimiento no se envían.</div>
+                        <div class="d-flex gap-2 mb-3">
+                            <input type="radio" class="btn-check" name="Decision" id="dec-yes" value="viable" checked="@(decision == "viable")" required />
+                            <label class="btn btn-outline-success flex-fill" for="dec-yes"><i class="bi bi-check2-circle"></i> Viable</label>
+                            <input type="radio" class="btn-check" name="Decision" id="dec-no" value="no_viable" checked="@(decision == "no_viable")" />
+                            <label class="btn btn-outline-danger flex-fill" for="dec-no"><i class="bi bi-x-octagon"></i> No viable</label>
+                        </div>
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" name="SendEmail" value="true" id="send-email" checked="@(Model.DecisionError == null || Model.SendEmail)" />
+                            <label class="form-check-label small" for="send-email">Enviar el dictamen al cliente por correo</label>
+                        </div>
+                        <input class="form-control form-control-sm mb-3" type="email" name="EmailTo" value="@Model.EmailTo" placeholder="correo@cliente.com" />
+                        <button class="btn btn-primary w-100" type="submit"><i class="bi bi-clipboard2-check"></i> Emitir dictamen</button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        @* ---------- Paso 3: orden ---------- *@
         <div class="card shadow-soft border-0 mb-3">
-            <div class="card-header fw-semibold"><span class="badge text-bg-dark me-1">2</span> Orden de servicio</div>
+            <div class="card-header fw-semibold"><span class="badge text-bg-dark me-1">3</span> Orden de servicio</div>
             <div class="card-body">
                 @if (Model.Order != null)
                 {
                     <div class="small mb-2"><i class="bi bi-clipboard-check text-success"></i> @Model.Order.Title</div>
                     <a class="btn btn-sm btn-outline-success" href="/Admin/ServiceOrders/Details/@Model.Order.Id">Abrir orden</a>
+                }
+                else if (notViable)
+                {
+                    <button class="btn btn-secondary w-100" type="button" disabled><i class="bi bi-slash-circle"></i> Proyecto no viable</button>
+                    <div class="form-text">El flujo se detiene. Si cambian las condiciones, cambia el dictamen a viable.</div>
+                }
+                else if (!viableNow)
+                {
+                    <button class="btn btn-secondary w-100" type="button" disabled><i class="bi bi-lock"></i> Crear orden de levantamiento</button>
+                    <div class="form-text">Disponible cuando el dictamen sea viable@(Model.LinkedClient == null ? " y el levantamiento tenga cliente" : "").</div>
                 }
                 else if (Model.LinkedClient == null)
                 {
@@ -111,7 +228,7 @@
                 <form method="post" asp-page-handler="Status" asp-route-id="@s.Id">
                     <label class="form-label small mb-1">Estado</label>
                     <select class="form-select form-select-sm mb-2" name="NewStatus">
-                        @foreach (var st in Enum.GetValues<LevantamientoSurveyStatus>())
+                        @foreach (var st in FeasibilityDetailModel.AllowedStatuses(s.Status))
                         {
                             <option value="@st" selected="@(st == s.Status)">@FeasibilityModel.StatusLabel(st)</option>
                         }

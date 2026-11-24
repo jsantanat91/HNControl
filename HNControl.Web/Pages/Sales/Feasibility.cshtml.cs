@@ -83,8 +83,8 @@ public class FeasibilityModel(ApplicationDbContext db, IActionAccessService acti
     {
         LevantamientoSurveyStatus.New => "Nueva",
         LevantamientoSurveyStatus.InReview => "En revisión",
-        LevantamientoSurveyStatus.Feasible => "Factible",
-        LevantamientoSurveyStatus.NotFeasible => "No factible",
+        LevantamientoSurveyStatus.Feasible => "Viable",
+        LevantamientoSurveyStatus.NotFeasible => "No viable",
         LevantamientoSurveyStatus.Quoted => "Cotizada",
         _ => s.ToString()
     };

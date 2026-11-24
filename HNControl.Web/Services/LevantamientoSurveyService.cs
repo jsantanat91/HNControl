@@ -215,7 +215,30 @@ public sealed partial class LevantamientoSurveyService(ApplicationDbContext db)
         return null;
     }
 
-    /// <summary>Builds the technical survey order. The caller queues/sends notifications. Requires a linked client.</summary>
+    /// <summary>Records the feasibility decision (2.6.3). Locked once a service order exists.</summary>
+    public async Task<string?> DecideAsync(Guid surveyId, bool viable, IDictionary<string, string?>? answers, string? comments, string? userId, CancellationToken ct = default)
+    {
+        var survey = await db.LevantamientoSurveys.FirstOrDefaultAsync(x => x.Id == surveyId, ct);
+        if (survey == null) return "No se encontró el levantamiento.";
+        if (survey.ServiceOrderId != null) return "Ya tiene orden de servicio; el dictamen ya no se puede cambiar.";
+        var results = LevantamientoReview.Normalize(answers);
+        var error = LevantamientoReview.Validate(viable, results, comments);
+        if (error != null) return error;
+        survey.ReviewChecksJson = JsonSerializer.Serialize(results);
+        survey.DecisionComments = Clip(comments, 4000);
+        survey.Status = viable ? LevantamientoSurveyStatus.Feasible : LevantamientoSurveyStatus.NotFeasible;
+        survey.DecidedAt = DateTime.UtcNow;
+        survey.DecidedByUserId = userId;
+        survey.DecisionEmailSentAt = null;
+        survey.UpdatedAt = DateTime.UtcNow; survey.UpdatedByUserId = userId;
+        await db.SaveChangesAsync(ct);
+        return null;
+    }
+
+    public static bool IsViable(LevantamientoSurveyStatus status) =>
+        status is LevantamientoSurveyStatus.Feasible or LevantamientoSurveyStatus.Quoted;
+
+    /// <summary>Builds the technical survey order. The caller queues/sends notifications. Requires a linked client and a viable decision.</summary>
     public async Task<(ServiceOrder? Order, string? Error)> CreateOrderAsync(Guid surveyId, string? userId, string detailUrl, CancellationToken ct = default)
     {
         var survey = await db.LevantamientoSurveys.FirstOrDefaultAsync(x => x.Id == surveyId, ct);
@@ -223,6 +246,10 @@ public sealed partial class LevantamientoSurveyService(ApplicationDbContext db)
         if (survey.ServiceOrderId != null) return (null, "Este levantamiento ya tiene orden de servicio.");
         if (survey.ClientId == null || !await db.Clients.AnyAsync(x => x.Id == survey.ClientId && x.IsActive, ct))
             return (null, "Primero crea o liga el cliente; la orden de servicio necesita un cliente existente.");
+        if (survey.Status == LevantamientoSurveyStatus.NotFeasible)
+            return (null, "El proyecto está dictaminado como no viable; no se puede crear la orden de servicio.");
+        if (!IsViable(survey.Status))
+            return (null, "Primero emite el dictamen de viabilidad; la orden solo se crea para proyectos viables.");
 
         var order = new ServiceOrder
         {
@@ -239,7 +266,6 @@ public sealed partial class LevantamientoSurveyService(ApplicationDbContext db)
         };
         db.ServiceOrders.Add(order);
         survey.ServiceOrder = order;
-        if (survey.Status == LevantamientoSurveyStatus.New) survey.Status = LevantamientoSurveyStatus.InReview;
         survey.UpdatedAt = DateTime.UtcNow; survey.UpdatedByUserId = userId;
         return (order, null);
     }

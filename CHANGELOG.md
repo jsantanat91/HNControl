@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.6.3 · 24 de noviembre de 2026
+
+- **Dictamen de viabilidad** en el detalle de cada factibilidad, entre Cliente y Orden (pasos 1 Cliente, 2 Dictamen, 3 Orden). Se revisa cada punto con Sí, No o N/A: cobertura en la ubicación, capacidad disponible en red y servidores, última milla o proveedor, condiciones del sitio, equipamiento y tiempo de entrega.
+  - *Viable* exige todos los puntos revisados y ninguno en "No".
+  - *No viable* exige la causa para el cliente.
+- Correo al cliente con el formato homologado de Control (`ClientCommunicationTemplates.Layout`), firmado por Ingeniería y Preventa. Incluye el resultado, los comentarios (condiciones o causa), los puntos evaluados como Disponible / No disponible, los siguientes pasos y el PDF del levantamiento adjunto. Se envía al correo del levantamiento (editable), con copia a los correos internos de documentos. Se puede previsualizar ("Ver correo") y reenviar; queda registrado a quién y cuándo se envió.
+- Flujo: la orden de servicio solo se crea con dictamen viable. *No viable* detiene el flujo, pero el cliente se puede crear o ligar. El dictamen se puede cambiar mientras no exista orden. Los estados *Factible / No factible* ahora se muestran como *Viable / No viable* y solo los asigna el dictamen.
+- **Despliegue:** la web agrega 6 columnas a `LevantamientoSurveys` al iniciar (`ADD COLUMN IF NOT EXISTS`). Si el usuario de base no tiene permiso, ejecutar `Sql/20261124_levantamiento_dictamen.sql`.
+
 ## Web 2.6.2 · 24 de noviembre de 2026
 
 - Encabezado de módulo en card azul (el mismo degradado del dashboard) en todas las pantallas: título, descripción y botones dentro de la card. Lo aplica el layout al primer encabezado de la página. Las pantallas que ya tienen su propio banner (Dashboard, Salud del sistema) quedan igual, y una página puede excluirse con `data-hn-head-off` en `<body>`.

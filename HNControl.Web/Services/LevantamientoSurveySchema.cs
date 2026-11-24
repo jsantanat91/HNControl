@@ -39,5 +39,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_LevantamientoSurveys_ExternalId" ON "Levan
 CREATE INDEX IF NOT EXISTS "IX_LevantamientoSurveys_ClientId_ReceivedAt" ON "LevantamientoSurveys"("ClientId","ReceivedAt");
 CREATE INDEX IF NOT EXISTS "IX_LevantamientoSurveys_Status_ReceivedAt" ON "LevantamientoSurveys"("Status","ReceivedAt");
 CREATE INDEX IF NOT EXISTS "IX_LevantamientoSurveys_Rfc" ON "LevantamientoSurveys"("Rfc");
+-- 2.6.3 · Dictamen de viabilidad
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "ReviewChecksJson" text NOT NULL DEFAULT '[]';
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "DecisionComments" varchar(4000) NOT NULL DEFAULT '';
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "DecidedAt" timestamptz NULL;
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "DecidedByUserId" varchar(64) NULL;
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "DecisionEmailTo" varchar(256) NOT NULL DEFAULT '';
+ALTER TABLE "LevantamientoSurveys" ADD COLUMN IF NOT EXISTS "DecisionEmailSentAt" timestamptz NULL;
 """;
 }
