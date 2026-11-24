@@ -1,5 +1,10 @@
 # HN Control — notas de versión
 
+## Web 2.6.4 · 24 de noviembre de 2026
+
+- Viáticos (administración): por defecto muestra solo las semanas pendientes (Borrador, Enviado y Comprobación enviada), de cualquier fecha; se ocultan Aprobado, Comprobación aprobada y Rechazado. En Estatus se puede elegir *Todos* (que conserva el rango del mes actual) o un estatus específico.
+- **Despliegue:** sin SQL ni configuración nueva.
+
 ## Web 2.6.3 · 24 de noviembre de 2026
 
 - **Dictamen de viabilidad** en el detalle de cada factibilidad, entre Cliente y Orden (pasos 1 Cliente, 2 Dictamen, 3 Orden). Se revisa cada punto con Sí, No o N/A: cobertura en la ubicación, capacidad disponible en red y servidores, última milla o proveedor, condiciones del sitio, equipamiento y tiempo de entrega.

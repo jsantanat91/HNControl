@@ -3,9 +3,14 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.3";
+    public const string Version = "2.6.4";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.4", new DateOnly(2026, 11, 24), "Viáticos pendientes por defecto", new[]
+        {
+            new ReleaseChange("Viáticos", "El listado de viáticos muestra por defecto solo las semanas pendientes (sin aprobadas ni rechazadas), de cualquier fecha. El filtro Estatus permite ver Todos o un estatus específico."),
+            new ReleaseChange("Despliegue", "Sin SQL ni configuración nueva.")
+        }),
         new ReleaseNote("2.6.3", new DateOnly(2026, 11, 24), "Dictamen de viabilidad en Factibilidades", new[]
         {
             new ReleaseChange("Factibilidad", "Nuevo paso Dictamen de viabilidad antes de la orden: se revisan cobertura, capacidad en red y servidores, última milla, condiciones del sitio, equipamiento y tiempos, y se marca Viable o No viable con comentarios para el cliente."),

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model HNControl.Web.Pages.Admin.Viaticos.IndexModel
 @{
     Layout = "_Layout";
@@ -22,20 +22,25 @@
     }
 </div>
 
-<div class="hn-ops-stats"><article><span><i class="bi bi-wallet2" aria-hidden="true"></i>Gastos registrados</span><strong>@Model.GlobalByEmployee.Sum(x=>x.TotalAmount).ToString("C2")</strong><small>En el rango y empleado seleccionados</small></article><article><span><i class="bi bi-people" aria-hidden="true"></i>Empleados con registros</span><strong>@Model.GlobalByEmployee.Count</strong><small>Con semanas en esta consulta</small></article><article><span><i class="bi bi-calendar-week" aria-hidden="true"></i>Semanas registradas</span><strong>@Model.TotalCount</strong><small>@Model.Rows.Count visibles en esta página</small></article></div>
+<div class="hn-ops-stats"><article><span><i class="bi bi-wallet2" aria-hidden="true"></i>Gastos registrados</span><strong>@Model.GlobalByEmployee.Sum(x=>x.TotalAmount).ToString("C2")</strong><small>@(Model.OnlyPending ? "Semanas pendientes (sin aprobadas)" : "En el rango y empleado seleccionados")</small></article><article><span><i class="bi bi-people" aria-hidden="true"></i>Empleados con registros</span><strong>@Model.GlobalByEmployee.Count</strong><small>Con semanas en esta consulta</small></article><article><span><i class="bi bi-calendar-week" aria-hidden="true"></i>Semanas registradas</span><strong>@Model.TotalCount</strong><small>@Model.Rows.Count visibles en esta página</small></article></div>
 <form method="get" class="card hn-ops-filter mb-4">
     <div class="card-body row g-2 align-items-end">
         <input type="hidden" name="UserId" value="@Model.UserId" />
-        <div class="col-md-3"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
-        <div class="col-md-3"><label class="form-label">Hasta</label><input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-3"><label class="form-label">Estatus</label><select class="form-select" name="Estatus">
+            <option value="pendientes" selected="@Model.OnlyPending">Pendientes (sin aprobados)</option>
+            <option value="todos" selected="@(!Model.OnlyPending && Model.StatusFilter == null)">Todos</option>
+            @foreach (var st in Enum.GetValues<HNControl.Web.Models.ViaticWeekStatus>()) {<option value="@st" selected="@(Model.StatusFilter == st)">@st.GetDisplayName()</option>}
+        </select></div>
+        <div class="col-md-2"><label class="form-label">Desde</label><input class="form-control" type="date" name="DateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-2"><label class="form-label">Hasta</label><input class="form-control" type="date" name="DateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" /></div>
         <div class="col-md-2"><label class="form-label">Por página</label><select class="form-select" name="PageSize">@foreach (var s in new[] { 10,20,50,100 }) {<option value="@s" selected="@(Model.PageSize==s)">@s</option>}</select></div>
-        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId">Limpiar</a></div>
+        <div class="col-md-3 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId">Limpiar</a></div>
     </div>
 </form>
 
 @if (!Model.Rows.Any())
 {
-    <div class="alert alert-light border">No hay semanas de viáticos para los filtros seleccionados.</div>
+    <div class="alert alert-light border">@(Model.OnlyPending ? "No hay semanas de viáticos pendientes. Elige Todos en Estatus para ver las aprobadas." : "No hay semanas de viáticos para los filtros seleccionados.")</div>
 }
 else
 {
@@ -70,8 +75,8 @@ else
 <div class="d-flex justify-content-between align-items-center mt-3">
     <div class="text-muted small">Total: @Model.TotalCount · Página @Model.Page de @Model.TotalPages</div>
     <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page-1)">Anterior</a>
-        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Page="@(Model.Page+1)">Siguiente</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page <= 1 ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Estatus="@Model.EstatusKey" asp-route-Page="@(Model.Page-1)">Anterior</a>
+        <a class="btn btn-sm btn-outline-secondary @(Model.Page >= Model.TotalPages ? "disabled" : "")" asp-page="/Admin/Viaticos/Index" asp-route-UserId="@Model.UserId" asp-route-DateFrom="@Model.DateFrom?.ToString("yyyy-MM-dd")" asp-route-DateTo="@Model.DateTo?.ToString("yyyy-MM-dd")" asp-route-PageSize="@Model.PageSize" asp-route-Estatus="@Model.EstatusKey" asp-route-Page="@(Model.Page+1)">Siguiente</a>
     </div>
 </div>
 

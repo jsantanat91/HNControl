@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using AdminCreate = HNControl.Web.Pages.Admin.ServiceOrders.CreateModel;
 using AdminDetails = HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel;
 using AdminIndex = HNControl.Web.Pages.Admin.ServiceOrders.IndexModel;
+using ViaticsIndex = HNControl.Web.Pages.Admin.Viaticos.IndexModel;
 using FeasibilityPage = HNControl.Web.Pages.Sales.FeasibilityDetailModel;
 using TicketsPage = HNControl.Web.Pages.Tickets.IndexModel;
 
@@ -198,6 +199,27 @@ internal static class ServiceOrderCreationPathsTests
             && all.Contains("Cerrada") && all.Contains("Rechazada") && !all.Contains("Abierta antigua")
             && onlyFinalized is ["Cerrada"],
             "Órdenes: el listado muestra por defecto solo las abiertas (de cualquier fecha); Todas y cada estatus siguen disponibles");
+
+        // Viáticos: por defecto solo pendientes (sin aprobadas ni rechazadas), de cualquier fecha.
+        var today = DateTime.UtcNow.Date;
+        db.ViaticWeeks.AddRange(
+            new ViaticWeek { UserId = "inactive-technician", WeekStartDate = today.AddMonths(-3), Status = ViaticWeekStatus.Submitted, TripPurpose = "pend-antigua" },
+            new ViaticWeek { UserId = "inactive-technician", WeekStartDate = today, Status = ViaticWeekStatus.Draft, TripPurpose = "borrador" },
+            new ViaticWeek { UserId = "inactive-technician", WeekStartDate = today, Status = ViaticWeekStatus.Approved, TripPurpose = "aprobada" },
+            new ViaticWeek { UserId = "inactive-technician", WeekStartDate = today, Status = ViaticWeekStatus.SettlementApproved, TripPurpose = "comprobada" });
+        await db.SaveChangesAsync();
+        // La página suma importes decimales (no soportado por SQLite); se prueba el mismo filtro que usa.
+        async Task<List<ViaticWeekStatus>> Viatics(string? estatus, bool recent = false)
+        {
+            var (onlyPending, status) = ViaticsIndex.ParseEstatus(estatus);
+            var q = ViaticsIndex.ApplyStatusFilter(db.ViaticWeeks.AsNoTracking(), onlyPending, status);
+            if (recent) q = q.Where(w => w.WeekStartDate >= today.AddDays(-7));
+            return (await q.Select(w => w.Status).ToListAsync()).OrderBy(x => x).ToList();
+        }
+        check(await Viatics(null) is [ViaticWeekStatus.Draft, ViaticWeekStatus.Submitted]
+            && await Viatics(ViaticsIndex.AllFilter, recent: true) is [ViaticWeekStatus.Draft, ViaticWeekStatus.Approved, ViaticWeekStatus.SettlementApproved]
+            && await Viatics("Approved", recent: true) is [ViaticWeekStatus.Approved],
+            "Viáticos: el listado muestra por defecto solo pendientes (de cualquier fecha); Todos y cada estatus siguen disponibles");
     }
 
     private sealed class FailingEmail : IEmailSender
