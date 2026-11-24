@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.5.33";
+    public const string Version = "2.5.34";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.5.34", new DateOnly(2026, 11, 24), "Levantamiento: búsqueda solo con RFC", new[]
+        {
+            new ReleaseChange("Integración", "El formulario de levantamiento recupera los datos de la empresa (razón social, RFC, giro, ciudad y dirección) solo con un RFC válido. El correo registrado pasa a ser opcional y agrega el contacto, cargo y teléfono."),
+            new ReleaseChange("Seguridad", "Los datos personales del contacto solo salen con un correo registrado del cliente. El número de cliente, por ser consecutivo, exige correo. Clientes inactivos y prospectos siguen excluidos."),
+            new ReleaseChange("Despliegue", "Sin SQL, APK ni cambios de configuración; usa la misma clave de 2.5.33. Desplegar antes del parche 2.3.0 del formulario.")
+        }),
         new ReleaseNote("2.5.33", new DateOnly(2026, 11, 24), "Consulta de clientes para el levantamiento técnico", new[]
         {
             new ReleaseChange("Integración", "API interna para el formulario de levantamiento: con RFC o número de cliente y un correo registrado (principal, facturación o de un contacto) precarga empresa, contacto, teléfono, ciudad, dirección y giro."),

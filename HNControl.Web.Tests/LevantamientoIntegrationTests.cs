@@ -66,10 +66,25 @@ internal static class LevantamientoIntegrationTests
         check(!text.Contains("SECRETO") && !text.Contains("06000") && !text.Contains("Rep Legal") && !text.Contains("legal@lev.test")
             && !text.Contains("admin@lev.test") && !data.TryGetProperty("id",out _),
             "Levantamiento: no exporta datos fiscales, representante legal, correos ni ids internos");
-        check(await Lookup("ABC010101XY1","otro@lev.test") is NotFoundObjectResult && await Lookup("ZZZ010101XY1","admin@lev.test") is NotFoundObjectResult
-            && await Lookup("ABC010101XY1","luis.lev.test") is BadRequestObjectResult,
-            "Levantamiento: RFC o correo que no coinciden no revelan si el cliente existe");
-        check(await Lookup("INA010101AA1","x@inactivo.test") is NotFoundObjectResult && await Lookup("PRO010101AA1","x@lead.test") is NotFoundObjectResult,
+        check(Json(await Lookup("ABC010101XY1","admin@lev.test")).GetProperty("contactVerified").GetBoolean(),
+            "Levantamiento: correo coincidente marca el contacto como verificado");
+        var soloRfc = Json(await Lookup("abc 010101-xy1",""));
+        var empresa = soloRfc.GetProperty("client");
+        check(soloRfc.GetProperty("found").GetBoolean() && !soloRfc.GetProperty("contactVerified").GetBoolean()
+            && empresa.GetProperty("name").GetString()=="Empresa Lev" && empresa.GetProperty("address").GetString()=="Av. Reforma 1"
+            && empresa.GetProperty("contactName").GetString()=="" && empresa.GetProperty("phone").GetString()==""
+            && empresa.GetProperty("contactRole").GetString()=="",
+            "Levantamiento: solo RFC devuelve datos de la empresa sin datos personales del contacto");
+        var otroCorreo = Json(await Lookup("ABC010101XY1","otro@lev.test"));
+        check(!otroCorreo.GetProperty("contactVerified").GetBoolean() && otroCorreo.GetProperty("client").GetProperty("phone").GetString()=="",
+            "Levantamiento: correo que no coincide no expone el contacto");
+        check(await Lookup("CLI-100","") is BadRequestObjectResult && await Lookup("CLI-100","otro@lev.test") is NotFoundObjectResult,
+            "Levantamiento: número de cliente (consecutivo) exige correo registrado");
+        check(await Lookup("ZZZ010101XY1","") is NotFoundObjectResult && await Lookup("ZZZ010101XY1","admin@lev.test") is NotFoundObjectResult
+            && await Lookup("ABC010101XY1","luis.lev.test") is BadRequestObjectResult && await Lookup("ABC0101","") is BadRequestObjectResult,
+            "Levantamiento: RFC inexistente, mal formado o correo inválido no devuelven datos");
+        check(await Lookup("INA010101AA1","x@inactivo.test") is NotFoundObjectResult && await Lookup("PRO010101AA1","x@lead.test") is NotFoundObjectResult
+            && await Lookup("INA010101AA1","") is NotFoundObjectResult && await Lookup("PRO010101AA1","") is NotFoundObjectResult,
             "Levantamiento: excluye clientes inactivos y prospectos temporales");
         check(await Lookup("ab","admin@lev.test") is BadRequestObjectResult && await Lookup(new string('A',25),"admin@lev.test") is BadRequestObjectResult,
             "Levantamiento: valida longitud del RFC / número de cliente");

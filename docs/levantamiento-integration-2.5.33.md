@@ -20,17 +20,20 @@ Encabezado `X-HN-Levantamiento-Key: <clave>`, cuerpo JSON:
 { "rfc": "ABC010101XY1", "email": "compras@cliente.mx" }
 ```
 
-`rfc` acepta RFC o número de cliente; se ignoran mayúsculas, espacios, guiones y puntos.
+`rfc` acepta RFC o número de cliente; se ignoran mayúsculas, espacios, guiones y puntos. Desde 2.5.34 `email` es opcional.
 
-| Respuesta | Significado |
+| Envío | Respuesta |
 |---|---|
-| `200 {found:true, client:{clientCode, name, rfc, contactName, contactRole, phone, city, address, businessLine}}` | RFC/número **y** correo pertenecen al mismo cliente activo |
-| `404 {found:false}` | Cualquier otra combinación (no distingue RFC inexistente de correo incorrecto) |
-| `400` | RFC de menos de 3 o más de 20 caracteres, o correo inválido |
-| `401` / `503` | Clave incorrecta / integración sin configurar |
-| `429` | Límite de 60 consultas por minuto |
+| RFC válido, sin correo (o con un correo que no es del cliente) | `200 {found:true, contactVerified:false, client:{...}}` con razón social, RFC, giro, ciudad y dirección; `contactName`, `contactRole` y `phone` vacíos |
+| RFC o número de cliente **y** correo registrado del mismo cliente | `200 {found:true, contactVerified:true, client:{...}}` con contacto, cargo y teléfono |
+| Número de cliente sin correo, RFC mal formado o correo inválido | `400` |
+| RFC inexistente, cliente inactivo o prospecto; número de cliente con correo ajeno | `404 {found:false}` |
+| Clave incorrecta / integración sin configurar | `401` / `503` |
+| Más de 60 consultas por minuto | `429` |
 
-Si el correo es de un contacto del cliente, se devuelven el nombre, cargo y teléfono de ese contacto; si no, el contacto y teléfono generales del cliente.
+`client` = `{clientCode, name, rfc, contactName, contactRole, phone, city, address, businessLine}`. Si el correo es de un contacto del cliente, se devuelven el nombre, cargo y teléfono de ese contacto; si no, el contacto y teléfono generales del cliente.
+
+Por qué el contacto exige correo: nombre y teléfono de una persona son datos personales (LFPDPPP) y el RFC de una empresa aparece en cada factura. El número de cliente es consecutivo (HN-0001, HN-0002…), por eso solo se acepta con correo: sin él se podría recorrer la lista de clientes.
 
 ## Lo que no se exporta
 

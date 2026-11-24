@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## Web 2.5.34 · 24 de noviembre de 2026
+
+- Levantamiento: con solo un RFC válido el formulario recupera los datos de la empresa (razón social, RFC, giro, ciudad y dirección). El correo registrado es opcional y agrega contacto, cargo y teléfono (`contactVerified: true`).
+- Los datos personales del contacto nunca salen sin un correo registrado del cliente. El número de cliente es consecutivo, así que solo se acepta junto con ese correo. RFC mal formado responde 400; inexistente, inactivo o prospecto, 404.
+- **Despliegue:** sin SQL, APK ni configuración nueva (misma clave de 2.5.33). Desplegar antes de subir el parche 2.3.0 del formulario. Contrato actualizado en la [guía de integración](docs/levantamiento-integration-2.5.33.md).
+
 ## Web 2.5.33 · 24 de noviembre de 2026
 
 - API interna para el levantamiento técnico (`POST /api/integrations/levantamiento/clients/lookup`): el cliente escribe su RFC o número de cliente y un correo registrado (principal, facturación, legal o de un contacto) y el formulario precarga empresa, contacto, cargo, teléfono, ciudad, dirección y giro.
