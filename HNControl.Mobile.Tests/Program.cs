@@ -12,6 +12,8 @@ void Check(bool condition, string name)
     count++;
 }
 var session = new AuthSession();
+var pickup = new ServiceOrderListItemDto { Type = 7, CurrentArea = 1 };
+Check(pickup.TypeLabel == "Recolección de equipos" && pickup.AreaLabel == "Sin bonificación", "Recolección: tarjeta identifica tipo y exclusión de bono sin mostrar etapas de instalación");
 session.Set(new LoginResponseDto { Token = "test-token", ExpiresAtUtc = DateTime.UtcNow.AddHours(1) });
 var handler = new FakeHandler();
 var api = new MobileApiClient(new HttpClient(handler), new MobileApiSettings(), session);

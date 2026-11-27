@@ -1,5 +1,14 @@
 # HN Control — notas de versión
 
+## Web 2.6.6 / APK 2.3.1 · 27 de noviembre de 2026
+
+- Nuevo tipo **Recolección de equipos** dentro de Órdenes de Servicio, para retirar equipos al terminar un servicio o cerrar un cliente. No crea otro módulo ni cancela contratos automáticamente.
+- Formulario con cliente y dirección; título, relación con contrato, contactos, responsable y programación opcionales. Permite seleccionar clientes inactivos.
+- El técnico toma la orden, adjunta fotos y finaliza directamente. Requiere al menos una foto; no pide checklist ni firmas. PDF con dirección, evidencias y huella digital.
+- Excluye estas órdenes de las comisiones en todos los cierres. Mantiene las bonificaciones de los demás tipos.
+- APK 2.3.1 (versión interna 7): identificación del tipo, fotos y cierre sencillo desde el teléfono.
+- Desplegar la web e instalar la APK nueva. **Sin SQL adicional.**
+
 ## Web 2.6.5 · 27 de noviembre de 2026
 
 - Botón Eliminar por evidencia en Órdenes → Entrega y firmas, también dentro del modal. Confirma el nombre del archivo antes de retirarlo.

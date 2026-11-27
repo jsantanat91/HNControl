@@ -4,10 +4,10 @@
 @model HNControl.Web.Pages.Admin.ServiceOrders.DetailsModel
 @{ ViewData["Title"] = "Orden de servicio"; }
 @if (Model.Order == null) { <div class="alert alert-danger">Orden no encontrada.</div> return; }
-@{ var order = Model.Order; var state = UiBadges.ServiceOrderStatusBadge(order.Status); var type = UiBadges.ServiceOrderTypeBadge(order.Type); }
+@{ var order = Model.Order; var collection = order.Type == ServiceOrderType.RecoleccionEquipos; var state = UiBadges.ServiceOrderStatusBadge(order.Status); var type = UiBadges.ServiceOrderTypeBadge(order.Type); }
 <link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
 <div class="hn-ops hn-order-profile" data-ops-key="order-@order.Id">
-    <div class="hn-ops-toolbar"><a class="hn-ops-back" asp-page="/Admin/ServiceOrders/Index" data-module-panel-close><i class="bi bi-arrow-left" aria-hidden="true"></i>Órdenes de servicio</a><div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Edit" asp-route-id="@order.Id"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Editar orden</a>@if(!string.IsNullOrWhiteSpace(Model.PublicUrl)){<a class="btn btn-primary" target="_blank" rel="noopener" href="@Model.PublicUrl"><i class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></i>Enlace del cliente</a>}</div></div>
+    <div class="hn-ops-toolbar"><a class="hn-ops-back" asp-page="/Admin/ServiceOrders/Index" data-module-panel-close><i class="bi bi-arrow-left" aria-hidden="true"></i>Órdenes de servicio</a><div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Edit" asp-route-id="@order.Id"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Editar orden</a>@if(!collection && !string.IsNullOrWhiteSpace(Model.PublicUrl)){<a class="btn btn-primary" target="_blank" rel="noopener" href="@Model.PublicUrl"><i class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></i>Enlace del cliente</a>}</div></div>
     <header class="hn-ops-hero"><div><div class="hn-eyebrow">Orden de servicio · OS-@order.Id.ToString("N")[..8].ToUpperInvariant()</div><h1>@order.Title</h1><p>@(order.Client?.Name ?? "Sin cliente")</p><div class="hn-ops-hero-meta"><span>@type.text</span><span>Creada el @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></div></div><span class="hn-ops-state" data-status="@order.Status">@state.text</span></header>
     @if (!string.IsNullOrWhiteSpace(Model.EvidenceNotice)) { <div class="alert alert-info mt-3" role="status">@Model.EvidenceNotice</div> }
     @if (!string.IsNullOrWhiteSpace(Model.Info)) { <div class="alert alert-info mt-3" role="status">@Model.Info</div> }
@@ -18,11 +18,11 @@
             <a class="btn btn-outline-primary" href="https://support.hubnet-solutions.net/admin?ticket=@source.TicketId" target="_blank" rel="noopener">Consultar ticket</a>
         </div></div>
     }
-    <nav class="nav hn-ops-tabs" role="tablist" aria-label="Secciones de la orden"><button type="button" class="btn active" id="order-summary-tab" data-bs-toggle="tab" data-bs-target="#order-summary" role="tab" aria-controls="order-summary" aria-selected="true">Resumen</button><button type="button" class="btn" id="order-delivery-tab" data-bs-toggle="tab" data-bs-target="#order-delivery" role="tab" aria-controls="order-delivery" aria-selected="false">Entrega y firmas</button><button type="button" class="btn" id="order-documents-tab" data-bs-toggle="tab" data-bs-target="#order-documents" role="tab" aria-controls="order-documents" aria-selected="false">PDF y correo</button></nav>
+    <nav class="nav hn-ops-tabs" role="tablist" aria-label="Secciones de la orden"><button type="button" class="btn active" id="order-summary-tab" data-bs-toggle="tab" data-bs-target="#order-summary" role="tab" aria-controls="order-summary" aria-selected="true">Resumen</button><button type="button" class="btn" id="order-delivery-tab" data-bs-toggle="tab" data-bs-target="#order-delivery" role="tab" aria-controls="order-delivery" aria-selected="false">@(collection ? "Recolección y fotos" : "Entrega y firmas")</button><button type="button" class="btn" id="order-documents-tab" data-bs-toggle="tab" data-bs-target="#order-documents" role="tab" aria-controls="order-documents" aria-selected="false">PDF y correo</button></nav>
     <div class="tab-content">
         <section class="tab-pane fade show active" id="order-summary" role="tabpanel" aria-labelledby="order-summary-tab" tabindex="0">
             <div class="hn-ops-facts"><div><span>Servicio contratado</span><strong>@(order.ClientServiceContract?.Label ?? "Sin contrato vinculado")</strong></div><div><span>Proyecto</span><strong>@(order.Project?.Title ?? "Sin proyecto vinculado")</strong></div><div><span>Asignado a</span><strong>@(order.AssignedEmployee?.FullName ?? "Sin asignar")</strong></div><div><span>Tomada por</span><strong>@(order.ClaimedByEmployee?.FullName ?? "Por tomar")</strong></div></div>
-            <article class="card mb-3"><div class="card-header"><i class="bi bi-card-text me-2" aria-hidden="true"></i>Trabajo a realizar</div><div class="card-body"><div class="hn-ops-description">@(string.IsNullOrWhiteSpace(order.Description) ? "Sin descripción capturada." : order.Description)</div></div></article>
+            <article class="card mb-3"><div class="card-header"><i class="bi bi-card-text me-2" aria-hidden="true"></i>@(collection ? "Dirección de recolección" : "Trabajo a realizar")</div><div class="card-body"><div class="hn-ops-description">@(string.IsNullOrWhiteSpace(order.Description) ? "Sin descripción capturada." : order.Description)</div></div></article>
 <partial name="_ServiceOrderNotificationNotice" />
 @if (Model.CreationNotifications.Exists)
 {
@@ -79,8 +79,15 @@
                 }
 </div>        </section>
         <section class="tab-pane fade" id="order-delivery" role="tabpanel" aria-labelledby="order-delivery-tab" tabindex="0">
+            @if (collection)
+            {
+                <article class="card mb-3"><div class="card-body hn-ops-callout"><div><span class="hn-ops-tag">Sin bonificación</span><h2>Recolección de equipos</h2><p>Adjunta fotos y finaliza la orden al recuperar los equipos.</p></div><a class="btn btn-primary" asp-page="/ServiceOrders/Work" asp-route-id="@order.Id">@(order.Status == ServiceOrderStatus.Finalized ? "Ver recolección" : "Registrar recolección")<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a></div></article>
+            }
+            else
+            {
             <article class="card mb-3"><div class="card-body hn-ops-callout"><div><span class="hn-ops-tag">@HNControl.Shared.OrderDeliveryData.Read(order.DeliveryJson).KindLabel</span><h2>Entrega y equipos</h2><p>Router, series, accesorios y modalidad de entrega en esta orden.</p></div><a class="btn btn-primary" asp-page="/ServiceOrders/Delivery" asp-route-id="@order.Id">Ver / capturar entrega<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a></div></article>
             <div class="row g-3 mb-3">@foreach(var role in new[]{SignatureRole.Technician, SignatureRole.Client}) { var signature=order.Signatures.FirstOrDefault(s=>s.Role==role); <div class="col-md-6"><article class="card h-100"><div class="card-body"><div class="hn-ops-card-top"><span class="hn-ops-icon"><i class="bi bi-pen" aria-hidden="true"></i></span><span class="hn-ops-state" data-status="@(signature==null?"Created":"Finalized")">@(signature==null?"Pendiente":"Firma registrada")</span></div><h2 class="h6">@(role==SignatureRole.Technician?"Firma del técnico":"Firma del cliente")</h2>@if(signature!=null){<p class="mb-1">@signature.SignedByName</p><small class="text-muted">@signature.SignedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>}else{<p class="text-muted small mb-0">Aún no se ha registrado esta firma.</p>}</div></article></div> }</div>
+            }
             <article class="card">
                 <div class="card-header">Evidencias <span class="hn-ops-tag">@order.Evidences.Count</span></div>
                 <div class="card-body">

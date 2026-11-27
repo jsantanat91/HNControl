@@ -11,7 +11,7 @@
 <div class="hn-ops-heading">
     <div>
         <h1 class="h4 m-0">Nueva orden de servicio</h1>
-        <div class="text-muted small">Crea la orden general para que cualquier tecnico pueda tomarla y trabajar por etapas.</div>
+        <div class="text-muted small">Registra la atención y sus datos para que el equipo técnico pueda tomar la orden.</div>
     </div>
     <a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Index">Volver</a>
             </div>
@@ -25,7 +25,13 @@
     @Html.AntiForgeryToken()
     <div class="card-body">
         <div asp-validation-summary="All" class="text-danger small mb-2"></div>
-        <div class="rounded-3 bg-primary-subtle p-3 mb-3">
+        <div class="mb-3">
+            <label class="form-label fw-semibold" asp-for="Input.Type">Tipo de orden</label>
+            <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
+            <div id="collectionHint" class="alert alert-info mt-3" hidden>Recolección de equipos · Captura la dirección. El técnico adjunta fotos y finaliza, sin firmas ni bonificación.</div>
+            <button id="collectionOptions" type="button" class="btn btn-outline-secondary btn-sm mt-2" aria-expanded="false" hidden>Mostrar datos opcionales</button>
+        </div>
+        <div id="deliveryKindSection" class="rounded-3 bg-primary-subtle p-3 mb-3">
             <label class="form-label fw-semibold" asp-for="Input.DeliveryKind">¿Qué entregamos en esta orden?</label>
             <select class="form-select" asp-for="Input.DeliveryKind"><option value="service">Servicio</option><option value="hardware">Entrega de hardware</option><option value="both">Servicio + hardware</option></select>
             <div class="form-text">Después de crearla, captura marca y serie del router y otros equipos en “Entrega y equipos”. Todo queda en un solo PDF.</div>
@@ -42,7 +48,7 @@
             <div class="col-md-6">
                 <label class="form-label" for="clientSelect">Cliente</label>
                 <select class="form-select" asp-for="Input.ClientId" asp-items="Model.ClientItems" id="clientSelect"><option value="">Selecciona un cliente</option></select>
-                <div class="form-text">Primero selecciona cliente; luego proyecto y/o contrato.</div>
+                <div class="form-text" id="orderClientHint">Primero selecciona cliente; luego proyecto y/o contrato.</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="projectSelect">Proyecto (opcional)</label>
@@ -66,7 +72,7 @@
             </div>
             </div>
         </section>
-        <partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Input.ClientId, Model.Input.Contacts, "Input.Contacts", "#clientSelect", "#contractSelect"))' />
+        <fieldset id="collectionContacts" class="border-0 p-0"><partial name="_ClientContactSelector" model='@(new HNControl.Web.Services.ContactSelectorModel(Model.Input.ClientId, Model.Input.Contacts, "Input.Contacts", "#clientSelect", "#contractSelect"))' /></fieldset>
 
         <section class="hn-form-section">
             <header class="hn-form-section-heading">
@@ -81,10 +87,7 @@
                 <label class="form-label" asp-for="Input.Title">Título</label>
                 <input class="form-control" asp-for="Input.Title" placeholder="Ej: Mantenimiento preventivo CCTV Matamoros" />
             </div>
-            <div class="col-md-4">
-                <label class="form-label" asp-for="Input.Type">Tipo</label>
-                <select class="form-select" asp-for="Input.Type" asp-items="Model.TypeItems"></select>
-            </div>
+
 
             <div class="col-12">
                 <label class="form-label" asp-for="Input.Description">Descripción</label>
@@ -132,6 +135,8 @@
 
     <script type="application/json" id="contractOptions">@Html.Raw(global::System.Text.Json.JsonSerializer.Serialize(Model.ContractOptions, new global::System.Text.Json.JsonSerializerOptions(global::System.Text.Json.JsonSerializerDefaults.Web)))</script>
     <script src="~/js/hn-related-records.js" asp-append-version="true"></script>
+    <script type="application/json" id="inactiveClientIds">@Html.Raw(global::System.Text.Json.JsonSerializer.Serialize(Model.InactiveClientIds))</script>
+    <script src="~/js/hn-order-type.js" asp-append-version="true"></script>
 }
 
 

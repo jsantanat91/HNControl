@@ -117,10 +117,13 @@ internal sealed class ServiceOrderReport(
                         if (order.FinalizedAt.HasValue) Field(info, "Cierre", Moment(order.FinalizedAt.Value));
                     });
                 });
-                if (Contract != null) ContractSection(c);
-                DeliverySection(c);
+                if (order.Type != ServiceOrderType.RecoleccionEquipos)
+                {
+                    if (Contract != null) ContractSection(c);
+                    DeliverySection(c);
+                }
                 if (!string.IsNullOrWhiteSpace(order.Description))
-                    c.Item().EnsureSpace(50).Column(x => { Heading(x, "Descripción del trabajo"); x.Item().Text(order.Description); });
+                    c.Item().EnsureSpace(50).Column(x => { Heading(x, order.Type == ServiceOrderType.RecoleccionEquipos ? "Dirección de recolección" : "Descripción del trabajo"); x.Item().Text(order.Description); });
                 if (!string.IsNullOrWhiteSpace(order.LevantamientoNotes) || !string.IsNullOrWhiteSpace(order.MaterialesNotes))
                     c.Item().EnsureSpace(50).Column(x =>
                     {
@@ -146,6 +149,8 @@ internal sealed class ServiceOrderReport(
                 if (attachments.Count > 0) Evidence(c, withImages);
                 if (!string.IsNullOrWhiteSpace(order.AdminReviewNotes))
                     c.Item().EnsureSpace(50).Column(x => { Heading(x, "Notas de revisión"); x.Item().Text(order.AdminReviewNotes); });
+                if (order.Type != ServiceOrderType.RecoleccionEquipos)
+                {
                 c.Item().ShowEntire().Background(Pale).BorderLeft(3).BorderColor(Blue).Padding(9).Column(x =>
                 {
                     Heading(x, "NOC · Atención y soporte técnico");
@@ -164,6 +169,7 @@ internal sealed class ServiceOrderReport(
                         SignatureCard(row.RelativeItem(), "Cliente", client, withImages);
                     });
                 });
+                }
             });
             page.Footer().BorderTop(1).BorderColor(Rule).PaddingTop(5).Column(c =>
             {

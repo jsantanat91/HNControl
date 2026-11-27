@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.5";
+    public const string Version = "2.6.6";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.6", new DateOnly(2026, 11, 27), "Recolección de equipos", new[]
+        {
+            new ReleaseChange("Órdenes", "Nuevo tipo Recolección de equipos dentro de Órdenes de Servicio. Cliente, dirección y fotos; permite clientes inactivos y finaliza sin checklist ni firmas."),
+            new ReleaseChange("Nómina", "Las recolecciones no generan bonificación, incluso si el empleado tiene comisión por orden activa."),
+            new ReleaseChange("Despliegue", "Actualizar web y APK 2.3.1 para el flujo móvil de recolección. Sin SQL adicional.")
+        }),
         new ReleaseNote("2.6.5", new DateOnly(2026, 11, 27), "Eliminar evidencias de órdenes", new[]
         {
             new ReleaseChange("Órdenes", "Administración puede eliminar evidencias adjuntas desde Entrega y firmas, en la página y en el modal, con confirmación por archivo."),

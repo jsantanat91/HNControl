@@ -21,6 +21,7 @@ public class CreateModel : PageModel
         _notifications = notifications;
     }
 
+    public List<Guid> InactiveClientIds { get; set; } = new();
     public SelectList ClientItems { get; set; } = default!;
     public SelectList EmployeeItems { get; set; } = default!;
     public SelectList TypeItems { get; set; } = default!;
@@ -56,12 +57,12 @@ public class CreateModel : PageModel
         [DataType(DataType.Date)]
         public DateTime ExpectedEndDate { get; set; } = DateTime.Today.AddDays(2);
 
-        public string Description { get; set; } = "";
+        [MaxLength(2000)] public string Description { get; set; } = "";
     }
 
     public async Task OnGetAsync(Guid? clientId = null, Guid? projectId = null, Guid? contractId = null)
     {
-        if (clientId.HasValue && await _db.Clients.AnyAsync(c => c.Id == clientId && c.IsActive && !c.IsTemporaryLead))
+        if (clientId.HasValue && await _db.Clients.AnyAsync(c => c.Id == clientId && !c.IsTemporaryLead))
             Input.ClientId = clientId.Value;
         if (projectId.HasValue && await _db.Projects.AnyAsync(p => p.Id == projectId && p.ClientId == Input.ClientId))
             Input.ProjectId = projectId;
@@ -84,6 +85,15 @@ public class CreateModel : PageModel
     {
         await LoadListsAsync();
 
+        var collection = Input.Type == ServiceOrderType.RecoleccionEquipos;
+        if (collection)
+        {
+            Input.DeliveryKind = "service";
+            if (string.IsNullOrWhiteSpace(Input.Title)) Input.Title = "Recolección de equipos";
+            ModelState.Remove("Input.Title");
+            if (Input.Title.Length > 200) ModelState.AddModelError("Input.Title", "El título admite hasta 200 caracteres.");
+            if (string.IsNullOrWhiteSpace(Input.Description)) ModelState.AddModelError("Input.Description", "Escribe la dirección de recolección.");
+        }
         if (!ModelState.IsValid) return Page();
 
         if (!HNControl.Shared.OrderDeliveryData.Kinds.Contains(Input.DeliveryKind))
@@ -93,7 +103,7 @@ public class CreateModel : PageModel
         }
 
         var validClient = await _db.Clients
-            .AnyAsync(c => c.Id == Input.ClientId && c.IsActive && !c.IsTemporaryLead);
+            .AnyAsync(c => c.Id == Input.ClientId && (c.IsActive || collection) && !c.IsTemporaryLead);
         if (!validClient)
         {
             Error = "Solo se permiten clientes activos (no prospectos).";
@@ -113,7 +123,7 @@ public class CreateModel : PageModel
         var order = new ServiceOrder
         {
             NotificationContactsJson = contactsJson,
-            DeliveryJson = new HNControl.Shared.OrderDeliveryData { Kind = Input.DeliveryKind }.Serialize(),
+            DeliveryJson = collection ? "" : new HNControl.Shared.OrderDeliveryData { Kind = Input.DeliveryKind }.Serialize(),
             Title = (Input.Title ?? "").Trim(),
             Type = Input.DeliveryKind == "hardware" ? ServiceOrderType.EntregaHardware : Input.Type,
             Status = ServiceOrderStatus.Created,
@@ -136,7 +146,7 @@ public class CreateModel : PageModel
 
         _db.ServiceOrders.Add(order);
 
-        if (order.Type != ServiceOrderType.Global)
+        if (order.Type != ServiceOrderType.Global && !collection)
             await EnsureChecklistFromTemplateAsync(order, order.Type, workItemId: null);
 
         _notifications.QueueCreated(order);
@@ -162,10 +172,11 @@ public class CreateModel : PageModel
     private async Task LoadListsAsync()
     {
         var clients = await _db.Clients
-            .Where(c => c.IsActive && !c.IsTemporaryLead)
+            .Where(c => !c.IsTemporaryLead)
             .OrderBy(c => c.Name)
             .ToListAsync();
-        ClientItems = new SelectList(clients, "Id", "Name");
+        ClientItems = new SelectList(clients.Select(c => new { c.Id, Name = c.Name + (c.IsActive ? "" : " (Inactivo)") }), "Id", "Name");
+        InactiveClientIds = clients.Where(c => !c.IsActive).Select(c => c.Id).ToList();
 
         var employees = await _db.EmployeeProfiles.Where(e => e.IsActive).OrderBy(e => e.FullName).ToListAsync();
         EmployeeItems = new SelectList(employees, "UserId", "FullName");

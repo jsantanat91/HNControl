@@ -23,6 +23,9 @@ public enum ServiceOrderType
     [Display(Name = "Entrega de hardware")]
     EntregaHardware = 6,
 
+    [Display(Name = "Recolección de equipos")]
+    RecoleccionEquipos = 7,
+
     [Display(Name = "Global (multiple)")]
     Global = 99
 

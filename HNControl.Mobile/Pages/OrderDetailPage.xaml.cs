@@ -175,6 +175,25 @@ public partial class OrderDetailPage : ContentPage
                 ? "Última área: captura ambas firmas y envía a revisión."
                 : "Puedes capturar datos y mover la orden por áreas.")
             : BuildReadOnlyReason(d);
+        var collection = d.Type == 7;
+        DeliveryCard.IsVisible = !collection;
+        AreaChip.IsVisible = !collection;
+        LevantamientoEditor.IsVisible = !collection;
+        DescriptionHeading.Text = collection ? "Dirección de recolección" : "Descripción";
+        EvidenceHeading.Text = collection ? "Fotos de recolección" : "Levantamiento";
+        SubmitButton.Text = collection ? "Finalizar recolección" : "Firmar y enviar";
+        if (collection)
+        {
+            StageLabel.Text = "RECOLECCIÓN DE EQUIPOS · SIN BONIFICACIÓN";
+            StageProgress.Progress = d.Status == 4 ? 1 : 0.5;
+            DescriptionStepSection.IsVisible = MaterialesSection.IsVisible = ChecklistSection.IsVisible = CloseSection.IsVisible = false;
+            PreviousAreaButton.IsVisible = NextAreaButton.IsVisible = SaveButton.IsVisible = false;
+            LevantamientoSection.IsVisible = true;
+            AttachEvidenceButton.IsVisible = AttachEvidenceButton.IsEnabled = canEdit;
+            SubmitButton.IsVisible = SubmitButton.IsEnabled = canEdit && d.Status is 1 or 2 or 6;
+            EvidenceHintLabel.Text = "Adjunta al menos una foto de los equipos recolectados.";
+            EditHintLabel.Text = canEdit ? "Dirección y fotos. Finaliza al recuperar los equipos; no genera bonificación." : BuildReadOnlyReason(d);
+        }
     }
 
     private async void OnSaveClicked(object sender, EventArgs e)
@@ -433,6 +452,8 @@ public partial class OrderDetailPage : ContentPage
             await DisplayAlertAsync("Orden", BuildReadOnlyReason(_current), "OK");
             return;
         }
+        if (_current.Type != 7)
+        {
         if (_current.CurrentArea != 4)
         {
             await DisplayAlertAsync("Orden", "Debes estar en Cierre técnico para firmar y enviar.", "OK");
@@ -450,7 +471,9 @@ public partial class OrderDetailPage : ContentPage
             return;
         }
 
-        var ok = await DisplayAlertAsync("Enviar revisión", "Se enviará la orden para revisión de admin. ¿Continuar?", "Enviar", "Cancelar");
+        }
+        var collection = _current.Type == 7;
+        var ok = await DisplayAlertAsync(collection ? "Finalizar recolección" : "Enviar revisión", collection ? "Confirma que recuperaste los equipos y adjuntaste las fotos. Esta orden no genera bonificación." : "Se enviará la orden para revisión de admin. ¿Continuar?", collection ? "Finalizar" : "Enviar", "Cancelar");
         if (!ok) return;
 
         _busy = true;
@@ -485,8 +508,8 @@ public partial class OrderDetailPage : ContentPage
         {
             var picked = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Selecciona evidencia (foto o PDF)",
-                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                PickerTitle = _current?.Type == 7 ? "Selecciona una foto de la recolección" : "Selecciona evidencia (foto o PDF)",
+                FileTypes = _current?.Type == 7 ? FilePickerFileType.Images : new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
                     { DevicePlatform.Android, new[] { "image/*", "application/pdf" } },
                     { DevicePlatform.iOS, new[] { "public.image", "com.adobe.pdf" } },
@@ -521,6 +544,7 @@ public partial class OrderDetailPage : ContentPage
         4 => "Levantamiento técnico",
         5 => "Evento",
         6 => "Entrega de hardware",
+        7 => "Recolección de equipos",
         99 => "Global",
         _ => "Tipo " + val
     };

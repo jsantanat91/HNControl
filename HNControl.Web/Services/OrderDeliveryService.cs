@@ -11,6 +11,7 @@ public static class OrderDeliveryService
     public static string Version(ServiceOrder order) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(order.DeliveryJson)));
     public static bool CanAccess(ClaimsPrincipal user) => AppRoles.IsGlobalAdmin(user) || user.IsInRole(AppRoles.Employee);
     public static bool CanEdit(ServiceOrder order, ClaimsPrincipal user) => CanAccess(user)
+        && order.Type != ServiceOrderType.RecoleccionEquipos
         && order.Status is ServiceOrderStatus.Created or ServiceOrderStatus.InProgress or ServiceOrderStatus.Rejected
         && (AppRoles.IsGlobalAdmin(user) || order.ClaimedByUserId == user.FindFirstValue(ClaimTypes.NameIdentifier))
         && order.Signatures.Count == 0;

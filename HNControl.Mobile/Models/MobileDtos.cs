@@ -54,6 +54,7 @@ public sealed class ServiceOrderListItemDto
         4 => "Levantamiento técnico",
         5 => "Evento",
         6 => "Entrega de hardware",
+        7 => "Recolección de equipos",
         99 => "Global",
         _ => "Tipo " + Type
     };
@@ -71,7 +72,7 @@ public sealed class ServiceOrderListItemDto
     };
 
     [JsonIgnore]
-    public string AreaLabel => CurrentArea switch
+    public string AreaLabel => Type == 7 ? "Sin bonificación" : CurrentArea switch
     {
         1 => "Levantamiento",
         2 => "Materiales",

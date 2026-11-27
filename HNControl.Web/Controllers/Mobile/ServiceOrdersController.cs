@@ -163,7 +163,7 @@ public class ServiceOrdersController : ControllerBase
 
         if (o == null) return NotFound();
 
-        if (o.Checklist.Count == 0 && o.Type != ServiceOrderType.Global)
+        if (o.Checklist.Count == 0 && o.Type != ServiceOrderType.Global && o.Type != ServiceOrderType.RecoleccionEquipos)
         {
             var created = await EnsureChecklistFromTemplateAsync(o, o.Type);
             if (created)
@@ -361,6 +361,17 @@ public class ServiceOrdersController : ControllerBase
         if (o == null) return NotFound();
         if (!CanEdit(o, userId)) return Forbid();
 
+        if (o.Type == ServiceOrderType.RecoleccionEquipos)
+        {
+            if (o.Status is not (ServiceOrderStatus.Created or ServiceOrderStatus.InProgress or ServiceOrderStatus.Rejected))
+                return Conflict(new { message = "La recolección ya no permite cierre." });
+            var error = await EquipmentCollectionOrder.ValidateClosureAsync(_db, o);
+            if (error != null) return Conflict(new { message = error });
+            await EquipmentCollectionOrder.CompleteAsync(_db, o, userId, User.Identity?.Name);
+            await transaction.CommitAsync();
+            return Ok(new { message = "Recolección finalizada. No genera bonificación." });
+        }
+
         var deliveryError = OrderDeliveryData.Read(o.DeliveryJson).Validate(closing: true);
         if (deliveryError != null) return Conflict(new { message = deliveryError });
         if (!string.IsNullOrWhiteSpace(o.DeliveryJson) && req?.DeliveryVersion != OrderDeliveryService.Version(o))
@@ -503,6 +514,9 @@ public class ServiceOrdersController : ControllerBase
         if (req.EvidenceFile == null || req.EvidenceFile.Length == 0)
             return BadRequest(new { message = "Selecciona un archivo vÃ¡lido." });
 
+        if (o.Type == ServiceOrderType.RecoleccionEquipos &&
+            (!EquipmentCollectionOrder.IsPhoto(req.EvidenceFile.FileName) || o.Status == ServiceOrderStatus.Finalized))
+            return BadRequest(new { message = "Adjunta una foto a una recolección pendiente." });
         var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
             req.EvidenceFile,
             $"serviceorders/{o.Id}/evidence",

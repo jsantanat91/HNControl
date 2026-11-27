@@ -1,0 +1,35 @@
+@using HNControl.Web.Models
+@model HNControl.Web.Pages.ServiceOrders.WorkModel
+@{ var order = Model.Order!; }
+<link rel="stylesheet" href="~/css/hn-operations.css" asp-append-version="true" />
+<div class="hn-ops">
+    <div class="hn-ops-toolbar"><a class="hn-ops-back" asp-page="/ServiceOrders/Index"><i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Órdenes de servicio</a>
+        @if (Model.CanTakeOwnership && !Model.IsClaimedByCurrentUser)
+        {
+            <form method="post" asp-page-handler="Take" asp-route-id="@order.Id"><button class="btn btn-primary" type="submit">Tomar orden</button></form>
+        }
+    </div>
+    <header class="hn-ops-hero"><div><div class="hn-eyebrow">OS-@order.Id.ToString("N")[..8].ToUpperInvariant() · Recolección de equipos</div><h1>@order.Title</h1><p>@order.Client?.Name</p><div class="hn-ops-hero-meta"><span>Sin bonificación</span><span>@(order.ClaimedByEmployee?.FullName ?? "Por tomar")</span></div></div><span class="hn-ops-state" data-status="@order.Status">@order.Status.GetDisplayName()</span></header>
+    @if (!string.IsNullOrWhiteSpace(Model.Info)) { <div class="alert alert-info mt-3" role="status">@Model.Info</div> }
+    <article class="card my-3"><div class="card-header"><i class="bi bi-geo-alt me-2" aria-hidden="true"></i>Dirección de recolección</div><div class="card-body"><div class="hn-ops-description">@order.Description</div></div></article>
+    <article class="card mb-3"><div class="card-header">Fotos de recolección <span class="hn-ops-tag">@Model.Evidences.Count</span></div><div class="card-body">
+        @if (!Model.IsReadOnly)
+        {
+            <form method="post" asp-page-handler="UploadEvidence" asp-route-id="@order.Id" enctype="multipart/form-data" class="mb-4">
+                <label class="form-label" for="EvidenceFile">Adjuntar foto</label>
+                <div class="d-flex flex-wrap gap-2"><input type="file" class="form-control" style="flex:1;min-width:220px" name="EvidenceFile" id="EvidenceFile" accept=".jpg,.jpeg,.png,.webp,.heic,.heif" required /><button type="submit" class="btn btn-outline-primary"><i class="bi bi-upload me-2" aria-hidden="true"></i>Subir foto</button></div>
+                <div class="form-text">Adjunta al menos una foto de los equipos recuperados. Máximo 25 MB por foto.</div>
+            </form>
+        }
+        @if (!Model.Evidences.Any()) { <div class="hn-ops-empty"><i class="bi bi-images" aria-hidden="true"></i><p>Aún no hay fotos de la recolección.</p></div> }
+        else
+        {
+            <div class="hn-ops-files">@foreach (var photo in Model.Evidences) { <a asp-page="/ServiceOrders/Work" asp-route-id="@order.Id" asp-page-handler="DownloadEvidence" asp-route-evidenceId="@photo.Id"><i class="bi bi-image" aria-hidden="true"></i><span>@photo.OriginalFileName<small>@photo.UploadedAtLocal</small></span><i class="bi bi-download" aria-hidden="true"></i></a> }</div>
+        }
+    </div></article>
+    @if (!Model.IsReadOnly)
+    {
+        <article class="card"><div class="card-body hn-ops-callout"><div><h2>Finalizar recolección</h2><p>Confirma el cierre una vez recuperados los equipos y cargadas las fotos.</p></div><form method="post" asp-page-handler="SignAndSubmit" asp-route-id="@order.Id" onsubmit="return confirm('¿Confirmas que recuperaste los equipos y adjuntaste las fotos?');"><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i>Finalizar recolección</button></form></div></article>
+    }
+    else if (order.Status != ServiceOrderStatus.Finalized) { <p class="text-muted">Toma la orden para adjuntar fotos y finalizar la recolección.</p> }
+</div>

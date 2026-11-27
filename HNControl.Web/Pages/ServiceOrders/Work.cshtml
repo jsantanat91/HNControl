@@ -12,6 +12,12 @@
     return;
 }
 
+@if (Model.IsCollection)
+{
+    <partial name="_EquipmentCollectionWork" model="Model" />
+    return;
+}
+
 <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
     <div>
         <h2 class="mb-1">Orden de Servicio</h2>

@@ -141,6 +141,18 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync(x => x.Id == Input.Id);
         if (order == null) return NotFound();
 
+        if ((order.Type == ServiceOrderType.RecoleccionEquipos || Input.Type == ServiceOrderType.RecoleccionEquipos) && order.Type != Input.Type)
+        { Error = "La recolección debe crearse como una orden independiente; no se puede cambiar a otro tipo."; return Page(); }
+        if (order.Type == ServiceOrderType.RecoleccionEquipos)
+        {
+            if (string.IsNullOrWhiteSpace(Input.Description)) { Error = "Escribe la dirección de recolección."; return Page(); }
+            if (Input.Status == ServiceOrderStatus.Finalized)
+            {
+                var copy = new ServiceOrder { Id = order.Id, Description = Input.Description };
+                Error = await EquipmentCollectionOrder.ValidateClosureAsync(_db, copy);
+                if (Error != null) return Page();
+            }
+        }
         if (!string.IsNullOrWhiteSpace(order.DeliveryJson) && Input.Status == ServiceOrderStatus.Finalized)
         {
             Error = HNControl.Shared.OrderDeliveryData.Read(order.DeliveryJson).Validate(closing: true);
@@ -178,6 +190,11 @@ public class EditModel : PageModel
         order.StartedAt = TimeUtil.UtcDate(Input.StartDate);
         order.EstimatedEndDate = TimeUtil.UtcDate(Input.ExpectedEndDate);
         order.Description = (Input.Description ?? "").Trim();
+        if (order.Type == ServiceOrderType.RecoleccionEquipos)
+        {
+            order.PdfStoragePath = null;
+            order.PdfGeneratedAt = null;
+        }
 
         if (Input.Status == ServiceOrderStatus.Finalized)
             await ServiceOrderCommissionService.FinalizeAsync(_db, order, DateTime.UtcNow);
@@ -197,6 +214,7 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync();
 
         if (order == null) return NotFound();
+        if (order.Type == ServiceOrderType.RecoleccionEquipos) return BadRequest("La recolección no utiliza actividades.");
 
         var hasWorkItems = await _db.ServiceOrderWorkItems.AsNoTracking().AnyAsync(w => w.OrderId == id);
         if (order.Type == ServiceOrderType.Global || hasWorkItems)
@@ -267,6 +285,7 @@ public class EditModel : PageModel
             .FirstOrDefaultAsync();
 
         if (order == null) return NotFound();
+        if (order.Type == ServiceOrderType.RecoleccionEquipos || NewWorkItem.Type == ServiceOrderType.RecoleccionEquipos) return BadRequest("La recolección se crea como tipo de orden, no como actividad.");
 
         var activityType = NewWorkItem.Type == ServiceOrderType.Global
             ? ServiceOrderType.Preventivo
@@ -501,9 +520,9 @@ public class EditModel : PageModel
             .Select(t => new { Id = t, Name = t.GetDisplayName() })
             .ToList();
 
-        TypeItems = new SelectList(allTypes, "Id", "Name");
+        TypeItems = new SelectList(allTypes.Where(x => (Input?.Type == ServiceOrderType.RecoleccionEquipos) == (x.Id == ServiceOrderType.RecoleccionEquipos)), "Id", "Name");
 
-        var workTypes = allTypes.Where(x => (ServiceOrderType)x.Id != ServiceOrderType.Global).ToList();
+        var workTypes = allTypes.Where(x => (ServiceOrderType)x.Id != ServiceOrderType.Global && x.Id != ServiceOrderType.RecoleccionEquipos).ToList();
         WorkTypeItems = new SelectList(workTypes, "Id", "Name");
 
         var statuses = new[]

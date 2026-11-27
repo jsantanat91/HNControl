@@ -190,6 +190,11 @@ public class DetailsModel : PageModel
         await LoadAsync(id);
         if (Order == null) return NotFound();
 
+        if (Order.Type == ServiceOrderType.RecoleccionEquipos)
+        {
+            Info = await EquipmentCollectionOrder.ValidateClosureAsync(_db, Order);
+            if (Info != null) return Page();
+        }
         if (!string.IsNullOrWhiteSpace(Order.DeliveryJson))
         {
             Info = HNControl.Shared.OrderDeliveryData.Read(Order.DeliveryJson).Validate(closing: true);
@@ -274,6 +279,7 @@ public class DetailsModel : PageModel
         await LoadAsync(id);
         if (Order == null) return NotFound();
 
+        if (Order.Type == ServiceOrderType.RecoleccionEquipos) return BadRequest("La recolección no utiliza checklist.");
         var before = Order.Checklist.Count;
 
         // Checklist general (si no es Global)

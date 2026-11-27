@@ -23,9 +23,18 @@ public static class ServiceOrderCommissionService
             ? db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {order.Id} FOR UPDATE")
             : db.ServiceOrders.Where(x => x.Id == order.Id);
         var previous = await source.AsNoTracking().SingleAsync();
+        var collection = order.Type == ServiceOrderType.RecoleccionEquipos || previous.Type == ServiceOrderType.RecoleccionEquipos;
+        if (collection && await EquipmentCollectionOrder.ValidateClosureAsync(db, order) is { } error)
+            throw new InvalidOperationException(error);
+        if (collection)
+        {
+            order.PdfStoragePath = null;
+            order.PdfGeneratedAt = null;
+            order.TokenClosedAt = utcNow;
+        }
         order.Status = ServiceOrderStatus.Finalized;
         order.FinalizedAt = previous.Status == ServiceOrderStatus.Finalized ? previous.FinalizedAt ?? utcNow : utcNow;
-        if (previous.Status != ServiceOrderStatus.Finalized && !await db.EmployeeDeductions.AnyAsync(x => x.SourceServiceOrderId == order.Id))
+        if (!collection && previous.Status != ServiceOrderStatus.Finalized && !await db.EmployeeDeductions.AnyAsync(x => x.SourceServiceOrderId == order.Id))
         {
             var userId = order.ClaimedByUserId ?? order.AssignedUserId;
             var employee = await db.EmployeeProfiles.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive);

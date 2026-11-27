@@ -8,7 +8,7 @@ public static class ServiceOrderNotificationTemplates
 {
     public static string Report(ServiceOrder order) => Layout("Su orden de servicio", $"""
         <p>Estimado(a) <strong>{E(order.Client?.Name)}</strong>:</p>
-        <p>Adjuntamos el PDF de su orden de servicio con el detalle de los trabajos y las firmas registradas.</p>
+        <p>{(order.Type == ServiceOrderType.RecoleccionEquipos ? "Adjuntamos el PDF de su orden de recolección de equipos, con la dirección y las evidencias registradas." : "Adjuntamos el PDF de su orden de servicio con el detalle de los trabajos y las firmas registradas.")}</p>
         <table role="presentation" style="width:100%;background:#f8fafc;border-collapse:collapse;margin:18px 0">
         {Row("Referencia de orden", Reference(order))}
         {Row("Número de cliente", order.Client?.ClientCode)}
@@ -34,6 +34,7 @@ public static class ServiceOrderNotificationTemplates
         return "<table role=\"presentation\" style=\"width:100%;background:#f8fafc;border-collapse:collapse;margin:18px 0\">"
             + Row("Referencia de orden", Reference(order)) + Row("Número de cliente", order.Client?.ClientCode)
             + Row("Orden de servicio", order.Title) + Row("Tipo de atención", order.Type.GetDisplayName())
+            + (order.Type == ServiceOrderType.RecoleccionEquipos ? Row("Dirección de recolección", order.Description) : "")
             + (service == null ? "" : Row("Servicio contratado", service.Label)
                 + (string.IsNullOrWhiteSpace(service.Branch) ? "" : Row("Sucursal", service.Branch)))
             + Row("Fecha programada de atención", schedule.ScheduledDateConfirmed ? Date(schedule.StartDate) : "Por confirmar")

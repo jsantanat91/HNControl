@@ -43,6 +43,7 @@ public class IndexModel : PageModel
         ServiceOrderType.LevantamientoTecnico,
         ServiceOrderType.Eventos,
         ServiceOrderType.EntregaHardware,
+        ServiceOrderType.RecoleccionEquipos,
         ServiceOrderType.Global
     };
 

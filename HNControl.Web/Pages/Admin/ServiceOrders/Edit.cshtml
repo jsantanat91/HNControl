@@ -104,7 +104,7 @@
                 }
             </div>
             <div class="col-12">
-                <label class="form-label" asp-for="Input.Description">Descripción</label>
+                <label class="form-label" asp-for="Input.Description">@(Model.Input.Type == HNControl.Web.Models.ServiceOrderType.RecoleccionEquipos ? "Dirección de recolección" : "Descripción")</label>
                 <textarea class="form-control" rows="3" asp-for="Input.Description"></textarea>
             </div>
             </div>
@@ -142,6 +142,8 @@
     </div>
 </form>
 
+@if (Model.Input.Type != HNControl.Web.Models.ServiceOrderType.RecoleccionEquipos)
+{
 <div class="card shadow-soft hn-hover mt-3">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
@@ -243,6 +245,7 @@
             </div>
 
 
+}
 </div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

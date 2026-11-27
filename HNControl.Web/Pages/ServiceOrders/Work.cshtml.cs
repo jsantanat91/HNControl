@@ -24,6 +24,7 @@ public class WorkModel : PageModel
 
     public ServiceOrder? Order { get; set; }
     public string? Info { get; set; }
+    public bool IsCollection => Order?.Type == ServiceOrderType.RecoleccionEquipos;
 
     [BindProperty(SupportsGet = true)]
     public Guid Id { get; set; }
@@ -238,7 +239,9 @@ public class WorkModel : PageModel
             return Page();
         }
 
-        var allowed = new[] { ".png", ".jpg", ".jpeg", ".webp", ".pdf", ".heic", ".heif" };
+        var allowed = IsCollection ? EquipmentCollectionOrder.PhotoExtensions : new[] { ".png", ".jpg", ".jpeg", ".webp", ".pdf", ".heic", ".heif" };
+        if (IsCollection && (!EquipmentCollectionOrder.IsPhoto(EvidenceFile.FileName) || Order.Status == ServiceOrderStatus.Finalized))
+        { Info = "Adjunta una foto a una recolección pendiente."; return Page(); }
         var maxBytes = 25 * 1024L * 1024L;
 
         var (path, size, contentType, originalName) = await _storage.SaveFileAsync(
@@ -323,6 +326,15 @@ public class WorkModel : PageModel
         if (!CanEditOrder(Order)) return Forbid();
 
         if (Order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.PendingClientSignature) return Forbid();
+        if (IsCollection)
+        {
+            Info = await EquipmentCollectionOrder.ValidateClosureAsync(_db, Order);
+            if (Info != null) return Page();
+            await EquipmentCollectionOrder.CompleteAsync(_db, Order, GetUserId(), User.Identity?.Name);
+            await transaction.CommitAsync();
+            TempData["Info"] = "Recolección finalizada. No genera bonificación.";
+            return RedirectToPage(new { id });
+        }
         var deliveryError = HNControl.Shared.OrderDeliveryData.Read(Order.DeliveryJson).Validate(closing: true);
         if (deliveryError != null) { Info = deliveryError; return Page(); }
         if (!string.IsNullOrEmpty(Order.DeliveryJson) && DeliveryVersion != OrderDeliveryService.Version(Order))
@@ -520,6 +532,7 @@ WHERE ""Id"" = {id};
         IsClaimedByCurrentUser = Order.ClaimedByUserId == GetUserId();
         IsReadOnly = !IsAdmin() && !IsClaimedByCurrentUser;
         var closed = Order.Status is ServiceOrderStatus.InReview or ServiceOrderStatus.Finalized or ServiceOrderStatus.Completed;
+        if (IsCollection && closed) IsReadOnly = true;
         CanTakeOwnership = !IsAdmin() && !closed && (string.IsNullOrWhiteSpace(Order.ClaimedByUserId) || IsClaimedByCurrentUser);
 
         return true;
@@ -555,7 +568,7 @@ WHERE ""Id"" = {id};
 
     private async Task<bool> EnsureChecklistFromTemplateAsync(ServiceOrder order, ServiceOrderType type, Guid? workItemId)
     {
-        if (order.Checklist.Any(x => x.WorkItemId == workItemId))
+        if (order.Type == ServiceOrderType.RecoleccionEquipos || order.Checklist.Any(x => x.WorkItemId == workItemId))
             return false;
 
         var template = await _db.ServiceOrderChecklistTemplates
