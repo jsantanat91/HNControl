@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## APK 2.3.3 · 27 de noviembre de 2026
+
+- Nuevo icono de conectividad en el teléfono, al abrir la app y en la pantalla de acceso.
+- Diseño renovado para navegación, órdenes, nómina, viáticos e inventario de servicios. Los módulos comparten la misma paleta, botones redondos, tarjetas y campos.
+- Órdenes muestra solo trabajo activo. Las finalizadas quedan fuera del listado, la búsqueda y los contadores. Las rechazadas tienen su propio filtro.
+- La APK vuelve a usar el certificado de distribución de la 2.3.0. Para las instalaciones 2.3.1 y 2.3.2 con firma de prueba se ofrece una APK de transición para Android 9 o posterior.
+
 ## APK 2.3.2 · 27 de noviembre de 2026
 
 - Login con ilustración de ciudad y conectividad en los colores de HN, campos y botón principal tipo cápsula, iconos y estados de enfoque, error y carga.

@@ -14,7 +14,7 @@ public sealed class ServiceInventoryDetailPage : ContentPage
     public ServiceInventoryDetailPage(ServiceInventoryRow row, MobileApiClient api)
     {
         Title = "Detalle del servicio";
-        BackgroundColor = Color.FromArgb("#F3F7FC");
+        SetDynamicResource(BackgroundProperty, "AppBackgroundBrush");
         var content = new VerticalStackLayout { Spacing = 16, Padding = new Thickness(18, 18, 18, 28) };
         var badges = new FlexLayout { Wrap = FlexWrap.Wrap };
         badges.Add(Badge(row.Carrier, "#DCEBFF", "#1257A6"));
@@ -22,14 +22,13 @@ public sealed class ServiceInventoryDetailPage : ContentPage
         if (!string.IsNullOrWhiteSpace(row.PlanType)) badges.Add(Badge(row.PlanType, "#EDE9FF", "#6344A4"));
         if (!string.IsNullOrWhiteSpace(row.DeliveryType)) badges.Add(Badge(row.DeliveryType, "#DBF2FF", "#17607D"));
         var hero = new VerticalStackLayout { Spacing = 12 };
-        hero.Add(new Label { Text = "INVENTARIO DE SERVICIOS", FontSize = 10, CharacterSpacing = 1.4, TextColor = Color.FromArgb("#87C9FF") });
-        hero.Add(new Label { Text = row.Name, FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = Colors.White });
+        hero.Add(new Label { Text = row.Name, Style = (Style)Application.Current!.Resources["HeroTitle"] });
         hero.Add(badges);
-        hero.Add(new Label { Text = row.Client, FontSize = 14, TextColor = Color.FromArgb("#C9DCF3") });
-        content.Add(Card(hero, "#10284A", 22));
+        hero.Add(new Label { Text = row.Client, Style = (Style)Application.Current.Resources["HeroSubtitle"] });
+        content.Add(new Border { Content = hero, Style = (Style)Application.Current.Resources["HeaderCard"] });
         content.Add(_feedback);
 
-        var account = Section(content, "01", "Cuenta del proveedor", "Ten estos datos a la mano al comunicarte con soporte.");
+        var account = Section(content, "Cuenta del proveedor");
         Field(account, "Cuenta vinculada", row.AccountId.HasValue ? row.AccountLabel : "Sin cuenta vinculada", false);
         if (row.AccountId.HasValue) account.Add(Badge(row.AccountIsActive ? "Cuenta activa" : "Cuenta inactiva", row.AccountIsActive ? "#E6F5EE" : "#FFF0DB", "#52657B"));
         Field(account, "Número de cuenta", row.ProviderAccountNumber);
@@ -52,7 +51,7 @@ public sealed class ServiceInventoryDetailPage : ContentPage
         }
         Field(account, "Notas de la cuenta", row.AccountNotes, false);
 
-        var support = Section(content, "02", "Soporte", "Abre el marcador y utiliza el número de cuenta registrado.");
+        var support = Section(content, "Soporte");
         Field(support, "Canal de atención", row.SupportPhone);
         if (row.CarrierKey == "starlink")
         {
@@ -70,23 +69,23 @@ public sealed class ServiceInventoryDetailPage : ContentPage
             support.Add(call);
         }
 
-        var plan = Section(content, "03", "Plan y contrato");
+        var plan = Section(content, "Plan y contrato");
         Field(plan, "Plan contratado", row.PlanName, false);
         Field(plan, "Velocidad", row.SpeedMbps.HasValue ? $"{row.SpeedMbps:0.##} Mbps" : null, false);
         Field(plan, "Costo mensual", row.MonthlyCost?.ToString("C2", CultureInfo.GetCultureInfo("es-MX")) is { } cost ? cost + " MXN" : null, false);
         Field(plan, "Plazo", row.ContractMonths.HasValue ? $"{row.ContractMonths} meses" : "Sin plazo registrado", false);
         Field(plan, "Inicio del contrato", row.ContractStartsOn?.ToString("dd/MM/yyyy"), false);
         Field(plan, "Fin del contrato", row.ContractEndsOn?.ToString("dd/MM/yyyy"), false);
-        var equipment = Section(content, "04", "Equipo y ubicación");
+        var equipment = Section(content, "Equipo y ubicación");
         Field(equipment, "Modelo", row.DeviceModel);
         Field(equipment, "Número de serie", row.SerialNumber);
         if (row.CarrierKey == "starlink") Field(equipment, "Número de kit", row.KitNumber);
         Field(equipment, "Ubicación física", row.PhysicalLocation);
-        var network = Section(content, "05", "Configuración de red");
+        var network = Section(content, "Configuración de red");
         Field(network, "IP fija", row.FixedIp); Field(network, "Máscara de red", row.SubnetMask);
         Field(network, "Gateway", row.Gateway); Field(network, "DNS", row.Dns);
         Field(network, "LAN", row.Lan); Field(network, "DDNS", row.Ddns);
-        var notes = Section(content, "06", "Notas del servicio"); Field(notes, "Indicaciones", row.Notes, false);
+        var notes = Section(content, "Notas del servicio"); Field(notes, "Indicaciones", row.Notes, false);
         Content = new ScrollView { Content = content };
     }
     private void Notice(string text) { _feedback.Text = text; _feedback.IsVisible = true; }
@@ -107,24 +106,20 @@ public sealed class ServiceInventoryDetailPage : ContentPage
         target.Add(row);
     }
     private static Border Badge(string text, string background, string foreground) => new() {
-        BackgroundColor = Color.FromArgb(background), StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 8 },
+        BackgroundColor = Color.FromArgb(background), StrokeThickness = 0, StrokeShape = new RoundRectangle { CornerRadius = 999 },
         Padding = new Thickness(10, 6), Margin = new Thickness(0, 0, 6, 6), HorizontalOptions = LayoutOptions.Start,
         Content = new Label { Text = text, FontSize = 11, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb(foreground) }
     };
-    private static Border Card(View content, string color = "#FFFFFF", int padding = 18) => new() {
-        Content = content, BackgroundColor = Color.FromArgb(color), Stroke = Color.FromArgb("#DFE8F2"), StrokeThickness = color == "#FFFFFF" ? 1 : 0,
-        StrokeShape = new RoundRectangle { CornerRadius = 20 }, Padding = padding
-    };
-    private static VerticalStackLayout Section(VerticalStackLayout parent, string number, string title, string? hint = null)
+    private static VerticalStackLayout Section(VerticalStackLayout parent, string title)
     {
         var stack = new VerticalStackLayout { Spacing = 16 };
-        stack.Add(new HorizontalStackLayout { Spacing = 8, Children = { Badge(number, "#EAF3FF", "#1764D9"), new Label { Text = title, FontSize = 19, FontAttributes = FontAttributes.Bold, TextColor = Ink, VerticalOptions = LayoutOptions.Center } } });
-        if (hint != null) stack.Add(new Label { Text = hint, FontSize = 12, TextColor = Muted });
-        parent.Add(Card(stack)); return stack;
+        stack.Add(new Label { Text = title, Style = (Style)Application.Current!.Resources["SectionTitle"] });
+        parent.Add(new Border { Content = stack, Style = (Style)Application.Current.Resources["SurfaceCard"] });
+        return stack;
     }
     private static Button ActionButton(string text, bool primary) => new() {
-        Text = text, FontSize = 13, FontAttributes = FontAttributes.Bold, CornerRadius = 12, MinimumHeightRequest = 44,
-        BackgroundColor = Color.FromArgb(primary ? "#087EE8" : "#EAF3FF"), TextColor = primary ? Colors.White : Color.FromArgb("#1764D9")
+        Text = text,
+        Style = (Style)Application.Current!.Resources[primary ? "PrimaryButton" : "GhostButton"]
     };
     public sealed class AccountSecret { public string Password { get; set; } = ""; }
 }

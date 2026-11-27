@@ -10,9 +10,18 @@ public partial class OrdersPage : ContentPage
     private readonly IServiceProvider _services;
     private bool _isBusy;
     private List<ServiceOrderListItemDto> _items = new();
+    private bool _atQueryLimit;
     private string _filter = "all";
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e) => ApplyFilters();
+
+    private void OnSearchHandlerChanged(object sender, EventArgs e)
+    {
+#if ANDROID
+        if (sender is Entry { Handler.PlatformView: Android.Widget.EditText native })
+            native.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+#endif
+    }
     private void OnFilterClicked(object sender, EventArgs e)
     {
         if (sender is Button button) _filter = button.CommandParameter as string ?? "all";
@@ -24,12 +33,12 @@ public partial class OrdersPage : ContentPage
         if (ResultsLabel == null) return;
         var result = OrderPresentation.Filter(_items, _filter, SearchEntry.Text);
         OrdersCollection.ItemsSource = result;
-        ResultsLabel.Text = $"{result.Count} de {_items.Count} órdenes cargadas" + (_items.Count == 300 ? " · límite de consulta" : "");
-        foreach (var button in new[] { AllFilter, MineFilter, AvailableFilter, ClosedFilter })
+        ResultsLabel.Text = $"{result.Count} de {_items.Count} órdenes activas" + (_atQueryLimit ? " · límite de consulta" : "");
+        foreach (var button in new[] { AllFilter, MineFilter, AvailableFilter, RejectedFilter })
         {
             var active = (string?)button.CommandParameter == _filter;
-            button.BackgroundColor = Color.FromArgb(active ? "#087EE8" : "#EAF4FF");
-            button.TextColor = active ? Colors.White : Color.FromArgb("#55708E");
+            button.BackgroundColor = (Color)Application.Current!.Resources[active ? "AppSuccess" : "AppAccentSoft"];
+            button.TextColor = active ? Colors.White : (Color)Application.Current.Resources["AppAccent"];
         }
     }
 
@@ -130,9 +139,12 @@ public partial class OrdersPage : ContentPage
 
     private async Task FetchOrdersAsync()
     {
-        _items = await _orders.ListAsync(300);
-        ActiveCount.Text = _items.Count(x => x.Status != 4).ToString();
-        MineCount.Text = _items.Count(x => x.IsMine && x.Status != 4).ToString();
+        const int queryLimit = 300;
+        var orders = await _orders.ListAsync(queryLimit);
+        _atQueryLimit = orders.Count == queryLimit;
+        _items = orders.Where(x => !x.IsFinalized).ToList();
+        ActiveCount.Text = _items.Count.ToString();
+        MineCount.Text = _items.Count(x => x.IsMine).ToString();
         AvailableCount.Text = _items.Count(x => x.CanTake).ToString();
         ApplyFilters();
     }

@@ -7,8 +7,8 @@
    <Grid x:Name="HeroLayout" HeightRequest="250">
     <Image Source="login_connectivity.svg" Aspect="AspectFill" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="26,24" VerticalOptions="Start">
-     <Border BackgroundColor="#1554CB" StrokeThickness="0" StrokeShape="RoundRectangle 16" WidthRequest="46" HeightRequest="46">
-      <Label Text="HN" TextColor="White" FontSize="21" FontFamily="OpenSansSemibold" HorizontalOptions="Center" VerticalOptions="Center" />
+     <Border BackgroundColor="#102C52" StrokeThickness="0" StrokeShape="RoundRectangle 14" WidthRequest="46" HeightRequest="46">
+      <Image Source="appiconfg.png" Aspect="AspectFit" AutomationProperties.IsInAccessibleTree="False" />
      </Border>
      <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
       <Label Text="HN Control" TextColor="#102C5D" FontSize="21" FontFamily="OpenSansSemibold" />

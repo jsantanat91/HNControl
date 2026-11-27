@@ -1,30 +1,37 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage x:Class="HNControl.Mobile.Pages.OrdersPage"
  xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
- Title="HN Control" BackgroundColor="{StaticResource AppBgTop}">
- <Grid Padding="20,12,20,0">
+ Title="Órdenes" Background="{StaticResource AppBackgroundBrush}">
+ <Grid Padding="18,14,18,0">
   <RefreshView x:Name="OrdersRefreshView" Refreshing="OnRefreshing">
    <CollectionView x:Name="OrdersCollection" SelectionMode="None">
 <CollectionView.Header><VerticalStackLayout Spacing="12" Margin="0,0,0,12">
   <Border Style="{StaticResource HeaderCard}">
-   <VerticalStackLayout Spacing="7">
-    <Label Text="OPERACIÓN EN CAMPO" FontSize="10" CharacterSpacing="1.5" FontAttributes="Bold" TextColor="#BCE7DE" />
-    <Label Text="Órdenes de servicio" FontSize="27" FontAttributes="Bold" TextColor="White" />
-    <Label Text="Cada servicio, bajo control." TextColor="#D5EDE9" FontSize="13" />
-   </VerticalStackLayout>
+   <Grid>
+    <Image Source="module_signal.png" WidthRequest="112" HeightRequest="82" HorizontalOptions="End" VerticalOptions="Center" Aspect="AspectFit" Opacity="0.5" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+    <VerticalStackLayout Spacing="6" Padding="0,8">
+     <Label Text="Órdenes de servicio" Style="{StaticResource HeroTitle}" />
+     <Label Text="Consulta y atiende las órdenes abiertas." Style="{StaticResource HeroSubtitle}" />
+    </VerticalStackLayout>
+   </Grid>
   </Border>
   <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-   <Border Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="ActiveCount" Text="—" FontSize="24" FontAttributes="Bold" /><Label Text="Activas" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
-   <Border Grid.Column="1" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="MineCount" Text="—" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource AppAccent}" /><Label Text="Mis órdenes" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
-   <Border Grid.Column="2" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="3"><Label x:Name="AvailableCount" Text="—" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource AppSuccess}" /><Label Text="Disponibles" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+   <Border Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="5"><Border Style="{StaticResource IconTile}"><Image Source="nav_orders.png" AutomationProperties.IsInAccessibleTree="False" /></Border><Label x:Name="ActiveCount" Text="—" FontSize="25" FontFamily="OpenSansSemibold" /><Label Text="Activas" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+   <Border Grid.Column="1" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="5"><Border Style="{StaticResource IconTile}"><Image Source="nav_employee.png" AutomationProperties.IsInAccessibleTree="False" /></Border><Label x:Name="MineCount" Text="—" FontSize="25" FontFamily="OpenSansSemibold" /><Label Text="Mis órdenes" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
+   <Border Grid.Column="2" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="5"><Border Style="{StaticResource IconTile}" BackgroundColor="{StaticResource AppSuccessSoft}"><Image Source="nav_services.png" AutomationProperties.IsInAccessibleTree="False" /></Border><Label x:Name="AvailableCount" Text="—" FontSize="25" FontFamily="OpenSansSemibold" TextColor="{StaticResource AppSuccess}" /><Label Text="Disponibles" Style="{StaticResource MutedLabel}" FontSize="11" /></VerticalStackLayout></Border>
   </Grid>
-  <Border Style="{StaticResource InputCard}" Padding="4,0"><SearchBar x:Name="SearchEntry" Placeholder="Buscar cliente o servicio" TextChanged="OnSearchChanged" BackgroundColor="Transparent" /></Border>
+  <Border Style="{StaticResource InputCard}" Padding="14,0">
+   <Grid ColumnDefinitions="20,*" ColumnSpacing="8">
+    <Path Data="M 13,8 A 5,5 0 1 1 3,8 A 5,5 0 1 1 13,8 M 12,12 L 17,17" Stroke="{StaticResource AppMuted}" StrokeThickness="1.75" WidthRequest="20" HeightRequest="20" VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" InputTransparent="True" />
+    <Entry x:Name="SearchEntry" Grid.Column="1" Placeholder="Buscar cliente o servicio" TextChanged="OnSearchChanged" HandlerChanged="OnSearchHandlerChanged" ClearButtonVisibility="WhileEditing" ReturnType="Search" MinimumHeightRequest="46" BackgroundColor="Transparent" />
+   </Grid>
+  </Border>
   <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
    <HorizontalStackLayout Spacing="8">
-    <Button x:Name="AllFilter" Text="Todas" CommandParameter="all" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+    <Button x:Name="AllFilter" Text="Activas" CommandParameter="all" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
     <Button x:Name="MineFilter" Text="Mías" CommandParameter="mine" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
     <Button x:Name="AvailableFilter" Text="Disponibles" CommandParameter="available" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
-    <Button x:Name="ClosedFilter" Text="Finalizadas" CommandParameter="closed" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
+    <Button x:Name="RejectedFilter" Text="Rechazadas" CommandParameter="rejected" Clicked="OnFilterClicked" Style="{StaticResource FilterButton}" />
    </HorizontalStackLayout>
   </ScrollView>
   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -38,7 +45,7 @@
       <VerticalStackLayout Spacing="12">
        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
         <Label Text="{Binding Client}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource AppAccent}" VerticalOptions="Center" />
-        <Border Grid.Column="1" BackgroundColor="{Binding StatusBg}" Padding="9,5" StrokeThickness="0" StrokeShape="RoundRectangle 8"><Label Text="{Binding StatusLabel}" FontSize="10" FontAttributes="Bold" /></Border>
+        <Border Grid.Column="1" BackgroundColor="{Binding StatusBg}" Padding="10,5" StrokeThickness="0" StrokeShape="RoundRectangle 999"><Label Text="{Binding StatusLabel}" FontSize="11" FontFamily="OpenSansSemibold" /></Border>
        </Grid>
        <Label Text="{Binding Title}" FontSize="19" FontAttributes="Bold" />
        <FlexLayout Wrap="Wrap"><Label Text="{Binding TypeLabel}" FontSize="12" TextColor="{StaticResource AppMuted}" Margin="0,0,14,4" /><Label Text="{Binding AreaLabel}" FontSize="12" TextColor="{StaticResource AppMuted}" /></FlexLayout>

@@ -15,7 +15,8 @@ public sealed class OrderDeliveryPage : ContentPage
     public OrderDeliveryPage(OrdersService orders, Guid id, Action saved)
     {
         _orders = orders; _id = id; _saved = saved;
-        Title = "Entrega y equipos"; BackgroundColor = Color.FromArgb("#F3F7FC");
+        Title = "Entrega y equipos";
+        SetDynamicResource(BackgroundProperty, "AppBackgroundBrush");
         Content = new ScrollView { Content = _root };
     }
     protected override async void OnAppearing()
@@ -29,16 +30,16 @@ public sealed class OrderDeliveryPage : ContentPage
     {
         _root.Clear();
         var response = _response!; var data = response.Data;
-        _root.Add(new Border { BackgroundColor = Color.FromArgb("#173B5D"), StrokeThickness = 0, Padding = 20, StrokeShape = new RoundRectangle { CornerRadius = 18 }, Content = new VerticalStackLayout { Spacing = 8, Children = {
-            new Label { Text = data.KindLabel.ToUpperInvariant(), FontSize = 11, TextColor = Color.FromArgb("#A2D6FF") },
-            new Label { Text = response.Title, FontSize = 21, FontAttributes = FontAttributes.Bold, TextColor = Colors.White },
-            new Label { Text = response.Client + (string.IsNullOrWhiteSpace(response.Address) ? "" : "\n" + response.Address), FontSize = 13, TextColor = Color.FromArgb("#D6E9FF") }
+        _root.Add(new Border { Style = (Style)Application.Current!.Resources["HeaderCard"], Content = new VerticalStackLayout { Spacing = 8, Children = {
+            new Label { Text = data.KindLabel, Style = (Style)Application.Current.Resources["HeroSubtitle"] },
+            new Label { Text = response.Title, Style = (Style)Application.Current.Resources["HeroTitle"] },
+            new Label { Text = response.Client + (string.IsNullOrWhiteSpace(response.Address) ? "" : "\n" + response.Address), Style = (Style)Application.Current.Resources["HeroSubtitle"] }
         } } });
         _root.Add(new Label { Text = response.CanEdit ? "Guarda los equipos antes de capturar las firmas. Todo se incluirá en el mismo PDF." : "Consulta de entrega. Solo se puede editar una orden tomada y sin firmas, antes de enviarla a revisión.", FontSize = 12, TextColor = Color.FromArgb("#627793") });
         _root.Add(_error);
-        var scope = Section("01 · Alcance de la entrega");
+        var scope = Section("Alcance de la entrega");
         Select(scope, "¿Qué entregamos?", ["Servicio", "Entrega de hardware", "Servicio + hardware"], Array.IndexOf(OrderDeliveryData.Kinds, data.Kind), i => data.Kind = OrderDeliveryData.Kinds[i]);
-        var router = Section("02 · Router");
+        var router = Section("Router");
         var toggle = new Switch { IsToggled = data.HasRouter };
         router.Add(new HorizontalStackLayout { Spacing = 10, Children = { toggle, new Label { Text = "Registrar router", VerticalOptions = LayoutOptions.Center } } });
         var routerFields = new VerticalStackLayout { Spacing = 12, IsVisible = data.HasRouter };
@@ -50,7 +51,7 @@ public sealed class OrderDeliveryPage : ContentPage
         Select(routerFields, "Estado físico", OrderDeliveryData.Conditions, Array.IndexOf(OrderDeliveryData.Conditions, data.RouterCondition), i => data.RouterCondition = OrderDeliveryData.Conditions[i]);
         Field(routerFields, "Accesorios / observaciones", data.RouterAccessories, v => data.RouterAccessories = v, 400);
         router.Add(routerFields);
-        var equipment = Section("03 · Otros equipos");
+        var equipment = Section("Otros equipos");
         var rows = new VerticalStackLayout { Spacing = 16 }; equipment.Add(rows);
         void AddRow(DeliveryEquipment item)
         {
@@ -70,14 +71,14 @@ public sealed class OrderDeliveryPage : ContentPage
             row.Add(remove); rows.Add(card);
         }
         foreach(var item in data.Items) AddRow(item);
-        var add = new Button { Text = "+ Agregar equipo", BackgroundColor = Color.FromArgb("#E7F1FF"), TextColor = Color.FromArgb("#1764D9") };
+        var add = new Button { Text = "+ Agregar equipo", Style = (Style)Application.Current.Resources["GhostButton"] };
         add.Clicked += async (_, _) => { if(data.Items.Count >= 20) { await DisplayAlertAsync("Equipos", "Máximo 20 equipos adicionales.", "Aceptar"); return; } var item = new DeliveryEquipment(); data.Items.Add(item); AddRow(item); };
         equipment.Add(add);
-        var notes = Section("04 · Observaciones");
+        var notes = Section("Observaciones");
         var editor = new Editor { Text = data.Notes, MaxLength = 2000, AutoSize = EditorAutoSizeOption.TextChanges, MinimumHeightRequest = 90, Placeholder = "Condiciones e indicaciones para el cliente. Sin contraseñas." };
         editor.TextChanged += (_, e) => data.Notes = e.NewTextValue ?? ""; notes.Add(editor);
         if (!response.CanEdit) return;
-        var save = new Button { Text = "Guardar entrega y equipos", BackgroundColor = Color.FromArgb("#1764D9"), TextColor = Colors.White, CornerRadius = 12 };
+        var save = new Button { Text = "Guardar entrega y equipos", Style = (Style)Application.Current.Resources["PrimaryButton"] };
         save.Clicked += async (_, _) => {
             var error = data.Validate();
             if (error != null) { await DisplayAlertAsync("Revisa la entrega", error, "Aceptar"); return; }
@@ -91,18 +92,22 @@ public sealed class OrderDeliveryPage : ContentPage
     private VerticalStackLayout Section(string title)
     {
         var stack = new VerticalStackLayout { Spacing = 12, IsEnabled = _response!.CanEdit };
-        stack.Add(new Label { Text = title, FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#173B5D") });
-        _root.Add(new Border { Content = stack, Padding = 18, BackgroundColor = Colors.White, Stroke = Color.FromArgb("#D9E6F5"), StrokeShape = new RoundRectangle { CornerRadius = 18 } });
+        stack.Add(new Label { Text = title, Style = (Style)Application.Current!.Resources["SectionTitle"] });
+        _root.Add(new Border { Content = stack, Style = (Style)Application.Current.Resources["SurfaceCard"] });
         return stack;
     }
     private static void Field(VerticalStackLayout parent, string label, string value, Action<string> changed, int length = 120)
     {
         parent.Add(new Label { Text = label, FontSize = 12, TextColor = Color.FromArgb("#627793") });
-        var entry = new Entry { Text = value, MaxLength = length }; entry.TextChanged += (_, e) => changed(e.NewTextValue ?? ""); parent.Add(entry);
+        var entry = new Entry { Text = value, MaxLength = length };
+        entry.TextChanged += (_, e) => changed(e.NewTextValue ?? "");
+        parent.Add(new Border { Style = (Style)Application.Current!.Resources["InputCard"], Content = entry });
     }
     private static void Select(VerticalStackLayout parent, string label, string[] values, int index, Action<int> changed)
     {
         parent.Add(new Label { Text = label, FontSize = 12, TextColor = Color.FromArgb("#627793") });
-        var picker = new Picker { ItemsSource = values, SelectedIndex = index }; picker.SelectedIndexChanged += (_, _) => { if(picker.SelectedIndex >= 0) changed(picker.SelectedIndex); }; parent.Add(picker);
+        var picker = new Picker { ItemsSource = values, SelectedIndex = index };
+        picker.SelectedIndexChanged += (_, _) => { if (picker.SelectedIndex >= 0) changed(picker.SelectedIndex); };
+        parent.Add(new Border { Style = (Style)Application.Current!.Resources["InputCard"], Content = picker });
     }
 }

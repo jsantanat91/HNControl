@@ -62,13 +62,16 @@ Check(dashboard.KpiFeedback == null && dashboard.Eval360Feedback?.VisibleToEmplo
 
 var mine = new ServiceOrderListItemDto { Title = "Enlace", Client = "Norte", IsMine = true, Status = 2, CreatedAt = DateTime.Today };
 var overdue = new ServiceOrderListItemDto { Title = "Cámara", Client = "Sur", CanTake = true, Status = 1, EstimatedEndDate = DateTime.Today.AddDays(-1) };
-var closed = new ServiceOrderListItemDto { Title = "Cierre", IsMine = true, Status = 4, EstimatedEndDate = DateTime.Today.AddDays(-2) };
-var data = new[] { closed, mine, overdue };
+var closed = new ServiceOrderListItemDto { Title = "Cierre", IsMine = true, CanTake = true, Status = 4, EstimatedEndDate = DateTime.Today.AddDays(-2) };
+var rejected = new ServiceOrderListItemDto { Title = "Requiere corrección", Status = 6 };
+var data = new[] { closed, mine, overdue, rejected };
 Check(OrderPresentation.Filter(data, "all", null)[0] == overdue, "Overdue active work is prioritized");
 Check(!closed.IsOverdue, "Completed orders never show overdue");
 Check(OrderPresentation.Filter(data, "mine", null).SequenceEqual([mine]), "My work excludes completed orders");
 Check(OrderPresentation.Filter(data, "available", null).SequenceEqual([overdue]), "Available filter honors server permissions");
-Check(OrderPresentation.Filter(data, "closed", null).SequenceEqual([closed]), "Completed filter");
+Check(!OrderPresentation.Filter(data, "all", null).Contains(closed), "Active list excludes finalized orders");
+Check(OrderPresentation.Filter(data, "rejected", null).SequenceEqual([rejected]), "Rejected orders remain available for follow-up");
+Check(OrderPresentation.Filter(data, "all", "Cierre").Count == 0, "Searching cannot surface finalized orders");
 Check(OrderPresentation.Filter(data, "all", " norte ").SequenceEqual([mine]), "Search trims input and ignores case");
 Check(OrderPresentation.Filter(data, "all", "missing").Count == 0, "Search empty state");
 Check(mine.AssignmentLabel == "Asignada a ti", "Assigned order has explicit ownership");

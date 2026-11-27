@@ -40,7 +40,9 @@ public sealed class ServiceOrderListItemDto
     [JsonIgnore]
     public string AssignmentLabel => IsMine ? "Asignada a ti" : string.IsNullOrWhiteSpace(ClaimedBy) ? "Disponible para el equipo" : $"Responsable: {ClaimedBy}";
     [JsonIgnore]
-    public bool IsOverdue => Status != 4 && EstimatedEndDate.HasValue && EstimatedEndDate.Value.Date < DateTime.Today;
+    public bool IsFinalized => Status == 4;
+    [JsonIgnore]
+    public bool IsOverdue => !IsFinalized && EstimatedEndDate.HasValue && EstimatedEndDate.Value.Date < DateTime.Today;
     [JsonIgnore]
     public string DueLabel => EstimatedEndDate.HasValue ? $"{(IsOverdue ? "Entrega vencida" : "Entrega")}: {EstimatedEndDate.Value:dd MMM yyyy}" : $"Creada el {CreatedAt:dd MMM yyyy} · Sin fecha de entrega";
     [JsonIgnore]

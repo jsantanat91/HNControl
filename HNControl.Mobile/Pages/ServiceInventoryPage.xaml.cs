@@ -14,7 +14,7 @@ public partial class ServiceInventoryPage : ContentPage
     {
         if (_loading) return;
         _loading = true; ErrorLabel.IsVisible = false;
-        BusyIndicator.IsVisible = BusyIndicator.IsRunning = true;
+        CountLabel.Text = "Consultando servicios…";
         ClientPicker.IsEnabled = CarrierPicker.IsEnabled = false;
         PreviousButton.IsEnabled = NextButton.IsEnabled = false;
         try
@@ -24,26 +24,31 @@ public partial class ServiceInventoryPage : ContentPage
             var data = await _api.GetJsonAsync<ServiceInventoryResponse>($"/api/mobile/service-inventory?page={_page}&carrier={Uri.EscapeDataString(carrier)}{(client.Length > 0 ? "&clientId=" + Uri.EscapeDataString(client) : "")}");
             _total = data.Total; _page = data.Page;
             _settingFilters = true;
-            data.Clients.Insert(0, new() { Label = "Todos los clientes" });
-            data.Carriers.Insert(0, new() { Label = "Todos los proveedores" });
+            data.Clients.Insert(0, new() { Label = "Todos" });
+            data.Carriers.Insert(0, new() { Label = "Todos" });
             ClientPicker.ItemsSource = data.Clients; CarrierPicker.ItemsSource = data.Carriers;
             ClientPicker.SelectedItem = data.Clients.FirstOrDefault(x => x.Id == client) ?? data.Clients[0];
             CarrierPicker.SelectedItem = data.Carriers.FirstOrDefault(x => x.Id == carrier) ?? data.Carriers[0];
             ItemsView.ItemsSource = data.Items;
-            CountLabel.Text = $"{_total} servicio(s) · Consulta de solo lectura";
+            CountLabel.Text = _total == 1 ? "1 servicio" : $"{_total} servicios";
+            EmptyLabel.Text = "No hay servicios para estos filtros.";
             PageLabel.Text = $"{_page} / {Math.Max(1, (_total + 49) / 50)}";
         }
-        catch (Exception ex) { ItemsView.ItemsSource = null; CountLabel.Text = "Consulta no disponible"; ErrorLabel.Text = ex.Message; ErrorLabel.IsVisible = true; }
+        catch (Exception ex) { ItemsView.ItemsSource = null; EmptyLabel.Text = "Desliza hacia abajo para reintentar."; CountLabel.Text = "Consulta no disponible"; ErrorLabel.Text = ex.Message; ErrorLabel.IsVisible = true; }
         finally
         {
             _settingFilters = _loading = false;
-            BusyIndicator.IsVisible = BusyIndicator.IsRunning = false;
+            ServicesRefresh.IsRefreshing = false;
             ClientPicker.IsEnabled = CarrierPicker.IsEnabled = true;
             PreviousButton.IsEnabled = _page > 1; NextButton.IsEnabled = _page * 50 < _total;
         }
     }
     private async void OnFilterChanged(object? sender, EventArgs e) { if (_settingFilters || _loading) return; _page = 1; await LoadAsync(); }
-    private async void OnRefresh(object? sender, EventArgs e) { if (_loading) return; _page = 1; await LoadAsync(); }
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        if (_loading) { ServicesRefresh.IsRefreshing = false; return; }
+        await LoadAsync();
+    }
     private async void OnPrevious(object? sender, EventArgs e) { if (_loading || _page <= 1) return; _page--; await LoadAsync(); }
     private async void OnNext(object? sender, EventArgs e) { if (_loading || _page * 50 >= _total) return; _page++; await LoadAsync(); }
     private async void OnSelected(object? sender, SelectionChangedEventArgs e)

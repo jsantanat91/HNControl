@@ -1,13 +1,89 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:models="clr-namespace:HNControl.Mobile.Models" x:Class="HNControl.Mobile.Pages.ServiceInventoryPage" Title="Inventario de Servicios" BackgroundColor="{StaticResource AppBgTop}">
- <Grid Padding="18" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
-  <VerticalStackLayout Spacing="4"><Label Text="CONEXIONES Y EQUIPOS" Style="{StaticResource Eyebrow}"/><Label Text="Tus servicios, a la mano." FontSize="24" FontAttributes="Bold"/><Label Text="Consulta por cliente y proveedor." Style="{StaticResource MutedLabel}"/><Button Text="Cuentas de proveedores" Clicked="OnAccounts" Style="{StaticResource GhostButton}"/></VerticalStackLayout>
-  <Border Grid.Row="1" Style="{StaticResource SurfaceCard}" Padding="12"><VerticalStackLayout Spacing="4"><Picker x:Name="ClientPicker" Title="Todos los clientes" SelectedIndexChanged="OnFilterChanged"/><Picker x:Name="CarrierPicker" Title="Todos los proveedores" SelectedIndexChanged="OnFilterChanged"/><Button Text="Actualizar" Clicked="OnRefresh" Style="{StaticResource GhostButton}"/></VerticalStackLayout></Border>
-  <VerticalStackLayout Grid.Row="2"><Label x:Name="CountLabel" Style="{StaticResource MutedLabel}"/><Label x:Name="ErrorLabel" TextColor="{StaticResource AppDanger}" IsVisible="False"/><ActivityIndicator x:Name="BusyIndicator" IsVisible="False"/></VerticalStackLayout>
-  <CollectionView x:Name="ItemsView" Grid.Row="3" SelectionMode="Single" SelectionChanged="OnSelected">
-   <CollectionView.EmptyView><Label Text="No hay servicios para estos filtros." Padding="20" HorizontalTextAlignment="Center" TextColor="{StaticResource AppMuted}"/></CollectionView.EmptyView>
-   <CollectionView.ItemTemplate><DataTemplate x:DataType="models:ServiceInventoryRow"><Border Style="{StaticResource SurfaceCard}" Padding="16" Margin="0,0,0,10"><VerticalStackLayout Spacing="7"><Grid ColumnDefinitions="*,Auto"><Border BackgroundColor="#EAF3FF" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="10,5" HorizontalOptions="Start"><Label Text="{Binding Carrier}" FontSize="11" FontAttributes="Bold" TextColor="#1764D9"/></Border><Border Grid.Column="1" BackgroundColor="#E6F5EE" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="10,5"><Border.Triggers><DataTrigger TargetType="Border" Binding="{Binding IsActive}" Value="False"><Setter Property="BackgroundColor" Value="#EDF0F5"/></DataTrigger></Border.Triggers><Label Text="{Binding Status}" FontSize="11" FontAttributes="Bold" TextColor="#355E51"/></Border></Grid><Label Text="{Binding Name}" FontSize="18" FontAttributes="Bold"/><Label Text="{Binding Client}" FontSize="13"/><Label Text="{Binding Summary}" Style="{StaticResource MutedLabel}"/><Border BackgroundColor="#F2F6FC" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="10,8"><Label Text="{Binding AccountSummary}" FontSize="12" TextColor="#325374"/></Border><Label Text="Ver equipo y datos técnicos →" FontSize="12" TextColor="{StaticResource AppAccent}"/></VerticalStackLayout></Border></DataTemplate></CollectionView.ItemTemplate>
-  </CollectionView>
-  <Grid Grid.Row="4" ColumnDefinitions="*,Auto,*" ColumnSpacing="12"><Button x:Name="PreviousButton" Text="Anterior" Clicked="OnPrevious" Style="{StaticResource GhostButton}"/><Label x:Name="PageLabel" Grid.Column="1" VerticalOptions="Center"/><Button x:Name="NextButton" Grid.Column="2" Text="Siguiente" Clicked="OnNext" Style="{StaticResource GhostButton}"/></Grid>
- </Grid>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:HNControl.Mobile.Models"
+             x:Class="HNControl.Mobile.Pages.ServiceInventoryPage"
+             Title="Servicios" Background="{StaticResource AppBackgroundBrush}">
+    <Grid Padding="18,14,18,8" RowDefinitions="*,Auto" RowSpacing="10">
+        <RefreshView x:Name="ServicesRefresh" Refreshing="OnRefreshing">
+            <CollectionView x:Name="ItemsView" SelectionMode="Single" SelectionChanged="OnSelected">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="12" Margin="0,0,0,10">
+                        <Border Style="{StaticResource HeaderCard}">
+                            <Grid>
+                                <Image Source="module_signal.png" WidthRequest="112" HeightRequest="82" HorizontalOptions="End" VerticalOptions="Center" Aspect="AspectFit" Opacity="0.5" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+                                <VerticalStackLayout Spacing="6">
+                                    <Label Text="Inventario de servicios" Style="{StaticResource HeroTitle}" />
+                                    <Label Text="Conexiones, equipos y datos de soporte." Style="{StaticResource HeroSubtitle}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+
+                        <VerticalStackLayout Spacing="10">
+                            <Border Style="{StaticResource SurfaceCard}" Padding="14">
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="Cliente" Style="{StaticResource FieldLabel}" />
+                                        <Border Style="{StaticResource InputCard}" Padding="10,0">
+                                            <Picker x:Name="ClientPicker" Title="Todos" SelectedIndexChanged="OnFilterChanged" SemanticProperties.Description="Filtrar por cliente" />
+                                        </Border>
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                        <Label Text="Proveedor" Style="{StaticResource FieldLabel}" />
+                                        <Border Style="{StaticResource InputCard}" Padding="10,0">
+                                            <Picker x:Name="CarrierPicker" Title="Todos" SelectedIndexChanged="OnFilterChanged" SemanticProperties.Description="Filtrar por proveedor" />
+                                        </Border>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label x:Name="CountLabel" Text="Consultando servicios…" Style="{StaticResource MutedLabel}" VerticalOptions="Center" />
+                                <Button Grid.Column="1" Text="Cuentas" Clicked="OnAccounts" Style="{StaticResource GhostButton}" SemanticProperties.Description="Ver cuentas de proveedores" />
+                            </Grid>
+                            <Label x:Name="ErrorLabel" TextColor="{StaticResource AppDanger}" IsVisible="False" />
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+                <CollectionView.EmptyView>
+                    <Border Style="{StaticResource SurfaceCard}">
+                        <Label x:Name="EmptyLabel" Text="Consultando servicios…" HorizontalTextAlignment="Center" Style="{StaticResource MutedLabel}" />
+                    </Border>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:ServiceInventoryRow">
+                        <Border Style="{StaticResource SurfaceCard}" Margin="0,0,0,10">
+                            <VerticalStackLayout Spacing="9">
+                                <FlexLayout Wrap="Wrap" AlignItems="Center">
+                                    <Border Style="{StaticResource PillBadgeBlue}" Margin="0,0,6,4">
+                                        <Label Text="{Binding Carrier}" FontSize="11" FontFamily="OpenSansSemibold" TextColor="{StaticResource AppAccent}" />
+                                    </Border>
+                                    <Border Style="{StaticResource PillBadgeGreen}" Margin="0,0,0,4">
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding IsActive}" Value="False">
+                                                <Setter Property="BackgroundColor" Value="#EDF0F5" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                        <Label Text="{Binding Status}" FontSize="11" FontFamily="OpenSansSemibold" />
+                                    </Border>
+                                </FlexLayout>
+                                <Label Text="{Binding Name}" Style="{StaticResource SectionTitle}" />
+                                <Label Text="{Binding Client}" FontSize="13" />
+                                <Label Text="{Binding Summary}" Style="{StaticResource MutedLabel}" />
+                                <Border Style="{StaticResource InputCard}" Padding="12,8">
+                                    <Label Text="{Binding AccountSummary}" FontSize="12" LineBreakMode="WordWrap" />
+                                </Border>
+                                <Label Text="Ver detalle  →" FontSize="13" FontFamily="OpenSansSemibold" TextColor="{StaticResource AppAccent}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*" ColumnSpacing="12">
+            <Button x:Name="PreviousButton" Text="Anterior" Clicked="OnPrevious" Style="{StaticResource GhostButton}" />
+            <Label x:Name="PageLabel" Grid.Column="1" VerticalOptions="Center" Style="{StaticResource MutedLabel}" />
+            <Button x:Name="NextButton" Grid.Column="2" Text="Siguiente" Clicked="OnNext" Style="{StaticResource GhostButton}" />
+        </Grid>
+    </Grid>
 </ContentPage>

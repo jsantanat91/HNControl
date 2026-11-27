@@ -5,25 +5,27 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Viáticos"
     Background="{StaticResource AppBackgroundBrush}">
-    <Grid RowDefinitions="Auto,*" Padding="20,12">
-        <Border Grid.Row="0" Style="{StaticResource HeaderCard}">
-            <VerticalStackLayout Spacing="14">
-                <Label Text="GASTOS Y COMPROBACIONES" TextColor="#BCE7DE" FontSize="10" CharacterSpacing="1.4" FontAttributes="Bold" />
-                <Label Text="Mis viáticos" TextColor="White" FontSize="27" FontAttributes="Bold" />
-                <Label Text="Registra, comprueba y sigue tus gastos." TextColor="#D5EDE9" FontSize="13" />
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                    <Button Text="+ Semana" Clicked="OnNewWeekClicked" Style="{StaticResource PrimaryButton}" />
-                    <Button Grid.Column="1" Text="+ Viaje" Clicked="OnNewTravelClicked" Style="{StaticResource GhostButton}" />
-                </Grid>
-            </VerticalStackLayout>
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12" Padding="18,14,18,0">
+        <Border Style="{StaticResource HeaderCard}">
+            <Grid>
+                <Image Source="module_signal.png" WidthRequest="112" HeightRequest="82" HorizontalOptions="End" VerticalOptions="Center" Aspect="AspectFit" Opacity="0.5" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+                <VerticalStackLayout Spacing="6" Padding="0,8">
+                    <Label Text="Mis viáticos" Style="{StaticResource HeroTitle}" />
+                    <Label Text="Registra gastos y solicita anticipos." Style="{StaticResource HeroSubtitle}" />
+                </VerticalStackLayout>
+            </Grid>
         </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Button Text="+ Semana" Clicked="OnNewWeekClicked" Style="{StaticResource PrimaryButton}" />
+            <Button Grid.Column="1" Text="+ Viaje" Clicked="OnNewTravelClicked" Style="{StaticResource GhostButton}" />
+        </Grid>
 
-        <RefreshView x:Name="WeeksRefreshView" Grid.Row="1" Refreshing="OnRefreshing">
-            <CollectionView x:Name="WeeksCollection" Margin="0,12,0,0" SelectionMode="None">
+        <RefreshView x:Name="WeeksRefreshView" Grid.Row="2" Refreshing="OnRefreshing">
+            <CollectionView x:Name="WeeksCollection" SelectionMode="None">
                 <CollectionView.EmptyView>
                     <Border Style="{StaticResource SurfaceCard}" Padding="16">
                         <VerticalStackLayout Spacing="6">
-                            <Label FontAttributes="Bold" FontSize="18" HorizontalOptions="Center" Text="Tus gastos, en orden" />
+                            <Label Style="{StaticResource SectionTitle}" HorizontalOptions="Center" Text="Sin viáticos registrados" />
                             <Label HorizontalOptions="Center" Opacity="0.7" Text="Crea una semana o solicita un viaje." />
                         </VerticalStackLayout>
                     </Border>
@@ -32,24 +34,23 @@
                     <DataTemplate>
                         <Border Margin="0,0,0,10" Style="{StaticResource SurfaceCard}">
                             <VerticalStackLayout Spacing="7">
-                                <Grid ColumnDefinitions="*,Auto">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <Label FontAttributes="Bold"
                                            FontSize="16"
                                            Text="{Binding WeekStartDate, StringFormat='Semana del {0:dd MMM yyyy}'}" />
-                                    <Label Grid.Column="1"
-                                           FontAttributes="Bold"
-                                           FontSize="12"
-                                           Text="{Binding StatusLabel}" />
+                                    <Border Grid.Column="1" Style="{StaticResource PillBadgeBlue}" VerticalOptions="Start">
+                                        <Label FontFamily="OpenSansSemibold" FontSize="11" TextColor="{StaticResource AppAccent}" Text="{Binding StatusLabel}" />
+                                    </Border>
                                 </Grid>
                                 <Label FontSize="12" Text="{Binding FlowLabel}" TextColor="{StaticResource AppMuted}" />
                                 <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                    <Border Grid.Column="0" BackgroundColor="#EEF3FF" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
+                                    <Border Grid.Column="0" BackgroundColor="{StaticResource AppAccentSoft}" Padding="12,10" StrokeShape="RoundRectangle 14" StrokeThickness="0">
                                         <VerticalStackLayout Spacing="0">
                                             <Label FontSize="11" Opacity="0.75" Text="Total" />
                                             <Label FontAttributes="Bold" FontSize="16" Text="{Binding TotalAmount, StringFormat='${0:N2}'}" />
                                         </VerticalStackLayout>
                                     </Border>
-                                    <Border Grid.Column="1" BackgroundColor="#F3F7EC" Padding="10,8" StrokeShape="RoundRectangle 10" StrokeThickness="0">
+                                    <Border Grid.Column="1" BackgroundColor="{StaticResource AppSuccessSoft}" Padding="12,10" StrokeShape="RoundRectangle 14" StrokeThickness="0">
                                         <VerticalStackLayout Spacing="0">
                                             <Label FontSize="11" Opacity="0.75" Text="Entradas" />
                                             <Label FontAttributes="Bold" FontSize="16" Text="{Binding EntriesCount}" />
