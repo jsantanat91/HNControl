@@ -1,49 +1,66 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage x:Class="HNControl.Mobile.Pages.LoginPage"
  xmlns="http://schemas.microsoft.com/dotnet/2021/maui" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
- NavigationPage.HasNavigationBar="False" BackgroundColor="{StaticResource AppBgTop}">
- <ScrollView>
-  <VerticalStackLayout Padding="22,18,22,22" Spacing="16" MaximumWidthRequest="520" HorizontalOptions="Fill">
-   <HorizontalStackLayout Spacing="12">
-    <Border BackgroundColor="{StaticResource AppAccent}" StrokeThickness="0" StrokeShape="RoundRectangle 16" WidthRequest="52" HeightRequest="52">
-     <Label Text="HN" TextColor="White" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-    </Border>
-    <VerticalStackLayout VerticalOptions="Center" Spacing="2">
-     <Label Text="HN Control" FontSize="22" FontAttributes="Bold" />
-     <Label Text="HUBNET SOLUTIONS" Style="{StaticResource Eyebrow}" />
-    </VerticalStackLayout>
-   </HorizontalStackLayout>
-   <Border StrokeThickness="0" StrokeShape="RoundRectangle 26" Padding="22,20" BackgroundColor="#10284A">
-    <VerticalStackLayout x:Name="HeroLayout" Spacing="8">
-     <Label Text="TU OPERACIÓN, A LA MANO." FontSize="10" CharacterSpacing="1.3" TextColor="#79C9FF" FontAttributes="Bold" />
-     <Label Text="Todo conectado.&#10;Todo bajo control." FontSize="26" LineHeight="1.1" FontAttributes="Bold" TextColor="White" />
-     <Label Text="Órdenes, servicios y tu equipo. La información que necesitas, donde estés." TextColor="#C7D9EE" FontSize="14" />
-    </VerticalStackLayout>
-   </Border>
-   <Border x:Name="LoginCard" Style="{StaticResource SurfaceCard}" Padding="20">
-    <VerticalStackLayout Spacing="10">
-     <Label Text="Entra a tu espacio" FontSize="24" FontAttributes="Bold" />
-     <Label Text="Usa tu cuenta de HN Control para continuar." Style="{StaticResource MutedLabel}" />
-     <VerticalStackLayout Spacing="6">
-      <Label Text="Usuario o correo" Style="{StaticResource FieldLabel}" />
-      <Border Style="{StaticResource InputCard}"><Entry x:Name="EmailEntry" Placeholder="Tu usuario o correo" ReturnType="Next" IsTextPredictionEnabled="False" /></Border>
+ NavigationPage.HasNavigationBar="False" BackgroundColor="#0A3F9C" Title="Iniciar sesión" SafeAreaEdges="All" HideSoftInputOnTapped="True">
+ <ScrollView VerticalScrollBarVisibility="Never">
+  <VerticalStackLayout Spacing="0" MaximumWidthRequest="520" HorizontalOptions="Fill" Padding="0,0,0,24">
+   <Grid x:Name="HeroLayout" HeightRequest="250">
+    <Image Source="login_connectivity.svg" Aspect="AspectFill" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="26,24" VerticalOptions="Start">
+     <Border BackgroundColor="#1554CB" StrokeThickness="0" StrokeShape="RoundRectangle 16" WidthRequest="46" HeightRequest="46">
+      <Label Text="HN" TextColor="White" FontSize="21" FontFamily="OpenSansSemibold" HorizontalOptions="Center" VerticalOptions="Center" />
+     </Border>
+     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+      <Label Text="HN Control" TextColor="#102C5D" FontSize="21" FontFamily="OpenSansSemibold" />
+      <Label Text="TU EQUIPO, CONECTADO" TextColor="#4B6C98" FontSize="9" CharacterSpacing="1.5" />
      </VerticalStackLayout>
-     <VerticalStackLayout Spacing="6">
-      <Label Text="Contraseña" Style="{StaticResource FieldLabel}" />
-      <Border Style="{StaticResource InputCard}">
-       <Grid ColumnDefinitions="*,Auto">
-        <Entry x:Name="PasswordEntry" IsPassword="True" Placeholder="Tu contraseña" ReturnType="Go" Completed="OnLoginClicked" />
-        <Button Grid.Column="1" Text="Ver" Clicked="OnTogglePassword" BackgroundColor="Transparent" TextColor="{StaticResource AppAccent}" Padding="10,0" MinimumWidthRequest="48" />
+    </Grid>
+   </Grid>
+   <Border x:Name="LoginCard" BackgroundColor="Transparent" StrokeThickness="0" Padding="26,0,26,0">
+    <VerticalStackLayout Spacing="18">
+     <VerticalStackLayout Spacing="5" Margin="0,0,0,4">
+      <Label Text="Bienvenido de nuevo" TextColor="White" FontFamily="OpenSansSemibold" FontSize="27" SemanticProperties.HeadingLevel="Level1" />
+      <Label Text="Tu operación, siempre contigo." TextColor="#C4DAFF" FontSize="14" />
+     </VerticalStackLayout>
+     <VerticalStackLayout Spacing="8">
+      <Label Text="Usuario o correo" TextColor="#E1ECFF" FontSize="12" FontFamily="OpenSansSemibold" />
+      <Border x:Name="EmailBorder" Stroke="#BFD2F2" StrokeThickness="1" StrokeShape="RoundRectangle 28" BackgroundColor="#F2F7FF" Padding="18,4">
+       <Grid ColumnDefinitions="22,*" ColumnSpacing="10" MinimumHeightRequest="46">
+        <Path Data="M 2,5 L 20,5 L 20,19 L 2,19 Z M 2,6 L 11,13 L 20,6" Stroke="#5279B1" StrokeThickness="1.6" WidthRequest="22" HeightRequest="24" VerticalOptions="Center" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+        <Entry x:Name="EmailEntry" Grid.Column="1" Placeholder="Tu usuario o correo" TextColor="#102C5D" PlaceholderColor="#7085A4" BackgroundColor="Transparent" FontSize="14" ReturnType="Next" IsTextPredictionEnabled="False" IsSpellCheckEnabled="False" Completed="OnEmailCompleted" Focused="OnFieldFocused" Unfocused="OnFieldUnfocused" HandlerChanged="OnEntryHandlerChanged" SemanticProperties.Description="Usuario o correo" />
        </Grid>
       </Border>
      </VerticalStackLayout>
-     <HorizontalStackLayout Spacing="4"><CheckBox x:Name="RememberCheck" /><Label Text="Recordarme en este dispositivo" FontSize="12" VerticalOptions="Center" /></HorizontalStackLayout>
-     <Label x:Name="ErrorLabel" IsVisible="False" TextColor="{StaticResource AppDanger}" FontSize="13" />
-     <Button x:Name="LoginButton" Style="{StaticResource PrimaryButton}" Text="Iniciar sesión  →" Clicked="OnLoginClicked" />
-     <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" />
+     <VerticalStackLayout Spacing="8">
+      <Label Text="Contraseña" TextColor="#E1ECFF" FontSize="12" FontFamily="OpenSansSemibold" />
+      <Border x:Name="PasswordBorder" Stroke="#BFD2F2" StrokeThickness="1" StrokeShape="RoundRectangle 28" BackgroundColor="#F2F7FF" Padding="18,4,6,4">
+       <Grid ColumnDefinitions="22,*,Auto" ColumnSpacing="10" MinimumHeightRequest="46">
+        <Path Data="M 4,10 L 18,10 L 18,21 L 4,21 Z M 7,10 L 7,6 C 7,0 15,0 15,6 L 15,10 M 11,14 L 11,17" Stroke="#5279B1" StrokeThickness="1.6" WidthRequest="22" HeightRequest="24" VerticalOptions="Center" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+        <Entry x:Name="PasswordEntry" Grid.Column="1" IsPassword="True" Placeholder="Tu contraseña" TextColor="#102C5D" PlaceholderColor="#7085A4" BackgroundColor="Transparent" FontSize="14" ReturnType="Go" Completed="OnLoginClicked" Focused="OnFieldFocused" Unfocused="OnFieldUnfocused" HandlerChanged="OnEntryHandlerChanged" SemanticProperties.Description="Contraseña" />
+        <Button x:Name="PasswordToggle" Grid.Column="2" Text="Ver" Clicked="OnTogglePassword" BackgroundColor="Transparent" TextColor="#1554CB" FontFamily="OpenSansSemibold" FontSize="12" CornerRadius="24" Padding="10,0" MinimumWidthRequest="58" MinimumHeightRequest="46" SemanticProperties.Description="Mostrar contraseña" />
+       </Grid>
+      </Border>
+     </VerticalStackLayout>
+     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4" Margin="-8,-8,0,-8">
+      <CheckBox x:Name="RememberCheck" Color="#9BE8FF" BackgroundColor="Transparent" MinimumHeightRequest="44" MinimumWidthRequest="44" SemanticProperties.Description="Recordarme en este dispositivo" />
+      <Label Grid.Column="1" Text="Recordarme en este dispositivo" TextColor="#E1ECFF" FontSize="12" VerticalOptions="Center">
+       <Label.GestureRecognizers><TapGestureRecognizer Tapped="OnRememberTapped" /></Label.GestureRecognizers>
+      </Label>
+     </Grid>
+     <Border x:Name="ErrorPanel" IsVisible="False" BackgroundColor="#FFF1F2" Stroke="#FECDD3" StrokeShape="RoundRectangle 18" Padding="16,12">
+      <Label x:Name="ErrorLabel" TextColor="#9F1239" FontSize="13" />
+     </Border>
+     <Button x:Name="LoginButton" Text="Iniciar sesión   →" Clicked="OnLoginClicked" BackgroundColor="White" TextColor="#1244A0" FontFamily="OpenSansSemibold" FontSize="15" CornerRadius="28" MinimumHeightRequest="56" Padding="20,14" />
+     <HorizontalStackLayout x:Name="BusyPanel" IsVisible="False" HorizontalOptions="Center" Spacing="10">
+      <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" Color="#9BE8FF" WidthRequest="20" HeightRequest="20" />
+      <Label Text="Conectando con tu espacio…" TextColor="#E1ECFF" FontSize="12" VerticalOptions="Center" />
+     </HorizontalStackLayout>
     </VerticalStackLayout>
    </Border>
-   <Label Text="HN SOLUTIONS · GESTIÓN Y OPERACIÓN" HorizontalTextAlignment="Center" FontSize="10" CharacterSpacing="1" TextColor="{StaticResource AppMuted}" />
+   <VerticalStackLayout Spacing="4" Margin="26,28,26,0">
+    <Label Text="HN SOLUTIONS" HorizontalTextAlignment="Center" FontSize="10" FontFamily="OpenSansSemibold" CharacterSpacing="2" TextColor="#C4DAFF" />
+    <Label x:Name="VersionLabel" HorizontalTextAlignment="Center" FontSize="10" TextColor="#A9C7F2" />
+   </VerticalStackLayout>
   </VerticalStackLayout>
  </ScrollView>
 </ContentPage>

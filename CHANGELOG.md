@@ -1,5 +1,11 @@
 # HN Control — notas de versión
 
+## APK 2.3.2 · 27 de noviembre de 2026
+
+- Login con ilustración de ciudad y conectividad en los colores de HN, campos y botón principal tipo cápsula, iconos y estados de enfoque, error y carga.
+- Formulario desplazable para pantallas pequeñas y teclado abierto; acceso al campo de contraseña con Siguiente, control Ver/Ocultar y selección Recordarme desde su etiqueta.
+- Actualización visual de la APK. Conserva el acceso y los servicios existentes. No requiere despliegue web ni SQL.
+
 ## Web 2.6.6 / APK 2.3.1 · 27 de noviembre de 2026
 
 - Nuevo tipo **Recolección de equipos** dentro de Órdenes de Servicio, para retirar equipos al terminar un servicio o cerrar un cliente. No crea otro módulo ni cancela contratos automáticamente.
