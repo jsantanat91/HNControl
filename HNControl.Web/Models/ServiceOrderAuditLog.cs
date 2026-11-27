@@ -17,7 +17,8 @@ public enum ServiceOrderAuditEvent
     Completed,
     TokenExpired,
     TokenClosed,
-    CreationNotificationRequested
+    CreationNotificationRequested,
+    EvidenceDeleted
 }
 
 public class ServiceOrderAuditLog

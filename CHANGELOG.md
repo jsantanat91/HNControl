@@ -1,5 +1,12 @@
 # HN Control — notas de versión
 
+## Web 2.6.5 · 27 de noviembre de 2026
+
+- Botón Eliminar por evidencia en Órdenes → Entrega y firmas, también dentro del modal. Confirma el nombre del archivo antes de retirarlo.
+- Solo Administración; valida que la evidencia pertenezca a la orden. Conserva firmas y estado, incluso en órdenes finalizadas, y registra actor, fecha y archivo en auditoría.
+- Retira el adjunto e invalida el PDF anterior. Generar nuevamente el PDF incorpora la lista actualizada de evidencias; no modifica copias enviadas anteriormente.
+- Desplegar solo la web. Sin SQL ni nueva APK.
+
 ## Web 2.6.4 · 24 de noviembre de 2026
 
 - Viáticos (administración): por defecto muestra solo las semanas pendientes (Borrador, Enviado y Comprobación enviada), de cualquier fecha; se ocultan Aprobado, Comprobación aprobada y Rechazado. En Estatus se puede elegir *Todos* (que conserva el rango del mes actual) o un estatus específico.

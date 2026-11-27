@@ -9,6 +9,7 @@
 <div class="hn-ops hn-order-profile" data-ops-key="order-@order.Id">
     <div class="hn-ops-toolbar"><a class="hn-ops-back" asp-page="/Admin/ServiceOrders/Index" data-module-panel-close><i class="bi bi-arrow-left" aria-hidden="true"></i>Órdenes de servicio</a><div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" asp-page="/Admin/ServiceOrders/Edit" asp-route-id="@order.Id"><i class="bi bi-pencil me-2" aria-hidden="true"></i>Editar orden</a>@if(!string.IsNullOrWhiteSpace(Model.PublicUrl)){<a class="btn btn-primary" target="_blank" rel="noopener" href="@Model.PublicUrl"><i class="bi bi-box-arrow-up-right me-2" aria-hidden="true"></i>Enlace del cliente</a>}</div></div>
     <header class="hn-ops-hero"><div><div class="hn-eyebrow">Orden de servicio · OS-@order.Id.ToString("N")[..8].ToUpperInvariant()</div><h1>@order.Title</h1><p>@(order.Client?.Name ?? "Sin cliente")</p><div class="hn-ops-hero-meta"><span>@type.text</span><span>Creada el @order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></div></div><span class="hn-ops-state" data-status="@order.Status">@state.text</span></header>
+    @if (!string.IsNullOrWhiteSpace(Model.EvidenceNotice)) { <div class="alert alert-info mt-3" role="status">@Model.EvidenceNotice</div> }
     @if (!string.IsNullOrWhiteSpace(Model.Info)) { <div class="alert alert-info mt-3" role="status">@Model.Info</div> }
     @if (Model.SupportOrigin is { } source)
     {
@@ -80,7 +81,41 @@
         <section class="tab-pane fade" id="order-delivery" role="tabpanel" aria-labelledby="order-delivery-tab" tabindex="0">
             <article class="card mb-3"><div class="card-body hn-ops-callout"><div><span class="hn-ops-tag">@HNControl.Shared.OrderDeliveryData.Read(order.DeliveryJson).KindLabel</span><h2>Entrega y equipos</h2><p>Router, series, accesorios y modalidad de entrega en esta orden.</p></div><a class="btn btn-primary" asp-page="/ServiceOrders/Delivery" asp-route-id="@order.Id">Ver / capturar entrega<i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a></div></article>
             <div class="row g-3 mb-3">@foreach(var role in new[]{SignatureRole.Technician, SignatureRole.Client}) { var signature=order.Signatures.FirstOrDefault(s=>s.Role==role); <div class="col-md-6"><article class="card h-100"><div class="card-body"><div class="hn-ops-card-top"><span class="hn-ops-icon"><i class="bi bi-pen" aria-hidden="true"></i></span><span class="hn-ops-state" data-status="@(signature==null?"Created":"Finalized")">@(signature==null?"Pendiente":"Firma registrada")</span></div><h2 class="h6">@(role==SignatureRole.Technician?"Firma del técnico":"Firma del cliente")</h2>@if(signature!=null){<p class="mb-1">@signature.SignedByName</p><small class="text-muted">@signature.SignedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>}else{<p class="text-muted small mb-0">Aún no se ha registrado esta firma.</p>}</div></article></div> }</div>
-            <article class="card"><div class="card-header">Evidencias <span class="hn-ops-tag">@order.Evidences.Count</span></div><div class="card-body">@if(!order.Evidences.Any()){<div class="hn-ops-empty"><i class="bi bi-images" aria-hidden="true"></i><p>Aún no hay evidencias adjuntas.</p></div>}else{<div class="hn-ops-files">@foreach(var evidence in order.Evidences){<a asp-page="./DownloadEvidence" asp-route-evidenceId="@evidence.Id"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span>@evidence.OriginalFileName<small>@evidence.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></span><i class="bi bi-download" aria-hidden="true"></i></a>}</div>}</div></article>
+            <article class="card">
+                <div class="card-header">Evidencias <span class="hn-ops-tag">@order.Evidences.Count</span></div>
+                <div class="card-body">
+                    @if (!order.Evidences.Any())
+                    {
+                        <div class="hn-ops-empty"><i class="bi bi-images" aria-hidden="true"></i><p>Aún no hay evidencias adjuntas.</p></div>
+                    }
+                    else
+                    {
+                        <div class="hn-ops-files">
+                            @foreach (var evidence in order.Evidences.OrderBy(e => e.UploadedAt).ThenBy(e => e.Id))
+                            {
+                                <div class="hn-ops-evidence">
+                                    <a asp-page="./DownloadEvidence" asp-route-evidenceId="@evidence.Id">
+                                        <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i>
+                                        <span>@evidence.OriginalFileName<small>@evidence.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></span>
+                                        <i class="bi bi-download" aria-hidden="true"></i>
+                                    </a>
+                                    @if (AppRoles.IsGlobalAdmin(User))
+                                    {
+                                        <form method="post" asp-page-handler="DeleteEvidence" asp-route-id="@order.Id"
+                                              data-confirm="¿Eliminar la evidencia «@evidence.OriginalFileName»? Esta acción no se puede deshacer. Se conservarán las firmas y tendrás que regenerar el PDF."
+                                              onsubmit="return confirm(this.dataset.confirm);">
+                                            <input type="hidden" name="evidenceId" value="@evidence.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Eliminar evidencia @evidence.OriginalFileName">
+                                                <i class="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </article>
         </section>
         <section class="tab-pane fade" id="order-documents" role="tabpanel" aria-labelledby="order-documents-tab" tabindex="0"><article class="card"><div class="card-header">Documento y envío al cliente</div><div class="card-body d-flex flex-wrap gap-2">
                 <form method="post" asp-page-handler="GeneratePdf" asp-route-id="@Model.Order.Id">

@@ -5,6 +5,14 @@ using HNControl.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 
+if (args.FirstOrDefault() == "--evidence-deletion")
+{
+    var checks = 0;
+    await EvidenceDeletionTests.RunAsync((ok, label) => { if (!ok) throw new Exception("FAIL: " + label); checks++; Console.WriteLine("PASS: " + label); });
+    Console.WriteLine($"All {checks} evidence deletion checks passed.");
+    return;
+}
+
 if (args.FirstOrDefault() == "--support-integration")
 {
     var checks = 0;
@@ -138,6 +146,7 @@ await RelatedFormDataTests.RunAsync(Check);
 await ServiceOrderEditBindingTests.RunAsync(Check);
 await ServiceOrderReportTests.RunAsync(root, Check);
 await ServiceOrderReportEmailTests.RunAsync(Check);
+await EvidenceDeletionTests.RunAsync(Check);
 await OrderDeliveryTests.RunAsync(Check);
 await OperationsFlowTests.RunAsync(Check);
 await PerformanceFlowTests.RunAsync(Check);

@@ -3,9 +3,15 @@ namespace HNControl.Web.Services;
 /// <summary>Versioned release notes shipped with the application; no database changes.</summary>
 public static class ApplicationRelease
 {
-    public const string Version = "2.6.4";
+    public const string Version = "2.6.5";
     public static IReadOnlyList<ReleaseNote> History { get; } = Array.AsReadOnly(new[]
     {
+        new ReleaseNote("2.6.5", new DateOnly(2026, 11, 27), "Eliminar evidencias de órdenes", new[]
+        {
+            new ReleaseChange("Órdenes", "Administración puede eliminar evidencias adjuntas desde Entrega y firmas, en la página y en el modal, con confirmación por archivo."),
+            new ReleaseChange("Control", "Conserva firmas y estado de la orden; registra quién eliminó la evidencia e invalida el PDF anterior para regenerarlo sin el adjunto retirado."),
+            new ReleaseChange("Despliegue", "Solo actualizar la web. Sin SQL ni nueva APK.")
+        }),
         new ReleaseNote("2.6.4", new DateOnly(2026, 11, 24), "Viáticos pendientes por defecto", new[]
         {
             new ReleaseChange("Viáticos", "El listado de viáticos muestra por defecto solo las semanas pendientes (sin aprobadas ni rechazadas), de cualquier fecha. El filtro Estatus permite ver Todos o un estatus específico."),

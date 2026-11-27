@@ -32,10 +32,44 @@ public class DetailsModel : PageModel
     public string PublicUrl { get; set; } = "";
     public SupportOrderLink? SupportOrigin { get; private set; }
     public string? Info { get; set; }
+    [TempData] public string? EvidenceNotice { get; set; }
     public string PdfEmailRecipient { get; private set; } = "";
     public IReadOnlyCollection<string> PdfEmailCopies { get; private set; } = Array.Empty<string>();
     public string? PdfEmailConfigurationError { get; private set; }
     public ServiceOrderNotificationState CreationNotifications { get; set; } = new(false, false, false, false);
+
+    public async Task<IActionResult> OnPostDeleteEvidenceAsync(Guid id, Guid evidenceId)
+    {
+        if (!AppRoles.IsGlobalAdmin(User)) return Forbid();
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+        var query = _db.Database.IsNpgsql()
+            ? _db.ServiceOrders.FromSqlInterpolated($"SELECT * FROM \"ServiceOrders\" WHERE \"Id\" = {id} FOR UPDATE")
+            : _db.ServiceOrders.Where(o => o.Id == id);
+        var order = await query.FirstOrDefaultAsync();
+        if (order == null) return NotFound();
+        var evidence = await _db.ServiceOrderEvidences.FirstOrDefaultAsync(e => e.Id == evidenceId && e.OrderId == id);
+        if (evidence == null) return NotFound();
+
+        _db.ServiceOrderEvidences.Remove(evidence);
+        order.PdfStoragePath = null;
+        order.PdfGeneratedAt = null;
+        _db.ServiceOrderAuditLogs.Add(new ServiceOrderAuditLog
+        {
+            OrderId = id, EventType = ServiceOrderAuditEvent.EvidenceDeleted, ActorType = "admin",
+            ActorId = User.FindFirst(global::System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+            ActorName = User.Identity?.Name,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Details = $"Evidencia eliminada: {evidence.OriginalFileName} (ID: {evidence.Id}). PDF pendiente de regenerar."
+        });
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        // Never remove a stored file still referenced by another attachment.
+        if (!await _db.ServiceOrderEvidences.AnyAsync(e => e.StoragePath == evidence.StoragePath))
+            await _storage.DeleteIfExistsAsync(evidence.StoragePath);
+        EvidenceNotice = "Evidencia eliminada. Las firmas se conservaron. Genera nuevamente el PDF para actualizarlo.";
+        return RedirectToPage(new { id, panel = Request.Query["panel"] == "1" ? "1" : null });
+    }
 
     public async Task<IActionResult> OnPostRetryCreationNotificationsAsync(Guid id)
     {
